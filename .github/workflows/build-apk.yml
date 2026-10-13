@@ -49,6 +49,39 @@ jobs:
           command -v ffmpeg
           command -v ffprobe
           ffmpeg -version | head -n 1
+      - name: Fix FFmpeg thunder fade duration (exit 234)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYFIX'
+          from pathlib import Path
+          import os
+          script = Path(os.environ["PROJECT_DIR"]) / "tools/prepare_real_weather_audio.py"
+          if not script.is_file():
+              raise SystemExit(f"Audio preparation script not found: {script}")
+          source = script.read_text(encoding="utf-8")
+          old, new = "afade=t=in:st=0:d=.12", "afade=t=in:st=0:d=0.12"
+          if old in source:
+              source = source.replace(old, new)
+              print("Fixed FFmpeg afade duration: .12 -> 0.12")
+          elif new in source:
+              print("FFmpeg fade duration already fixed")
+          else:
+              raise SystemExit("Expected thunder fade filter not found; project version differs")
+          source = source.replace(
+              "subprocess.run(command,check=True,stdout=subprocess.PIPE)",
+              "subprocess.run(command,check=True)"
+          )
+          script.write_text(source, encoding="utf-8")
+          PYFIX
+      - name: Verify FFmpeg fade support
+        shell: bash
+        run: |
+          set -euo pipefail
+          ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=440:duration=1' \
+            -af 'afade=t=in:st=0:d=0.12' -ar 32000 \
+            -c:a libvorbis -q:a 3 -y "$RUNNER_TEMP/thinn-khi-audio-test.ogg"
+          ffprobe -v error -show_entries stream=codec_name -of default=nw=1 "$RUNNER_TEMP/thinn-khi-audio-test.ogg"
       - name: Fetch public-domain rain recordings and create seamless loops
         shell: bash
         run: |
