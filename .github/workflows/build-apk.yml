@@ -1,4 +1,4 @@
-name: Build thinn-khi APK (Kotlin Fix)
+name: Build thinn-khi V2 APK
 
 on:
   workflow_dispatch:
@@ -11,8 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-
+    timeout-minutes: 40
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,7 +27,7 @@ jobs:
         with:
           packages: ''
 
-      - name: Install Android SDK packages
+      - name: Install Android SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
 
       - name: Set up Gradle
@@ -36,55 +35,26 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Locate Android project
+      - name: Locate V2 Android project
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f thinn-khi_Android_Source.zip ]]; then
+          if [[ -f thinn-khi_Android_Source_V2.zip ]]; then
             mkdir -p extracted
-            unzip -qo thinn-khi_Android_Source.zip -d extracted
+            unzip -qo thinn-khi_Android_Source_V2.zip -d extracted
             PROJECT_DIR=extracted/thinn-khi_Android_Project
           elif [[ -f thinn-khi_Android_Project/app/build.gradle.kts ]]; then
             PROJECT_DIR=thinn-khi_Android_Project
           elif [[ -f app/build.gradle.kts ]]; then
             PROJECT_DIR=.
           else
-            echo 'Cannot find project. Upload thinn-khi_Android_Source.zip to repository root.'
+            echo 'Missing thinn-khi_Android_Source_V2.zip at repository root.'
             exit 1
           fi
           test -f "$PROJECT_DIR/app/build.gradle.kts"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Fix confirmed Kotlin compilation errors
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import os
-          root = Path(os.environ['PROJECT_DIR']) / 'app/src/main/java/io/atmos/weather'
-          home = root / 'presentation/home/WeatherHomeScreen.kt'
-          widgets = root / 'widgets/AtmosWidgets.kt'
-          for f in (home, widgets):
-              if not f.is_file():
-                  raise SystemExit(f'Missing Kotlin file: {f}')
-          a = home.read_text(encoding='utf-8')
-          a = a.replace('Icons.Rounded.ThreeDRotation', 'Icons.Rounded.Refresh')
-          a = a.replace('PathJoin.Round', 'StrokeJoin.Round')
-          home.write_text(a, encoding='utf-8')
-
-          b = widgets.read_text(encoding='utf-8')
-          if 'import android.content.Intent' not in b:
-              b = b.replace('import android.content.Context', 'import android.content.Context\nimport android.content.Intent')
-          if 'import androidx.glance.appwidget.provideContent' not in b:
-              b = b.replace('import androidx.glance.appwidget.GlanceAppWidgetReceiver', 'import androidx.glance.appwidget.GlanceAppWidgetReceiver\nimport androidx.glance.appwidget.provideContent')
-          b = b.replace('provideContent { WidgetContent(variant, city, temp, rain, condition, time > 0L) }', 'provideContent { WidgetContent(context, variant, city, temp, rain, condition, time > 0L) }')
-          b = b.replace('private fun WidgetContent(variant: Int, city: String, temp: String, rain: String, condition: WeatherCondition, loaded: Boolean)', 'private fun WidgetContent(context: Context, variant: Int, city: String, temp: String, rain: String, condition: WeatherCondition, loaded: Boolean)')
-          b = b.replace('actionStartActivity<MainActivity>()', 'actionStartActivity(Intent(context, MainActivity::class.java))')
-          widgets.write_text(b, encoding='utf-8')
-          print('Kotlin source fixes applied.')
-          PY
-
-      - name: Compile APK
+      - name: Compile V2 APK
         id: compile
         continue-on-error: true
         shell: bash
@@ -92,36 +62,36 @@ jobs:
           set -o pipefail
           gradle --no-daemon --console=plain --project-dir "$PROJECT_DIR" :app:assembleDebug 2>&1 | tee build.log
 
-      - name: Extract remaining compilation errors
+      - name: Show Kotlin compile errors
         if: steps.compile.outcome == 'failure'
         shell: bash
         run: |
           grep -n -E '(e: file:|Unresolved reference|Type mismatch|[Ee]rror:|Compilation error|^FAILURE:)' build.log | head -100 > compiler-errors.txt || true
-          if [[ ! -s compiler-errors.txt ]]; then tail -100 build.log > compiler-errors.txt; fi
-          echo '### thinn-kh矛 build errors' >> "$GITHUB_STEP_SUMMARY"
+          if [[ ! -s compiler-errors.txt ]]; then tail -120 build.log > compiler-errors.txt; fi
+          echo '### thinn-khì V2 編譯錯誤' >> "$GITHUB_STEP_SUMMARY"
           echo '```text' >> "$GITHUB_STEP_SUMMARY"
           head -100 compiler-errors.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           cat compiler-errors.txt
 
-      - name: Upload compilation logs if failed
+      - name: Upload compilation error logs
         if: steps.compile.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-errors
+          name: thinn-khi-V2-build-errors
           path: |
             build.log
             compiler-errors.txt
           if-no-files-found: error
 
-      - name: Upload APK if successful
+      - name: Upload installable debug APK
         if: steps.compile.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-APK
+          name: thinn-khi-V2-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Fail workflow if compilation failed
+      - name: Fail workflow if compile failed
         if: steps.compile.outcome == 'failure'
         run: exit 1
