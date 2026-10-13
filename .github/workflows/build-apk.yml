@@ -41,6 +41,26 @@ jobs:
           PROJECT_DIR=extracted/thinn-khi_Android_Project
           test -f "$PROJECT_DIR/app/build.gradle.kts"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+      - name: Fix duplicated Compose annotation in V10.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYFIX'
+          from pathlib import Path
+          import os
+          target = Path(os.environ["PROJECT_DIR"]) / "app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt"
+          text = target.read_text(encoding="utf-8")
+          old = "@Composable\n/** Visible progress while GPS resolves; success and error are never silently swallowed. */\n@Composable"
+          new = "/** Visible progress while GPS resolves; success and error are never silently swallowed. */\n@Composable"
+          if old in text:
+              text = text.replace(old, new, 1)
+              target.write_text(text, encoding="utf-8")
+              print("Fixed duplicate @Composable above LocationFeedbackBanner")
+          elif new in text:
+              print("Compose annotation already fixed")
+          else:
+              raise SystemExit("Unexpected WeatherHomeScreen.kt version; cannot apply safe patch")
+          PYFIX
       - name: Install FFmpeg audio tools
         shell: bash
         run: |
