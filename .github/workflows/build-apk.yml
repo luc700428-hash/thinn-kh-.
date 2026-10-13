@@ -1,4 +1,4 @@
-name: Build thinn-khi V8 APK
+name: Build thinn-khi V9 Atmosphere APK
 
 on:
   workflow_dispatch:
@@ -30,16 +30,24 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Extract V8 ZIP
+      - name: Extract V9 ZIP
         shell: bash
         run: |
           set -euo pipefail
-          test -f thinn-khi_Android_Source_V8.zip || { echo 'Please upload thinn-khi_Android_Source_V8.zip to repository root'; exit 1; }
+          test -f thinn-khi_Android_Source_V9.zip || { echo 'Please upload thinn-khi_Android_Source_V9.zip to repository root'; exit 1; }
           mkdir -p extracted
-          unzip -qo thinn-khi_Android_Source_V8.zip -d extracted
+          unzip -qo thinn-khi_Android_Source_V9.zip -d extracted
           PROJECT_DIR=extracted/thinn-khi_Android_Project
           test -f "$PROJECT_DIR/app/build.gradle.kts"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+      - name: Fetch public-domain rain recordings and create seamless loops
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$PROJECT_DIR/tools/prepare_real_weather_audio.py"
+          for asset in light_rain heavy_rain thunder_strike; do
+            test -s "$PROJECT_DIR/app/src/main/res/raw/$asset.ogg" || exit 1
+          done
       - name: Compile debug APK
         id: compile
         shell: bash
@@ -53,7 +61,7 @@ jobs:
         run: |
           grep -n -E '(e: file:|Unresolved reference|Type mismatch|[Ee]rror:|Compilation error|^FAILURE:|^\* What went wrong:)' build.log | head -130 > compiler-errors.txt || true
           if [[ ! -s compiler-errors.txt ]]; then tail -130 build.log > compiler-errors.txt; fi
-          echo '### thinn-khi V8 compilation errors' >> "$GITHUB_STEP_SUMMARY"
+          echo '### thinn-khi V9 compilation errors' >> "$GITHUB_STEP_SUMMARY"
           echo '```text' >> "$GITHUB_STEP_SUMMARY"
           cat compiler-errors.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -61,7 +69,7 @@ jobs:
         if: steps.compile.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V8-errors
+          name: thinn-khi-V9-errors
           path: |
             build.log
             compiler-errors.txt
@@ -70,7 +78,7 @@ jobs:
         if: steps.compile.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V8-APK
+          name: thinn-khi-V9-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
       - name: Fail visibly on compilation error
