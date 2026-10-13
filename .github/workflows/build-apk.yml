@@ -1,4 +1,4 @@
-name: Build thinn-khi V7 APK
+name: Build thinn-khi V7 APK (fixed)
 
 on:
   workflow_dispatch:
@@ -39,20 +39,40 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f thinn-khi_Android_Source_V7.zip ]]; then
-            mkdir -p extracted
-            unzip -qo thinn-khi_Android_Source_V7.zip -d extracted
-            PROJECT_DIR=extracted/thinn-khi_Android_Project
-          elif [[ -f thinn-khi_Android_Project/app/build.gradle.kts ]]; then
-            PROJECT_DIR=thinn-khi_Android_Project
-          elif [[ -f app/build.gradle.kts ]]; then
-            PROJECT_DIR=.
+          if [[ -f thinn-khi_Android_Source_V7_FIXED.zip ]]; then
+            ARCHIVE=thinn-khi_Android_Source_V7_FIXED.zip
+          elif [[ -f thinn-khi_Android_Source_V7.zip ]]; then
+            ARCHIVE=thinn-khi_Android_Source_V7.zip
           else
-            echo 'ERROR: Please upload thinn-khi_Android_Source_V7.zip to repository root.'
+            echo 'ERROR: Missing V7 Android ZIP at repository root.'
             exit 1
           fi
+          mkdir -p extracted
+          unzip -qo "$ARCHIVE" -d extracted
+          PROJECT_DIR=extracted/thinn-khi_Android_Project
           test -f "$PROJECT_DIR/app/build.gradle.kts"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Fix Widget county label in V7 source
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          p = Path(os.environ['PROJECT_DIR']) / 'app/src/main/java/io/atmos/weather/widgets/AtmosWidgets.kt'
+          s = p.read_text(encoding='utf-8')
+          prefix = 'private fun LandmarkId.label()=when(this){'
+          if prefix not in s:
+              raise SystemExit('Unexpected Widget source: LandmarkId.label() not found')
+          head, tail = s.split(prefix, 1)
+          if 'LandmarkId.TAIWAN_COUNTY' not in tail:
+              needle = 'LandmarkId.WEATHER_COTTAGE->"微縮氣象小屋"'
+              if needle not in tail:
+                  raise SystemExit('Unexpected Widget source: original label branch not found')
+              tail = tail.replace(needle,'LandmarkId.TAIWAN_COUNTY->"縣市微縮景觀";'+needle, 1)
+              p.write_text(head + prefix + tail, encoding='utf-8')
+          print('Widget TAIWAN_COUNTY branch present')
+          PYTHON
 
       - name: Compile V7 debug APK
         id: compile
