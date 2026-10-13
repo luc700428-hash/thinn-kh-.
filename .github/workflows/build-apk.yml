@@ -1,4 +1,4 @@
-name: Build thinn-khi V2 APK
+name: Build thinn-khi V5 APK
 
 on:
   workflow_dispatch:
@@ -13,48 +13,48 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - name: Checkout repository
+      - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
+      - name: Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: ''
 
-      - name: Install Android SDK
+      - name: Install Android 35
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
 
-      - name: Set up Gradle
+      - name: Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
-      - name: Locate V2 Android project
+      - name: Extract V5 app
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f thinn-khi_Android_Source_V2.zip ]]; then
+          if [[ -f thinn-khi_Android_Source_V5.zip ]]; then
             mkdir -p extracted
-            unzip -qo thinn-khi_Android_Source_V2.zip -d extracted
+            unzip -qo thinn-khi_Android_Source_V5.zip -d extracted
             PROJECT_DIR=extracted/thinn-khi_Android_Project
           elif [[ -f thinn-khi_Android_Project/app/build.gradle.kts ]]; then
             PROJECT_DIR=thinn-khi_Android_Project
           elif [[ -f app/build.gradle.kts ]]; then
             PROJECT_DIR=.
           else
-            echo 'Missing thinn-khi_Android_Source_V2.zip at repository root.'
+            echo 'ERROR: Please upload thinn-khi_Android_Source_V5.zip to repository root.'
             exit 1
           fi
           test -f "$PROJECT_DIR/app/build.gradle.kts"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Compile V2 APK
+      - name: Compile V5 debug APK
         id: compile
         continue-on-error: true
         shell: bash
@@ -62,36 +62,35 @@ jobs:
           set -o pipefail
           gradle --no-daemon --console=plain --project-dir "$PROJECT_DIR" :app:assembleDebug 2>&1 | tee build.log
 
-      - name: Show Kotlin compile errors
+      - name: Print compiler errors
         if: steps.compile.outcome == 'failure'
         shell: bash
         run: |
-          grep -n -E '(e: file:|Unresolved reference|Type mismatch|[Ee]rror:|Compilation error|^FAILURE:)' build.log | head -100 > compiler-errors.txt || true
+          grep -n -E '(e: file:|Unresolved reference|Type mismatch|[Ee]rror:|Compilation error|^FAILURE:)' build.log | head -120 > compiler-errors.txt || true
           if [[ ! -s compiler-errors.txt ]]; then tail -120 build.log > compiler-errors.txt; fi
-          echo '### thinn-khì V2 編譯錯誤' >> "$GITHUB_STEP_SUMMARY"
+          echo '### thinn-khì V5 build errors' >> "$GITHUB_STEP_SUMMARY"
           echo '```text' >> "$GITHUB_STEP_SUMMARY"
-          head -100 compiler-errors.txt >> "$GITHUB_STEP_SUMMARY"
+          cat compiler-errors.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cat compiler-errors.txt
 
-      - name: Upload compilation error logs
+      - name: Upload errors
         if: steps.compile.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V2-build-errors
+          name: thinn-khi-V5-compile-errors
           path: |
             build.log
             compiler-errors.txt
           if-no-files-found: error
 
-      - name: Upload installable debug APK
+      - name: Upload APK
         if: steps.compile.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V2-APK
+          name: thinn-khi-V5-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Fail workflow if compile failed
+      - name: Fail the job if compilation failed
         if: steps.compile.outcome == 'failure'
         run: exit 1
