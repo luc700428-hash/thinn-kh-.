@@ -82,7 +82,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_ZIP='thinn-khi_Android_Source_V15_0_Complete_Features.zip'
+          SOURCE_ZIP='thinn-khi_Android_Source_V15_0_Complete_Features_Kotlin_Fixed.zip'
           if [[ ! -s "$SOURCE_ZIP" ]]; then
             echo "::error title=Missing V15.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
             echo '::group::ZIP files currently found at repository root'
@@ -110,6 +110,12 @@ jobs:
             echo '::error::Update notifications are not using the new custom chime channel.'; exit 1;
           }
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt"
+          # Fast guard for the Kotlin callback compiler error from the previous build.
+          grep -Fq 'TextButton(onClick = { refresh() }, enabled = !loading)' \
+            "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || {
+            echo '::error::Incorrect V15.0 ZIP: EarthquakeCenterPage refresh button callback is not fixed.'
+            exit 1
+          }
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/CwaEarthquakeRepository.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicExperience.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechRealtimeModels.kt"
