@@ -1,4 +1,4 @@
-name: Build thinn-khi V15.4 Smart Weather Briefings and Seismic OTA
+name: Build thinn-khi V16.0 Smart Weather Briefings and Seismic OTA
 
 on:
   workflow_dispatch:
@@ -78,13 +78,13 @@ jobs:
               -alias "$APK_KEY_ALIAS" -storepass "$APK_KEYSTORE_PASSWORD" > /dev/null
           fi
 
-      - name: Extract V15.4 source
+      - name: Extract V16.0 source
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_ZIP='thinn-khi_Android_Source_V15_4_Smart_Briefings_EEW.zip'
+          SOURCE_ZIP='thinn-khi_Android_Source_V16_0_Settings_Audit.zip'
           if [[ ! -s "$SOURCE_ZIP" ]]; then
-            echo "::error title=Missing V15.4 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
+            echo "::error title=Missing V16.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
             echo '::group::ZIP files currently found at repository root'
             find . -maxdepth 1 -type f -name '*.zip' -printf '%f\n' | sort || true
             echo '::endgroup::'
@@ -113,7 +113,7 @@ jobs:
           # Fast guard for the Kotlin callback compiler error from the previous build.
           grep -Fq 'TextButton(onClick = { refresh() }, enabled = !loading)' \
             "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || {
-            echo '::error::Incorrect V15.4 ZIP: EarthquakeCenterPage refresh button callback is not fixed.'
+            echo '::error::Incorrect V16.0 ZIP: EarthquakeCenterPage refresh button callback is not fixed.'
             exit 1
           }
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/CwaEarthquakeRepository.kt"
@@ -121,6 +121,15 @@ jobs:
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechRealtimeModels.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechSeismicService.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicSettings.kt"
+          grep -Fq 'TimePicker(state=clock' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/briefing/WeatherBriefingSettingsPage.kt" || {
+            echo '::error::V16.0 draggable time selector missing'; exit 1;
+          }
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/SettingsDiagnosticsPage.kt" || {
+            echo '::error::V16.0 settings diagnostics missing'; exit 1;
+          }
+          grep -Fq 'auto_start_realtime_on_app_open' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/MainActivity.kt" || {
+            echo '::error::V16.0 seismic opt-in wiring missing'; exit 1;
+          }
           for file in SeismicLiveMapPage.kt SeismicStationData.kt SeismicGeo.kt SeismicHistoricalReplay.kt SeismicWavePhysics.kt SeismicUserLocation.kt SeismicSpeech.kt; do
             test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/$file" || { echo "::error::Missing real-time map source: $file"; exit 1; }
           done
@@ -148,8 +157,8 @@ jobs:
           grep -Fq 'WeatherBriefingScheduler.reschedule(this)' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/MainActivity.kt" || exit 1
           test -s "$PROJECT_DIR/app/src/main/assets/current_release_notes.md"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$((15400000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=15.4.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((16000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=16.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
       - name: Bundle current release notes into this APK
         shell: bash
@@ -193,7 +202,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V15_4-errors
+          name: thinn-khi-V16_0-errors
           path: build.log
           if-no-files-found: ignore
 
@@ -225,7 +234,7 @@ jobs:
         if: env.SIGN_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V15_4-SIGNED-APK
+          name: thinn-khi-V16_0-SIGNED-APK
           path: |
             thinn-khi.apk
             thinn-khi.apk.sha256
@@ -235,7 +244,7 @@ jobs:
         if: env.SIGN_READY != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V15_4-TEST-APK-NOT-OTA
+          name: thinn-khi-V16_0-TEST-APK-NOT-OTA
           path: extracted/thinn-khi_Android_Project/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
