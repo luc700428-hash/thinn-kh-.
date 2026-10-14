@@ -121,9 +121,8 @@ jobs:
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechRealtimeModels.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechSeismicService.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicSettings.kt"
-          grep -Fq 'TimePicker(state=clock' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/briefing/WeatherBriefingSettingsPage.kt" || {
-            echo '::error::V16.0 draggable time selector missing'; exit 1;
-          }
+          # V18 uses the new Foundation-based GlassClockDial rather than the old Material TimePicker.
+          # The correct GlassClockDial binding is checked below with the other V18 UI guards.
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/SettingsDiagnosticsPage.kt" || {
             echo '::error::V16.0 settings diagnostics missing'; exit 1;
           }
