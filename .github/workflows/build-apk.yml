@@ -1,4 +1,4 @@
-name: Build thinn-khi V15.0 Full Features and EEW OTA
+name: Build thinn-khi V15.4 Smart Weather Briefings and Seismic OTA
 
 on:
   workflow_dispatch:
@@ -78,13 +78,13 @@ jobs:
               -alias "$APK_KEY_ALIAS" -storepass "$APK_KEYSTORE_PASSWORD" > /dev/null
           fi
 
-      - name: Extract V15.0 source
+      - name: Extract V15.4 source
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_ZIP='thinn-khi_Android_Source_V15_0_Complete_Features_Kotlin_Fixed.zip'
+          SOURCE_ZIP='thinn-khi_Android_Source_V15_4_Smart_Briefings_EEW.zip'
           if [[ ! -s "$SOURCE_ZIP" ]]; then
-            echo "::error title=Missing V15.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
+            echo "::error title=Missing V15.4 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
             echo '::group::ZIP files currently found at repository root'
             find . -maxdepth 1 -type f -name '*.zip' -printf '%f\n' | sort || true
             echo '::endgroup::'
@@ -113,23 +113,43 @@ jobs:
           # Fast guard for the Kotlin callback compiler error from the previous build.
           grep -Fq 'TextButton(onClick = { refresh() }, enabled = !loading)' \
             "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || {
-            echo '::error::Incorrect V15.0 ZIP: EarthquakeCenterPage refresh button callback is not fixed.'
+            echo '::error::Incorrect V15.4 ZIP: EarthquakeCenterPage refresh button callback is not fixed.'
             exit 1
           }
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/CwaEarthquakeRepository.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicExperience.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechRealtimeModels.kt"
           test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechSeismicService.kt"
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicSettings.kt"
+          for file in SeismicLiveMapPage.kt SeismicStationData.kt SeismicGeo.kt SeismicHistoricalReplay.kt SeismicWavePhysics.kt SeismicUserLocation.kt SeismicSpeech.kt; do
+            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/$file" || { echo "::error::Missing real-time map source: $file"; exit 1; }
+          done
+          grep -Fq 'SeismicLiveMapPage(onClose' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || { echo '::error::Monitoring map is not connected to earthquake center'; exit 1; }
+          grep -Fq 'SeismicStationData.parse(raw, stationMetadata)' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechSeismicService.kt" || { echo '::error::Live station parsing is not connected'; exit 1; }
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechPublicEarthquakeReports.kt"
+          grep -Fq 'EarthquakeSettingsPage(onClose' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || { echo '::error::Earthquake settings UI missing'; exit 1; }
+          grep -Fq 'ExpTechPublicEarthquakeReports.latest()' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeReportWorker.kt" || { echo '::error::Public reports not configured'; exit 1; }
+          for scenario in eew_primary eew_urgent eew_update detect_weak detect_medium detect_strong gal_medium gal_strong report; do
+            test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_eq_${scenario}.ogg" || { echo "::error::Missing seismic sound: $scenario"; exit 1; }
+          done
           test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_eew_warning.ogg"
           for sound in drill_alert step allclear; do
             test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_seismic_${sound}.ogg" || {
               echo "::error::Missing original seismic experience sound: $sound"; exit 1;
             }
           done
+          for file in WeatherBriefingPlan.kt; do
+            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/domain/model/$file" || exit 1
+          done
+          for file in WeatherBriefingStore.kt WeatherBriefingScheduler.kt WeatherBriefingWorker.kt WeatherBriefingSettingsPage.kt; do
+            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/briefing/$file" || { echo "::error::Missing smart briefing: $file"; exit 1; }
+          done
+          grep -Fq 'WeatherBriefingSettingsPage(onClose=' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt" || exit 1
+          grep -Fq 'WeatherBriefingScheduler.reschedule(this)' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/MainActivity.kt" || exit 1
           test -s "$PROJECT_DIR/app/src/main/assets/current_release_notes.md"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$((15000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=15.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((15400000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=15.4.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
       - name: Bundle current release notes into this APK
         shell: bash
@@ -173,7 +193,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V15_0-errors
+          name: thinn-khi-V15_4-errors
           path: build.log
           if-no-files-found: ignore
 
@@ -205,7 +225,7 @@ jobs:
         if: env.SIGN_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V15_0-SIGNED-APK
+          name: thinn-khi-V15_4-SIGNED-APK
           path: |
             thinn-khi.apk
             thinn-khi.apk.sha256
@@ -215,7 +235,7 @@ jobs:
         if: env.SIGN_READY != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V15_0-TEST-APK-NOT-OTA
+          name: thinn-khi-V15_4-TEST-APK-NOT-OTA
           path: extracted/thinn-khi_Android_Project/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
