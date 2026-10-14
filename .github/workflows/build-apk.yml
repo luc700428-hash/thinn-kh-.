@@ -1,4 +1,4 @@
-name: Build thinn-khi V11.0 APK and OTA
+name: Build thinn-khi V15.0 ExpTech Realtime EEW APK and OTA
 
 on:
   workflow_dispatch:
@@ -9,10 +9,10 @@ on:
         required: true
         default: false
       release_notes:
-        description: 'What changed in this release (shown in App update center)'
+        description: 'Optional: full Release Notes; blank uses full notes bundled in source ZIP'
         type: string
         required: false
-        default: 'V11.0: Better weather coverage, contextual snow/dust advice, a new weather icon, animated glass weather surfaces, and update notifications.'
+        default: ''
   push:
     branches: [main]
 
@@ -78,24 +78,59 @@ jobs:
               -alias "$APK_KEY_ALIAS" -storepass "$APK_KEYSTORE_PASSWORD" > /dev/null
           fi
 
-      - name: Extract V11.0 source
+      - name: Extract V15.0 source
         shell: bash
         run: |
           set -euo pipefail
-          test -s thinn-khi_Android_Source_V11_0_Kotlin_Fixed.zip || {
-            echo '::error::Upload thinn-khi_Android_Source_V11_0_Kotlin_Fixed.zip to the repository root.'; exit 1;
+          test -s thinn-khi_Android_Source_V15_0_ExpTech_Realtime_EEW.zip || {
+            echo '::error::Upload thinn-khi_Android_Source_V15_0_ExpTech_Realtime_EEW.zip to the repository root.'; exit 1;
           }
           mkdir -p extracted
-          unzip -qo thinn-khi_Android_Source_V11_0_Kotlin_Fixed.zip -d extracted
+          unzip -qo thinn-khi_Android_Source_V15_0_ExpTech_Realtime_EEW.zip -d extracted
           PROJECT_DIR=extracted/thinn-khi_Android_Project
           test -f "$PROJECT_DIR/app/build.gradle.kts"
           grep -Fq 'import androidx.compose.animation.animateColorAsState' \
             "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt" || {
             echo '::error::Fixed source package is missing the Compose animation import.'; exit 1;
           }
+          for tone in clear_bell crystal morning raindrop starlight breeze clear_sky ripple; do
+            test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_notify_${tone}.ogg" || {
+              echo "::error::Missing notification tone: $tone"; exit 1;
+            }
+          done
+          grep -Fq 'ThinnNotificationChannels.channelId(ctx, ThinnNotificationChannels.Type.UPDATES)' \
+            "$PROJECT_DIR/app/src/main/java/io/atmos/weather/update/UpdateCheckWorker.kt" || {
+            echo '::error::Update notifications are not using the new custom chime channel.'; exit 1;
+          }
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt"
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/CwaEarthquakeRepository.kt"
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicExperience.kt"
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechRealtimeModels.kt"
+          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechSeismicService.kt"
+          test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_eew_warning.ogg"
+          for sound in drill_alert step allclear; do
+            test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_seismic_${sound}.ogg" || {
+              echo "::error::Missing original seismic experience sound: $sound"; exit 1;
+            }
+          done
+          test -s "$PROJECT_DIR/app/src/main/assets/current_release_notes.md"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$((11000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=11.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((15000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=15.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+
+      - name: Bundle current release notes into this APK
+        shell: bash
+        env:
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          set -euo pipefail
+          NOTES_FILE="$PROJECT_DIR/app/src/main/assets/current_release_notes.md"
+          # Exactly the same content is used in the installed-App panel and GitHub Release.
+          if [[ -n "${RELEASE_NOTES:-}" ]]; then
+            printf '%s\n' "$RELEASE_NOTES" > "$NOTES_FILE"
+          fi
+          test -s "$NOTES_FILE"
+          echo "RELEASE_NOTES_PATH=$NOTES_FILE" >> "$GITHUB_ENV"
 
       - name: Prepare rain and thunder recordings
         shell: bash
@@ -125,7 +160,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V11_0-errors
+          name: thinn-khi-V15_0-errors
           path: build.log
           if-no-files-found: ignore
 
@@ -157,7 +192,7 @@ jobs:
         if: env.SIGN_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V11_0-SIGNED-APK
+          name: thinn-khi-V15_0-SIGNED-APK
           path: |
             thinn-khi.apk
             thinn-khi.apk.sha256
@@ -167,7 +202,7 @@ jobs:
         if: env.SIGN_READY != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V11_0-TEST-APK-NOT-OTA
+          name: thinn-khi-V15_0-TEST-APK-NOT-OTA
           path: extracted/thinn-khi_Android_Project/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
@@ -175,12 +210,10 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NOTES: ${{ inputs.release_notes }}
         shell: bash
         run: |
           set -euo pipefail
-          NOTES="${RELEASE_NOTES:-V11.0: Expanded weather, snow/dust scenarios, animated surface effects, improved update notifications, new icon and Danjiang Bridge diorama.}"
           gh release create "v${VERSION_NAME}" thinn-khi.apk thinn-khi.apk.sha256 \
             --title "thinn-khi ${VERSION_NAME}" \
-            --notes "$NOTES" \
+            --notes-file "$RELEASE_NOTES_PATH" \
             --latest
