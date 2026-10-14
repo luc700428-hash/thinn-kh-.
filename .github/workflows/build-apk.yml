@@ -1,4 +1,4 @@
-name: Build thinn-khi V16.0 Smart Weather Briefings and Seismic OTA
+name: Build thinn-khi V18.0 Liquid Glass and Seismic Quality OTA
 
 on:
   workflow_dispatch:
@@ -78,13 +78,13 @@ jobs:
               -alias "$APK_KEY_ALIAS" -storepass "$APK_KEYSTORE_PASSWORD" > /dev/null
           fi
 
-      - name: Extract V16.0 source
+      - name: Extract V18.0 source
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_ZIP='thinn-khi_Android_Source_V16_0_Settings_Audit.zip'
+          SOURCE_ZIP='thinn-khi_Android_Source_V18_0_Glass_Radar_EEW.zip'
           if [[ ! -s "$SOURCE_ZIP" ]]; then
-            echo "::error title=Missing V16.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
+            echo "::error title=Missing V18.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
             echo '::group::ZIP files currently found at repository root'
             find . -maxdepth 1 -type f -name '*.zip' -printf '%f\n' | sort || true
             echo '::endgroup::'
@@ -156,9 +156,18 @@ jobs:
           grep -Fq 'WeatherBriefingSettingsPage(onClose=' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt" || exit 1
           grep -Fq 'WeatherBriefingScheduler.reschedule(this)' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/MainActivity.kt" || exit 1
           test -s "$PROJECT_DIR/app/src/main/assets/current_release_notes.md"
+          for source in GlassControls.kt GlassSheets.kt GlassClockDial.kt CwaRadarObservation.kt RadarThreeHourCard.kt; do
+            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/ui/$source" || { echo "::error::Missing V18 UI/Radar source: $source"; exit 1; }
+          done
+          grep -Fq 'GlassClockDial(hour=selectedHour' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/briefing/WeatherBriefingSettingsPage.kt" || {
+            echo '::error::V18 clock dial has not replaced Material time picker.'; exit 1;
+          }
+          grep -Fq 'CwaRadarObservation.latest()' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/ui/RadarThreeHourCard.kt" || {
+            echo '::error::Radar imagery acquisition not connected.'; exit 1;
+          }
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$((16000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=16.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((18000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=18.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
       - name: Bundle current release notes into this APK
         shell: bash
@@ -202,7 +211,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V16_0-errors
+          name: thinn-khi-V18_0-errors
           path: build.log
           if-no-files-found: ignore
 
@@ -234,7 +243,7 @@ jobs:
         if: env.SIGN_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V16_0-SIGNED-APK
+          name: thinn-khi-V18_0-SIGNED-APK
           path: |
             thinn-khi.apk
             thinn-khi.apk.sha256
@@ -244,7 +253,7 @@ jobs:
         if: env.SIGN_READY != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V16_0-TEST-APK-NOT-OTA
+          name: thinn-khi-V18_0-TEST-APK-NOT-OTA
           path: extracted/thinn-khi_Android_Project/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
