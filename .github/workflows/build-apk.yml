@@ -1,4 +1,4 @@
-name: Build thinn-khi V10.5 Focus APK
+name: Build thinn-khi V10.6 APK
 
 on:
   workflow_dispatch:
@@ -13,137 +13,79 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
       - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Android command line SDK
+      - name: Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: ''
-      - name: Install Android 35
+      - name: Android platform
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Gradle 8.11.1
+      - name: Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Extract V10.5 ZIP
+      - name: Extract V10.6 source
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_ZIP=thinn-khi_Android_Source_V10_5.zip
-          test -f "$SOURCE_ZIP" || { echo "Upload $SOURCE_ZIP to the repository root first"; exit 1; }
+          test -f thinn-khi_Android_Source_V10_6.zip || { echo 'Upload V10_6 ZIP to the repo root'; exit 1; }
           mkdir -p extracted
-          unzip -qo "$SOURCE_ZIP" -d extracted
-          PROJECT_DIR=extracted/thinn-khi_Android_Project
-          test -f "$PROJECT_DIR/app/build.gradle.kts"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-      - name: Fix duplicated Compose annotation in V10.5
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PYFIX'
-          from pathlib import Path
-          import os
-          target = Path(os.environ["PROJECT_DIR"]) / "app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt"
-          text = target.read_text(encoding="utf-8")
-          old = "@Composable\n/** Visible progress while GPS resolves; success and error are never silently swallowed. */\n@Composable"
-          new = "/** Visible progress while GPS resolves; success and error are never silently swallowed. */\n@Composable"
-          if old in text:
-              text = text.replace(old, new, 1)
-              target.write_text(text, encoding="utf-8")
-              print("Fixed duplicate @Composable above LocationFeedbackBanner")
-          elif new in text:
-              print("Compose annotation already fixed")
-          else:
-              raise SystemExit("Unexpected WeatherHomeScreen.kt version; cannot apply safe patch")
-          PYFIX
-      - name: Install FFmpeg audio tools
+          unzip -qo thinn-khi_Android_Source_V10_6.zip -d extracted
+          echo 'PROJECT_DIR=extracted/thinn-khi_Android_Project' >> "$GITHUB_ENV"
+      - name: Install FFmpeg
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends ffmpeg
-          command -v ffmpeg
-          command -v ffprobe
-          ffmpeg -version | head -n 1
-      - name: Fix FFmpeg thunder fade duration (exit 234)
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PYFIX'
-          from pathlib import Path
-          import os
-          script = Path(os.environ["PROJECT_DIR"]) / "tools/prepare_real_weather_audio.py"
-          if not script.is_file():
-              raise SystemExit(f"Audio preparation script not found: {script}")
-          source = script.read_text(encoding="utf-8")
-          old, new = "afade=t=in:st=0:d=.12", "afade=t=in:st=0:d=0.12"
-          if old in source:
-              source = source.replace(old, new)
-              print("Fixed FFmpeg afade duration: .12 -> 0.12")
-          elif new in source:
-              print("FFmpeg fade duration already fixed")
-          else:
-              raise SystemExit("Expected thunder fade filter not found; project version differs")
-          source = source.replace(
-              "subprocess.run(command,check=True,stdout=subprocess.PIPE)",
-              "subprocess.run(command,check=True)"
-          )
-          script.write_text(source, encoding="utf-8")
-          PYFIX
-      - name: Verify FFmpeg fade support
-        shell: bash
-        run: |
-          set -euo pipefail
-          ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=440:duration=1' \
-            -af 'afade=t=in:st=0:d=0.12' -ar 32000 \
-            -c:a libvorbis -q:a 3 -y "$RUNNER_TEMP/thinn-khi-audio-test.ogg"
-          ffprobe -v error -show_entries stream=codec_name -of default=nw=1 "$RUNNER_TEMP/thinn-khi-audio-test.ogg"
-      - name: Fetch public-domain rain recordings and create seamless loops
+          ffmpeg -version | head -1
+      - name: Prepare real-weather recordings
         shell: bash
         run: |
           set -euo pipefail
           python3 "$PROJECT_DIR/tools/prepare_real_weather_audio.py"
           for asset in light_rain heavy_rain thunder_strike; do
-            test -s "$PROJECT_DIR/app/src/main/res/raw/$asset.ogg" || exit 1
+            test -s "$PROJECT_DIR/app/src/main/res/raw/$asset.ogg"
           done
-      - name: Compile debug APK
+      - name: Compile APK
         id: compile
-        shell: bash
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
           gradle --no-daemon --console=plain --project-dir "$PROJECT_DIR" :app:assembleDebug 2>&1 | tee build.log
-      - name: Extract Kotlin errors and build report
+      - name: Show errors
         if: steps.compile.outcome == 'failure'
         shell: bash
         run: |
-          grep -n -E '(e: file:|Unresolved reference|Type mismatch|[Ee]rror:|Compilation error|^FAILURE:|^\* What went wrong:)' build.log | head -130 > compiler-errors.txt || true
-          if [[ ! -s compiler-errors.txt ]]; then tail -130 build.log > compiler-errors.txt; fi
-          echo '### thinn-khi V10.5 compilation errors' >> "$GITHUB_STEP_SUMMARY"
+          grep -n -E '(e: file:|Unresolved reference|Type mismatch|[Ee]rror:|Compilation error|^FAILURE:|^\* What went wrong:)' build.log | head -120 > compiler-errors.txt || true
+          if [[ ! -s compiler-errors.txt ]]; then tail -120 build.log > compiler-errors.txt; fi
+          echo '### thinn-khi V10.6 compile errors' >> "$GITHUB_STEP_SUMMARY"
           echo '```text' >> "$GITHUB_STEP_SUMMARY"
           cat compiler-errors.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload failure log
+      - name: Upload errors
         if: steps.compile.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V10_5-errors
+          name: thinn-khi-V10_6-errors
           path: |
             build.log
             compiler-errors.txt
           if-no-files-found: error
-      - name: Upload installable APK
+      - name: Upload test APK
         if: steps.compile.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V10_5-APK
+          name: thinn-khi-V10_6-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-      - name: Fail visibly on compilation error
+      - name: Mark failure
         if: steps.compile.outcome == 'failure'
         run: exit 1
