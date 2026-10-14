@@ -1,4 +1,4 @@
-name: Build thinn-khi V18.0 Liquid Glass and Seismic Quality OTA
+name: Build thinn-khi V18.0 Kotlin Compile Fix and OTA
 
 on:
   workflow_dispatch:
@@ -82,7 +82,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_ZIP='thinn-khi_Android_Source_V18_0_Glass_Radar_EEW.zip'
+          SOURCE_ZIP='thinn-khi_Android_Source_V18_0_Compile_Fixed.zip'
           if [[ ! -s "$SOURCE_ZIP" ]]; then
             echo "::error title=Missing V18.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
             echo '::group::ZIP files currently found at repository root'
@@ -158,6 +158,12 @@ jobs:
           for source in GlassControls.kt GlassSheets.kt GlassClockDial.kt CwaRadarObservation.kt RadarThreeHourCard.kt; do
             test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/ui/$source" || { echo "::error::Missing V18 UI/Radar source: $source"; exit 1; }
           done
+          # V18 Kotlin fix: keep bottom navigation inside the root BoxScope.
+          HOME_KT="$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt"
+          grep -Fq '根 Box：底部分頁列為 BoxScope 子元素' "$HOME_KT" || {
+            echo '::error::Bottom navigation is outside the BoxScope; use the V18 compile-fixed source ZIP.'
+            exit 1
+          }
           grep -Fq 'GlassClockDial(hour=selectedHour' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/briefing/WeatherBriefingSettingsPage.kt" || {
             echo '::error::V18 clock dial has not replaced Material time picker.'; exit 1;
           }
