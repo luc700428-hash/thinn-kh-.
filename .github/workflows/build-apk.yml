@@ -1,17 +1,20 @@
-
-name: Build thinn-khi V10.7 Signed APK
+name: Build thinn-khi V10.8 APK and OTA
 
 on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish signed APK to GitHub Releases for OTA updates"
+        description: 'Publish a signed OTA Release (requires all 4 signing secrets)'
+        type: boolean
         required: true
         default: false
-        type: boolean
+      release_notes:
+        description: 'What changed in this release (shown in App update center)'
+        type: string
+        required: false
+        default: 'V10.8: Update center, unified haptics at 100%, 10-second weather demo, seamless splash branding.'
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: write
@@ -20,7 +23,6 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,12 +31,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: ""
+          packages: ''
 
       - name: Install Android SDK 35
         shell: bash
@@ -42,99 +44,89 @@ jobs:
           set -euo pipefail
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.11.1"
+          gradle-version: '8.11.1'
 
-      - name: Check signing credentials
+      - name: Determine signing mode
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}
           APK_KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
           APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
           APK_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release == true }}
         shell: bash
         run: |
           set -euo pipefail
-
+          SIGN_READY=true
           for name in APK_KEYSTORE_BASE64 APK_KEYSTORE_PASSWORD APK_KEY_PASSWORD APK_KEY_ALIAS; do
             if [[ -z "${!name:-}" ]]; then
-              echo "::error::Missing signing secret: $name"
-              exit 1
+              SIGN_READY=false
+              echo "::notice::Missing $name; test debug APK only until fixed signing credentials are configured."
             fi
           done
+          echo "SIGN_READY=$SIGN_READY" >> "$GITHUB_ENV"
+          if [[ "$PUBLISH_RELEASE" == 'true' && "$SIGN_READY" != 'true' ]]; then
+            echo '::error::Cannot publish OTA without a persistent release signing key.'
+            exit 1
+          fi
+          if [[ "$SIGN_READY" == 'true' ]]; then
+            printf '%s' "$APK_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/thinn-khi-release.jks"
+            chmod 600 "$RUNNER_TEMP/thinn-khi-release.jks"
+            keytool -list -keystore "$RUNNER_TEMP/thinn-khi-release.jks" \
+              -alias "$APK_KEY_ALIAS" -storepass "$APK_KEYSTORE_PASSWORD" > /dev/null
+          fi
 
-          printf '%s' "$APK_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/thinn-khi-release.jks"
-
-          chmod 600 "$RUNNER_TEMP/thinn-khi-release.jks"
-
-          keytool -list \
-            -keystore "$RUNNER_TEMP/thinn-khi-release.jks" \
-            -alias "$APK_KEY_ALIAS" \
-            -storepass "$APK_KEYSTORE_PASSWORD" > /dev/null
-
-      - name: Extract Android source
+      - name: Extract V10.8 source
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ ! -s thinn-khi_Android_Source_V10_7.zip ]]; then
-            echo "::error::Missing thinn-khi_Android_Source_V10_7.zip"
-            exit 1
-          fi
-
+          test -s thinn-khi_Android_Source_V10_8.zip || {
+            echo '::error::Upload thinn-khi_Android_Source_V10_8.zip to the repository root.'; exit 1;
+          }
           mkdir -p extracted
-
-          unzip -qo thinn-khi_Android_Source_V10_7.zip -d extracted
-
-          PROJECT_DIR="extracted/thinn-khi_Android_Project"
-
-          if [[ ! -f "$PROJECT_DIR/app/build.gradle.kts" ]]; then
-            echo "::error::Android project not found"
-            exit 1
-          fi
-
+          unzip -qo thinn-khi_Android_Source_V10_8.zip -d extracted
+          PROJECT_DIR=extracted/thinn-khi_Android_Project
+          test -f "$PROJECT_DIR/app/build.gradle.kts"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$((100000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=10.7.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((1080000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=10.8.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
-      - name: Prepare real weather audio
+      - name: Prepare rain and thunder recordings
         shell: bash
         run: |
           set -euo pipefail
-
           sudo apt-get update -qq
-
           sudo apt-get install -y --no-install-recommends ffmpeg
-
           python3 "$PROJECT_DIR/tools/prepare_real_weather_audio.py"
-
           for name in light_rain heavy_rain thunder_strike; do
             test -s "$PROJECT_DIR/app/src/main/res/raw/$name.ogg"
           done
 
-      - name: Compile Android Release APK
+      - name: Compile Android APK
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$SIGN_READY" == 'true' ]]; then
+            task=:app:assembleRelease
+          else
+            task=:app:assembleDebug
+          fi
+          gradle --no-daemon --console=plain --project-dir "$PROJECT_DIR" \
+            -PTHINN_VERSION_CODE="$VERSION_CODE" -PTHINN_VERSION_NAME="$VERSION_NAME" \
+            "$task" 2>&1 | tee build.log
 
-          gradle \
-            --no-daemon \
-            --console=plain \
-            --project-dir "$PROJECT_DIR" \
-            -PTHINN_VERSION_CODE="$VERSION_CODE" \
-            -PTHINN_VERSION_NAME="$VERSION_NAME" \
-            :app:assembleRelease 2>&1 | tee build.log
-
-      - name: Upload error logs
+      - name: Upload build log if failed
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V10_7-errors
+          name: thinn-khi-V10_8-errors
           path: build.log
           if-no-files-found: ignore
 
-      - name: Sign Android APK
+      - name: Sign official OTA APK with persistent key
+        if: env.SIGN_READY == 'true'
         env:
           APK_KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
           APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
@@ -142,58 +134,49 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           unsigned="$PROJECT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk"
-
-          if [[ ! -s "$unsigned" ]]; then
-            echo "::error::Unsigned release APK not found"
-            exit 1
-          fi
-
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
-            -f -p 4 \
-            "$unsigned" \
-            "$RUNNER_TEMP/aligned.apk"
-
+          test -s "$unsigned"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 \
+            "$unsigned" "$RUNNER_TEMP/aligned.apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
             --ks "$RUNNER_TEMP/thinn-khi-release.jks" \
             --ks-key-alias "$APK_KEY_ALIAS" \
             --ks-pass env:APK_KEYSTORE_PASSWORD \
             --key-pass env:APK_KEY_PASSWORD \
-            --out thinn-khi.apk \
-            "$RUNNER_TEMP/aligned.apk"
-
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
-            --verbose \
-            --print-certs \
-            thinn-khi.apk
-
+            --out thinn-khi.apk "$RUNNER_TEMP/aligned.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs thinn-khi.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging thinn-khi.apk | head -n 3
-
           sha256sum thinn-khi.apk > thinn-khi.apk.sha256
-
           rm -f "$RUNNER_TEMP/thinn-khi-release.jks"
 
-      - name: Upload signed APK
+      - name: Upload official signed APK
+        if: env.SIGN_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V10_7-SIGNED-APK
+          name: thinn-khi-V10_8-SIGNED-APK
           path: |
             thinn-khi.apk
             thinn-khi.apk.sha256
           if-no-files-found: error
 
-      - name: Publish GitHub OTA Release
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+      - name: Upload preview debug APK
+        if: env.SIGN_READY != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: thinn-khi-V10_8-TEST-APK-NOT-OTA
+          path: extracted/thinn-khi_Android_Project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Publish signed GitHub OTA Release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
         shell: bash
         run: |
           set -euo pipefail
-
-          gh release create "v${VERSION_NAME}" \
-            thinn-khi.apk \
-            thinn-khi.apk.sha256 \
+          NOTES="${RELEASE_NOTES:-V10.8: Update center, unified haptics, immersive 10-second weather demo, seamless branding.}"
+          gh release create "v${VERSION_NAME}" thinn-khi.apk thinn-khi.apk.sha256 \
             --title "thinn-khi ${VERSION_NAME}" \
-            --notes "Open-Meteo air quality integration, persistent APK signing, and OTA update support. Android requires user confirmation before installation." \
+            --notes "$NOTES" \
             --latest
