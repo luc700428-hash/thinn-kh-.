@@ -1,4 +1,4 @@
-name: Build thinn-khi V15.0 ExpTech Realtime EEW APK and OTA
+name: Build thinn-khi V15.0 Full Features and EEW OTA
 
 on:
   workflow_dispatch:
@@ -82,11 +82,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s thinn-khi_Android_Source_V15_0_ExpTech_Realtime_EEW.zip || {
-            echo '::error::Upload thinn-khi_Android_Source_V15_0_ExpTech_Realtime_EEW.zip to the repository root.'; exit 1;
-          }
+          SOURCE_ZIP='thinn-khi_Android_Source_V15_0_Complete_Features.zip'
+          if [[ ! -s "$SOURCE_ZIP" ]]; then
+            echo "::error title=Missing V15.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
+            echo '::group::ZIP files currently found at repository root'
+            find . -maxdepth 1 -type f -name '*.zip' -printf '%f\n' | sort || true
+            echo '::endgroup::'
+            exit 1
+          fi
+          echo "Using source archive: $SOURCE_ZIP"
+          unzip -tqq "$SOURCE_ZIP" || { echo '::error::Source ZIP is damaged.'; exit 1; }
           mkdir -p extracted
-          unzip -qo thinn-khi_Android_Source_V15_0_ExpTech_Realtime_EEW.zip -d extracted
+          unzip -qo "$SOURCE_ZIP" -d extracted
           PROJECT_DIR=extracted/thinn-khi_Android_Project
           test -f "$PROJECT_DIR/app/build.gradle.kts"
           grep -Fq 'import androidx.compose.animation.animateColorAsState' \
