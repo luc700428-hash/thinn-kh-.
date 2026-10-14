@@ -82,13 +82,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s thinn-khi_Android_Source_V11_0.zip || {
-            echo '::error::Upload thinn-khi_Android_Source_V11_0.zip to the repository root.'; exit 1;
+          test -s thinn-khi_Android_Source_V11_0_Kotlin_Fixed.zip || {
+            echo '::error::Upload thinn-khi_Android_Source_V11_0_Kotlin_Fixed.zip to the repository root.'; exit 1;
           }
           mkdir -p extracted
-          unzip -qo thinn-khi_Android_Source_V11_0.zip -d extracted
+          unzip -qo thinn-khi_Android_Source_V11_0_Kotlin_Fixed.zip -d extracted
           PROJECT_DIR=extracted/thinn-khi_Android_Project
           test -f "$PROJECT_DIR/app/build.gradle.kts"
+          grep -Fq 'import androidx.compose.animation.animateColorAsState' \
+            "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt" || {
+            echo '::error::Fixed source package is missing the Compose animation import.'; exit 1;
+          }
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$((11000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
           echo "VERSION_NAME=11.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
