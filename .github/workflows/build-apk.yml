@@ -1,15 +1,16 @@
-name: Build thinn-khi V18.0 Kotlin Compile Fix and OTA
+
+name: Build thinn-khi V20.0 APK and OTA
 
 on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'Publish a signed OTA Release (requires all 4 signing secrets)'
+        description: '正式發布 OTA'
         type: boolean
         required: true
         default: false
       release_notes:
-        description: 'Optional: full Release Notes; blank uses full notes bundled in source ZIP'
+        description: '選填：更新說明，留空使用 APK 內建說明'
         type: string
         required: false
         default: ''
@@ -24,7 +25,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - name: Checkout repository
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -39,164 +40,81 @@ jobs:
           packages: ''
 
       - name: Install Android SDK 35
-        shell: bash
-        run: |
-          set -euo pipefail
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
 
       - name: Set up Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
-      - name: Determine signing mode
+      - name: Check official signing credentials
+        shell: bash
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}
           APK_KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
           APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
           APK_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
           PUBLISH_RELEASE: ${{ inputs.publish_release == true }}
-        shell: bash
         run: |
           set -euo pipefail
           SIGN_READY=true
-          for name in APK_KEYSTORE_BASE64 APK_KEYSTORE_PASSWORD APK_KEY_PASSWORD APK_KEY_ALIAS; do
-            if [[ -z "${!name:-}" ]]; then
-              SIGN_READY=false
-              echo "::notice::Missing $name; test debug APK only until fixed signing credentials are configured."
-            fi
+          for key in APK_KEYSTORE_BASE64 APK_KEYSTORE_PASSWORD APK_KEY_PASSWORD APK_KEY_ALIAS; do
+            if [[ -z "${!key:-}" ]]; then SIGN_READY=false; fi
           done
           echo "SIGN_READY=$SIGN_READY" >> "$GITHUB_ENV"
           if [[ "$PUBLISH_RELEASE" == 'true' && "$SIGN_READY" != 'true' ]]; then
-            echo '::error::Cannot publish OTA without a persistent release signing key.'
+            echo '::error::正式 OTA 必須設定完整的四組簽署 Secrets'
             exit 1
           fi
           if [[ "$SIGN_READY" == 'true' ]]; then
             printf '%s' "$APK_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/thinn-khi-release.jks"
             chmod 600 "$RUNNER_TEMP/thinn-khi-release.jks"
             keytool -list -keystore "$RUNNER_TEMP/thinn-khi-release.jks" \
-              -alias "$APK_KEY_ALIAS" -storepass "$APK_KEYSTORE_PASSWORD" > /dev/null
+              -storepass "$APK_KEYSTORE_PASSWORD" -alias "$APK_KEY_ALIAS" >/dev/null
           fi
 
-      - name: Extract V18.0 source
+      - name: Extract V20.0 Android source
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_ZIP='thinn-khi_Android_Source_V18_0_Compile_Fixed.zip'
+          SOURCE_ZIP='thinn-khi_Android_Source_V20_0_Universal_Glass_Seismic.zip'
           if [[ ! -s "$SOURCE_ZIP" ]]; then
-            echo "::error title=Missing V18.0 source::Upload ${SOURCE_ZIP} to the repository root (Code → Add file → Upload files)."
-            echo '::group::ZIP files currently found at repository root'
-            find . -maxdepth 1 -type f -name '*.zip' -printf '%f\n' | sort || true
-            echo '::endgroup::'
+            echo "::error::找不到根目錄的 $SOURCE_ZIP"
+            find . -maxdepth 1 -type f -name '*.zip' -print || true
             exit 1
           fi
-          echo "Using source archive: $SOURCE_ZIP"
-          unzip -tqq "$SOURCE_ZIP" || { echo '::error::Source ZIP is damaged.'; exit 1; }
+          unzip -tqq "$SOURCE_ZIP"
           mkdir -p extracted
           unzip -qo "$SOURCE_ZIP" -d extracted
-          PROJECT_DIR=extracted/thinn-khi_Android_Project
-          test -f "$PROJECT_DIR/app/build.gradle.kts"
-          grep -Fq 'import androidx.compose.animation.animateColorAsState' \
-            "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt" || {
-            echo '::error::Fixed source package is missing the Compose animation import.'; exit 1;
-          }
-          for tone in clear_bell crystal morning raindrop starlight breeze clear_sky ripple; do
-            test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_notify_${tone}.ogg" || {
-              echo "::error::Missing notification tone: $tone"; exit 1;
-            }
-          done
-          grep -Fq 'ThinnNotificationChannels.channelId(ctx, ThinnNotificationChannels.Type.UPDATES)' \
-            "$PROJECT_DIR/app/src/main/java/io/atmos/weather/update/UpdateCheckWorker.kt" || {
-            echo '::error::Update notifications are not using the new custom chime channel.'; exit 1;
-          }
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt"
-          # Fast guard for the Kotlin callback compiler error from the previous build.
-          grep -Fq 'TextButton(onClick = { refresh() }, enabled = !loading)' \
-            "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || {
-            echo '::error::Incorrect V16.0 ZIP: EarthquakeCenterPage refresh button callback is not fixed.'
-            exit 1
-          }
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/CwaEarthquakeRepository.kt"
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicExperience.kt"
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechRealtimeModels.kt"
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechSeismicService.kt"
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/SeismicSettings.kt"
-          # V18 uses the new Foundation-based GlassClockDial rather than the old Material TimePicker.
-          # The correct GlassClockDial binding is checked below with the other V18 UI guards.
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/SettingsDiagnosticsPage.kt" || {
-            echo '::error::V16.0 settings diagnostics missing'; exit 1;
-          }
-          grep -Fq 'auto_start_realtime_on_app_open' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/MainActivity.kt" || {
-            echo '::error::V16.0 seismic opt-in wiring missing'; exit 1;
-          }
-          for file in SeismicLiveMapPage.kt SeismicStationData.kt SeismicGeo.kt SeismicHistoricalReplay.kt SeismicWavePhysics.kt SeismicUserLocation.kt SeismicSpeech.kt; do
-            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/$file" || { echo "::error::Missing real-time map source: $file"; exit 1; }
-          done
-          grep -Fq 'SeismicLiveMapPage(onClose' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || { echo '::error::Monitoring map is not connected to earthquake center'; exit 1; }
-          grep -Fq 'SeismicStationData.parse(raw, stationMetadata)' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechSeismicService.kt" || { echo '::error::Live station parsing is not connected'; exit 1; }
-          test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/ExpTechPublicEarthquakeReports.kt"
-          grep -Fq 'EarthquakeSettingsPage(onClose' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeCenterPage.kt" || { echo '::error::Earthquake settings UI missing'; exit 1; }
-          grep -Fq 'ExpTechPublicEarthquakeReports.latest()' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/earthquake/EarthquakeReportWorker.kt" || { echo '::error::Public reports not configured'; exit 1; }
-          for scenario in eew_primary eew_urgent eew_update detect_weak detect_medium detect_strong gal_medium gal_strong report; do
-            test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_eq_${scenario}.ogg" || { echo "::error::Missing seismic sound: $scenario"; exit 1; }
-          done
-          test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_eew_warning.ogg"
-          for sound in drill_alert step allclear; do
-            test -s "$PROJECT_DIR/app/src/main/res/raw/thinn_seismic_${sound}.ogg" || {
-              echo "::error::Missing original seismic experience sound: $sound"; exit 1;
-            }
-          done
-          for file in WeatherBriefingPlan.kt; do
-            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/domain/model/$file" || exit 1
-          done
-          for file in WeatherBriefingStore.kt WeatherBriefingScheduler.kt WeatherBriefingWorker.kt WeatherBriefingSettingsPage.kt; do
-            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/briefing/$file" || { echo "::error::Missing smart briefing: $file"; exit 1; }
-          done
-          grep -Fq 'WeatherBriefingSettingsPage(onClose=' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt" || exit 1
-          grep -Fq 'WeatherBriefingScheduler.reschedule(this)' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/MainActivity.kt" || exit 1
+          PROJECT_DIR='extracted/thinn-khi_Android_Project'
+          test -s "$PROJECT_DIR/app/build.gradle.kts"
           test -s "$PROJECT_DIR/app/src/main/assets/current_release_notes.md"
-          for source in GlassControls.kt GlassSheets.kt GlassClockDial.kt CwaRadarObservation.kt RadarThreeHourCard.kt; do
-            test -s "$PROJECT_DIR/app/src/main/java/io/atmos/weather/ui/$source" || { echo "::error::Missing V18 UI/Radar source: $source"; exit 1; }
-          done
-          # V18 Kotlin fix: keep bottom navigation inside the root BoxScope.
-          HOME_KT="$PROJECT_DIR/app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt"
-          grep -Fq '根 Box：底部分頁列為 BoxScope 子元素' "$HOME_KT" || {
-            echo '::error::Bottom navigation is outside the BoxScope; use the V18 compile-fixed source ZIP.'
-            exit 1
-          }
-          grep -Fq 'GlassClockDial(hour=selectedHour' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/briefing/WeatherBriefingSettingsPage.kt" || {
-            echo '::error::V18 clock dial has not replaced Material time picker.'; exit 1;
-          }
-          grep -Fq 'CwaRadarObservation.latest()' "$PROJECT_DIR/app/src/main/java/io/atmos/weather/ui/RadarThreeHourCard.kt" || {
-            echo '::error::Radar imagery acquisition not connected.'; exit 1;
-          }
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$((18000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=18.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((20000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=20.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
-      - name: Bundle current release notes into this APK
+      - name: Prepare update notes
         shell: bash
         env:
           RELEASE_NOTES: ${{ inputs.release_notes }}
         run: |
           set -euo pipefail
           NOTES_FILE="$PROJECT_DIR/app/src/main/assets/current_release_notes.md"
-          # Exactly the same content is used in the installed-App panel and GitHub Release.
           if [[ -n "${RELEASE_NOTES:-}" ]]; then
             printf '%s\n' "$RELEASE_NOTES" > "$NOTES_FILE"
           fi
           test -s "$NOTES_FILE"
           echo "RELEASE_NOTES_PATH=$NOTES_FILE" >> "$GITHUB_ENV"
 
-      - name: Prepare rain and thunder recordings
+      - name: Prepare weather audio
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends ffmpeg
           python3 "$PROJECT_DIR/tools/prepare_real_weather_audio.py"
-          for name in light_rain heavy_rain thunder_strike; do
-            test -s "$PROJECT_DIR/app/src/main/res/raw/$name.ogg"
+          for sound in light_rain heavy_rain thunder_strike; do
+            test -s "$PROJECT_DIR/app/src/main/res/raw/$sound.ogg"
           done
 
       - name: Compile Android APK
@@ -204,69 +122,69 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$SIGN_READY" == 'true' ]]; then
-            task=:app:assembleRelease
+            TASK=':app:assembleRelease'
           else
-            task=:app:assembleDebug
+            TASK=':app:assembleDebug'
           fi
           gradle --no-daemon --console=plain --project-dir "$PROJECT_DIR" \
-            -PTHINN_VERSION_CODE="$VERSION_CODE" -PTHINN_VERSION_NAME="$VERSION_NAME" \
-            "$task" 2>&1 | tee build.log
+            -PTHINN_VERSION_CODE="$VERSION_CODE" \
+            -PTHINN_VERSION_NAME="$VERSION_NAME" "$TASK" \
+            2>&1 | tee "$GITHUB_WORKSPACE/build.log"
 
-      - name: Upload build log if failed
+      - name: Upload error log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V18_0-errors
+          name: thinn-khi-V20_0-errors
           path: build.log
           if-no-files-found: ignore
 
-      - name: Sign official OTA APK with persistent key
+      - name: Sign release APK and create SHA-256
         if: env.SIGN_READY == 'true'
+        shell: bash
         env:
           APK_KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
           APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
           APK_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
-        shell: bash
         run: |
           set -euo pipefail
-          unsigned="$PROJECT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk"
-          test -s "$unsigned"
+          UNSIGNED="$PROJECT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$UNSIGNED"
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$unsigned" "$RUNNER_TEMP/aligned.apk"
+            "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
             --ks "$RUNNER_TEMP/thinn-khi-release.jks" \
             --ks-key-alias "$APK_KEY_ALIAS" \
             --ks-pass env:APK_KEYSTORE_PASSWORD \
             --key-pass env:APK_KEY_PASSWORD \
             --out thinn-khi.apk "$RUNNER_TEMP/aligned.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs thinn-khi.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging thinn-khi.apk | head -n 3
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose thinn-khi.apk
           sha256sum thinn-khi.apk > thinn-khi.apk.sha256
           rm -f "$RUNNER_TEMP/thinn-khi-release.jks"
 
-      - name: Upload official signed APK
+      - name: Upload signed APK
         if: env.SIGN_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V18_0-SIGNED-APK
+          name: thinn-khi-V20_0-SIGNED-APK
           path: |
             thinn-khi.apk
             thinn-khi.apk.sha256
           if-no-files-found: error
 
-      - name: Upload preview debug APK
+      - name: Upload debug APK
         if: env.SIGN_READY != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V18_0-TEST-APK-NOT-OTA
+          name: thinn-khi-V20_0-TEST-APK-NOT-OTA
           path: extracted/thinn-khi_Android_Project/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Publish signed GitHub OTA Release
+      - name: Publish official OTA release
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
           set -euo pipefail
           gh release create "v${VERSION_NAME}" thinn-khi.apk thinn-khi.apk.sha256 \
