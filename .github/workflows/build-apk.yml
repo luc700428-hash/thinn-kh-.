@@ -40,8 +40,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s 'thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip'
-          echo '7254ce215fcfbfc20f06ddeda1f4e85613ca7fc819275067b55f1c9b4eb2b76e  thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip' | sha256sum -c -
+          source_archive='thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip'
+          if [[ ! -s "$source_archive" ]]; then
+            echo '::notice::Standalone source archive absent; retrieving verified source from the already committed V22 OTA bundle.'
+            shopt -s nullglob
+            bundles=(thinn-khi_V22_0_Gradle*OTA*.zip)
+            if [[ ${#bundles[@]} -ne 1 ]]; then
+              echo "::error::Expected exactly one V22 Gradle-fixed OTA bundle, found ${#bundles[@]}."; exit 1
+            fi
+            echo "d973bcbea1ba378a3be98b7e38bfcda85bd4d5330ea7030097b61c6c11e3ddf4  ${bundles[0]}" | sha256sum -c -
+            unzip -p "${bundles[0]}" "$source_archive" > "$source_archive"
+          fi
+          echo "7254ce215fcfbfc20f06ddeda1f4e85613ca7fc819275067b55f1c9b4eb2b76e  $source_archive" | sha256sum -c -
           unzip -tqq 'thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip'
           mkdir -p extracted
           unzip -qo 'thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip' -d extracted
