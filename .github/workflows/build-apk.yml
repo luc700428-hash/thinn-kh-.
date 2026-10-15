@@ -1,4 +1,4 @@
-name: Build thinn-khì V22.0 Android OTA (Gradle DSL fixed)
+name: Build thinn-khì V22.0 Android OTA (archive + weather audio fixed)
 on:
   workflow_dispatch:
     inputs:
@@ -63,6 +63,28 @@ jobs:
             test -s "extracted/thinn-khi_Android_Project/app/src/main/assets/landmarks/previews/tw_${n}.png"
           done
           grep -Fq 'targetSdk = 36' extracted/thinn-khi_Android_Project/app/build.gradle.kts
+      - name: Restore public-domain rain and thunder recordings BEFORE Kotlin compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          project=extracted/thinn-khi_Android_Project
+          prep="$project/tools/prepare_real_weather_audio.py"
+          raw="$project/app/src/main/res/raw"
+          test -s "$prep" || { echo '::error::Weather audio preparation script missing from V22 source.'; exit 1; }
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          # These are three public-domain Wikimedia Commons field recordings.
+          # The existing source script creates local, crossfaded Ogg Vorbis assets.
+          python3 "$prep"
+          for name in light_rain heavy_rain thunder_strike; do
+            sound="$raw/$name.ogg"
+            test -s "$sound" || { echo "::error::Missing generated raw resource $sound"; exit 1; }
+            codec="$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "$sound")"
+            test "$codec" = vorbis || { echo "::error::$name has unexpected audio codec: $codec"; exit 1; }
+            echo "Weather audio verified: $name.ogg ($(stat -c%s "$sound") bytes)"
+          done
       - name: Node backend policy regression tests
         run: node --test extracted/thinn-khi_Android_Project/backend/tests/*.test.cjs
       - name: Prepare signing mode
