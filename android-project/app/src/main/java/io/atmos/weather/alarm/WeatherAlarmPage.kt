@@ -58,8 +58,20 @@ fun WeatherAlarmPage(onClose:()->Unit) {
         if (!WeatherAlarmScheduler.canBeExact(ctx)) {
             Spacer(Modifier.height(14.dp))
             Text("尚未取得精確鬧鐘權限；可能延遲響鈴。",color=Color(0xFFFFD69E),fontSize=16.sp)
-            TextButton(onClick={runCatching {ctx.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                android.net.Uri.parse("package:${ctx.packageName}"))})}) {
+            TextButton(onClick = {
+                runCatching {
+                    ctx.startActivity(
+                        Intent(
+                            Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                            android.net.Uri.parse("package:${ctx.packageName}")
+                        )
+                    )
+                }.onFailure {
+                    android.widget.Toast.makeText(
+                        ctx, "無法開啟精確鬧鐘權限設定", android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }) {
                 Text("開啟精確鬧鐘授權",color=accent)
             }
         }
