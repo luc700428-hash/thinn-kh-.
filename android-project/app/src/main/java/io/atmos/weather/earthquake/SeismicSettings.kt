@@ -45,11 +45,11 @@ object SeismicAlertPolicy {
         EEW_FIRST("eew_first", "地震預警", "收到有效的新地震速報", R.raw.thinn_eq_eew_primary),
         EEW_URGENT("eew_urgent", "緊急地震速報", "資料來源明確標示為緊急時（尚待真實事件驗證）", R.raw.thinn_eq_eew_urgent),
         EEW_UPDATE("eew_update", "預警更新", "同一地震事件發出新報次", R.raw.thinn_eq_eew_update),
-        DETECT_WEAK("detect_weak", "檢知・弱", "測站偵測到搖晃（尚未啟用自動判定）", R.raw.thinn_eq_detect_weak, false),
-        DETECT_MEDIUM("detect_medium", "檢知・中", "測站震度 2 以上（尚未啟用自動判定）", R.raw.thinn_eq_detect_medium, false),
-        DETECT_STRONG("detect_strong", "檢知・強", "測站震度 4 以上（尚未啟用自動判定）", R.raw.thinn_eq_detect_strong, false),
-        GAL_MEDIUM("gal_medium", "加速度・中", "測站超過 8 gal（尚未啟用自動判定）", R.raw.thinn_eq_gal_medium, false),
-        GAL_STRONG("gal_strong", "加速度・強", "測站超過 200 gal（尚未啟用自動判定）", R.raw.thinn_eq_gal_strong, false),
+        DETECT_WEAK("detect_weak", "檢知・弱", "第三方測站震度 1 以上 · 需連續三筆確認", R.raw.thinn_eq_detect_weak),
+        DETECT_MEDIUM("detect_medium", "檢知・中", "第三方測站震度 2 以上 · 需連續三筆確認", R.raw.thinn_eq_detect_medium),
+        DETECT_STRONG("detect_strong", "檢知・強", "第三方測站震度 4 以上 · 需連續三筆確認", R.raw.thinn_eq_detect_strong),
+        GAL_MEDIUM("gal_medium", "加速度・中", "第三方測站大於等於 8 gal · 連續三筆確認", R.raw.thinn_eq_gal_medium),
+        GAL_STRONG("gal_strong", "加速度・強", "第三方測站大於等於 200 gal · 連續三筆確認", R.raw.thinn_eq_gal_strong),
         REPORT("report", "震度速報／地震報告", "震後報告通知；不是提前預警", R.raw.thinn_eq_report)
     }
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("thinn_seismic_v15", Context.MODE_PRIVATE)
@@ -59,7 +59,9 @@ object SeismicAlertPolicy {
         ensureChannels(ctx)
     }
     fun alertEnabled(ctx: Context, s: Scenario): Boolean =
-        s.available && prefs(ctx).getBoolean("scenario_alert_${s.key}", true)
+        s.available && prefs(ctx).getBoolean("scenario_alert_${s.key}",
+            s !in setOf(Scenario.DETECT_WEAK,Scenario.DETECT_MEDIUM,Scenario.DETECT_STRONG,
+                Scenario.GAL_MEDIUM,Scenario.GAL_STRONG))
     fun setAlertEnabled(ctx: Context, s: Scenario, enabled: Boolean) =
         prefs(ctx).edit().putBoolean("scenario_alert_${s.key}", enabled).apply()
     fun channelId(ctx: Context, s: Scenario): String =
@@ -129,6 +131,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     var reportNotify by remember { mutableStateOf(pref.getBoolean("earthquake_report_notify", false)) }
     var eewVoice by remember { mutableStateOf(SeismicSpeech.enabled(ctx,"eew_voice_enabled")) }
     var reportVoice by remember { mutableStateOf(SeismicSpeech.enabled(ctx,"report_voice_enabled")) }
+    var replayVoice by remember { mutableStateOf(SeismicSpeech.enabled(ctx,"replay_voice_enabled")) }
     var fullscreen by remember { mutableStateOf(pref.getBoolean("allow_seismic_full_screen",false)) }
     var chosenCounty by remember { mutableStateOf(SeismicUserLocation.chosen(ctx)) }
     var locationMenu by remember { mutableStateOf(false) }
@@ -263,6 +266,10 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             SettingsSwitch("震後報告語音播報", "收到新震後報告時播報；不宣稱第三方彙整為官方已驗證報告",reportVoice) {
                                 reportVoice=it;SeismicSpeech.setEnabled(ctx,"report_voice_enabled",it)
                             }
+                            Spacer(Modifier.height(9.dp))
+                            SettingsSwitch("歷史回放語音", "播放歷史速報首報時語音提醒『這是歷史回放，不是現在發生地震』",replayVoice) {
+                                replayVoice=it;SeismicSpeech.setEnabled(ctx,"replay_voice_enabled",it)
+                            }
                         }
                         SectionName("震後報告")
                         SettingsGlass { SettingsSwitch("地震報告通知", "地震發生後才會提供；不是事前預警", reportNotify) {
@@ -270,7 +277,14 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                         } }
                         SectionName("測站檢知")
                         SettingsGlass {
-                            Text("測站震度／gal 自動觸發仍需完成來源欄位與門檻驗證，目前不會發出檢知警報。這裡保留獨立音效試聽，不會將資料誤報成地震。",color=pale,fontSize=14.sp,lineHeight=19.sp)
+                            Text("預設關閉。啟用後，只在第三方 RTS 測站資料連續三筆達門檻時發出本機觀測提醒；兩分鐘內不重複。這不是官方地震預警，也不能預測即將發生地震。",color=pale,fontSize=14.sp,lineHeight=19.sp)
+                            Spacer(Modifier.height(10.dp))
+                            listOf(SeismicAlertPolicy.Scenario.DETECT_WEAK,SeismicAlertPolicy.Scenario.DETECT_MEDIUM,
+                                SeismicAlertPolicy.Scenario.DETECT_STRONG,SeismicAlertPolicy.Scenario.GAL_MEDIUM,
+                                SeismicAlertPolicy.Scenario.GAL_STRONG).forEach { scenario ->
+                                AlertRow(scenario)
+                                HorizontalDivider(color=Color.White.copy(alpha=.1f),modifier=Modifier.padding(vertical=7.dp))
+                            }
                         }
                     }
                     2 -> {
@@ -291,7 +305,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                         }
                         SectionName("報告")
                         SettingsGlass { SoundRow(SeismicAlertPolicy.Scenario.REPORT) }
-                        Text("音效試聽只會在手機上播放提示聲，不產生真實地震警報。未經驗證的測站自動檢知目前不可啟用。",color=pale,fontSize=14.sp,lineHeight=18.sp,modifier=Modifier.padding(12.dp))
+                        Text("音效與檢知警報為獨立開關；需在『警報 › 測站檢知』同時啟用提醒。RTS 提醒屬第三方測站觀測、不是官方 EEW。",color=pale,fontSize=14.sp,lineHeight=18.sp,modifier=Modifier.padding(12.dp))
                     }
                     else -> {
                         SectionName("資料來源與安全")
@@ -339,7 +353,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
 }
 @Composable private fun SoundRow(s:SeismicAlertPolicy.Scenario) {
     val ctx=LocalContext.current
-    var checked by remember(s) { mutableStateOf(s.available && SeismicAlertPolicy.soundEnabled(ctx,s)) }
+    var checked by remember(s) { mutableStateOf(SeismicAlertPolicy.soundEnabled(ctx,s)) }
     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
         Column(Modifier.weight(1f)) {
             Text(s.title,color=Color.White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
@@ -352,7 +366,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
             Icon(Icons.Rounded.PlayArrow,"試聽",modifier=Modifier.size(17.dp),tint=ice)
             Text("試聽",fontSize=14.sp,color=ice)
         }
-        Switch(checked=checked,enabled=s.available,onCheckedChange={checked=it;SeismicAlertPolicy.setSoundEnabled(ctx,s,it)},
+        Switch(checked=checked,onCheckedChange={checked=it;SeismicAlertPolicy.setSoundEnabled(ctx,s,it)},
             modifier=Modifier.height(40.dp),colors=SwitchDefaults.colors(checkedTrackColor=Color(0xFF38B4BE)))
     }
 }

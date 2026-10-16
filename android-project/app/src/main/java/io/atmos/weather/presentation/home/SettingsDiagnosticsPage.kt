@@ -71,6 +71,15 @@ fun SettingsDiagnosticsPage(onClose:()->Unit) {
                 val text=if(slot==null)"未建立" else if(!slot.enabled) "已停用" else "%02d:%02d · %s".format(slot.hour,slot.minute,workStates["thinn_weather_briefing_v154_$id"]?:"讀取中")
                 HealthStatus("通知 $id",text,slot?.enabled==true && workStates["thinn_weather_briefing_v154_$id"]?.contains("ENQUEUED")==true)
             }
+            val crash=io.atmos.weather.CrashDiagnostics.last(ctx)
+            if(!crash.isNullOrBlank()) {
+                Text("上次異常結束紀錄（僅儲存本機，不自動上傳）",fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                Text(crash.lineSequence().firstOrNull().orEmpty().take(180),color=Color(0xFFFFD6A1),fontSize=14.sp)
+                OutlinedButton(onClick={
+                    val clipboard=ctx.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("thinn-khì 崩潰紀錄",crash))
+                }) { Text("複製崩潰紀錄（方便修復工具／設定頁）",fontSize=14.sp) }
+            }
             Text("音效受到靜音、勿擾及各通知通道設定影響；焦點通知由裝置廠商決定。",
                 color=Color(0xFFB7D5E7),fontSize=14.sp)
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {

@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private var locationJob: Job? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashDiagnostics.install(this)
         // Lock-screen activation is governed by OS notification policy. Do not
         // enable wake from an exported Activity intent extra that another app can forge.
         window.statusBarColor = android.graphics.Color.TRANSPARENT

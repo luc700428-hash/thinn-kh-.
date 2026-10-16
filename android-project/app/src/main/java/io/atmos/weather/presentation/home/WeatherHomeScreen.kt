@@ -270,6 +270,22 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val fromUpdateNotification = remember { (context as? android.app.Activity)?.intent?.getBooleanExtra("open_update_center",false) == true }
     var updatePageOpen by remember { mutableStateOf(fromUpdateNotification) }
     var typhoonPageOpen by remember { mutableStateOf(false) }
+    var officialStormActive by remember { mutableStateOf(false) }
+    // Query official storm positions only while the weather tab is visible. When unavailable
+    // fail closed (no invented typhoon); locally issued official warnings still show.
+    LaunchedEffect(mainPager.currentPage) {
+        if(mainPager.currentPage==0) {
+            while(true) {
+                officialStormActive = try {
+                    val data=io.atmos.weather.earthquake.CwaOfficialGateway.read(context,"W-C0034-002")
+                    io.atmos.weather.typhoon.TyphoonVisibility.hasActiveStorm(
+                        io.atmos.weather.typhoon.OfficialTyphoonTrack.extract(data))
+                } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
+                  catch (_:Exception) { false }
+                delay(20*60_000L)
+            }
+        }
+    }
     var weatherAlarmOpen by remember { mutableStateOf(false) }
     LaunchedEffect(fromUpdateNotification) { if (fromUpdateNotification) (context as? android.app.Activity)?.intent?.removeExtra("open_update_center") }
     // Android predictive-back / gesture returns to the previous UI layer,
@@ -465,7 +481,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             HorizontalPager(
                 state = mainPager,
                 modifier = Modifier.fillMaxSize(),
-                beyondViewportPageCount = 1,
+                beyondViewportPageCount = 0,
                 userScrollEnabled = !locationOpen && !settingsOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen
             ) { page ->
             when (page) {
@@ -500,6 +516,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         }
                     }
                     Row {
+                        if(io.atmos.weather.CrashDiagnostics.last(context)!=null) {
+                            HeaderButton(Icons.Rounded.BugReport,"檢視上次閃退紀錄") { diagnosticsOpen=true }
+                            Spacer(Modifier.width(6.dp))
+                        }
                         HeaderButton(Icons.Rounded.Search,"搜尋城市") { locationOpen=true }
                         Spacer(Modifier.width(8.dp))
                         if (state.loading) {
@@ -571,27 +591,30 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 } else {
                     Text("尚無天氣資料，請檢查網路連線",color=White,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
                 }
-                // Typhoon is a first-class, weather-page section. All paths remain official only.
+                // Do not show a permanent typhoon promotion when the official feed has no
+                // current dated storm and there is no active local official notice.
                 val typhoonNotices = state.cwaWarnings.filter {
                     it.title.contains("颱風") || it.summary.contains("颱風警報")
                 }
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                    .background(White.copy(alpha=.11f))
-                    .border(1.dp, White.copy(alpha=.22f), RoundedCornerShape(20.dp))
-                    .clickable { typhoonPageOpen = true }
-                    .padding(horizontal=16.dp, vertical=13.dp), verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Cyclone, contentDescription=null,
-                        tint=if (typhoonNotices.isNotEmpty()) Color(0xFFFFC47D) else Color(0xFF99E4FF),
-                        modifier=Modifier.size(25.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("颱風動向與官方路徑", fontSize=17.sp, fontWeight=FontWeight.SemiBold, color=White)
-                        Text(if (typhoonNotices.isNotEmpty()) "${typhoonNotices.size} 則颱風相關公告 · 查看路徑與影響"
-                            else "查看中央氣象署最新颱風路徑與警報", fontSize=14.sp, color=TextSoft)
+                if (typhoonNotices.isNotEmpty() || officialStormActive) {
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                        .background(White.copy(alpha=.11f))
+                        .border(1.dp, White.copy(alpha=.22f), RoundedCornerShape(20.dp))
+                        .clickable { typhoonPageOpen = true }
+                        .padding(horizontal=16.dp, vertical=13.dp), verticalAlignment=Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Cyclone, contentDescription=null,
+                            tint=Color(0xFFFFC47D),modifier=Modifier.size(25.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("颱風動向與官方路徑", fontSize=17.sp,
+                                fontWeight=FontWeight.SemiBold, color=White)
+                            Text(if(typhoonNotices.isNotEmpty()) "${typhoonNotices.size} 則官方颱風公告 · 查看影響"
+                                else "氣象署有有效期內的颱風資料 · 查看路徑",fontSize=14.sp,color=TextSoft)
+                        }
+                        Icon(Icons.Rounded.ChevronRight,contentDescription="查看颱風動向",tint=TextSoft)
                     }
-                    Icon(Icons.Rounded.ChevronRight, contentDescription="查看颱風動向", tint=TextSoft)
+                    Spacer(Modifier.height(12.dp))
                 }
-                Spacer(Modifier.height(12.dp))
                 // Verified official alerts belong above any decorative landmark scene.
                 if (TaiwanLandmarks.countyFor(state.city.name, state.city.coordinate) != null) {
                     if (state.cwaWarnings.isNotEmpty()) {
@@ -684,7 +707,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Icon(if(chosenLandmark?.hasModel==true) Icons.Rounded.ViewInAr else Icons.Rounded.Construction,
                             contentDescription=null,tint=Color(0xFFBBD6E6),modifier=Modifier.size(20.dp))
                         Spacer(Modifier.width(9.dp))
-                        Text(if(chosenLandmark?.hasModel==true) "獨立 3D 建模原型" else "專屬地標模型尚未完成",
+                        Text(if(chosenLandmark?.hasModel==true) "原型建模預覽 · 尚非高精度實景" else "專屬地標模型尚未完成",
                             color=Color(0xFFDAE8F2),fontSize=15.sp,lineHeight=22.sp,
                             modifier=Modifier.weight(1f))
                         if(currentLandmarks.size>1) Text("${((openingLandmarkIndex+landmarkStep)%currentLandmarks.size)+1} / ${currentLandmarks.size}",
@@ -1623,11 +1646,28 @@ private fun LandmarkCanvas(scene: WeatherScene?,place:LandmarkPlace?,modifier:Mo
             Text("${place.caption} · 模型預覽讀取失敗",color=White,fontSize=16.sp)
         }
     } else {
-        // Display the actual GLB with Filament, rather than its static PNG preview.
-        // The original model remains labelled as a geometric prototype.
-        FilamentLandmark(modelAsset=place.model!!,modifier=modifier) {
-            Image(bitmap=bitmap,contentDescription="${place.caption}，模型預覽示意圖",
-                modifier=modifier,contentScale=androidx.compose.ui.layout.ContentScale.Fit)
+        // Model prototypes are not complete photorealistic landmarks. Prefer a fully lit,
+        // framed preview over the dark runtime GLB that made local landmarks illegible.
+        // The on-demand viewer is explicit and does not occupy resources on Tools/Settings.
+        var showLive3d by remember(place.id) { mutableStateOf(false) }
+        Box(modifier.background(Color(0xFF23506E)),contentAlignment=Alignment.Center) {
+            if(showLive3d) {
+                FilamentLandmark(modelAsset=place.model!!,modifier=Modifier.matchParentSize()) {
+                    Image(bitmap=bitmap,contentDescription="${place.caption}，模型預覽",
+                        modifier=Modifier.fillMaxSize(),contentScale=androidx.compose.ui.layout.ContentScale.Fit)
+                }
+            } else {
+                Image(bitmap=bitmap,contentDescription="${place.caption}，預覽模型幾何造型（非景點照片）",
+                    modifier=Modifier.fillMaxSize().padding(8.dp),
+                    contentScale=androidx.compose.ui.layout.ContentScale.Fit)
+            }
+            Text(if(showLive3d) "返回清晰預覽" else "開啟可旋轉 3D",
+                color=Color.White,fontSize=14.sp,
+                modifier=Modifier.align(Alignment.BottomEnd).padding(9.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xDA12364C))
+                    .clickable { showLive3d=!showLive3d }
+                    .padding(horizontal=13.dp,vertical=10.dp))
         }
     }
 }

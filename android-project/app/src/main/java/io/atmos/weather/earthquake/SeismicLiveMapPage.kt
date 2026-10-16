@@ -83,6 +83,8 @@ fun SeismicLiveMapPage(
     var replayDuration by remember { mutableFloatStateOf(120f) }
     var replayPlaying by remember { mutableStateOf(false) }
     var replaySpeed by remember { mutableFloatStateOf(1f) }
+    var replaySpoken by remember { mutableStateOf(false) }
+    var lastReplayShown by remember { mutableStateOf("") }
     val inReplay = replayStatus == "回放中"
 
     // No fake history frames. Only replay archive EEW records actually matching a past report.
@@ -108,6 +110,8 @@ fun SeismicLiveMapPage(
             }
             val (report, frames) = found
             replayReport = report
+            replaySpoken = false
+            lastReplayShown = ""
             replayFrames = frames
             replayIncident = null // never show a past EEW bulletin before its actual issue time
             replayDuration = ((frames.last().issuedAtMs - report.origin.toEpochMilli()) / 1000f).coerceIn(15f, 180f)
@@ -139,7 +143,6 @@ fun SeismicLiveMapPage(
     var overlay by remember { mutableStateOf<EewIncident?>(null) }
     var overlayReplay by remember { mutableStateOf(false) }
     var lastLiveShown by remember { mutableStateOf("") }
-    var lastReplayShown by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -171,6 +174,12 @@ fun SeismicLiveMapPage(
             val key="${incident.id}:${incident.serial}"
             if (lastReplayShown!=key) {
                 lastReplayShown=key;overlayReplay=true;overlay=incident
+                if(!replaySpoken && SeismicSpeech.enabled(ctx,"replay_voice_enabled")) {
+                    replayReport?.let { report ->
+                        SeismicSpeech.speak(ctx,SeismicSpeech.replay(report,incident))
+                    }
+                    replaySpoken=true
+                }
             }
         }
     }
@@ -458,7 +467,7 @@ fun SeismicLiveMapPage(
                             Text(if(inReplay)"結束" else "隨機挑選")
                         }
                     }
-                    Text("只使用可核對的歷史速報；不會發送真實警報。",color=muted,fontSize=14.sp)
+                    Text("只使用可核對的歷史速報，不會發送真實警報；語音受手機靜音、勿擾與系統 TTS 引擎控制。",color=muted,fontSize=14.sp)
                     if(replayStatus.isNotBlank()) {
                         Spacer(Modifier.height(7.dp))
                         Text(if(inReplay)"歷史回放中 · 非即時預警" else replayStatus,
@@ -471,6 +480,18 @@ fun SeismicLiveMapPage(
                             color=light,fontSize=15.sp)
                         GlassSlider(value=replayPosition,onValueChange={replayPosition=it},
                             valueRange=0f..replayDuration,modifier=Modifier.fillMaxWidth())
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                            Text("歷史事件語音（明確聲明非即時地震）",color=muted,
+                                fontSize=14.sp,modifier=Modifier.weight(1f))
+                            TextButton(enabled=replayIncident!=null && replayReport!=null,
+                                onClick={
+                                    val report=replayReport
+                                    val incident=replayIncident
+                                    if(report!=null && incident!=null) {
+                                        SeismicSpeech.speak(ctx,SeismicSpeech.replay(report,incident))
+                                    }
+                                }) { Text("重播語音",color=iceBlue,fontSize=14.sp) }
+                        }
                         Row(verticalAlignment=Alignment.CenterVertically,
                             horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                             Text("${replayPosition.toInt()} / ${replayDuration.toInt()} 秒",color=muted,fontSize=14.sp,

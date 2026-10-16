@@ -27,6 +27,12 @@ object SeismicSpeech {
         val magnitude=incident.magnitude?.let { "規模${String.format(Locale.TAIWAN,"%.1f",it)}。" }.orEmpty()
         return "地震速報，第三方資料。${local}震央${incident.epicenter}。${magnitude}請立即趴下、掩護、穩住。"
     }
+    fun replay(report:EarthquakeReport, incident:EewIncident):String {
+        val magnitude=incident.magnitude ?: report.magnitude
+        return "歷史地震回放，這不是現在發生的地震，也不是即時預警。" +
+            "過去${report.location}發生規模${String.format(Locale.TAIWAN,"%.1f",magnitude)}地震。" +
+            "以下是已取得的過去速報資料，請練習趴下、掩護、穩住。"
+    }
     fun report(report:EarthquakeReport):String {
         val grade=SeismicWavePhysics.intensityLabel(report.maxIntensity)?.let { "最大觀測震度${it}級。" }.orEmpty()
         return "第三方彙整的震後地震報告，${report.location}，規模${String.format(Locale.TAIWAN,"%.1f",report.magnitude)}。${grade}請以中央氣象署最新正式資訊為準。"

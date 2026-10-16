@@ -46,6 +46,7 @@ class ExpTechSeismicService : Service() {
     private val activeConnections=CopyOnWriteArrayList<HttpURLConnection>()
     private val hosts=listOf("api.lb-tpe1.exptech.dev","api.lb-khh1.exptech.dev")
     private var begun=false
+    private val stationGate=StationDetectionGate()
     @Volatile private var stationMetadata: Map<String, SeismicStation> = emptyMap()
     override fun onBind(intent: Intent?): IBinder?=null
     override fun onStartCommand(intent: Intent?,flags:Int,startId:Int):Int {
@@ -169,6 +170,7 @@ class ExpTechSeismicService : Service() {
         if(type=="RTS") {
             val stations = SeismicStationData.parse(raw, stationMetadata)
             live.update { it.copy(lastRtsAt=time,stationCount=ExpTechRealtimeParser.stationCount(raw),stations=stations.take(1500)) }
+            maybeNotifyStation(stations,time)
             return
         }
         live.update { it.copy(lastEewAt=time) }
@@ -212,6 +214,31 @@ class ExpTechSeismicService : Service() {
             }
 
         }
+    }
+    private fun maybeNotifyStation(stations:List<SeismicStation>,now:Long) {
+        if(!PermissionGuide.canNotify(this)) return
+        val mapping=mapOf(
+            StationDetectionGate.Threshold.DETECT_WEAK to SeismicAlertPolicy.Scenario.DETECT_WEAK,
+            StationDetectionGate.Threshold.DETECT_MEDIUM to SeismicAlertPolicy.Scenario.DETECT_MEDIUM,
+            StationDetectionGate.Threshold.DETECT_STRONG to SeismicAlertPolicy.Scenario.DETECT_STRONG,
+            StationDetectionGate.Threshold.GAL_MEDIUM to SeismicAlertPolicy.Scenario.GAL_MEDIUM,
+            StationDetectionGate.Threshold.GAL_STRONG to SeismicAlertPolicy.Scenario.GAL_STRONG)
+        val enabled=mapping.filterValues { SeismicAlertPolicy.alertEnabled(this,it) }.keys
+        val trigger=stationGate.observe(stations.map {
+            StationDetectionGate.Reading(it.id,it.intensity,it.accelerationGal)
+        },now,enabled) ?: return
+        val scenario=mapping[trigger.threshold] ?: return
+        val detail="ExpTech 第三方測站 ${trigger.stationId}：${trigger.threshold.label}，已連續確認；非官方地震預警"
+        val notice=NotificationCompat.Builder(this,SeismicAlertPolicy.channelId(this,scenario))
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("地震監測 · 第三方測站檢知")
+            .setContentText(detail).setStyle(NotificationCompat.BigTextStyle().bigText(detail))
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true)
+            .setContentIntent(openCenter()).build()
+        // Per-case channel honours the user's sound preference and OS notification policy.
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .notify(29180+scenario.ordinal,notice)
     }
     private fun alertIntent():PendingIntent = PendingIntent.getActivity(this,29201,
         Intent(this,MainActivity::class.java).putExtra("open_earthquake_center",true)
