@@ -307,12 +307,12 @@ fun SeismicLiveMapPage(
                                 val unscaledX = (clicked.x - panX - size.width*0.5f) / zoom + size.width*0.5f
                                 val unscaledY = (clicked.y - panY - size.height*0.5f) / zoom + size.height*0.5f
                                 selected = pins.minByOrNull { point ->
-                                    val dx = SeismicGeo.screenX(point.longitude!!,size.width,size.height) - unscaledX
-                                    val dy = SeismicGeo.screenY(point.latitude!!,size.width,size.height) - unscaledY
+                                    val dx = SeismicGeo.screenX(point.longitude!!,size.width.toFloat(),size.height.toFloat()) - unscaledX
+                                    val dy = SeismicGeo.screenY(point.latitude!!,size.width.toFloat(),size.height.toFloat()) - unscaledY
                                     hypot(dx,dy)
                                 }?.takeIf { point ->
-                                    hypot(SeismicGeo.screenX(point.longitude!!,size.width,size.height)-unscaledX,
-                                        SeismicGeo.screenY(point.latitude!!,size.width,size.height)-unscaledY) < 32.dp.toPx()/zoom
+                                    hypot(SeismicGeo.screenX(point.longitude!!,size.width.toFloat(),size.height.toFloat())-unscaledX,
+                                        SeismicGeo.screenY(point.latitude!!,size.width.toFloat(),size.height.toFloat())-unscaledY) < 32.dp.toPx()/zoom
                                 }
                             }
                         }.pointerInput(Unit) {
