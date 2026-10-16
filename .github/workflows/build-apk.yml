@@ -1,4 +1,4 @@
-name: Build thinn-khì V22.0 Android OTA (archive + weather audio fixed)
+name: Build thinn-khì OTA from tracked Android source
 on:
   workflow_dispatch:
     inputs:
@@ -36,38 +36,72 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify pinned V22 source archive
+      - name: Verify tracked Android source (not a pinned archive)
         shell: bash
         run: |
           set -euo pipefail
-          source_archive='thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip'
-          if [[ ! -s "$source_archive" ]]; then
-            echo '::notice::Standalone source archive absent; retrieving verified source from the already committed V22 OTA bundle.'
-            shopt -s nullglob
-            bundles=(thinn-khi_V22_0_Gradle*OTA*.zip)
-            if [[ ${#bundles[@]} -ne 1 ]]; then
-              echo "::error::Expected exactly one V22 Gradle-fixed OTA bundle, found ${#bundles[@]}."; exit 1
-            fi
-            echo "d973bcbea1ba378a3be98b7e38bfcda85bd4d5330ea7030097b61c6c11e3ddf4  ${bundles[0]}" | sha256sum -c -
-            unzip -p "${bundles[0]}" "$source_archive" > "$source_archive"
-          fi
-          echo "7254ce215fcfbfc20f06ddeda1f4e85613ca7fc819275067b55f1c9b4eb2b76e  $source_archive" | sha256sum -c -
-          unzip -tqq 'thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip'
-          mkdir -p extracted
-          unzip -qo 'thinn-khi_Android_Source_V22_0_GradleDSL_Fixed.zip' -d extracted
-          test -s extracted/thinn-khi_Android_Project/app/src/main/java/io/atmos/weather/push/ThinnFirebaseMessagingService.kt
-          test -s extracted/thinn-khi_Android_Project/app/src/main/java/io/atmos/weather/widgets/SafetyWidget.kt
-          test -s extracted/thinn-khi_Android_Project/backend/functions/index.js
-          for n in $(seq -w 0 21); do
-            test -s "extracted/thinn-khi_Android_Project/app/src/main/assets/landmarks/tw_${n}.glb"
-            test -s "extracted/thinn-khi_Android_Project/app/src/main/assets/landmarks/previews/tw_${n}.png"
+          project=android-project
+          test -s "$project/app/src/main/java/io/atmos/weather/MainActivity.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnDesignTokens.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnComponents.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/ui/GlassNavigation.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/task/TaskCenterPage.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/task/TaskReminderScheduler.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/earthquake/SeismicPrimaryTab.kt"
+          test -s "$project/app/src/main/assets/landmarks/catalog_v2.json"
+          test -s "$project/app/src/main/java/io/atmos/weather/domain/visual/LandmarkRegistry.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/presentation/home/HomeWeatherBriefing.kt"
+          for model in taipei101 kaohsiung85 dreammall tamkang_bridge music_center miyahara chihkan xiaoliuqiu_flower lanyu_bay guishan_island hsinchu_gate dongyin_lighthouse alishan_railway tropic_cancer_solar npm_south fenqihu_station chiayi_fountain; do
+            test -s "$project/app/src/main/assets/landmarks/individual/$model.glb"
+            test -s "$project/app/src/main/assets/landmarks/individual/previews/$model.png"
           done
-          grep -Fq 'targetSdk = 36' extracted/thinn-khi_Android_Project/app/build.gradle.kts
+          test -s "$project/app/src/main/java/io/atmos/weather/widgets/AtmosWidgets.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/ui/RadarHistoryDialog.kt"
+          grep -Fq 'releases/latest/download/ota.json' "$project/app/src/main/java/io/atmos/weather/update/AppUpdater.kt"
+          test -s "$project/backend/functions/index.js"
+          for n in $(seq -w 0 21); do
+            test -s "$project/app/src/main/assets/landmarks/tw_${n}.glb"
+            test -s "$project/app/src/main/assets/landmarks/previews/tw_${n}.png"
+          done
+          grep -Fq 'targetSdk = 36' "$project/app/build.gradle.kts"
+          echo "Building tracked source commit: $GITHUB_SHA"
+      - name: Inject source provenance into the app package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYPROOF'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path('android-project')
+          sources=[
+            'app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt',
+            'app/src/main/java/io/atmos/weather/update/AppUpdatePage.kt',
+            'app/src/main/java/io/atmos/weather/domain/visual/LandmarkRegistry.kt',
+            'app/src/main/assets/landmarks/catalog_v2.json',
+          ]
+          # Hash all app sources and resources, not just the Git commit hash.
+          # A version-only commit must not masquerade as an app-feature update.
+          app_files=sorted(p for p in (root/'app/src/main').rglob('*')
+                           if p.is_file() and p.name!='build_source_proof.json')
+          app_files.append(root/'app/build.gradle.kts')
+          tree=hashlib.sha256()
+          for f in app_files:
+              tree.update(str(f.relative_to(root)).encode('utf-8')+b'\0')
+              tree.update(hashlib.sha256(f.read_bytes()).digest())
+          proof={'schema':1,'commit_sha':os.environ['GITHUB_SHA'],
+                 'app_tree_sha256':tree.hexdigest(),
+                 'source_sha256':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in sources}}
+          rendered=json.dumps(proof,ensure_ascii=False,indent=2)+'\n'
+          (root/'app/src/main/assets/build_source_proof.json').write_text(rendered,encoding='utf-8')
+          pathlib.Path('expected-build-source-proof.json').write_text(rendered,encoding='utf-8')
+          print('Source audit SHA:',proof['commit_sha'])
+          PYPROOF
+      - name: Test public OTA manifest generator
+        run: python3 -m unittest discover -s android-project/tools/tests -p test_*.py -v
       - name: Restore public-domain rain and thunder recordings BEFORE Kotlin compile
         shell: bash
         run: |
           set -euo pipefail
-          project=extracted/thinn-khi_Android_Project
+          project=android-project
           prep="$project/tools/prepare_real_weather_audio.py"
           raw="$project/app/src/main/res/raw"
           test -s "$prep" || { echo '::error::Weather audio preparation script missing from V22 source.'; exit 1; }
@@ -86,7 +120,7 @@ jobs:
             echo "Weather audio verified: $name.ogg ($(stat -c%s "$sound") bytes)"
           done
       - name: Node backend policy regression tests
-        run: node --test extracted/thinn-khi_Android_Project/backend/tests/*.test.cjs
+        run: node --test android-project/backend/tests/*.test.cjs
       - name: Prepare signing mode
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}
@@ -120,10 +154,11 @@ jobs:
           THINN_PUSH_FUNCTIONS_REGION: ${{ vars.THINN_PUSH_FUNCTIONS_REGION }}
         run: |
           set -euo pipefail
-          project=extracted/thinn-khi_Android_Project
+          project=android-project
           args=(--no-daemon --console=plain --project-dir "$project"
              -PTHINN_VERSION_CODE="$((22000000 + GITHUB_RUN_NUMBER))"
              -PTHINN_VERSION_NAME="22.0.$GITHUB_RUN_NUMBER"
+             -PTHINN_BUILD_SHA="$GITHUB_SHA"
              -PTHINN_FIREBASE_APP_ID="${THINN_FIREBASE_APP_ID:-}"
              -PTHINN_FIREBASE_API_KEY="${THINN_FIREBASE_API_KEY:-}"
              -PTHINN_FIREBASE_SENDER_ID="${THINN_FIREBASE_SENDER_ID:-}"
@@ -136,7 +171,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V22-build-errors
+          name: thinn-khi-ota-build-errors
           path: build.log
           if-no-files-found: ignore
       - name: Sign and verify same-package official OTA
@@ -148,7 +183,7 @@ jobs:
           APK_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
         run: |
           set -euo pipefail
-          input=extracted/thinn-khi_Android_Project/app/build/outputs/apk/release/app-release-unsigned.apk
+          input=android-project/app/build/outputs/apk/release/app-release-unsigned.apk
           test -s "$input"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -f -p 4 "$input" "$RUNNER_TEMP/aligned.apk"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
@@ -159,29 +194,121 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging thinn-khi.apk > "$RUNNER_TEMP/badging.txt"
           grep -q "name='io.atmos.weather'" "$RUNNER_TEMP/badging.txt"
           grep -q "versionCode='$((22000000 + GITHUB_RUN_NUMBER))'" "$RUNNER_TEMP/badging.txt"
+          # This must be the APK built from this commit, NOT the pinned historical ZIP.
+          unzip -p thinn-khi.apk assets/build_source_proof.json > embedded-build-source-proof.json
+          cmp expected-build-source-proof.json embedded-build-source-proof.json || {
+            echo '::error::Signed APK does not contain the expected Android source fingerprint'; exit 1;
+          }
           sha256sum thinn-khi.apk > thinn-khi.apk.sha256
           rm -f "$RUNNER_TEMP/thinn-release.jks"
+      - name: Verify OTA upgrade compatibility with the current published APK
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          latest_tag="$(gh release view --repo "$repo" --json tagName --jq '.tagName')"
+          [[ "$latest_tag" =~ ^v22[.]0[.][0-9]+$ ]] || {
+            echo "::error::Cannot verify upgrade against existing release tag: $latest_tag"; exit 1;
+          }
+          previous_patch="${latest_tag##*.}"
+          if (( GITHUB_RUN_NUMBER <= previous_patch )); then
+            echo "::error::New OTA version is not later than $latest_tag"; exit 1
+          fi
+          old_dir="$RUNNER_TEMP/previous-official-ota"
+          mkdir -p "$old_dir"
+          gh release download "$latest_tag" --repo "$repo" --pattern 'thinn-khi.apk' --dir "$old_dir"
+          old_apk="$old_dir/thinn-khi.apk"
+          test -s "$old_apk"
+          signer_tool="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          old_cert="$("$signer_tool" verify --print-certs "$old_apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n1)"
+          new_cert="$("$signer_tool" verify --print-certs thinn-khi.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n1)"
+          if [[ -z "$old_cert" || -z "$new_cert" || "$old_cert" != "$new_cert" ]]; then
+            echo '::error::Official APK signature differs from the previously published APK. OTA would fail to install.'
+            exit 1
+          fi
+          old_package="$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$old_apk" | grep '^package:' | head -n1)"
+          [[ "$old_package" == *"name='io.atmos.weather'"* ]] || {
+            echo '::error::Previous APK package mismatch'; exit 1;
+          }
+          echo 'OTA upgrade certificate verified against previous official release.'
+          # If an earlier release already carries provenance, reject unchanged app
+          # content. A new run number alone is not a substantive OTA update.
+          if gh release view "$latest_tag" --repo "$repo" --json assets --jq '.assets[].name' | grep -qx 'embedded-build-source-proof.json'; then
+            gh release download "$latest_tag" --repo "$repo" \
+              --pattern 'embedded-build-source-proof.json' --dir "$old_dir"
+            python3 - "$old_dir/embedded-build-source-proof.json" embedded-build-source-proof.json <<'PYCOMPARE'
+          import json,sys
+          old=json.load(open(sys.argv[1],encoding='utf-8'))
+          new=json.load(open(sys.argv[2],encoding='utf-8'))
+          if old.get('app_tree_sha256') == new.get('app_tree_sha256'):
+              raise SystemExit('ERROR: APK app sources are identical to the previous release; refusing version-only OTA')
+          PYCOMPARE
+          fi
+      - name: Produce public OTA manifest from signed APK
+        if: env.SIGN_READY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 android-project/tools/create_ota_manifest.py \
+            --apk thinn-khi.apk \
+            --notes android-project/app/src/main/assets/current_release_notes.md \
+            --version "22.0.$GITHUB_RUN_NUMBER" \
+            --version-code "$((22000000 + GITHUB_RUN_NUMBER))" \
+            --output ota.json
+          test -s ota.json
+          # Validate JSON and verify the published digest against the built signed APK.
+          python3 -m json.tool ota.json >/dev/null
+          python3 - <<'PYVERIFY'
+          import hashlib,json
+          with open('ota.json', encoding='utf-8') as f: m=json.load(f)
+          with open('thinn-khi.apk','rb') as f: digest=hashlib.file_digest(f,'sha256').hexdigest()
+          assert m['sha256']==digest
+          PYVERIFY
+      - name: Verify Android debug APK contains expected source (unsigned candidate)
+        if: env.SIGN_READY != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=android-project/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          unzip -p "$apk" assets/build_source_proof.json > embedded-build-source-proof.json
+          cmp expected-build-source-proof.json embedded-build-source-proof.json || {
+            echo '::error::Debug APK source fingerprint mismatch'; exit 1;
+          }
       - name: Signed OTA artifacts
         if: env.SIGN_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V22-SIGNED-APK
+          name: thinn-khi-candidate-SIGNED-OTA
           path: |
             thinn-khi.apk
             thinn-khi.apk.sha256
+            ota.json
+            embedded-build-source-proof.json
       - name: Debug test artifact (NOT OTA)
         if: env.SIGN_READY != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: thinn-khi-V22-TEST-APK-NOT-OTA
-          path: extracted/thinn-khi_Android_Project/app/build/outputs/apk/debug/*.apk
+          name: thinn-khi-debug-TEST-NOT-OTA
+          path: |
+            android-project/app/build/outputs/apk/debug/*.apk
+            embedded-build-source-proof.json
       - name: Publish official OTA GitHub Release
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || { echo '::error::Only main can publish OTA'; exit 1; }
+          # Don't release an obsolete build if main changed during the CI run.
+          latest_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          [[ "$latest_sha" == "$GITHUB_SHA" ]] || {
+            echo "::error::main advanced since this build ($GITHUB_SHA versus $latest_sha)"; exit 1;
+          }
           version="22.0.$GITHUB_RUN_NUMBER"
-          gh release create "v$version" thinn-khi.apk thinn-khi.apk.sha256 \
+          gh release create "v$version" thinn-khi.apk thinn-khi.apk.sha256 ota.json embedded-build-source-proof.json \
             --target "$GITHUB_SHA" --title "thinn-khì $version" \
-            --notes-file extracted/thinn-khi_Android_Project/app/src/main/assets/current_release_notes.md --latest
+            --notes-file android-project/app/src/main/assets/current_release_notes.md --latest
