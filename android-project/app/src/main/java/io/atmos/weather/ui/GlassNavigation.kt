@@ -145,14 +145,16 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
-    onSeismic:()->Unit,onTasks:()->Unit={}) {
+    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B1A2B),Color(0xFF254766))))
-        .verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=57.dp,bottom=118.dp)) {
+        .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=118.dp)) {
         Text("工具",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("常用功能與你的生活事項",color=soft,fontSize=15.sp)
         Spacer(Modifier.height(17.dp))
         ThinnSection("日常生活") {
             ThinnRow("我的事項","新增、完成與安排提醒",Icons.Rounded.Checklist,onClick=onTasks)
+            GlassDivider()
+            ThinnRow("天氣鬧鐘","鬧鐘、重複星期與起床天氣語音",Icons.Rounded.Alarm,onClick=onWeatherAlarms)
             GlassDivider()
             ThinnRow("智慧天氣定時通知","最多 5 組週間與時間提醒",Icons.Rounded.NotificationsActive,onClick=onBriefings)
         }
@@ -160,6 +162,10 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
         ThinnSection("天氣與安全") {
             ThinnRow("臺灣地震監測","即時觀測與歷史地震",Icons.Rounded.Waves,onClick=onSeismic)
             GlassDivider()
+            ThinnRow("颱風動向與警報","官方颱風警報、路徑及最新資訊",Icons.Rounded.Cyclone,onClick=onTyphoons)
+        }
+        Spacer(Modifier.height(8.dp))
+        ThinnSection("系統與維護") {
             ThinnRow("系統更新中心","版本內容與安全更新",Icons.Rounded.SystemUpdate,onClick=onUpdates)
             GlassDivider()
             ThinnRow("系統健康檢查","通知、定位與排程狀態",Icons.Rounded.FactCheck,onClick=onDiagnostics)
@@ -172,13 +178,14 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
 @Composable
 fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppearance)->Unit,
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
-    onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={}) {
+    onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
+    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
     val ctx=LocalContext.current
     val prefs=remember(ctx){ctx.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     var reduceMotion by remember {mutableStateOf(prefs.getBoolean("reduce_motion",false))}
     var reduceTransparency by remember {mutableStateOf(prefs.getBoolean("reduce_transparency",false))}
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0A1D30),Color(0xFF254869))))
-        .verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=57.dp,bottom=124.dp)) {
+        .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=124.dp)) {
         Text("設定",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("所有選項皆使用統一的導覽、觸感與視覺語言",fontSize=15.sp,color=soft)
         Spacer(Modifier.height(16.dp))
@@ -203,9 +210,15 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             ThinnRow("進階視覺、環境音與觸感","主觸覺強度、音效、實境演示",Icons.Rounded.Tune,onClick=onAdvanced)
         }
         Spacer(Modifier.height(8.dp))
-        ThinnSection("安全與版本") {
+        ThinnSection("安全與警報") {
             ThinnRow("地震速報與推播安全","警報權限、測站及來源狀態",Icons.Rounded.Shield,onClick=onPushSettings)
             GlassDivider()
+            ThinnRow("颱風與官方特報","颱風警報、官方最新路徑",Icons.Rounded.Cyclone,onClick=onTyphoons)
+            GlassDivider()
+            ThinnRow("天氣鬧鐘","時間、重複與起床語音",Icons.Rounded.Alarm,onClick=onWeatherAlarms)
+        }
+        Spacer(Modifier.height(8.dp))
+        ThinnSection("系統與版本") {
             GlassToggle("自動檢查更新","背景檢查時間由 Android 排定",automaticUpdates,onUpdates)
             GlassDivider()
             ThinnRow("系統更新中心","查看版本、更新內容與下載進度",Icons.Rounded.SystemUpdate,onClick=onUpdateCenter)

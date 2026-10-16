@@ -137,6 +137,10 @@ fun SeismicLiveMapPage(
         }
     }
     val devicePlace = remember(timestamp) { SeismicUserLocation.current(ctx) }
+    var overlay by remember { mutableStateOf<EewIncident?>(null) }
+    var overlayReplay by remember { mutableStateOf(false) }
+    var lastLiveShown by remember { mutableStateOf("") }
+    var lastReplayShown by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -152,6 +156,25 @@ fun SeismicLiveMapPage(
     val stations = live.stations.filter { SeismicGeo.visible(it.latitude,it.longitude) }
     val quake = live.incident?.takeIf { SeismicGeo.visible(it.latitude,it.longitude) }
     val incidentRecent = quake != null && timestamp - quake.issuedAtMs in 0..120_000 && !quake.test && !quake.cancelled
+    // Only verified fresh provider frames raise the foreground safety sheet.
+    // Replay events have distinct state, wording and do not send real notifications.
+    LaunchedEffect(quake?.id, quake?.serial, incidentRecent, inReplay) {
+        if (!inReplay && incidentRecent && quake != null) {
+            val key="${quake.id}:${quake.serial}"
+            if (lastLiveShown != key) {
+                lastLiveShown=key;overlayReplay=false;overlay=quake
+            }
+        }
+    }
+    LaunchedEffect(replayIncident?.id, replayIncident?.serial, replayPlaying) {
+        val incident=replayIncident
+        if (inReplay && replayPlaying && incident!=null) {
+            val key="${incident.id}:${incident.serial}"
+            if (lastReplayShown!=key) {
+                lastReplayShown=key;overlayReplay=true;overlay=incident
+            }
+        }
+    }
     LaunchedEffect(incidentRecent, inReplay) {
         while(incidentRecent && !inReplay) {
             waveNow=System.currentTimeMillis()
@@ -187,7 +210,7 @@ fun SeismicLiveMapPage(
         animationSpec=infiniteRepeatable(tween(1900,easing=LinearEasing)),label="pulse")
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF06192D),Color(0xFF123B59),Color(0xFF0B223A))))) {
+        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF06192D),Color(0xFF123B59),Color(0xFF0B223A)))).statusBarsPadding()) {
             Spacer(Modifier.height(22.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -513,6 +536,9 @@ fun SeismicLiveMapPage(
                 }
                 Spacer(Modifier.height(28.dp))
             }
+        }
+        overlay?.let { event ->
+            SeismicWarningOverlay(event,overlayReplay,devicePlace?.name,onClose={overlay=null})
         }
         details?.let { report ->
             AlertDialog(onDismissRequest={details=null},

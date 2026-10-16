@@ -18,6 +18,7 @@ import io.atmos.weather.notifications.XiaomiFocusBridge
 import io.atmos.weather.notifications.WeatherNotificationDispatcher
 import io.atmos.weather.notifications.ThinnNotificationChannels
 import io.atmos.weather.domain.model.GeoPoint
+import io.atmos.weather.domain.visual.TaiwanLandmarks
 import java.util.concurrent.TimeUnit
 
 class CwaAlertWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
@@ -26,7 +27,7 @@ class CwaAlertWorker(appContext: Context, params: WorkerParameters) : CoroutineW
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return Result.success()
         val prefs = context.getSharedPreferences("atmos_settings", Context.MODE_PRIVATE)
         val cityName = prefs.getString("city_name", null) ?: return Result.success()
-        if (!cityName.startsWith("台灣") && !cityName.startsWith("臺灣")) return Result.success()
+        if (!TaiwanLandmarks.counties.any { cityName.replace('臺','台').contains(it) } && !cityName.contains("臺灣") && !cityName.contains("台灣")) return Result.success()
         val point = if (prefs.contains("lat") && prefs.contains("lon"))
             GeoPoint(Double.fromBits(prefs.getLong("lat",0)),Double.fromBits(prefs.getLong("lon",0))) else null
         val fetched = CwaWarningFeed.fetch(cityName,point)

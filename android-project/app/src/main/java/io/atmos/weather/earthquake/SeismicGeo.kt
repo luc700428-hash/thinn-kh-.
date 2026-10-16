@@ -3,7 +3,7 @@ package io.atmos.weather.earthquake
 /** Schematic island projection: only in-bounds geocoded data can become map markers. */
 object SeismicGeo {
     const val WEST = 118.05
-    const val EAST = 122.45
+    const val EAST = 123.70
     const val SOUTH = 21.65
     const val NORTH = 26.55
     fun x(longitude: Double): Float = ((longitude - WEST) / (EAST - WEST)).toFloat()
@@ -23,7 +23,7 @@ object SeismicGeo {
         IslandShape("馬祖", listOf(119.88 to 26.17, 119.93 to 26.24, 120.02 to 26.25,
             120.06 to 26.19, 119.98 to 26.13, 119.91 to 26.14))
     )
-    val regions = listOf("臺灣本島", "澎湖", "金門", "馬祖")
+    val regions = listOf("臺灣本島", "澎湖", "金門", "馬祖", "蘭嶼", "綠島", "小琉球", "龜山島", "基隆嶼", "釣魚臺列嶼（示意位置）")
     /** Simplified GSHHG / Basemap public coastline of Taiwan, not cadastral boundaries. */
     val island = listOf(
         120.86414 to 21.99958,

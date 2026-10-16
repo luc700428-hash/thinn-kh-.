@@ -1,4 +1,4 @@
-name: Build thinn-khì OTA from tracked Android source
+name: Build thinn-khì v23 major OTA from tracked Android source
 on:
   workflow_dispatch:
     inputs:
@@ -156,8 +156,8 @@ jobs:
           set -euo pipefail
           project=android-project
           args=(--no-daemon --console=plain --project-dir "$project"
-             -PTHINN_VERSION_CODE="$((22000000 + GITHUB_RUN_NUMBER))"
-             -PTHINN_VERSION_NAME="22.0.$GITHUB_RUN_NUMBER"
+             -PTHINN_VERSION_CODE="$((23000000 + GITHUB_RUN_NUMBER))"
+             -PTHINN_VERSION_NAME="23.0.$GITHUB_RUN_NUMBER"
              -PTHINN_BUILD_SHA="$GITHUB_SHA"
              -PTHINN_FIREBASE_APP_ID="${THINN_FIREBASE_APP_ID:-}"
              -PTHINN_FIREBASE_API_KEY="${THINN_FIREBASE_API_KEY:-}"
@@ -193,7 +193,7 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs thinn-khi.apk
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging thinn-khi.apk > "$RUNNER_TEMP/badging.txt"
           grep -q "name='io.atmos.weather'" "$RUNNER_TEMP/badging.txt"
-          grep -q "versionCode='$((22000000 + GITHUB_RUN_NUMBER))'" "$RUNNER_TEMP/badging.txt"
+          grep -q "versionCode='$((23000000 + GITHUB_RUN_NUMBER))'" "$RUNNER_TEMP/badging.txt"
           # This must be the APK built from this commit, NOT the pinned historical ZIP.
           unzip -p thinn-khi.apk assets/build_source_proof.json > embedded-build-source-proof.json
           cmp expected-build-source-proof.json embedded-build-source-proof.json || {
@@ -210,11 +210,14 @@ jobs:
           set -euo pipefail
           repo="$GITHUB_REPOSITORY"
           latest_tag="$(gh release view --repo "$repo" --json tagName --jq '.tagName')"
-          [[ "$latest_tag" =~ ^v22[.]0[.][0-9]+$ ]] || {
-            echo "::error::Cannot verify upgrade against existing release tag: $latest_tag"; exit 1;
-          }
-          previous_patch="${latest_tag##*.}"
-          if (( GITHUB_RUN_NUMBER <= previous_patch )); then
+          # Upgrade from v22 to v23; future v23 patch releases also allowed.
+          if [[ "$latest_tag" =~ ^v(22|23)[.]0[.]([0-9]+)$ ]]; then
+            previous_major="${BASH_REMATCH[1]}"
+            previous_patch="${BASH_REMATCH[2]}"
+          else
+            echo "::error::Cannot verify upgrade against existing release tag: $latest_tag"; exit 1
+          fi
+          if (( previous_major == 23 && GITHUB_RUN_NUMBER <= previous_patch )); then
             echo "::error::New OTA version is not later than $latest_tag"; exit 1
           fi
           old_dir="$RUNNER_TEMP/previous-official-ota"
@@ -255,8 +258,8 @@ jobs:
           python3 android-project/tools/create_ota_manifest.py \
             --apk thinn-khi.apk \
             --notes android-project/app/src/main/assets/current_release_notes.md \
-            --version "22.0.$GITHUB_RUN_NUMBER" \
-            --version-code "$((22000000 + GITHUB_RUN_NUMBER))" \
+            --version "23.0.$GITHUB_RUN_NUMBER" \
+            --version-code "$((23000000 + GITHUB_RUN_NUMBER))" \
             --output ota.json
           test -s ota.json
           # Validate JSON and verify the published digest against the built signed APK.
@@ -308,7 +311,7 @@ jobs:
           [[ "$latest_sha" == "$GITHUB_SHA" ]] || {
             echo "::error::main advanced since this build ($GITHUB_SHA versus $latest_sha)"; exit 1;
           }
-          version="22.0.$GITHUB_RUN_NUMBER"
+          version="23.0.$GITHUB_RUN_NUMBER"
           gh release create "v$version" thinn-khi.apk thinn-khi.apk.sha256 ota.json embedded-build-source-proof.json \
             --target "$GITHUB_SHA" --title "thinn-khì $version" \
             --notes-file android-project/app/src/main/assets/current_release_notes.md --latest

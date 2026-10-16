@@ -20,7 +20,7 @@ import io.atmos.weather.ui.GlassToggle
 fun SeismicPushSettingsPage(onClose:()->Unit) {
     val ctx=LocalContext.current
     var enabled by remember{mutableStateOf(SeismicPushRegistration.optedIn(ctx))}
-    var status by remember{mutableStateOf("請先了解：FCM、網路、通知權限與系統省電設定均會影響送達。")}
+    var status by remember{mutableStateOf("FCM、網路、通知權限及省電設定都會影響送達。")}
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF091B30),Color(0xFF235477))))
         .verticalScroll(rememberScrollState()).padding(22.dp)) {
         Spacer(Modifier.height(24.dp))
@@ -31,8 +31,15 @@ fun SeismicPushSettingsPage(onClose:()->Unit) {
             Text("Firebase ${if(SeismicPushRegistration.configured()) "已設定" else "尚未配置"}",color=Color.White)
             Spacer(Modifier.height(10.dp))
             GlassToggle("接收地震速報推播","可能因離線、省電、Doze 或系統通知設定延遲",enabled) { target ->
+                if (!SeismicPushRegistration.configured()) {
+                    status="Firebase 尚未配置：必須先由發行端在 CI 設定公開 Firebase 專案識別碼及部署推播後端，才能真正接收。"
+                    return@GlassToggle
+                }
                 SeismicPushRegistration.setEnabled(ctx,target) {status=it}
                 enabled=SeismicPushRegistration.optedIn(ctx)
+            }
+            if (!SeismicPushRegistration.configured()) {
+                Text("目前不可接收：Firebase 未配置，開關不會假裝成功。",color=Color(0xFFFFD38C),fontSize=15.sp)
             }
             Text(status,color=Color.White.copy(alpha=.88f),fontSize=15.sp)
             Spacer(Modifier.height(12.dp))

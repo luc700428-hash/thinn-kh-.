@@ -24,9 +24,10 @@ class HomeReadabilityTests(unittest.TestCase):
         self.assertIn('HomeAdviceRow("穿著建議"',home)
         self.assertIn('HomeAdviceRow("雨具建議"',home)
         self.assertNotIn('查看詳情  →',home)
-        visible=home.split('                    // Weather always takes precedence over decor:')[1].split('                // Local landmark is secondary')[0]
-        self.assertLess(visible.index('HomeKeyWeatherCard('),visible.index('state.cwaWarnings.isNotEmpty()'))
-        self.assertLess(visible.index('state.cwaWarnings.isNotEmpty()'),visible.index('DailyGuidanceCard('))
+        visible=home.split('                // Verified official alerts belong above any decorative landmark scene.')[1].split('                // Local landmark is secondary')[0]
+        # V23 user requirement: CWA warnings above key weather, before daily advice.
+        self.assertLess(visible.index('state.cwaWarnings.isNotEmpty()'),visible.index('HomeKeyWeatherCard('))
+        self.assertLess(visible.index('HomeKeyWeatherCard('),visible.index('DailyGuidanceCard('))
         self.assertIn('未來六小時降雨',model)
         self.assertIn('尚無降雨機率資料',model)
         self.assertIn('非官方 AQI',model)

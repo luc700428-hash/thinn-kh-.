@@ -11,8 +11,8 @@ android {
         applicationId = "io.atmos.weather"
         minSdk = 31
         targetSdk = 36
-        versionCode = providers.gradleProperty("THINN_VERSION_CODE").orNull?.toIntOrNull() ?: 22000000
-        versionName = providers.gradleProperty("THINN_VERSION_NAME").orNull ?: "22.0.0"
+        versionCode = providers.gradleProperty("THINN_VERSION_CODE").orNull?.toIntOrNull() ?: 23000000
+        versionName = providers.gradleProperty("THINN_VERSION_NAME").orNull ?: "23.0.0"
         // Git commit identifier injected by the CI, so installed builds can be audited.
         val sourceCommit = providers.gradleProperty("THINN_BUILD_SHA").orNull ?: "local"
         require(Regex("(?:[a-fA-F0-9]{40}|local)").matches(sourceCommit)) {

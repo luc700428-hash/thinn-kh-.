@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
         UpdateCheckWorker.schedule(this)
         EarthquakeReportWorker.schedule(this)
         WeatherBriefingScheduler.reschedule(this)
+        io.atmos.weather.alarm.WeatherAlarmScheduler.reconcile(this)
         // Recalculate future personal reminders after app restart / time-zone changes.
         runCatching { io.atmos.weather.task.TaskReminderScheduler.sync(
             this,io.atmos.weather.task.TaskStore.load(this)) }

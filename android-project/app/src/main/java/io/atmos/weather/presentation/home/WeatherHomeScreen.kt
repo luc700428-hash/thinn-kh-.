@@ -10,6 +10,7 @@ import io.atmos.weather.ui.GlassTextButton as TextButton
 import io.atmos.weather.ui.GlassIconButton as IconButton
 import io.atmos.weather.ui.GlassSwitch as Switch
 import io.atmos.weather.ui.GlassSlider as Slider
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -127,6 +128,30 @@ private fun CenteredTemperature(value: Int, appearance: WeatherAppearance) {
 fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snapshot = state.weather
+    val alarmContext = LocalContext.current
+    // At alarm time, speak only forecast values actually fetched recently; no made-up data.
+    LaunchedEffect(snapshot, state.stale) {
+        if (snapshot != null && !state.stale) {
+            val rain = snapshot.nextHours.take(6).mapNotNull { it.precipitationProbabilityPct }.maxOrNull()
+            val temp = snapshot.temperatureC.roundToInt()
+            val feel = snapshot.feelsLikeC?.roundToInt()
+            val clothes = when {
+                (feel ?: temp) >= 29 -> "建議短袖並注意補水防曬。"
+                (feel ?: temp) <= 19 -> "建議攜帶外套注意保暖。"
+                else -> "建議穿著輕便透氣的衣物。"
+            }
+            val umbrella = when {
+                rain == null -> "降雨資料尚未齊全，出門前請再確認。"
+                rain >= 31 -> "降雨機率最高約 ${rain}%，建議攜帶雨具。"
+                else -> "未來六小時最高降雨機率約 ${rain}%。"
+            }
+            val summary = "早安，目前氣溫約 ${temp} 度，${snapshot.condition.label()}。" +
+                (feel?.let { "體感約 ${it} 度。" } ?: "") + umbrella + clothes
+            alarmContext.getSharedPreferences("thinn_alarms",android.content.Context.MODE_PRIVATE)
+                .edit().putLong("latest_weather_at",System.currentTimeMillis())
+                .putString("latest_weather_summary",summary).apply()
+        }
+    }
     val isNight = snapshot?.isDay == false
     val stormy = snapshot?.condition == WeatherCondition.THUNDERSTORM
     val rainy = snapshot?.condition in setOf(WeatherCondition.RAIN,WeatherCondition.THUNDERSTORM,WeatherCondition.FREEZING_RAIN,WeatherCondition.HAIL)
@@ -165,10 +190,20 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         landPreference.edit().putInt(key,if(number>=99999) 0 else number+1).apply()
         number
     }
+    val reduceCityMotion=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false) }
     var landmarkStep by remember(cityRotationKey) { mutableIntStateOf(0) }
+    // New scene on every launch, then hands-free crossfade through LOCAL landmarks.
+    // Respect battery / reduce-motion: no continuous automatic change when requested.
+    LaunchedEffect(cityRotationKey, currentLandmarks.size, reduceCityMotion) {
+        if(currentLandmarks.size>1 && !reduceCityMotion) {
+            while(true) {
+                delay(17_000L)
+                landmarkStep++
+            }
+        }
+    }
     val chosenLandmark=if(currentLandmarks.isNotEmpty())
         currentLandmarks[((openingLandmarkIndex+landmarkStep)%currentLandmarks.size)] else null
-    val reduceCityMotion=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false) }
     val hapticEngine=remember(context) { HapticEngine(context) }
     var hapticSettings by remember { mutableStateOf(HapticSettings.load(context)) }
     hapticEngine.configure(hapticSettings)
@@ -233,7 +268,30 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     LaunchedEffect(fromEarthquakeNotification) { if (fromEarthquakeNotification) (context as? android.app.Activity)?.intent?.removeExtra("open_earthquake_center") }
     val fromUpdateNotification = remember { (context as? android.app.Activity)?.intent?.getBooleanExtra("open_update_center",false) == true }
     var updatePageOpen by remember { mutableStateOf(fromUpdateNotification) }
+    var typhoonPageOpen by remember { mutableStateOf(false) }
+    var weatherAlarmOpen by remember { mutableStateOf(false) }
     LaunchedEffect(fromUpdateNotification) { if (fromUpdateNotification) (context as? android.app.Activity)?.intent?.removeExtra("open_update_center") }
+    // Android predictive-back / gesture returns to the previous UI layer,
+    // not to Activity.finish() while tools, seismic, settings or sheets are open.
+    BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
+        pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen ||
+        mainPager.currentPage != 0) {
+        when {
+            weatherAlarmOpen -> weatherAlarmOpen=false
+            typhoonPageOpen -> typhoonPageOpen=false
+            earthquakePageOpen -> earthquakePageOpen=false
+            updatePageOpen -> updatePageOpen=false
+            tasksOpen -> tasksOpen=false
+            briefingOpen -> briefingOpen=false
+            diagnosticsOpen -> diagnosticsOpen=false
+            pushSettingsOpen -> pushSettingsOpen=false
+            lifestyleSettingsOpen -> lifestyleSettingsOpen=false
+            settingsOpen -> settingsOpen=false
+            locationOpen -> locationOpen=false
+            mainPager.currentPage != 0 -> showMainTab(0)
+        }
+    }
     var refreshRequested by remember { mutableStateOf(false) }
     var refreshInFlight by remember { mutableStateOf(false) }
     var refreshText by remember { mutableStateOf<String?>(null) }
@@ -428,7 +486,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // the background, independently of whether weather data loads.
                     Column(Modifier.fillMaxSize().zIndex(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal=20.dp).padding(top=42.dp,bottom=114.dp)) {
+                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=22.dp,bottom=124.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically,
                     horizontalArrangement=Arrangement.SpaceBetween) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
@@ -512,13 +570,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 } else {
                     Text("尚無天氣資料，請檢查網路連線",color=White,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
                 }
-                if (snapshot != null) {
-                    // Weather always takes precedence over decor: show real six-hour facts
-                    // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.
-                    Spacer(Modifier.height(16.dp))
-                    HomeKeyWeatherCard(snapshot, state.stale)
-                }
-                Spacer(Modifier.height(13.dp))
                 // Verified official alerts belong above any decorative landmark scene.
                 if (TaiwanLandmarks.countyFor(state.city.name, state.city.coordinate) != null) {
                     if (state.cwaWarnings.isNotEmpty()) {
@@ -563,6 +614,14 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     }
                     Spacer(Modifier.height(16.dp))
                 }
+
+                if (snapshot != null) {
+                    // Weather always takes precedence over decor: show real six-hour facts
+                    // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.
+                    Spacer(Modifier.height(16.dp))
+                    HomeKeyWeatherCard(snapshot, state.stale)
+                }
+                Spacer(Modifier.height(13.dp))
                 // Official alerts and the six-hour forecast are visible before outfit advice.
                 if(snapshot != null) {
                     DailyGuidanceCard(snapshot,state.stale) { showLifestyleDetails=true }
@@ -579,9 +638,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Text("探索在地地標",fontSize=16.sp,lineHeight=23.sp,color=TextSoft,
                             fontWeight=FontWeight.Medium)
                         if(currentLandmarks.size>1) {
-                            TextButton(onClick={landmarkStep++;hapticEngine.play(HapticEngine.Event.TAP)}) {
-                                Text("換一個  →",fontSize=16.sp,color=Color(0xFFBFE9FF),fontWeight=FontWeight.SemiBold)
-                            }
+                            Text(if(reduceCityMotion) "依所在城市展示" else "同城自動巡遊",
+                                fontSize=14.sp,color=Color(0xFFBFE9FF))
                         }
                     }
                     val caption=chosenLandmark?.caption ?: "${io.atmos.weather.location.LocationLabels.compact(state.city.name)}、地標待建模"
@@ -656,12 +714,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text("天氣是預測資訊，請以當地官方警報為準。",color=TextSoft,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
-                if (snapshot != null) {
-                    Spacer(Modifier.height(18.dp))
-                    RadarThreeHourCard(snapshot) {
-                        uriHandler.openUri("https://opendata.cwa.gov.tw/dataset/observation/O-A0058-005")
-                    }
-                }
                     } // forecast Column: always overlays the animation
                 } // page Box: one measurable root for HorizontalPager
             } // page 0
@@ -672,7 +724,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onUpdates = { updatePageOpen = true },
                 onDiagnostics = { diagnosticsOpen = true },
                 onSeismic = { showMainTab(1) },
-                onTasks = { tasksOpen = true })
+                onTasks = { tasksOpen = true },
+                onWeatherAlarms = { weatherAlarmOpen = true },
+                onTyphoons = { typhoonPageOpen = true })
             3 -> AppGlassSettingsPage(
                 appearance = appearance,
                 onAppearance = { appearance = it },
@@ -686,7 +740,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onDiagnostics = { diagnosticsOpen = true },
                 onLifestyle = { lifestyleSettingsOpen = true },
                 onPushSettings = { pushSettingsOpen = true },
-                onUpdateCenter = { updatePageOpen = true })
+                onUpdateCenter = { updatePageOpen = true },
+                onWeatherAlarms = { weatherAlarmOpen = true },
+                onTyphoons = { typhoonPageOpen = true })
             } // when(page)
             } // HorizontalPager
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
@@ -952,6 +1008,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (diagnosticsOpen) SettingsDiagnosticsPage(onClose={diagnosticsOpen=false})
         if (briefingOpen) WeatherBriefingSettingsPage(onClose={briefingOpen=false})
         if (tasksOpen) io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})
+        if (weatherAlarmOpen) io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})
+        if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
+            warnings=state.cwaWarnings,onClose={typhoonPageOpen=false})
         if (updatePageOpen) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }
@@ -961,7 +1020,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         AppGlassNavigation(
             selected = mainPager.currentPage,
             onSelect = { settingsOpen=false; showMainTab(it) },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 13.dp))
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 8.dp))
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
             title={Text(info.first)},text={Text(info.second)}) }

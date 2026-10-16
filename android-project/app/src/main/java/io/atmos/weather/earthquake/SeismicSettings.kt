@@ -98,18 +98,18 @@ object SeismicAlertPolicy {
 object SeismicPreviewPlayer {
     private var player: MediaPlayer? = null
     @Synchronized fun stop() { player?.runCatching { if (isPlaying) stop(); release() }; player = null }
-    @Synchronized fun play(ctx: Context, scenario: SeismicAlertPolicy.Scenario) {
+    @Synchronized fun play(ctx: Context, scenario: SeismicAlertPolicy.Scenario): Boolean {
         stop()
-        runCatching {
-            MediaPlayer.create(ctx.applicationContext, scenario.sound)?.apply {
-                setOnCompletionListener { p ->
-                    synchronized(SeismicPreviewPlayer) { if (player === p) player = null }
-                    p.release()
-                }
-                player = this
-                start()
+        return runCatching {
+            val next=MediaPlayer.create(ctx.applicationContext,scenario.sound) ?: return@runCatching false
+            next.setOnCompletionListener { p ->
+                synchronized(SeismicPreviewPlayer) { if (player === p) player = null }
+                p.release()
             }
-        }
+            player=next
+            next.start()
+            true
+        }.getOrDefault(false)
     }
 }
 
@@ -135,7 +135,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     var magnitude by remember { mutableFloatStateOf(pref.getFloat("report_min_magnitude", 4.5f)) }
     DisposableEffect(Unit) { onDispose { SeismicPreviewPlayer.stop() } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF061A31), Color(0xFF143B59), Color(0xFF081D33))))) {
+        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF061A31), Color(0xFF143B59), Color(0xFF081D33)))).statusBarsPadding().navigationBarsPadding()) {
             Spacer(Modifier.height(28.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.ArrowBack, "返回地震中心", tint = Color.White) }
@@ -345,7 +345,10 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
             Text(s.title,color=Color.White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
             Text(s.subtitle,color=pale,fontSize=14.sp,lineHeight=16.sp)
         }
-        OutlinedButton(onClick={SeismicPreviewPlayer.play(ctx,s)},contentPadding=PaddingValues(horizontal=8.dp,vertical=2.dp),modifier=Modifier.height(37.dp)) {
+        OutlinedButton(onClick={
+            if(!SeismicPreviewPlayer.play(ctx,s)) android.widget.Toast.makeText(ctx,
+                "無法播放試聽音，請檢查音量及音效資源",android.widget.Toast.LENGTH_SHORT).show()
+        },contentPadding=PaddingValues(horizontal=8.dp,vertical=2.dp),modifier=Modifier.height(37.dp)) {
             Icon(Icons.Rounded.PlayArrow,"試聽",modifier=Modifier.size(17.dp),tint=ice)
             Text("試聽",fontSize=14.sp,color=ice)
         }
