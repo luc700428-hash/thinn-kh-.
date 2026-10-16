@@ -43,7 +43,7 @@ private val dim=Color.White.copy(alpha=.70f)
 @Composable
 fun WeatherDial(title:String, value:String, description:String, fraction:Float, tint:Color, modifier:Modifier=Modifier) {
     val shape=RoundedCornerShape(24.dp)
-    Column(modifier.background(white.copy(alpha=.10f),shape)
+    Column(modifier.fillMaxSize().background(white.copy(alpha=.10f),shape)
         .border(1.dp,white.copy(alpha=.15f),shape).padding(15.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             val graphic = when {
@@ -102,9 +102,9 @@ fun WeatherIndicatorGrid(weather:WeatherSnapshot) {
         else (raw.filter { it in 0..5 }.distinct() + (0..5).filterNot {it in raw}).take(6)
     }
     val order=remember { mutableStateListOf<Int>().apply { addAll(valid) } }
-    Column(Modifier.fillMaxWidth().animateContentSize()) {
+    Column(Modifier.fillMaxWidth()) {
         for(rowIndex in 0..2) {
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth().height(136.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 for(colIndex in 0..1) {
                     val position=rowIndex*2+colIndex
                     val id=order[position]

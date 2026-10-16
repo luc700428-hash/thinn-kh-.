@@ -28,7 +28,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.cos
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -219,9 +218,11 @@ fun SeismicLiveMapPage(
                 }
                 IconButton(onClick=onSettings) { Icon(Icons.Rounded.Settings,"地震設定",tint=iceBlue) }
             }
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=15.dp)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .navigationBarsPadding().padding(horizontal=15.dp)) {
                 MapGlass {
-                    Row(verticalAlignment=Alignment.CenterVertically) {
+                    // Keep feed-status panel height stable when station reports arrive.
+                    Row(Modifier.fillMaxWidth().height(102.dp), verticalAlignment=Alignment.CenterVertically) {
                         Icon(Icons.Rounded.RadioButtonChecked,null,tint=if(live.enabled)Color(0xFF58E0A6) else muted,modifier=Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Column(Modifier.weight(1f)) {
@@ -239,12 +240,18 @@ fun SeismicLiveMapPage(
                     Text(if(fresh) "最後有效測站時間：${formatted(live.lastRtsAt)}（臺灣時間）"
                         else "測站數值僅在 15 秒內收到新資料才顯示；離線不沿用過期震度",
                         color=if(fresh)Color(0xFF7FE8BA) else Color(0xFFFFD09E),fontSize=14.sp)
-                    if (live.enabled && eewHealth != SeismicFeedState.LIVE) {
-                        Text("速報連線狀態：${live.eewStatus}；請檢查網路、省電限制及通知權限",
-                            color=Color(0xFFFFD09E),fontSize=14.sp,lineHeight=17.sp)
-                    }
+                    // Always reserve the same space. Live feed changes must not resize
+                    // the map card or move the user's scroll position every few seconds.
+                    Text(if (live.enabled && eewHealth != SeismicFeedState.LIVE)
+                            "速報連線狀態：${live.eewStatus}；請檢查網路與通知權限"
+                        else if (live.enabled) "地震速報連線狀態正常" else "監測暫停，可隨時啟動",
+                        color=if(live.enabled && eewHealth==SeismicFeedState.LIVE) iceBlue else Color(0xFFFFD09E),
+                        fontSize=14.sp,lineHeight=18.sp,minLines=2,maxLines=2)
                     Text("所在地：${devicePlace?.name ?: "尚未定位"} · ${devicePlace?.source ?: "未指定"}",
                         color=iceBlue,fontSize=14.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Box(Modifier.fillMaxWidth().height(153.dp)) {
+                    Column {
                     if(inReplay) {
                         Text("歷史資料回放中 · 不是真實地震預警",color=Color(0xFFFFD09E),fontWeight=FontWeight.Bold)
                     } else if(incidentRecent) {
@@ -268,6 +275,8 @@ fun SeismicLiveMapPage(
                         }
                     } else {
                         Text("目前沒有可顯示的有效即時速報；不代表沒有地震，也不代表所在地安全",fontSize=14.sp,color=muted)
+                    }
+                    }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -298,12 +307,12 @@ fun SeismicLiveMapPage(
                                 val unscaledX = (clicked.x - panX - size.width*0.5f) / zoom + size.width*0.5f
                                 val unscaledY = (clicked.y - panY - size.height*0.5f) / zoom + size.height*0.5f
                                 selected = pins.minByOrNull { point ->
-                                    val dx = SeismicGeo.x(point.longitude!!)*size.width - unscaledX
-                                    val dy = SeismicGeo.y(point.latitude!!)*size.height - unscaledY
+                                    val dx = SeismicGeo.screenX(point.longitude!!,size.width,size.height) - unscaledX
+                                    val dy = SeismicGeo.screenY(point.latitude!!,size.width,size.height) - unscaledY
                                     hypot(dx,dy)
                                 }?.takeIf { point ->
-                                    hypot(SeismicGeo.x(point.longitude!!)*size.width-unscaledX,
-                                        SeismicGeo.y(point.latitude!!)*size.height-unscaledY) < 32.dp.toPx()/zoom
+                                    hypot(SeismicGeo.screenX(point.longitude!!,size.width,size.height)-unscaledX,
+                                        SeismicGeo.screenY(point.latitude!!,size.width,size.height)-unscaledY) < 32.dp.toPx()/zoom
                                 }
                             }
                         }.pointerInput(Unit) {
@@ -325,8 +334,8 @@ fun SeismicLiveMapPage(
                                 }
                                 val path=Path()
                                 SeismicGeo.island.forEachIndexed { index,(longitude,latitude) ->
-                                    val xx=SeismicGeo.x(longitude)*size.width
-                                    val yy=SeismicGeo.y(latitude)*size.height
+                                    val xx=SeismicGeo.screenX(longitude,size.width,size.height)
+                                    val yy=SeismicGeo.screenY(latitude,size.width,size.height)
                                     if(index==0) path.moveTo(xx,yy) else path.lineTo(xx,yy)
                                 }
                                 path.close()
@@ -336,23 +345,31 @@ fun SeismicLiveMapPage(
                                 SeismicGeo.outlyingIslands.forEach { island ->
                                     val shore = Path()
                                     island.points.forEachIndexed { idx, (longitude,latitude) ->
-                                        val x = SeismicGeo.x(longitude) * size.width
-                                        val y = SeismicGeo.y(latitude) * size.height
+                                        val x = SeismicGeo.screenX(longitude,size.width,size.height)
+                                        val y = SeismicGeo.screenY(latitude,size.width,size.height)
                                         if (idx == 0) shore.moveTo(x,y) else shore.lineTo(x,y)
                                     }
                                     shore.close()
                                     drawPath(shore,Color(0xFF245873))
                                     drawPath(shore,iceBlue.copy(alpha=.76f),style=Stroke(1.5.dp.toPx()))
                                 }
+                                // Smaller islands shown as named schematic locations, not fabricated shapes.
+                                SeismicGeo.smallerIslands.forEach { (_, coords) ->
+                                    val here = Offset(
+                                        SeismicGeo.screenX(coords.first,size.width,size.height),
+                                        SeismicGeo.screenY(coords.second,size.width,size.height))
+                                    drawCircle(Color(0xFF245873),5.dp.toPx(),here)
+                                    drawCircle(iceBlue.copy(alpha=.83f),5.dp.toPx(),here,
+                                        style=Stroke(1.4.dp.toPx()))
+                                }
                                 // Distinct P (cyan) and S (amber) travel wavefronts. Educational speeds only.
                                 if(layer!="測站" && wavefront!=null && waveLat!=null && waveLon!=null) {
-                                    val epicenter=Offset(SeismicGeo.x(waveLon)*size.width,SeismicGeo.y(waveLat)*size.height)
-                                    val latScale=111.2 * cos(Math.toRadians(waveLat)).coerceAtLeast(.2)
+                                    val epicenter=Offset(SeismicGeo.screenX(waveLon,size.width,size.height),SeismicGeo.screenY(waveLat,size.width,size.height))
                                     listOf(wavefront.pSurfaceRadiusKm to Color(0xFF68E4FF),
                                         wavefront.sSurfaceRadiusKm to Color(0xFFFFB35B)).forEach { (radius,color) ->
                                         if(radius>0.0) {
-                                            val rx=(radius/(latScale*(SeismicGeo.EAST-SeismicGeo.WEST))*size.width).toFloat()
-                                            val ry=(radius/(111.2*(SeismicGeo.NORTH-SeismicGeo.SOUTH))*size.height).toFloat()
+                                            val rx=(radius/SeismicGeo.kmPerPixel(size.width,size.height)).toFloat()
+                                            val ry=rx
                                             if(rx.isFinite() && ry.isFinite()) {
                                                 drawOval(color.copy(alpha=.75f),
                                                     topLeft=Offset(epicenter.x-rx,epicenter.y-ry),
@@ -363,13 +380,13 @@ fun SeismicLiveMapPage(
                                 }
                                 val userPlace=devicePlace
                                 if(userPlace!=null && SeismicGeo.visible(userPlace.lat,userPlace.lon)) {
-                                    val here=Offset(SeismicGeo.x(userPlace.lon)*size.width,
-                                        SeismicGeo.y(userPlace.lat)*size.height)
+                                    val here=Offset(SeismicGeo.screenX(userPlace.lon,size.width,size.height),
+                                        SeismicGeo.screenY(userPlace.lat,size.width,size.height))
                                     drawCircle(Color(0xAAFFFFFF),9.dp.toPx(),here,style=Stroke(2.dp.toPx()))
                                     drawCircle(Color(0xFF78EFFF),4.dp.toPx(),here)
                                 }
                                 pins.forEach { station ->
-                                    val p=Offset(SeismicGeo.x(station.longitude!!)*size.width,SeismicGeo.y(station.latitude!!)*size.height)
+                                    val p=Offset(SeismicGeo.screenX(station.longitude!!,size.width,size.height),SeismicGeo.screenY(station.latitude!!,size.width,size.height))
                                     val hue=when {
                                         station.intensity==null -> iceBlue
                                         station.intensity>=5 -> Color(0xFFFF776F)
@@ -384,7 +401,7 @@ fun SeismicLiveMapPage(
                                     val lat=if(inReplay) replayReport?.latitude else if(incidentRecent) quake?.latitude else latestReport?.latitude
                                     val lon=if(inReplay) replayReport?.longitude else if(incidentRecent) quake?.longitude else latestReport?.longitude
                                     if(SeismicGeo.visible(lat,lon)) {
-                                        val p=Offset(SeismicGeo.x(lon!!)*size.width,SeismicGeo.y(lat!!)*size.height)
+                                        val p=Offset(SeismicGeo.screenX(lon!!,size.width,size.height),SeismicGeo.screenY(lat!!,size.width,size.height))
                                         val mark=if(incidentRecent)Color(0xFFFFAB62) else Color(0xFFD3B1FD)
                                         if(incidentRecent && !inReplay) drawCircle(mark.copy(alpha=.55f*(1f-pulse)),(11f+35f*pulse).dp.toPx(),p,style=Stroke(2.dp.toPx()))
                                         drawLine(mark,Offset(p.x-9.dp.toPx(),p.y),Offset(p.x+9.dp.toPx(),p.y),2.dp.toPx())
@@ -419,7 +436,7 @@ fun SeismicLiveMapPage(
                     Text("● 綠色 0　● 藍色 1–2　● 黃色 3–4　● 紅色 5+　✚ 震央",color=muted,fontSize=14.sp)
                     Text("雙指縮放 · 拖曳移動 · 點選測站",color=iceBlue,fontSize=14.sp)
                     Text("P 波（青）／S 波（琥珀）· 事件時間驅動的示意波圈",color=iceBlue,fontSize=14.sp)
-                    Text("臺灣本島 · 澎湖 · 金門 · 馬祖｜同一地理座標系",color=muted,fontSize=14.sp)
+                    Text("臺澎金馬 · 蘭嶼 · 綠島 · 小琉球 · 龜山島 · 釣魚臺位置示意｜等比例投影",color=muted,fontSize=14.sp)
                     Text("P／S 波圈為教育示意，不提供到達倒數；即時數值只顯示來源有效資料。",color=muted,fontSize=14.sp)
                     selected?.let { station ->
                         Spacer(Modifier.height(10.dp))

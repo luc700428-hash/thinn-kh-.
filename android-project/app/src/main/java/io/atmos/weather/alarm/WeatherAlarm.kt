@@ -31,7 +31,7 @@ object WeatherAlarmStore {
                     value.optString("title","鬧鐘"),
                     (0 until arr.length()).map { arr.getInt(it) }.filter { it in 1..7 }.toSet(),
                     value.optBoolean("enabled",true),value.optBoolean("weatherVoice",true),
-                    value.optBoolean("snooze",true))
+                    value.optBoolean("snooze",true),value.optString("ringtoneUri","").takeIf { it.isNotBlank() })
             }.getOrNull()
         }
     }.getOrDefault(emptyList())
@@ -42,6 +42,7 @@ object WeatherAlarmStore {
                 put("id",a.id);put("hour",a.hour);put("minute",a.minute);put("title",a.title)
                 put("days",JSONArray().apply { a.days.sorted().forEach {put(it)} })
                 put("enabled",a.enabled);put("weatherVoice",a.weatherVoice);put("snooze",a.snooze)
+                put("ringtoneUri", a.ringtoneUri ?: "")
             })
         }
         ctx.getSharedPreferences("thinn_alarms",Context.MODE_PRIVATE).edit().putString(KEY,array.toString()).apply()
@@ -94,7 +95,8 @@ object WeatherAlarmScheduler {
 class WeatherAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (intent.action) {
-            Intent.ACTION_BOOT_COMPLETED,Intent.ACTION_TIMEZONE_CHANGED,Intent.ACTION_TIME_CHANGED -> {
+            Intent.ACTION_BOOT_COMPLETED,Intent.ACTION_TIMEZONE_CHANGED,Intent.ACTION_TIME_CHANGED,
+            "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" -> {
                 WeatherAlarmScheduler.reconcile(ctx);return
             }
         }
@@ -107,22 +109,15 @@ class WeatherAlarmReceiver : BroadcastReceiver() {
                 WeatherAlarmStore.save(ctx,updated)
             } else WeatherAlarmScheduler.schedule(ctx,alarm)
         }
-        val nm=ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel="thinn_weather_alarm_v23"
-        nm.createNotificationChannel(NotificationChannel(channel,"天氣鬧鐘",NotificationManager.IMPORTANCE_HIGH).apply {
-            description="由使用者建立的日常鬧鐘；提示音和全螢幕權限受 Android 設定控制"
-            enableVibration(true)
-        })
-        val open=Intent(ctx,WeatherAlarmRingActivity::class.java).putExtra("alarm_id",id)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        val operation=PendingIntent.getActivity(ctx,id,open,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val n=NotificationCompat.Builder(ctx,channel)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle(alarm.title.ifBlank {"天氣鬧鐘"})
-            .setContentText("${"%02d".format(alarm.hour)}:${"%02d".format(alarm.minute)} · 點擊停止或稍後提醒")
-            .setContentIntent(operation).setAutoCancel(false).setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH).setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setFullScreenIntent(operation,true).build()
-        runCatching {nm.notify(740000+id,n)}
+        // Exact alarm broadcasts are an Android foreground-service start exemption.
+        // Keep the high-priority notification fallback for OEM restrictions.
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(ctx,
+                Intent(ctx,WeatherAlarmAudioService::class.java)
+                    .setAction(WeatherAlarmAudioService.ACTION_RING)
+                    .putExtra("alarm_id",id))
+        } catch (_: RuntimeException) {
+            WeatherAlarmAudioService.postFallbackNotification(ctx,alarm)
+        }
     }
 }

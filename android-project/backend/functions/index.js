@@ -9,6 +9,8 @@ const {validateAlert,checkHmac,REGIONS} = require('./policy.cjs');
 admin.initializeApp();
 const store=admin.firestore();
 const secret=defineSecret('ALERT_GATEWAY_HMAC_KEY');
+const cwaSecret=defineSecret('CWA_API_KEY');
+const {datasetRule,requestDataset}=require('./cwa_official.cjs');
 const REGION='asia-east1';
 function tokenKey(token){return crypto.createHash('sha256').update(token).digest('hex');}
 function uid(request){
@@ -66,4 +68,30 @@ exports.ingestTrustedEEW = onRequest({region:REGION,secrets:[secret],timeoutSeco
    });
  }
  res.json({accepted,failed,checked:deviceTokens.length,guaranteedDelivery:false});
+});
+
+// CWA Open Data query proxy. No shared CWA key is included in the APK / public GitHub.
+// Requires authenticated Firebase user. No arbitrary upstream URLs or caller parameters.
+exports.readOfficialCwa = onCall({region:REGION,secrets:[cwaSecret],timeoutSeconds:35},async request=>{
+  const user=uid(request);
+  const dataset=request.data?.dataset;
+  try{datasetRule(dataset);}catch {throw new HttpsError('invalid-argument','不支援的官方資料集');}
+  // Per-user throttle reduces abuse and protects a shared CWA API allocation.
+  const quota=store.collection('cwa-query-throttle').doc(crypto.createHash('sha256').update(user+'|'+dataset).digest('hex'));
+  const now=Date.now();
+  const accepted=await store.runTransaction(async tx=>{
+    const last=await tx.get(quota);
+    const lastAt=last.exists?Number(last.data().at)||0:0;
+    if(now-lastAt<3_000) return false;
+    tx.set(quota,{at:now,updatedAt:admin.firestore.FieldValue.serverTimestamp()});
+    return true;
+  });
+  if(!accepted) throw new HttpsError('resource-exhausted','查詢太頻繁，請稍後再試');
+  try {
+    const response=await requestDataset(dataset,cwaSecret.value());
+    return response;
+  } catch {
+    // Deliberately do not forward CWA URLs, access tokens or raw upstream errors.
+    throw new HttpsError('unavailable','中央氣象署資料暫時無法取得，請稍後再試');
+  }
 });

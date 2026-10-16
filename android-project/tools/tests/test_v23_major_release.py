@@ -19,12 +19,15 @@ class MajorV23Contract(unittest.TestCase):
         alarm=(JAVA/'alarm/WeatherAlarm.kt').read_text()
         page=(JAVA/'alarm/WeatherAlarmPage.kt').read_text()
         ring=(JAVA/'alarm/WeatherAlarmRingActivity.kt').read_text()
+        audio=(JAVA/'alarm/WeatherAlarmAudioService.kt').read_text()
         for required in ['AlarmManager','WeatherAlarmStore','getSharedPreferences','scheduleSnooze','canScheduleExactAlarms','setAlarmClock','setAndAllowWhileIdle']:
             self.assertIn(required,alarm)
         for required in ['AndroidView','NumberPicker','FilterChip','onSave','onDelete']:
             self.assertIn(required,page)
-        for required in ['TextToSpeech','稍後提醒','停止鬧鐘','latest_weather_summary']:
+        for required in ['稍後提醒','停止鬧鐘','WeatherAlarmAudioService']:
             self.assertIn(required,ring)
+        for required in ['TextToSpeech','latest_weather_summary','USAGE_ALARM','startForeground']:
+            self.assertIn(required,audio)
     def test_manifest_routes_exist(self):
         xml=(ROOT/'app/src/main/AndroidManifest.xml')
         ET.parse(xml)

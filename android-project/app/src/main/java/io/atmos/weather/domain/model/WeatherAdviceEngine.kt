@@ -29,9 +29,15 @@ object WeatherAdviceEngine {
             !it.at.isBefore(now) && Duration.between(now,it.at).toHours() <= 6
         }
         val upcomingRain = nextSixHours.firstOrNull { (it.precipitationProbabilityPct ?: 0) >= 60 }
-        val upcomingSnow = nextSixHours.firstOrNull { (it.snowfallProbabilityPct ?: 0) >= 45 || (it.snowfallCm ?: 0.0) > 0.1 }
-        val snowActive = weather.condition in setOf(WeatherCondition.SNOW, WeatherCondition.SLEET)
-        val icy = weather.condition == WeatherCondition.FREEZING_RAIN
+        // Snow probability from a model cell must agree with cold air AT THE LOCAL FORECAST LEVEL.
+        // A high-mountain grid cell must not trigger road-icing advice in 30°C Minxiong.
+        val upcomingSnow = if (weather.temperatureC <= 6.0) nextSixHours.firstOrNull {
+            val nearFreezing = it.temperatureC != null && it.temperatureC <= 3.0
+            nearFreezing && ((it.snowfallProbabilityPct ?: 0) >= 45 || (it.snowfallCm ?: 0.0) > 0.1)
+        } else null
+        val snowActive = weather.temperatureC <= 5.0 &&
+            weather.condition in setOf(WeatherCondition.SNOW, WeatherCondition.SLEET)
+        val icy = weather.temperatureC <= 3.0 && weather.condition == WeatherCondition.FREEZING_RAIN
         if (snowActive || upcomingSnow != null) {
             val probability = nextSixHours.mapNotNull { it.snowfallProbabilityPct }.maxOrNull()
             val status = if (probability != null) "預報降雪機率最高約 $probability%" else "預報顯示可能有降雪（未提供獨立降雪機率）"

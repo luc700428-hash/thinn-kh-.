@@ -1,9 +1,16 @@
 package io.atmos.weather.alarm
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.app.NotificationManager
+import androidx.core.content.ContextCompat
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.media.RingtoneManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -36,6 +43,14 @@ fun WeatherAlarmPage(onClose:()->Unit) {
     var alarms by remember { mutableStateOf(WeatherAlarmStore.load(ctx)) }
     var editing by remember { mutableStateOf<WeatherAlarm?>(null) }
     var showEditor by remember { mutableStateOf(false) }
+    var notificationAllowed by remember {
+        mutableStateOf(Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(ctx,Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)
+    }
+    val requestNotifications=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        notificationAllowed=it
+    }
+    val notifications=remember(ctx) {ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager}
     fun update(value:List<WeatherAlarm>) {
         val before=alarms.map { it.id }.toSet()
         val after=value.map { it.id }.toSet()
@@ -75,6 +90,23 @@ fun WeatherAlarmPage(onClose:()->Unit) {
                 Text("開啟精確鬧鐘授權",color=accent)
             }
         }
+        if(Build.VERSION.SDK_INT >= 33 && !notificationAllowed) {
+            Text("通知權限尚未開啟；可能看不到鬧鐘響鈴畫面。",color=Color(0xFFFFD69E),fontSize=15.sp)
+            TextButton(onClick={requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)}) {
+                Text("允許鬧鐘通知",color=accent)
+            }
+        }
+        if(Build.VERSION.SDK_INT >= 34 && !notifications.canUseFullScreenIntent()) {
+            Text("尚未開放全螢幕鬧鐘，鎖定畫面可能只顯示通知。",color=Color(0xFFFFD69E),fontSize=15.sp)
+            TextButton(onClick={
+                runCatching {
+                    ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                        android.net.Uri.parse("package:${ctx.packageName}")))
+                }.onFailure {
+                    android.widget.Toast.makeText(ctx,"無法開啟全螢幕通知設定",android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }) { Text("設定全螢幕鬧鐘",color=accent) }
+        }
         Spacer(Modifier.height(18.dp))
         if(alarms.isEmpty()) {
             Text("還沒有鬧鐘。按右上角＋新增起床提醒。",color=ink,fontSize=17.sp,
@@ -110,28 +142,17 @@ private fun AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(Weather
     var repeat by remember(initial) { mutableStateOf(initial?.days ?: emptySet()) }
     var voice by remember(initial) { mutableStateOf(initial?.weatherVoice ?: true) }
     var snooze by remember(initial) { mutableStateOf(initial?.snooze ?: true) }
-    var wheelOpen by remember { mutableStateOf(false) }
-    if(wheelOpen) Dialog(onDismissRequest={wheelOpen=false}) {
-        Column(Modifier.fillMaxWidth().background(Color(0xFFEAF5FC),RoundedCornerShape(26.dp))
-            .padding(22.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-            Text("選擇鬧鐘時間",fontSize=21.sp,color=Color(0xFF17364E),fontWeight=FontWeight.SemiBold)
-            Row(horizontalArrangement=Arrangement.spacedBy(22.dp),verticalAlignment=Alignment.CenterVertically) {
-                AndroidView(factory={android.widget.NumberPicker(it).apply {
-                    minValue=0;maxValue=23;wrapSelectorWheel=true;value=hour
-                    setFormatter { v->"%02d".format(Locale.TAIWAN,v) }
-                    setOnValueChangedListener { _,_,newValue->hour=newValue }
-                }},update={if(it.value!=hour)it.value=hour})
-                Text(":",fontSize=29.sp,color=Color(0xFF17364E))
-                AndroidView(factory={android.widget.NumberPicker(it).apply {
-                    minValue=0;maxValue=59;wrapSelectorWheel=true;value=minute
-                    setFormatter { v->"%02d".format(Locale.TAIWAN,v) }
-                    setOnValueChangedListener { _,_,newValue->minute=newValue }
-                }},update={if(it.value!=minute)it.value=minute})
-            }
-            Button(onClick={wheelOpen=false}) {Text("完成")}
+    var ringtoneUri by remember(initial) { mutableStateOf(initial?.ringtoneUri) }
+    val ringtonePicker=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if(result.resultCode==android.app.Activity.RESULT_OK) {
+            @Suppress("DEPRECATION")
+            val picked=result.data?.getParcelableExtra<android.net.Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            ringtoneUri=picked?.toString()
         }
     }
-    AlertDialog(onDismissRequest=onClose,containerColor=bg,title={Text(if(initial==null)"新增天氣鬧鐘" else "編輯鬧鐘",color=ink)},
+    var ringtonePickerError by remember { mutableStateOf(false) }
+    var wheelOpen by remember { mutableStateOf(false) }
+    if (!wheelOpen) AlertDialog(onDismissRequest=onClose,containerColor=bg,title={Text(if(initial==null)"新增天氣鬧鐘" else "編輯鬧鐘",color=ink)},
         text={Column(Modifier.verticalScroll(rememberScrollState())) {
             TextButton(onClick={wheelOpen=true}) {
                 Text(String.format(Locale.TAIWAN,"%02d:%02d  ▾",hour,minute),fontSize=38.sp,color=accent)
@@ -147,6 +168,22 @@ private fun AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(Weather
                         label={Text(text,fontSize=14.sp)},modifier=Modifier.weight(1f))
                 }
             }
+            Spacer(Modifier.height(10.dp))
+            Text("鬧鐘鈴聲",color=ink,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+            TextButton(onClick={
+                ringtonePickerError=false
+                runCatching {
+                    ringtonePicker.launch(Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE,RingtoneManager.TYPE_ALARM)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE,"選擇鬧鐘鈴聲")
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT,false)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                            ringtoneUri?.let(android.net.Uri::parse)
+                                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+                    })
+                }.onFailure { ringtonePickerError=true }
+            }) { Text(if(ringtoneUri==null) "選擇系統鈴聲 · 預設" else "變更已選鈴聲",color=accent,fontSize=16.sp) }
+            if(ringtonePickerError) Text("無法開啟系統鈴聲挑選器，請確認裝置有支援的鈴聲 App。",color=Color(0xFFFFD69E),fontSize=14.sp)
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Text("播報天氣與穿著建議",color=ink,fontSize=15.sp,modifier=Modifier.weight(1f))
                 Switch(checked=voice,onCheckedChange={voice=it})
@@ -158,9 +195,29 @@ private fun AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(Weather
             Text("語音讀取最近保存的天氣摘要；資料過舊時只提醒開啟 App，不會捏造即時預報。",color=Color(0xFFC8DCE9),fontSize=14.sp)
         }},confirmButton={
             Button(onClick={val id=initial?.id ?: ((System.currentTimeMillis()%1000000).toInt()+1)
-                onSave(WeatherAlarm(id,hour,minute,label,repeat,true,voice,snooze))}){Text("儲存")}
+                onSave(WeatherAlarm(id,hour,minute,label,repeat,true,voice,snooze,ringtoneUri))}){Text("儲存")}
         },dismissButton={Row {
             if(initial!=null) TextButton(onClick={onDelete(initial)}){Text("刪除",color=Color(0xFFFFB7AF))}
             TextButton(onClick=onClose){Text("取消")}
         }})
+    if(wheelOpen) Dialog(onDismissRequest={wheelOpen=false}) {
+        Column(Modifier.fillMaxWidth().background(Color(0xFFEAF5FC),RoundedCornerShape(26.dp))
+            .padding(22.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+            Text("選擇鬧鐘時間",fontSize=21.sp,color=Color(0xFF17364E),fontWeight=FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
+                AndroidView(factory={android.widget.NumberPicker(it).apply {
+                    minValue=0;maxValue=23;wrapSelectorWheel=true;value=hour
+                    setFormatter { v->"%02d".format(Locale.TAIWAN,v) }
+                    setOnValueChangedListener { _,_,newValue->hour=newValue }
+                }},modifier=Modifier.weight(1f),update={if(it.value!=hour)it.value=hour})
+                Text(":",fontSize=29.sp,color=Color(0xFF17364E))
+                AndroidView(factory={android.widget.NumberPicker(it).apply {
+                    minValue=0;maxValue=59;wrapSelectorWheel=true;value=minute
+                    setFormatter { v->"%02d".format(Locale.TAIWAN,v) }
+                    setOnValueChangedListener { _,_,newValue->minute=newValue }
+                }},modifier=Modifier.weight(1f),update={if(it.value!=minute)it.value=minute})
+            }
+            Button(onClick={wheelOpen=false}) {Text("完成")}
+        }
+    }
 }

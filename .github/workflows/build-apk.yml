@@ -59,6 +59,15 @@ jobs:
           test -s "$project/app/src/main/java/io/atmos/weather/ui/RadarHistoryDialog.kt"
           grep -Fq 'releases/latest/download/ota.json' "$project/app/src/main/java/io/atmos/weather/update/AppUpdater.kt"
           test -s "$project/backend/functions/index.js"
+          test -s "$project/backend/functions/cwa_official.cjs"
+          test -s "$project/app/src/main/java/io/atmos/weather/earthquake/CwaOfficialGateway.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/visual/FilamentLandmark.kt"
+          test ! -e "$project/app/src/main/java/io/atmos/weather/earthquake/BundledCwaKey.kt" || {
+            echo '::error::Remove old hard-coded CWA credentials from tracked Android source'; exit 1;
+          }
+          if grep -R -q -E 'CWA-[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}' "$project/app/src/main/java"; then
+            echo '::error::Potential hard-coded CWA authorization key in source'; exit 1;
+          fi
           for n in $(seq -w 0 21); do
             test -s "$project/app/src/main/assets/landmarks/tw_${n}.glb"
             test -s "$project/app/src/main/assets/landmarks/previews/tw_${n}.png"

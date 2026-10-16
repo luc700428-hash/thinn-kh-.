@@ -3,9 +3,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- No full-screen-intent permission: third-party weather apps cannot claim alarm/phone privileges. -->
+    <!-- Full-screen alarm notifications require explicit user authorization on newer Android versions. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -20,8 +21,11 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+        <service android:name=".alarm.WeatherAlarmAudioService" android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
         <activity android:name=".alarm.WeatherAlarmRingActivity" android:exported="false"
             android:showWhenLocked="true" android:turnScreenOn="true" />
         <receiver android:name=".briefing.WeatherBriefingTimeReceiver" android:exported="false">

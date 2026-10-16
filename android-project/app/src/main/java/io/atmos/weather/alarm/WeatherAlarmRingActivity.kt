@@ -2,19 +2,27 @@ package io.atmos.weather.alarm
 
 import android.app.NotificationManager
 import android.content.Context
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
-import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,30 +33,22 @@ import androidx.compose.ui.unit.sp
 import java.util.Locale
 
 /** Opened by the alarm notification. No claim to bypass device lock screen or Do Not Disturb. */
-class WeatherAlarmRingActivity:ComponentActivity(), TextToSpeech.OnInitListener {
-    private var sound:MediaPlayer?=null
-    private var speaker:TextToSpeech?=null
-    private var vibration:Vibrator?=null
+class WeatherAlarmRingActivity:ComponentActivity() {
     private var alarmId=-1
     private var alarm:WeatherAlarm?=null
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+        // Android platform controls whether fullscreen alarm launch is permitted.
+        if(android.os.Build.VERSION.SDK_INT>=27) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
         alarmId=intent.getIntExtra("alarm_id",-1)
         alarm=WeatherAlarmStore.load(this).firstOrNull {it.id==alarmId}
         val info=alarm
         if(info==null){finish();return}
-        runCatching {
-            val uri=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            sound=MediaPlayer.create(this,uri)?.apply {isLooping=true;start()}
-        }
-        runCatching {
-            vibration=if(android.os.Build.VERSION.SDK_INT>=31)
-                (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-                else (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            vibration?.vibrate(VibrationEffect.createWaveform(longArrayOf(0,450,380),0))
-        }
-        if(info.weatherVoice) speaker=TextToSpeech(this,this)
+        // A foreground service owns the ringtone, vibration and weather TTS.
+        // The alarm must keep ringing even when a locked device does not launch this UI.
         setContent {
             Column(Modifier.fillMaxSize().background(Color(0xFF080C12)).statusBarsPadding()
                 .navigationBarsPadding().padding(26.dp),
@@ -66,34 +66,62 @@ class WeatherAlarmRingActivity:ComponentActivity(), TextToSpeech.OnInitListener 
                         colors=ButtonDefaults.buttonColors(containerColor=Color(0xFFFFA939)),shape=RoundedCornerShape(36.dp)) {
                         Text("稍後提醒 · 10 分鐘",fontSize=21.sp,color=Color.Black)
                     }
-                    OutlinedButton(onClick={close(false)},modifier=Modifier.fillMaxWidth().height(72.dp),
-                        shape=RoundedCornerShape(36.dp)) {Text("停止鬧鐘",fontSize=21.sp)}
+                    // Horizontal slide gesture, with spring-back if not completed.
+                    // Separate button below preserves access for TalkBack / switch access.
+                    val haptic=LocalHapticFeedback.current
+                    var trackWidth by remember { mutableIntStateOf(0) }
+                    var dragging by remember { mutableFloatStateOf(0f) }
+                    val density=LocalDensity.current
+                    val maxDrag=(trackWidth-with(density){80.dp.toPx()}).coerceAtLeast(1f)
+                    val offset by animateFloatAsState(dragging,animationSpec=spring(
+                        dampingRatio=.76f, stiffness=430f),label="alarm swipe stop")
+                    Box(Modifier.fillMaxWidth().height(76.dp)
+                        .onSizeChanged {trackWidth=it.width}
+                        .background(Color.White.copy(alpha=.10f),RoundedCornerShape(40.dp))
+                        .border(1.dp,Color.White.copy(alpha=.25f),RoundedCornerShape(40.dp))
+                        .pointerInput(maxDrag) {
+                            detectHorizontalDragGestures(
+                                onDragEnd={
+                                    if(dragging >= maxDrag*.72f) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        close(false)
+                                    } else dragging=0f
+                                },
+                                onDragCancel={ dragging=0f },
+                                onHorizontalDrag={change,dx->
+                                    change.consume()
+                                    dragging=(dragging+dx).coerceIn(0f,maxDrag)
+                                }
+                            )
+                        }, contentAlignment=Alignment.Center) {
+                        Text("滑動停止鬧鐘  →",color=Color(0xFFDDEAF3),fontSize=18.sp)
+                        Box(Modifier.align(Alignment.CenterStart)
+                            .padding(5.dp).offset {IntOffset(offset.roundToInt(),0)}
+                            .size(66.dp).background(Color(0xFF30353B),CircleShape)
+                            .border(1.dp,Color(0xFFDAE7F1).copy(alpha=.38f),CircleShape),
+                            contentAlignment=Alignment.Center) {
+                            Icon(Icons.Rounded.Stop,contentDescription="向右滑動停止",tint=Color.White,
+                                modifier=Modifier.size(26.dp))
+                        }
+                    }
+                    TextButton(onClick={close(false)},modifier=Modifier.fillMaxWidth()) {
+                        Text("無法滑動？點此停止鬧鐘",color=Color(0xFFD1DFEA),fontSize=15.sp)
+                    }
                 }
             }
         }
     }
     private fun close(snooze:Boolean) {
-        if(snooze) WeatherAlarmScheduler.scheduleSnooze(this,alarmId)
+        val action = if (snooze) WeatherAlarmAudioService.ACTION_SNOOZE
+            else WeatherAlarmAudioService.ACTION_STOP
+        runCatching {
+            startService(android.content.Intent(this,WeatherAlarmAudioService::class.java)
+                .setAction(action).putExtra("alarm_id",alarmId))
+        }
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(740000+alarmId)
-        release()
         finish()
     }
-    override fun onInit(status:Int) {
-        if(status!=TextToSpeech.SUCCESS || isFinishing) return
-        speaker?.language=Locale.TAIWAN
-        val prefs=getSharedPreferences("thinn_alarms",Context.MODE_PRIVATE)
-        val stamp=prefs.getLong("latest_weather_at",0L)
-        val fresh=System.currentTimeMillis()-stamp in 0L..(3*60*60_000L)
-        val message=if(fresh) prefs.getString("latest_weather_summary",null)
-            ?:"早安，請查看今天最新的天氣預報。"
-            else "早安。天氣資料尚未更新，請打開天氣 App 確認今日預報及警特報。"
-        speaker?.speak(message,TextToSpeech.QUEUE_FLUSH,null,"wake_weather")
-    }
-    private fun release() {
-        runCatching {sound?.stop();sound?.release()};sound=null
-        runCatching {speaker?.stop();speaker?.shutdown()};speaker=null
-        vibration?.cancel()
-    }
-    override fun onDestroy(){release();super.onDestroy()}
+    override fun onDestroy() { super.onDestroy() }
+    @Deprecated("Use the on-screen stop action")
     override fun onBackPressed(){close(false)}
 }

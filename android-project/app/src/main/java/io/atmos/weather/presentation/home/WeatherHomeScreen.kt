@@ -47,6 +47,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import io.atmos.weather.widgets.WidgetSync
+import io.atmos.weather.visual.FilamentLandmark
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -156,7 +157,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val stormy = snapshot?.condition == WeatherCondition.THUNDERSTORM
     val rainy = snapshot?.condition in setOf(WeatherCondition.RAIN,WeatherCondition.THUNDERSTORM,WeatherCondition.FREEZING_RAIN,WeatherCondition.HAIL)
     val heavyRain = snapshot?.weatherCode in setOf(65,67,82,95,96,99)
-    val snow = snapshot?.condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)
+    val snow = (snapshot?.temperatureC ?: 100.0) <= 5.0 && snapshot?.condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)
     val hazy = (snapshot?.aerosolOpticalDepth ?: 0.0) >= .45 || snapshot?.condition in setOf(WeatherCondition.HAZE, WeatherCondition.DUST, WeatherCondition.DUST_STORM)
     val colors = when {
         snapshot?.condition == WeatherCondition.DUST_STORM -> listOf(Color(0xFF57412F), Color(0xFFAB8055), Color(0xFFE0B884))
@@ -570,6 +571,27 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 } else {
                     Text("尚無天氣資料，請檢查網路連線",color=White,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
                 }
+                // Typhoon is a first-class, weather-page section. All paths remain official only.
+                val typhoonNotices = state.cwaWarnings.filter {
+                    it.title.contains("颱風") || it.summary.contains("颱風警報")
+                }
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                    .background(White.copy(alpha=.11f))
+                    .border(1.dp, White.copy(alpha=.22f), RoundedCornerShape(20.dp))
+                    .clickable { typhoonPageOpen = true }
+                    .padding(horizontal=16.dp, vertical=13.dp), verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Cyclone, contentDescription=null,
+                        tint=if (typhoonNotices.isNotEmpty()) Color(0xFFFFC47D) else Color(0xFF99E4FF),
+                        modifier=Modifier.size(25.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("颱風動向與官方路徑", fontSize=17.sp, fontWeight=FontWeight.SemiBold, color=White)
+                        Text(if (typhoonNotices.isNotEmpty()) "${typhoonNotices.size} 則颱風相關公告 · 查看路徑與影響"
+                            else "查看中央氣象署最新颱風路徑與警報", fontSize=14.sp, color=TextSoft)
+                    }
+                    Icon(Icons.Rounded.ChevronRight, contentDescription="查看颱風動向", tint=TextSoft)
+                }
+                Spacer(Modifier.height(12.dp))
                 // Verified official alerts belong above any decorative landmark scene.
                 if (TaiwanLandmarks.countyFor(state.city.name, state.city.coordinate) != null) {
                     if (state.cwaWarnings.isNotEmpty()) {
@@ -677,7 +699,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     }
                     Spacer(Modifier.height(15.dp))
                     WeatherIndicatorGrid(snapshot)
-                    if(snapshot.condition in setOf(WeatherCondition.SNOW, WeatherCondition.SLEET, WeatherCondition.FREEZING_RAIN)) {
+                    if(snapshot.temperatureC <= 6.0 && snapshot.condition in
+                        setOf(WeatherCondition.SNOW, WeatherCondition.SLEET, WeatherCondition.FREEZING_RAIN)) {
                         Spacer(Modifier.height(8.dp))
                         GlassCard {
                             Text("❄ 降雪與冰凍預報",color=White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
@@ -1600,8 +1623,12 @@ private fun LandmarkCanvas(scene: WeatherScene?,place:LandmarkPlace?,modifier:Mo
             Text("${place.caption} · 模型預覽讀取失敗",color=White,fontSize=16.sp)
         }
     } else {
-        Image(bitmap=bitmap,contentDescription="${place.caption}，獨立建模示意圖，非精確實景",
-            modifier=modifier,contentScale=androidx.compose.ui.layout.ContentScale.Fit)
+        // Display the actual GLB with Filament, rather than its static PNG preview.
+        // The original model remains labelled as a geometric prototype.
+        FilamentLandmark(modelAsset=place.model!!,modifier=modifier) {
+            Image(bitmap=bitmap,contentDescription="${place.caption}，模型預覽示意圖",
+                modifier=modifier,contentScale=androidx.compose.ui.layout.ContentScale.Fit)
+        }
     }
 }
 

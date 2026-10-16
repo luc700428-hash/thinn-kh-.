@@ -48,7 +48,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                 Canvas(Modifier.fillMaxSize().padding(18.dp)) {
                     val shape=Path()
                     SeismicGeo.island.forEachIndexed {i,p ->
-                        val pt=Offset(SeismicGeo.x(p.first)*size.width, SeismicGeo.y(p.second)*size.height)
+                        val pt=Offset(SeismicGeo.screenX(p.first,size.width,size.height), SeismicGeo.screenY(p.second,size.width,size.height))
                         if(i==0) shape.moveTo(pt.x,pt.y) else shape.lineTo(pt.x,pt.y)
                     }
                     shape.close()
@@ -57,17 +57,22 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                     SeismicGeo.outlyingIslands.forEach { island ->
                         val islandPath=Path()
                         island.points.forEachIndexed {index,(longitude,latitude) ->
-                            val x=SeismicGeo.x(longitude)*size.width
-                            val y=SeismicGeo.y(latitude)*size.height
+                            val x=SeismicGeo.screenX(longitude,size.width,size.height)
+                            val y=SeismicGeo.screenY(latitude,size.width,size.height)
                             if(index==0)islandPath.moveTo(x,y) else islandPath.lineTo(x,y)
                         }
                         islandPath.close()
                         drawPath(islandPath,Color(0xFF28647A))
                         drawPath(islandPath,Color(0xFF81D8F2),style=Stroke(1.dp.toPx()))
                     }
+                    SeismicGeo.smallerIslands.forEach { (_, geo) ->
+                        val at=Offset(SeismicGeo.screenX(geo.first,size.width,size.height),
+                            SeismicGeo.screenY(geo.second,size.width,size.height))
+                        drawCircle(Color(0xFF81D8F2),2.5.dp.toPx(),at)
+                    }
                     val lat=incident.latitude;val lon=incident.longitude
                     if(SeismicGeo.visible(lat,lon)) {
-                        val center=Offset(SeismicGeo.x(lon!!)*size.width,SeismicGeo.y(lat!!)*size.height)
+                        val center=Offset(SeismicGeo.screenX(lon!!,size.width,size.height),SeismicGeo.screenY(lat!!,size.width,size.height))
                         drawCircle(Color(0xFFFFB57A),24.dp.toPx(),center,style=Stroke(3.dp.toPx()))
                         drawCircle(Color.White,5.dp.toPx(),center)
                     }

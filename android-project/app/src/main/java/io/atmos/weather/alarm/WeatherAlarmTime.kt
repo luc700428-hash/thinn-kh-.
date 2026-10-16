@@ -13,7 +13,8 @@ data class WeatherAlarm(
     val days: Set<Int> = emptySet(), // ISO days Monday=1 .. Sunday=7, empty = once
     val enabled: Boolean = true,
     val weatherVoice: Boolean = true,
-    val snooze: Boolean = true
+    val snooze: Boolean = true,
+    val ringtoneUri: String? = null
 )
 
 object WeatherAlarmTime {

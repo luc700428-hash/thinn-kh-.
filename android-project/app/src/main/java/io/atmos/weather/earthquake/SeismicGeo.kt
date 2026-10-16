@@ -10,6 +10,20 @@ object SeismicGeo {
     fun y(latitude: Double): Float = ((NORTH - latitude) / (NORTH - SOUTH)).toFloat()
     fun visible(lat: Double?, lon: Double?): Boolean = lat != null && lon != null &&
         lat in SOUTH..NORTH && lon in WEST..EAST
+    /** One isotropic Mercator-like local tangent plane for BOTH axes.
+     * Geographic locations remain schematic, but Taiwan's aspect ratio is preserved.
+     * The full map includes Penghu, Kinmen, Matsu and Diaoyutai; no fake stations.
+     */
+    private const val COS_CENTER = 0.91354546 // cos(24 degrees latitude)
+    private fun extentKmX() = (EAST - WEST) * 111.2 * COS_CENTER
+    private fun extentKmY() = (NORTH - SOUTH) * 111.2
+    fun kmPerPixel(widthPx: Float, heightPx: Float): Float =
+        maxOf(extentKmX() / (widthPx * .92f).coerceAtLeast(1f),
+              extentKmY() / (heightPx * .92f).coerceAtLeast(1f)).toFloat()
+    fun screenX(longitude: Double, widthPx: Float, heightPx: Float): Float =
+        (widthPx / 2 + ((longitude - (WEST + EAST) / 2) * 111.2 * COS_CENTER / kmPerPixel(widthPx,heightPx))).toFloat()
+    fun screenY(latitude: Double, widthPx: Float, heightPx: Float): Float =
+        (heightPx / 2 - ((latitude - (SOUTH + NORTH) / 2) * 111.2 / kmPerPixel(widthPx,heightPx))).toFloat()
     /** Outlying islands use approximate, explicitly schematic coastlines.
      * Real data points are always rendered from their supplied GPS coordinates.
      * Coordinates throughout this canvas include 臺、澎、金、馬.
@@ -22,6 +36,14 @@ object SeismicGeo {
             118.42 to 24.49, 118.47 to 24.43, 118.42 to 24.39, 118.34 to 24.39)),
         IslandShape("馬祖", listOf(119.88 to 26.17, 119.93 to 26.24, 120.02 to 26.25,
             120.06 to 26.19, 119.98 to 26.13, 119.91 to 26.14))
+    )
+    val smallerIslands = listOf(
+        "綠島" to (121.490 to 22.670),
+        "蘭嶼" to (121.548 to 22.042),
+        "小琉球" to (120.371 to 22.345),
+        "龜山島" to (121.953 to 24.843),
+        "基隆嶼" to (121.786 to 25.194),
+        "釣魚臺列嶼（位置示意）" to (123.493 to 25.746)
     )
     val regions = listOf("臺灣本島", "澎湖", "金門", "馬祖", "蘭嶼", "綠島", "小琉球", "龜山島", "基隆嶼", "釣魚臺列嶼（示意位置）")
     /** Simplified GSHHG / Basemap public coastline of Taiwan, not cadastral boundaries. */
