@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>thinn-khì｜降雨雷達</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+:root{font-family:system-ui,'Noto Sans TC',sans-serif;color-scheme:light dark}
+*{box-sizing:border-box}body{margin:0;background:#dcecf4;color:#19304a}main{display:grid;grid-template-rows:auto 1fr auto;height:100dvh}
+header{background:rgba(241,250,255,.94);padding:14px 16px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:20px;margin:0}button{min-width:48px;min-height:48px;border:1px solid #6e9fbb;border-radius:18px;background:#f2faff;color:#19304a;font-size:16px;font-weight:600;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
+#map{min-height:280px}footer{background:rgba(244,250,255,.97);padding:12px 16px;display:grid;gap:8px}small{font-size:13px;color:#344b5b}input[type=range]{width:100%;min-height:34px;accent-color:#145b91}
+#status{font-weight:600}#status.error{color:#a00028}#times{font-size:14px}a{color:#0e517f}
+@media(prefers-color-scheme:dark){body{color:#fff;background:#121c2b}header,footer{background:#1e2b3c;color:#fff}button{color:#fff;background:#2b465b}small{color:#d5e5f0}a{color:#9cd5ff}}
+</style></head><body><main>
+<header><h1>降雨雷達 · 歷史實況</h1><button id="refresh" type="button">更新雷達</button></header>
+<div id="map" role="region" aria-label="臺灣降雨雷達地圖"></div>
+<footer>
+ <div id="status" aria-live="polite">取得雷達圖資中…</div>
+ <label for="timeline">選擇歷史雷達影像</label><input type="range" id="timeline" min="0" max="0" value="0" aria-label="雷達影像時間軸">
+ <div id="times"></div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="radarMode" aria-pressed="true">雷達實況</button><button disabled title="等待合法衛星來源串接">衛星雲圖（尚未接入）</button><button type="button" id="forecastBtn">未來3小時雨量</button></div>
+ <section id="forecast" hidden aria-live="polite"><h2 style="font-size:17px">15 分鐘降雨量預報</h2><div id="forecastData">載入中…</div><small>臺灣地區可能由逐時預報插值，非衛星或雷達預測影像。</small></section>
+ <small>雷達來源：<a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>（歷史觀測，不代表未來預測）。底圖 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>。資料更新可能有延遲。</small>
+</footer></main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+'use strict';
+const status=document.getElementById('status'),timeline=document.getElementById('timeline'),times=document.getElementById('times');
+const map= L.map('map',{maxZoom:7}).setView([23.75,120.95],7);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:7}).addTo(map);
+let radarLayer=null,metadata=null,lastFetch=0;
+function timestamp(t){return new Date(t*1000).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+'（臺灣時間）';}
+function showFrame(index){
+  if(!metadata||!metadata.radar.past.length) return;
+  const frame=metadata.radar.past[index], host=new URL(metadata.host);
+  if(host.protocol!=='https:'||host.hostname!=='tilecache.rainviewer.com') throw Error('非授權雷達圖資主機');
+  if(!/^\/v2\/radar\/[\w/-]+$/.test(frame.path))throw Error('無效圖資');
+  if(radarLayer) map.removeLayer(radarLayer);
+  radarLayer=L.tileLayer(host.origin+frame.path+'/256/{z}/{x}/{y}/2/1_1.png',{opacity:.75,maxZoom:7,attribution:'RainViewer'}).addTo(map);
+  times.textContent='雷達觀測：'+timestamp(frame.time);timeline.value=String(index);
+}
+async function updateRadar(force=false){
+  const now=Date.now(); if(force&&now-lastFetch<300000){status.textContent='已是最新快取，請稍後更新';return;}
+  status.className='';status.textContent='正在更新雷達…';
+  try{
+    const response=await fetch('https://api.rainviewer.com/public/weather-maps.json',{cache:'no-cache'});
+    if(!response.ok)throw Error('雷達服務暫時無法使用');
+    const data=await response.json();
+    if(!Array.isArray(data.radar?.past)||!data.radar.past.length)throw Error('沒有可用雷達影像');
+    metadata={host:data.host,radar:{past:data.radar.past.filter(x=>Number.isInteger(x.time))}};
+    timeline.max=String(metadata.radar.past.length-1);
+    showFrame(metadata.radar.past.length-1);lastFetch=now;
+    status.textContent='已更新・每 5 分鐘檢查資料來源';
+  }catch(e){status.className='error';status.textContent='雷達圖無法更新：'+e.message+'（保留上一張影像）';}
+}
+const forecast=document.getElementById('forecast'),forecastData=document.getElementById('forecastData');
+async function showForecast(){
+ forecast.hidden=!forecast.hidden;if(forecast.hidden)return;
+ forecastData.textContent='載入臺灣 15 分鐘雨量預測…';
+ try{
+  const q=new URLSearchParams({latitude:String(map.getCenter().lat),longitude:String(map.getCenter().lng),minutely_15:'precipitation',forecast_minutely_15:'12',timezone:'Asia/Taipei'});
+  const res=await fetch('https://api.open-meteo.com/v1/forecast?'+q.toString());
+  if(!res.ok)throw Error('預報服務暫不可用');const json=await res.json();
+  const dates=json.minutely_15?.time||[], values=json.minutely_15?.precipitation||[];
+  if(!dates.length)throw Error('目前無逐時雨量資料');
+  forecastData.replaceChildren();
+  dates.slice(0,12).forEach((d,i)=>{const p=document.createElement('div');p.textContent=`${d.slice(11)}：${Number(values[i]??0).toFixed(1)} mm／15分鐘`;forecastData.append(p)});
+ }catch(e){forecastData.textContent='資料取得失敗：'+e.message;}
+}
+timeline.addEventListener('input',()=>showFrame(Number(timeline.value)));
+document.getElementById('refresh').addEventListener('click',()=>updateRadar(true));
+document.getElementById('forecastBtn').addEventListener('click',showForecast);
+updateRadar();setInterval(()=>updateRadar(),300000);
+</script></body></html>

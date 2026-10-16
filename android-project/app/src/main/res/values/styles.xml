@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.Atmos" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowSplashScreenBackground">#06172B</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/brand_symbol</item>
+        <item name="android:statusBarColor">#00000000</item>
+        <item name="android:navigationBarColor">#101E35</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

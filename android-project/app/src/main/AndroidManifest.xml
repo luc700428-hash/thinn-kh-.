@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- No full-screen-intent permission: third-party weather apps cannot claim alarm/phone privileges. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <application android:allowBackup="false" android:usesCleartextTraffic="false"
+      android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/Theme.Atmos" android:supportsRtl="true">
+        <receiver android:name=".briefing.WeatherBriefingTimeReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+        <service android:name=".earthquake.ExpTechSeismicService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-initiated continuous real-time seismic event monitoring from third-party SSE stream" />
+        </service>
+        <provider android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.update.files"
+            android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths" />
+        </provider>
+        <service android:name=".push.ThinnFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
+        </service>
+        <receiver android:name=".widgets.SafetyWidgetReceiver" android:exported="true"
+            android:label="thinn-khì 安心天氣與地震">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/thinn_safety_widget_info" />
+        </receiver>
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity>
+        <receiver android:name=".widgets.Widget00Receiver" android:exported="true" android:label="@string/widget_00_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_00_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget01Receiver" android:exported="true" android:label="@string/widget_01_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_01_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget02Receiver" android:exported="true" android:label="@string/widget_02_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_02_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget03Receiver" android:exported="true" android:label="@string/widget_03_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_03_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget04Receiver" android:exported="true" android:label="@string/widget_04_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_04_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget05Receiver" android:exported="true" android:label="@string/widget_05_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_05_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget06Receiver" android:exported="true" android:label="@string/widget_06_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_06_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget07Receiver" android:exported="true" android:label="@string/widget_07_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_07_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget08Receiver" android:exported="true" android:label="@string/widget_08_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_08_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget09Receiver" android:exported="true" android:label="@string/widget_09_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_09_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget10Receiver" android:exported="true" android:label="@string/widget_10_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_10_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget11Receiver" android:exported="true" android:label="@string/widget_11_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_11_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget12Receiver" android:exported="true" android:label="@string/widget_12_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_12_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget13Receiver" android:exported="true" android:label="@string/widget_13_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_13_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget14Receiver" android:exported="true" android:label="@string/widget_14_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_14_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget15Receiver" android:exported="true" android:label="@string/widget_15_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_15_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget16Receiver" android:exported="true" android:label="@string/widget_16_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_16_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget17Receiver" android:exported="true" android:label="@string/widget_17_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_17_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget18Receiver" android:exported="true" android:label="@string/widget_18_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_18_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget19Receiver" android:exported="true" android:label="@string/widget_19_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_19_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget20Receiver" android:exported="true" android:label="@string/widget_20_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_20_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget21Receiver" android:exported="true" android:label="@string/widget_21_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_21_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget22Receiver" android:exported="true" android:label="@string/widget_22_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_22_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget23Receiver" android:exported="true" android:label="@string/widget_23_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_23_info" />
+        </receiver>
+        <receiver android:name=".widgets.Widget24Receiver" android:exported="true" android:label="@string/widget_24_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_24_info" />
+        </receiver>
+    </application>
+</manifest>

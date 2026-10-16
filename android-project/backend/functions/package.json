@@ -1,0 +1,9 @@
+{
+  "name": "thinn-khi-alert-gateway",
+  "version": "22.0.0",
+  "private": true,
+  "main": "index.js",
+  "engines": {"node": "22"},
+  "scripts": {"test": "node --test ../tests/*.test.cjs"},
+  "dependencies": {"firebase-admin": "^13.0.0", "firebase-functions": "^6.0.0"}
+}
