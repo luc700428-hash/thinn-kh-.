@@ -211,14 +211,17 @@ fun SeismicLiveMapPage(
     DisposableEffect(Unit) { onDispose { SeismicSound.stop() } }
     LaunchedEffect(replayPlaying) { if (!replayPlaying) SeismicSound.stop() }
 
-    val maxI = stations.mapNotNull { it.intensity }.maxOrNull()
-    val maxPga = stations.mapNotNull { it.accelerationGal }.maxOrNull()
+    // Historical observations stay on the map for context, but never masquerade
+    // as live seismic readings in the three metric tiles.
+    val currentStations = if (fresh) stations else emptyList()
+    val maxI = currentStations.mapNotNull { it.intensity }.maxOrNull()
+    val maxPga = currentStations.mapNotNull { it.accelerationGal }.maxOrNull()
     val pulse by rememberInfiniteTransition(label="seismic marker").animateFloat(
         initialValue=0.18f,targetValue=1f,
         animationSpec=infiniteRepeatable(tween(1900,easing=LinearEasing)),label="pulse")
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF06192D),Color(0xFF123B59),Color(0xFF0B223A)))).statusBarsPadding()) {
+        Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page).statusBarsPadding()) {
             Spacer(Modifier.height(22.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -230,62 +233,98 @@ fun SeismicLiveMapPage(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .navigationBarsPadding().padding(horizontal=15.dp)) {
                 MapGlass {
-                    // Keep feed-status panel height stable when station reports arrive.
-                    Row(Modifier.fillMaxWidth().height(102.dp), verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.RadioButtonChecked,null,tint=if(live.enabled)Color(0xFF58E0A6) else muted,modifier=Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(if(live.enabled) "監測服務已啟動" else "即時監測未啟動",color=light,fontWeight=FontWeight.Bold)
-                            Text("速報：${SeismicFeedHealth.eewLabel(eewHealth)}",fontSize=14.sp,
-                                color=if(eewHealth==SeismicFeedState.LIVE) Color(0xFF7FE8BA) else Color(0xFFFFD09E))
-                            Text("測站：${SeismicFeedHealth.rtsLabel(rtsHealth)}${if (!fresh && stations.isNotEmpty()) " · 上次觀測，非即時" else ""}",fontSize=14.sp,
-                                color=if(fresh) Color(0xFF7FE8BA) else Color(0xFFFFD09E))
+                            Text("監測服務",color=light,fontSize=22.sp,fontWeight=FontWeight.Bold)
+                            Text(if(live.enabled) "第三方速報與測站資料監測中" else "目前已停止即時監測",
+                                color=muted,fontSize=14.sp)
                         }
+                        Box(Modifier.clip(RoundedCornerShape(16.dp))
+                            .background(if(live.enabled) Color(0xFF54D6A1).copy(alpha=.18f) else Color.White.copy(alpha=.08f))
+                            .border(1.dp,if(live.enabled) Color(0xFF82F0BF).copy(alpha=.38f) else Color.White.copy(alpha=.12f),RoundedCornerShape(16.dp))
+                            .padding(horizontal=12.dp,vertical=8.dp)) {
+                            Text(if(live.enabled) "已啟動" else "已停止",
+                                color=if(live.enabled) Color(0xFF9BF7CB) else muted,
+                                fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+                        }
+                        Spacer(Modifier.width(10.dp))
                         Button(onClick={if(live.enabled) ExpTechSeismicService.stop(ctx) else ExpTechSeismicService.start(ctx)}) {
                             Text(if(live.enabled)"停止" else "啟動")
                         }
                     }
-                    Spacer(Modifier.height(9.dp))
-                    Text(if(fresh) "最後有效測站時間：${formatted(live.lastRtsAt)}（臺灣時間）"
-                        else "測站數值僅在 15 秒內收到新資料才顯示；離線不沿用過期震度",
-                        color=if(fresh)Color(0xFF7FE8BA) else Color(0xFFFFD09E),fontSize=14.sp)
-                    // Always reserve the same space. Live feed changes must not resize
-                    // the map card or move the user's scroll position every few seconds.
-                    Text(if (live.enabled && eewHealth != SeismicFeedState.LIVE)
+                    Spacer(Modifier.height(14.dp))
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                        SeismicStatusMiniCard(
+                            title="速報",
+                            value=SeismicFeedHealth.eewLabel(eewHealth),
+                            active=eewHealth==SeismicFeedState.LIVE,
+                            modifier=Modifier.weight(1f)
+                        )
+                        SeismicStatusMiniCard(
+                            title="測站",
+                            value=SeismicFeedHealth.rtsLabel(rtsHealth) + if (!fresh && stations.isNotEmpty()) " · 上次觀測，非即時" else "",
+                            active=fresh,
+                            modifier=Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                        SeismicInfoPill(
+                            title="最後有效測站",
+                            detail=if(fresh) "${formatted(live.lastRtsAt)}（臺灣時間）" else "15 秒內未收到新資料，不沿用過期震度",
+                            accent=if(fresh) Color(0xFF86F0BE) else Color(0xFFFFD09E),
+                            modifier=Modifier.weight(1f)
+                        )
+                        SeismicInfoPill(
+                            title="目前所在地",
+                            detail="${devicePlace?.name ?: "尚未定位"} · ${devicePlace?.source ?: "未指定"}",
+                            accent=iceBlue,
+                            modifier=Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        if (live.enabled && eewHealth != SeismicFeedState.LIVE)
                             "速報連線狀態：${live.eewStatus}；請檢查網路與通知權限"
-                        else if (live.enabled) "地震速報連線狀態正常" else "監測暫停，可隨時啟動",
+                        else if (live.enabled)
+                            "地震速報連線狀態正常"
+                        else
+                            "監測暫停，可隨時重新啟動",
                         color=if(live.enabled && eewHealth==SeismicFeedState.LIVE) iceBlue else Color(0xFFFFD09E),
-                        fontSize=14.sp,lineHeight=18.sp,minLines=2,maxLines=2)
-                    Text("所在地：${devicePlace?.name ?: "尚未定位"} · ${devicePlace?.source ?: "未指定"}",
-                        color=iceBlue,fontSize=14.sp)
-                    Spacer(Modifier.height(6.dp))
-                    Box(Modifier.fillMaxWidth().height(153.dp)) {
-                    Column {
-                    if(inReplay) {
-                        Text("歷史資料回放中 · 不是真實地震預警",color=Color(0xFFFFD09E),fontWeight=FontWeight.Bold)
-                    } else if(incidentRecent) {
-                        Spacer(Modifier.height(8.dp))
-                        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                            .background(Color(0xFF713B30).copy(alpha=.77f))
-                            .border(1.dp,Color(0xFFFFBC8F).copy(alpha=.70f),RoundedCornerShape(18.dp))
-                            .padding(13.dp)) {
-                            Row(verticalAlignment=Alignment.CenterVertically) {
-                                Icon(Icons.Rounded.WarningAmber,null,tint=Color(0xFFFFD09E))
-                                Spacer(Modifier.width(8.dp))
-                                Text("收到地震預警 · 第三方來源",color=light,fontWeight=FontWeight.Bold,fontSize=16.sp)
+                        fontSize=14.sp,lineHeight=18.sp
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+                        .background(if(incidentRecent || inReplay) Color(0xFF5E382F).copy(alpha=.58f) else Color.White.copy(alpha=.06f))
+                        .border(1.dp,if(incidentRecent || inReplay) Color(0xFFFFC599).copy(alpha=.38f) else Color.White.copy(alpha=.12f),RoundedCornerShape(24.dp))
+                        .padding(16.dp)) {
+                        Column(Modifier.fillMaxWidth().heightIn(min=118.dp),verticalArrangement=Arrangement.Center) {
+                            if(inReplay) {
+                                Text("歷史資料回放中",color=Color(0xFFFFD09E),fontWeight=FontWeight.Bold,fontSize=16.sp)
+                                Spacer(Modifier.height(6.dp))
+                                Text("目前顯示的是已發生事件的教育回放，不會發送真實地震警報。",
+                                    fontSize=14.sp,color=light,lineHeight=19.sp)
+                            } else if(incidentRecent) {
+                                Row(verticalAlignment=Alignment.CenterVertically) {
+                                    Icon(Icons.Rounded.WarningAmber,null,tint=Color(0xFFFFD09E))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("收到地震預警 · 第三方來源",color=light,fontWeight=FontWeight.Bold,fontSize=16.sp)
+                                }
+                                Spacer(Modifier.height(7.dp))
+                                Text("${quake?.epicenter ?: "震央位置待確認"}  ·  ${quake?.magnitude?.let { "M${"%.1f".format(Locale.US,it)}" } ?: "規模未提供"}",
+                                    color=light,fontSize=16.sp)
+                                Text("發布時間：${quake?.issuedAtMs?.let(::formatted) ?: "未知"} · 第 ${quake?.serial ?: 0} 報",
+                                    color=Color(0xFFFFE5D0),fontSize=14.sp)
+                                Text("立即趴下、掩護、穩住。第三方速報可能延遲，不提供虛構抵達秒數。",
+                                    color=Color.White,fontWeight=FontWeight.SemiBold,fontSize=14.sp,
+                                    modifier=Modifier.padding(top=6.dp),lineHeight=18.sp)
+                            } else {
+                                Text("目前沒有可顯示的有效即時速報",fontSize=16.sp,color=light,fontWeight=FontWeight.SemiBold)
+                                Spacer(Modifier.height(6.dp))
+                                Text("這不代表沒有地震，也不代表所在地安全；有警報時會在此與通知系統同步顯示。",
+                                    fontSize=14.sp,color=muted,lineHeight=19.sp)
                             }
-                            Text("${quake?.epicenter ?: "震央位置待確認"}  ·  ${quake?.magnitude?.let { "M${"%.1f".format(Locale.US,it)}" } ?: "規模未提供"}",
-                                color=light,fontSize=16.sp,modifier=Modifier.padding(top=4.dp))
-                            Text("發布時間：${quake?.issuedAtMs?.let(::formatted) ?: "未知"} · 第 ${quake?.serial ?: 0} 報",
-                                color=Color(0xFFFFE5D0),fontSize=14.sp)
-                            Text("立即趴下、掩護、穩住。第三方速報可能延遲，不保證預警秒數。",
-                                color=Color.White,fontWeight=FontWeight.SemiBold,fontSize=14.sp,
-                                modifier=Modifier.padding(top=6.dp))
                         }
-                    } else {
-                        Text("目前沒有可顯示的有效即時速報；不代表沒有地震，也不代表所在地安全",fontSize=14.sp,color=muted)
-                    }
-                    }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -506,20 +545,23 @@ fun SeismicLiveMapPage(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                    MapGlass(modifier=Modifier.weight(1f)) {
-                        Text("有效測站",color=muted,fontSize=14.sp)
-                        Text(stations.size.toString(),color=light,fontWeight=FontWeight.Bold,fontSize=28.sp)
-                    }
-                    MapGlass(modifier=Modifier.weight(1f)) {
-                        Text("最大測站震度",color=muted,fontSize=14.sp)
-                        Text(maxI?.toString() ?: "—",color=light,fontWeight=FontWeight.Bold,fontSize=28.sp)
-                    }
-                    MapGlass(modifier=Modifier.weight(1f)) {
-                        Text("最大 PGA",color=muted,fontSize=14.sp)
-                        Text(maxPga?.let { "%.1f".format(Locale.US,it) } ?: "—",color=light,fontWeight=FontWeight.Bold,fontSize=25.sp)
-                        Text("gal",color=muted,fontSize=14.sp)
-                    }
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                    SeismicMetricCard(
+                        title="有效測站",
+                        value=if(fresh) stations.size.toString() else "—",
+                        modifier=Modifier.weight(1f)
+                    )
+                    SeismicMetricCard(
+                        title="最大測站震度",
+                        value=maxI?.toString() ?: "—",
+                        modifier=Modifier.weight(1f)
+                    )
+                    SeismicMetricCard(
+                        title="最大 PGA",
+                        value=maxPga?.let { "%.1f".format(Locale.US,it) } ?: "—",
+                        suffix="gal",
+                        modifier=Modifier.weight(1f)
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 MapGlass {
@@ -588,6 +630,42 @@ fun SeismicLiveMapPage(
                     Text("時間：${report.origin.atZone(java.time.ZoneId.of("Asia/Taipei"))}")
                     Text("此為震後報告，並非提前預警。")
                 }},confirmButton={TextButton(onClick={details=null}) {Text("關閉")} })
+        }
+    }
+}
+
+@Composable
+private fun SeismicStatusMiniCard(title:String,value:String,active:Boolean,modifier:Modifier=Modifier) {
+    Column(modifier.clip(RoundedCornerShape(20.dp))
+        .background(Color.White.copy(alpha=.06f))
+        .border(1.dp,if(active) Color(0xFF8BEFBE).copy(alpha=.34f) else Color.White.copy(alpha=.12f),RoundedCornerShape(20.dp))
+        .padding(14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+        Text(title,color=muted,fontSize=14.sp)
+        Text(value,color=if(active) Color(0xFF98F6C9) else Color(0xFFFFD09E),fontSize=15.sp,fontWeight=FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun SeismicInfoPill(title:String,detail:String,accent:Color,modifier:Modifier=Modifier) {
+    Column(modifier.clip(RoundedCornerShape(20.dp))
+        .background(Color.White.copy(alpha=.05f))
+        .border(1.dp,accent.copy(alpha=.22f),RoundedCornerShape(20.dp))
+        .padding(14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+        Text(title,color=muted,fontSize=14.sp)
+        Text(detail,color=light,fontSize=14.sp,lineHeight=18.sp)
+    }
+}
+
+@Composable
+private fun SeismicMetricCard(title:String,value:String,suffix:String?=null,modifier:Modifier=Modifier) {
+    Column(modifier.height(132.dp).clip(RoundedCornerShape(24.dp))
+        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
+        .border(1.dp,Color.White.copy(alpha=.16f),RoundedCornerShape(24.dp))
+        .padding(horizontal=12.dp,vertical=14.dp),verticalArrangement=Arrangement.SpaceBetween) {
+        Text(title,color=muted,fontSize=14.sp,minLines=2,maxLines=2)
+        Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
+            Text(value,color=light,fontWeight=FontWeight.Bold,fontSize=29.sp)
+            if(!suffix.isNullOrBlank()) Text(suffix,color=iceBlue,fontSize=14.sp,fontWeight=FontWeight.Medium)
         }
     }
 }

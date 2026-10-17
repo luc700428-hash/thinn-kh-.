@@ -237,8 +237,14 @@ class ExpTechSeismicService : Service() {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true)
             .setContentIntent(openCenter()).build()
         // Per-case channel honours the user's sound preference and OS notification policy.
-        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(29180+scenario.ordinal,notice)
+        WeatherNotificationDispatcher.post(
+            this,
+            29180+scenario.ordinal,
+            notice,
+            "地震監測 · 第三方測站檢知",
+            detail,
+            XiaomiFocusBridge.Kind.STATION_DETECTION
+        )
     }
     private fun alertIntent():PendingIntent = PendingIntent.getActivity(this,29201,
         Intent(this,MainActivity::class.java).putExtra("open_earthquake_center",true)

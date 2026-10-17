@@ -19,28 +19,27 @@ class HomeReadabilityTests(unittest.TestCase):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
         model=(JAVA/'presentation/home/HomeWeatherBriefing.kt').read_text()
         # In the weather page itself (before any modal), the critical weather
-        # values, official alerts and both actionable clothing/rain rows are visible.
+        # values and both actionable clothing/rain rows remain visible.
         self.assertIn('HomeKeyWeatherCard(snapshot, state.stale)',home)
         self.assertIn('HomeAdviceRow("穿著建議"',home)
         self.assertIn('HomeAdviceRow("雨具建議"',home)
         self.assertNotIn('查看詳情  →',home)
-        visible=home.split('                // Verified official alerts belong above any decorative landmark scene.')[1].split('                // Local landmark is secondary')[0]
-        # V23 user requirement: CWA warnings above key weather, before daily advice.
-        self.assertLess(visible.index('state.cwaWarnings.isNotEmpty()'),visible.index('HomeKeyWeatherCard('))
+        # V23 R8: the requested homepage RSS alert summary is removed.
+        # Real emergency weather advisories remain available via workers / notices.
+        visible=home.split('// 依本次需求，首頁不再顯示中央氣象署 RSS 特報摘要區塊')[1].split('// Atmospheric light and live data')[0]
+        self.assertNotIn('state.cwaWarnings.isNotEmpty()',visible)
         self.assertLess(visible.index('HomeKeyWeatherCard('),visible.index('DailyGuidanceCard('))
         self.assertIn('未來六小時降雨',model)
         self.assertIn('尚無降雨機率資料',model)
         self.assertIn('非官方 AQI',model)
 
-    def test_landmark_is_a_real_label_not_a_generic_county_house(self):
+    def test_optical_live_weather_replaces_2d_landmarks(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        self.assertIn('val caption=chosenLandmark?.caption',home)
-        self.assertIn('fontSize=24.sp,lineHeight=33.sp',home)
-        canvas=home.split('private fun LandmarkCanvas(')[1].split('private fun DrawScope.drawTaipei101')[0]
-        self.assertNotIn('WeatherArtRenderer.drawScene',canvas)
-        self.assertIn('未完成的模型不冒充實景',canvas)
-        self.assertIn('ctx.assets.open(filename)',canvas)
-        self.assertIn('contentDescription="${place.caption}',canvas)
+        light=(JAVA/'ui/ThinnAtmosphereFocus.kt').read_text()
+        self.assertIn('ThinnAtmosphereFocus(',home)
+        self.assertNotIn('LandmarkCanvas(',home)
+        self.assertIn('snapshot.windKmh',light)
+        self.assertIn('snapshot.humidityPct',light)
     def test_chiayi_county_now_has_separate_place_models(self):
         c=json.loads((ASSETS/'catalog_v2.json').read_text())
         expected=['阿里山森林鐵道','北回歸線太陽館','故宮南院','奮起湖車站','中央噴水圓環']
@@ -49,7 +48,7 @@ class HomeReadabilityTests(unittest.TestCase):
             self.assertEqual(len(matches),1)
             place=matches[0]
             self.assertEqual(place['geometry_status'],'original_prototype')
-            for key in ['model','preview','illustration']:
+            for key in ['model']:
                 asset=ASSETS.parent/place[key]
                 self.assertGreater(asset.stat().st_size,1000,place['name'])
             self.assertEqual((ASSETS.parent/place['model']).read_bytes()[:4],b'glTF')
@@ -57,8 +56,8 @@ class HomeReadabilityTests(unittest.TestCase):
         forecast=(JAVA/'presentation/home/InteractiveForecast.kt').read_text()
         self.assertIn('Text("24 小時預報",fontSize=21.sp',forecast)
         glass=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        self.assertIn('Color(0xEF0B2B43)',glass)
-        self.assertIn('Color(0xED173B55)',glass)
+        self.assertIn('ThinnOpticalMaterial.surface',glass)
+        self.assertIn('val rim:',(JAVA/'ui/ThinnOpticalMaterial.kt').read_text())
     def test_release_notes_reflect_real_limited_progress(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()
         self.assertIn('穿搭」長文',notes)

@@ -42,7 +42,7 @@ fun TaskCenterPage(onClose:()->Unit) {
     }
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Column(Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B1B2E),Color(0xFF21435E))))
+            .background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
             .verticalScroll(rememberScrollState())
             .padding(horizontal=20.dp,vertical=32.dp)) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {

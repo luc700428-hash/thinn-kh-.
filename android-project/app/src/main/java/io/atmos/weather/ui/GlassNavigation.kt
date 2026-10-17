@@ -38,10 +38,10 @@ import kotlin.math.roundToInt
 
 private val ink=Color.White
 private val soft=ThinnDesignTokens.secondaryInkDark
-private val outline=Color.White.copy(alpha=.20f)
+private val outline=Color.White.copy(alpha=.28f)
 
-/** All surfaces share the same blur-free translucent material; reduce-transparency is honoured.
- * Native rendering prioritises scrolling performance and text contrast over fake blur.
+/** Content surfaces deliberately remain calm; only floating controls use the glass lens.
+ * Honors reduce transparency, with emergency text always kept high contrast.
  */
 @Composable
 fun GlassSurface(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
@@ -49,10 +49,10 @@ fun GlassSurface(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->
     val prefs=remember(context){context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     val opaque=prefs.getBoolean("reduce_transparency",false)
     Column(modifier.clip(RoundedCornerShape(ThinnDesignTokens.radiusCard))
-        .background(if(opaque) Brush.verticalGradient(listOf(Color(0xFF24384E),Color(0xFF1C2C40)))
-            else Brush.verticalGradient(listOf(Color(0xDB29465D),Color(0xEE172D43))))
-        .border(1.dp,outline,RoundedCornerShape(ThinnDesignTokens.radiusCard))
-        .padding(16.dp),content=content)
+        .background(if(opaque) ThinnOpticalMaterial.opaque
+            else ThinnOpticalMaterial.surface)
+        .border(1.dp,Color.White.copy(alpha=.17f),RoundedCornerShape(ThinnDesignTokens.radiusCard))
+        .padding(18.dp),content=content)
 }
 
 @Composable
@@ -115,29 +115,38 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
     val prefs=remember(context){context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     val reduced=prefs.getBoolean("reduce_motion",false)
     val opaque=prefs.getBoolean("reduce_transparency",false)
-    Row(modifier.fillMaxWidth().padding(horizontal=17.dp)
-        .height(70.dp).clip(RoundedCornerShape(ThinnDesignTokens.radiusNav))
-        .background(if(opaque) Color(0xFF1E3149) else Color(0xED172E48))
-        .border(1.dp,outline,RoundedCornerShape(ThinnDesignTokens.radiusNav))
+    val barShape=RoundedCornerShape(ThinnDesignTokens.radiusNav)
+    Row(modifier.fillMaxWidth().padding(horizontal=18.dp)
+        .height(68.dp).clip(barShape)
+        .background(if(opaque) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.raised)
+        .border(1.dp,ThinnOpticalMaterial.rim,barShape)
+        .thinnSpecularEdge(ThinnDesignTokens.radiusNav)
         .padding(5.dp),verticalAlignment=Alignment.CenterVertically) {
         navTabs.forEachIndexed { index,tab ->
             val active=selected==index
             val filled by animateFloatAsState(if(active)1f else 0f,
-                animationSpec=tween(if(reduced)0 else 210),label="分頁選取")
+                animationSpec=if(reduced) tween(0) else spring(dampingRatio=.76f,stiffness=370f),
+                label="iOS 視覺分頁鏡片")
+            val selectedShape=RoundedCornerShape(29.dp)
             Column(Modifier.weight(1f).fillMaxHeight()
-                .clip(RoundedCornerShape(23.dp))
-                .background(ThinnDesignTokens.accent.copy(alpha=.18f*filled))
+                .clip(selectedShape)
+                .background(Brush.verticalGradient(listOf(
+                    Color.White.copy(alpha=.35f*filled),
+                    Color(0xFFDBF1FF).copy(alpha=.18f*filled),
+                    Color.White.copy(alpha=.07f*filled)
+                )))
+                .then(if(active) Modifier.thinnSpecularEdge(29.dp) else Modifier)
                 .semantics { contentDescription="${tab.label}分頁" }
                 .selectable(selected=active,role=Role.Tab,onClick={
                     if(selected!=index)feedback?.play(HapticEngine.Event.TAP)
                     onSelect(index)
                 }),verticalArrangement=Arrangement.Center,
                 horizontalAlignment=Alignment.CenterHorizontally) {
-                Icon(tab.icon,null,modifier=Modifier.size(24.dp),
-                    tint=if(active)Color.White else soft.copy(alpha=.85f))
-                Spacer(Modifier.height(2.dp))
-                Text(tab.label,fontSize=16.sp,fontWeight=if(active)FontWeight.Bold else FontWeight.Medium,
-                    color=if(active)Color.White else soft)
+                Icon(tab.icon,null,modifier=Modifier.size(22.dp),
+                    tint=if(active)Color.White else Color(0xFFE0ECF5).copy(alpha=.80f))
+                Spacer(Modifier.height(1.dp))
+                Text(tab.label,fontSize=14.sp,fontWeight=if(active)FontWeight.SemiBold else FontWeight.Medium,
+                    color=if(active)Color.White else Color(0xFFE0ECF5).copy(alpha=.80f))
             }
         }
     }
@@ -146,7 +155,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
     onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
-    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B1A2B),Color(0xFF254766))))
+    Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=118.dp)) {
         Text("工具",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("常用功能與你的生活事項",color=soft,fontSize=15.sp)
@@ -184,7 +193,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     val prefs=remember(ctx){ctx.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     var reduceMotion by remember {mutableStateOf(prefs.getBoolean("reduce_motion",false))}
     var reduceTransparency by remember {mutableStateOf(prefs.getBoolean("reduce_transparency",false))}
-    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0A1D30),Color(0xFF254869))))
+    Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=124.dp)) {
         Text("設定",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("所有選項皆使用統一的導覽、觸感與視覺語言",fontSize=15.sp,color=soft)
@@ -219,13 +228,13 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         }
         Spacer(Modifier.height(8.dp))
         ThinnSection("系統與版本") {
-            GlassToggle("自動檢查更新","背景檢查時間由 Android 排定",automaticUpdates,onUpdates)
+            GlassToggle("自動檢查更新","由系統安排背景檢查時間",automaticUpdates,onUpdates)
             GlassDivider()
             ThinnRow("系統更新中心","查看版本、更新內容與下載進度",Icons.Rounded.SystemUpdate,onClick=onUpdateCenter)
             GlassDivider()
             ThinnRow("權限與健康檢查","背景、省電、定位及通知診斷",Icons.Rounded.FactCheck,onClick=onDiagnostics)
         }
         Spacer(Modifier.height(18.dp))
-        Text("thinn-khì · Android 專用介面 · 以 iOS 互動原則重新設計",color=soft,fontSize=14.sp)
+        Text("thinn-khì · 跨平台獨立實作的玻璃視覺語言",color=soft,fontSize=14.sp)
     }
 }

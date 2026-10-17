@@ -51,8 +51,11 @@ class IOSUIContractTests(unittest.TestCase):
 
     def test_accessible_core_controls(self):
         controls=self.source('ui/GlassControls.kt')
-        self.assertIn('androidx.compose.material3.Switch(',controls)
-        self.assertIn('androidx.compose.material3.Slider(',controls)
+        self.assertIn('Modifier.toggleable(',controls)
+        self.assertIn('Role.Switch',controls)
+        self.assertIn('setProgress {',controls)
+        self.assertIn('detectDragGestures(',controls)
+        self.assertIn('progressBarRangeInfo=',controls)
         self.assertIn('ThinnDesignTokens.radiusControl',controls)
         self.assertIn('contentDescription=label',self.source('ui/GlassNavigation.kt'))
 

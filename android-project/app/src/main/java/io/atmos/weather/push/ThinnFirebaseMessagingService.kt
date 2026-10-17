@@ -9,13 +9,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import io.atmos.weather.MainActivity
 import io.atmos.weather.R
 import io.atmos.weather.widgets.WidgetSync
+import io.atmos.weather.notifications.WeatherNotificationDispatcher
+import io.atmos.weather.notifications.XiaomiFocusBridge
 
 /** FCM data messages supplement foreground SSE; they cannot guarantee delivery or bypass DND. */
 class ThinnFirebaseMessagingService: FirebaseMessagingService() {
@@ -69,6 +70,13 @@ class ThinnFirebaseMessagingService: FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pi).setAutoCancel(false).setOnlyAlertOnce(true).build()
-        NotificationManagerCompat.from(this).notify(e.eventId.hashCode(),note)
+        WeatherNotificationDispatcher.post(
+            this,
+            e.eventId.hashCode(),
+            note,
+            e.title.ifBlank { "地震速報" },
+            e.detail.ifBlank { "第三方地震速報通知" },
+            XiaomiFocusBridge.Kind.SEISMIC_EEW
+        )
     }
 }

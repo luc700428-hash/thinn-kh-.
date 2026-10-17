@@ -102,7 +102,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
         SeismicLiveMapPage(onClose = { monitorOpen = false }, onSettings = { settingsOpen = true },
             reports = reports, onRefreshReports = { refresh() })
     } else Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF071B34),Color(0xFF113B5C),Color(0xFF0A243C))))) {
+        Box(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)) {
             Box(Modifier.fillMaxWidth().height(300.dp).background(Brush.radialGradient(listOf(cyan.copy(alpha=.15f),Color.Transparent))))
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=22.dp,vertical=28.dp)) {
                 Spacer(Modifier.height(14.dp))

@@ -61,7 +61,7 @@ fun WeatherAlarmPage(onClose:()->Unit) {
             else WeatherAlarmScheduler.cancel(ctx,it.id) }
     }
     BackHandler(enabled=showEditor) { showEditor=false }
-    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0C1E30),Color(0xFF1C4B69))))
+    Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
         .padding(horizontal=20.dp,vertical=20.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {

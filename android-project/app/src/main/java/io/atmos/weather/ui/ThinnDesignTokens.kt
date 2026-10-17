@@ -16,31 +16,31 @@ import androidx.compose.ui.unit.sp
  * iOS-inspired hierarchy, not a use of Apple UI frameworks, fonts, or SF Symbols.
  */
 object ThinnDesignTokens {
-    val radiusControl = 14.dp
-    val radiusRow = 18.dp
+    val radiusControl = 24.dp
+    val radiusRow = 20.dp
     val radiusCard = 26.dp
-    val radiusSheet = 28.dp
-    val radiusNav = 28.dp
+    val radiusSheet = 32.dp
+    val radiusNav = 35.dp
     val touchTarget = 48.dp
     val spacingTiny = 4.dp
     val spacingSmall = 8.dp
     val spacingMedium = 16.dp
     val spacingLarge = 24.dp
     val lightBackground = Color(0xFFF2F2F7)
-    val darkBackground = Color(0xFF0C1829)
+    val darkBackground = Color(0xFF07172B)
     val lightGlass = Color(0xECFFFFFF)
-    val darkGlass = Color(0xD723344C)
-    val accent = Color(0xFF63BCFF)
+    val darkGlass = Color(0xDB1C3853)
+    val accent = Color(0xFF8ECFFF)
     val positive = Color(0xFF34C759)
     val caution = Color(0xFFFFC65A)
     val critical = Color(0xFFFF5A52)
     val primaryInkDark = Color.White
-    val secondaryInkDark = Color(0xFFE1ECF6)
-    const val shortMotionMillis = 150
-    const val mediumMotionMillis = 260
-    const val longMotionMillis = 390
-    const val springDamping = .82f
-    const val springStiffness = 420f
+    val secondaryInkDark = Color(0xFFD3DDE8)
+    const val shortMotionMillis = 180
+    const val mediumMotionMillis = 320
+    const val longMotionMillis = 480
+    const val springDamping = .76f
+    const val springStiffness = 360f
 }
 
 private val thinnScheme = darkColorScheme(
@@ -48,9 +48,9 @@ private val thinnScheme = darkColorScheme(
     onPrimary = Color(0xFF061729),
     background = ThinnDesignTokens.darkBackground,
     onBackground = Color.White,
-    surface = Color(0xFF213149),
+    surface = Color(0xFF183A57),
     onSurface = Color.White,
-    surfaceVariant = Color(0xFF30425A),
+    surfaceVariant = Color(0xFF244A66),
     onSurfaceVariant = ThinnDesignTokens.secondaryInkDark,
     secondary = Color(0xFF9FD8FF),
     error = ThinnDesignTokens.critical,
@@ -58,12 +58,12 @@ private val thinnScheme = darkColorScheme(
 )
 
 private val thinnTypography = Typography(
-    displaySmall = TextStyle(fontSize=36.sp, lineHeight=44.sp, fontWeight=FontWeight.Bold),
+    displaySmall = TextStyle(fontSize=36.sp, lineHeight=42.sp, fontWeight=FontWeight.Bold),
     headlineMedium = TextStyle(fontSize=29.sp, lineHeight=38.sp, fontWeight=FontWeight.Bold),
-    titleLarge = TextStyle(fontSize=22.sp, lineHeight=28.sp, fontWeight=FontWeight.SemiBold),
+    titleLarge = TextStyle(fontSize=22.sp, lineHeight=29.sp, fontWeight=FontWeight.SemiBold),
     titleMedium = TextStyle(fontSize=18.sp, lineHeight=27.sp, fontWeight=FontWeight.SemiBold),
     bodyLarge = TextStyle(fontSize=18.sp, lineHeight=28.sp),
-    bodyMedium = TextStyle(fontSize=16.sp, lineHeight=25.sp),
+    bodyMedium = TextStyle(fontSize=16.sp, lineHeight=24.sp),
     bodySmall = TextStyle(fontSize=16.sp, lineHeight=24.sp),
     labelLarge = TextStyle(fontSize=16.sp, lineHeight=24.sp, fontWeight=FontWeight.SemiBold),
     labelMedium = TextStyle(fontSize=14.sp, lineHeight=17.sp)

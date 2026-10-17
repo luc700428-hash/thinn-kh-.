@@ -138,7 +138,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     var magnitude by remember { mutableFloatStateOf(pref.getFloat("report_min_magnitude", 4.5f)) }
     DisposableEffect(Unit) { onDispose { SeismicPreviewPlayer.stop() } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF061A31), Color(0xFF143B59), Color(0xFF081D33)))).statusBarsPadding().navigationBarsPadding()) {
+        Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page).statusBarsPadding().navigationBarsPadding()) {
             Spacer(Modifier.height(28.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.ArrowBack, "返回地震中心", tint = Color.White) }

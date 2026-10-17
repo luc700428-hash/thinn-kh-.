@@ -53,7 +53,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
         }
     }
     LaunchedEffect(Unit){refresh()}
-    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF07192D),Color(0xFF24506C))))
+    Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
         .padding(horizontal=20.dp,vertical=20.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {

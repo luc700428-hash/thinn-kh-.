@@ -36,7 +36,7 @@ class CwaFilamentIntegration(unittest.TestCase):
         # True 3D engine stays available in source but is never invoked on the
         # home screen until vendor-specific native SIGSEGV is fixed and tested.
         self.assertNotIn('FilamentLandmark(',home)
-        self.assertIn('LandmarkGalleryPage(',home)
+        self.assertNotIn('LandmarkGalleryPage(',home)
         self.assertIn('viewer.loadModelGlb',render)
         self.assertIn('Utils.init()',render)
         self.assertIn('filament-utils-android',build)

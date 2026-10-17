@@ -40,10 +40,13 @@ class MajorV23Contract(unittest.TestCase):
         self.assertIn('BackHandler(enabled=',home)
         self.assertIn('WeatherAlarmPage(onClose=',home)
         self.assertIn('TyphoonCenterPage(',home)
-        self.assertIn('同城自動巡遊',home)
-        self.assertIn('delay(17_000L)',home)
+        self.assertIn('ThinnAtmosphereFocus(',home)
+        self.assertNotIn('2D 地標',home)
         self.assertNotIn('RadarThreeHourCard(snapshot)',home)
-        self.assertLess(home.index('state.cwaWarnings.isNotEmpty()'),home.index('HomeKeyWeatherCard(snapshot, state.stale)'))
+        # Keep the official typhoon route, but remove the broad RSS home summary.
+        self.assertIn('val typhoonNotices = state.cwaWarnings.filter',home)
+        self.assertLess(home.index('val typhoonNotices = state.cwaWarnings.filter'),home.index('HomeKeyWeatherCard(snapshot, state.stale)'))
+        self.assertNotIn('state.cwaWarnings.isNotEmpty()',home)
         self.assertNotIn('Text("下一個地標  →"',home)
     def test_seismic_country_islands_and_safe_area(self):
         geo=(JAVA/'earthquake/SeismicGeo.kt').read_text()

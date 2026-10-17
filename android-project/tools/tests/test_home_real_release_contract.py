@@ -4,10 +4,14 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 HOME=(ROOT/'app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt')
 WORKFLOW=ROOT.parent/'.github/workflows/build-apk.yml'
 class ReleaseContractTests(unittest.TestCase):
-    def test_taiwan_county_alert_gate_not_country_prefix(self):
+    def test_removed_rss_home_summary_does_not_disable_official_alert_worker(self):
         src=HOME.read_text()
-        self.assertIn('if (TaiwanLandmarks.countyFor(state.city.name, state.city.coordinate) != null)',src)
-        self.assertNotIn('if (state.city.name.startsWith("台灣")',src)
+        self.assertNotIn('state.cwaWarnings.isNotEmpty()',src)
+        self.assertIn('val typhoonNotices = state.cwaWarnings.filter',src)
+        self.assertIn('HomeKeyWeatherCard(snapshot, state.stale)',src)
+        worker=(ROOT/'app/src/main/java/io/atmos/weather/alerts/CwaAlertWorker.kt').read_text()
+        self.assertIn('TaiwanLandmarks.counties.any',worker)
+        self.assertNotIn('if (!cityName.startsWith("台灣")',worker)
     def test_key_weather_still_in_main_page(self):
         src=HOME.read_text()
         self.assertIn('HomeKeyWeatherCard(snapshot, state.stale)',src)

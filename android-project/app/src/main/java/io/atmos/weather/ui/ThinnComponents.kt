@@ -31,17 +31,17 @@ import androidx.compose.ui.unit.sp
 import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine
 
-private val bg = Color.White.copy(alpha=.10f)
+private val bg = ThinnOpticalMaterial.surface
 private val stroke = Color.White.copy(alpha=.16f)
 private val dim = Color(0xFFD0DFED)
 
 @Composable
 fun ThinnSection(label:String, modifier:Modifier=Modifier, content:@Composable ColumnScope.()->Unit) {
     Column(modifier.fillMaxWidth()) {
-        Text(label.uppercase(),fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=dim,
+        Text(label,fontSize=14.sp,fontWeight=FontWeight.Medium,color=dim,
             modifier=Modifier.padding(start=15.dp,bottom=9.dp,top=14.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-            .background(bg).border(1.dp,stroke,RoundedCornerShape(20.dp)),content=content)
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp))
+            .background(bg).border(1.dp,Color.White.copy(alpha=.16f),RoundedCornerShape(23.dp)),content=content)
     }
 }
 
@@ -57,7 +57,7 @@ fun ThinnRow(title:String,subtitle:String="",icon:ImageVector?=null,destructive:
         } else Modifier)
         .padding(horizontal=15.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
         if(icon!=null) {
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(9.dp))
+            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp))
                 .background(ThinnDesignTokens.accent.copy(alpha=.19f)),contentAlignment=Alignment.Center) {
                 Icon(icon,null,Modifier.size(20.dp),tint=ThinnDesignTokens.accent)
             }

@@ -178,6 +178,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val blendMid by animateColorAsState(colors[1], animationSpec=tween(1600), label="sky middle")
     val blendLow by animateColorAsState(colors[2], animationSpec=tween(1600), label="sky lower")
     val context = LocalContext.current
+    val reduceCityMotion = remember(context) {
+        context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
+            .getBoolean("reduce_motion",false)
+    }
     var recentEarthquake by remember { mutableStateOf(RecentEarthquakeNoticeStore.current(context)) }
     LaunchedEffect(context) {
         while(true) {
@@ -185,37 +189,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             kotlinx.coroutines.delay(10_000L)
         }
     }
-    val landmarkRegistry=remember(context) { runCatching { LandmarkRegistry.load(context) }.getOrNull() }
-    val currentLandmarks=remember(landmarkRegistry,state.city.name,state.city.coordinate) {
-        landmarkRegistry?.playable(state.city.coordinate,state.city.name).orEmpty()
-    }
-    // One persisted advancement per location per app opening; gestures cycle within the SAME locality.
-    val landPreference=remember(context) { context.getSharedPreferences("landmark_carousel_v2",android.content.Context.MODE_PRIVATE) }
-    val cityRotationKey=remember(state.city.name,state.city.coordinate) {
-        val point=state.city.coordinate
-        val island=landmarkRegistry?.islandFor(point,state.city.name)?.name
-        (island ?: TaiwanLandmarks.countyFor(state.city.name,point) ?: state.city.name)
-    }
-    val openingLandmarkIndex=remember(cityRotationKey) {
-        val key="next_${cityRotationKey}"
-        val number=landPreference.getInt(key,0).coerceAtLeast(0)
-        landPreference.edit().putInt(key,if(number>=99999) 0 else number+1).apply()
-        number
-    }
-    val reduceCityMotion=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false) }
-    var landmarkStep by remember(cityRotationKey) { mutableIntStateOf(0) }
-    // New scene on every launch, then hands-free crossfade through LOCAL landmarks.
-    // Respect battery / reduce-motion: no continuous automatic change when requested.
-    LaunchedEffect(cityRotationKey, currentLandmarks.size, reduceCityMotion) {
-        if(currentLandmarks.size>1 && !reduceCityMotion) {
-            while(true) {
-                delay(17_000L)
-                landmarkStep++
-            }
-        }
-    }
-    val chosenLandmark=if(currentLandmarks.isNotEmpty())
-        currentLandmarks[((openingLandmarkIndex+landmarkStep)%currentLandmarks.size)] else null
     val hapticEngine=remember(context) { HapticEngine(context) }
     var hapticSettings by remember { mutableStateOf(HapticSettings.load(context)) }
     hapticEngine.configure(hapticSettings)
@@ -298,16 +271,14 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     var weatherAlarmOpen by remember { mutableStateOf(false) }
-    var landmarkGalleryOpen by remember { mutableStateOf(false) }
     LaunchedEffect(fromUpdateNotification) { if (fromUpdateNotification) (context as? android.app.Activity)?.intent?.removeExtra("open_update_center") }
     // Android predictive-back / gesture returns to the previous UI layer,
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
     BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
         pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen ||
-        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || landmarkGalleryOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen ||
         mainPager.currentPage != 0) {
         when {
-            landmarkGalleryOpen -> landmarkGalleryOpen=false
             weatherAlarmOpen -> weatherAlarmOpen=false
             typhoonPageOpen -> typhoonPageOpen=false
             earthquakePageOpen -> earthquakePageOpen=false
@@ -661,50 +632,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     }
                     Spacer(Modifier.height(12.dp))
                 }
-                // Verified official alerts belong above any decorative landmark scene.
-                if (TaiwanLandmarks.countyFor(state.city.name, state.city.coordinate) != null) {
-                    if (state.cwaWarnings.isNotEmpty()) {
-                        // Multiple official notices remain separate and individually openable.
-                        Text("中央氣象署特報 · ${state.cwaWarnings.size} 則所在地相關公告",color=White,
-                            fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        state.cwaWarnings.take(5).forEachIndexed { i, warning ->
-                            Row(Modifier.fillMaxWidth().padding(bottom=7.dp)
-                                .clip(RoundedCornerShape(19.dp))
-                                .background(Color(0xFF9C3434).copy(alpha=if(i==0) .53f else .33f))
-                                .border(1.dp,Color(0xFFFFC6AF).copy(alpha=.37f),RoundedCornerShape(19.dp))
-                                .clickable { uriHandler.openUri(warning.link) }.padding(13.dp),
-                                verticalAlignment=Alignment.CenterVertically) {
-                                Icon(Icons.Rounded.WarningAmber,null,tint=Color(0xFFFFD8B3),modifier=Modifier.size(22.dp))
-                                Spacer(Modifier.width(11.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(warning.title,color=White,fontSize=15.sp,fontWeight=FontWeight.Medium)
-                                    Text("發布 ${java.text.SimpleDateFormat("MM/dd HH:mm",java.util.Locale.TAIWAN).format(java.util.Date.from(warning.issuedAt))} · 查看官方適用區域",color=TextSoft,fontSize=14.sp)
-                                }
-                                Icon(Icons.Rounded.ChevronRight,null,tint=TextSoft,modifier=Modifier.size(18.dp))
-                            }
-                        }
-                        Text("資料來源：官方 RSS 最新公告；是否仍有效及詳細影響區域，以中央氣象署公告為準。",
-                            color=TextSoft,fontSize=14.sp)
-                    } else {
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(21.dp))
-                            .background(White.copy(alpha=.10f)).border(1.dp,White.copy(alpha=.18f),RoundedCornerShape(21.dp))
-                            .clickable { uriHandler.openUri(CwaWarningFeed.OFFICIAL_URL) }
-                            .padding(horizontal=16.dp,vertical=13.dp),verticalAlignment=Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.NotificationsActive,null,tint=White.copy(alpha=.83f),modifier=Modifier.size(20.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("中央氣象署特報",color=White,fontSize=15.sp,fontWeight=FontWeight.Medium)
-                                Text(if (state.cwaCheckStatus.startsWith("官方 RSS 已查詢"))
-                                    "目前未找到所在地相關的最新特報公告"
-                                    else "暫時無法確認所在地特報",
-                                    color=White,fontSize=14.sp)
-                            }
-                            Icon(Icons.Rounded.ChevronRight,null,tint=TextSoft,modifier=Modifier.size(18.dp))
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                }
+                // 依本次需求，首頁不再顯示中央氣象署 RSS 特報摘要區塊，
+                // 避免出現「中央氣象署特報 1 則所在地相關公告」與
+                // 「資料來源：官方 RSS 最新公告……」等額外說明文字。
 
                 if (snapshot != null) {
                     // Weather always takes precedence over decor: show real six-hour facts
@@ -717,56 +647,17 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 if(snapshot != null) {
                     DailyGuidanceCard(snapshot,state.stale) { showLifestyleDetails=true }
                 }
-                // Local landmark is secondary to actionable weather and official alerts.
-                Spacer(Modifier.height(16.dp))
-                Column(Modifier.fillMaxWidth()
-                    .clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
-                    .background(Brush.verticalGradient(listOf(Color(0xF30E2F46),Color(0xEF0A2034))))
-                    .border(1.dp,White.copy(alpha=.30f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
-                    .padding(vertical=16.dp,horizontal=16.dp)) {
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
-                        horizontalArrangement=Arrangement.SpaceBetween) {
-                        Text("探索在地地標",fontSize=16.sp,lineHeight=23.sp,color=TextSoft,
-                            fontWeight=FontWeight.Medium)
-                        if(currentLandmarks.size>1) {
-                            Text(if(reduceCityMotion) "依所在城市展示" else "同城自動巡遊",
-                                fontSize=14.sp,color=Color(0xFFBFE9FF))
-                        }
-                    }
-                    val caption=chosenLandmark?.caption ?: "${io.atmos.weather.location.LocationLabels.compact(state.city.name)}、地標待建模"
-                    // The requested 「縣市、地標」 label is the hero title, not a tiny overlay.
-                    Text(caption,color=White,fontSize=24.sp,lineHeight=33.sp,fontWeight=FontWeight.Bold,
-                        maxLines=3,modifier=Modifier.fillMaxWidth().padding(top=4.dp,bottom=8.dp))
-                    if (chosenLandmark?.hasIllustration==true || chosenLandmark?.hasModel==true) {
-                        androidx.compose.animation.Crossfade(targetState=chosenLandmark.id,
-                            animationSpec=tween(if(reduceCityMotion) 0 else 430),label="微縮地標無縫轉場") { id ->
-                            val shown=currentLandmarks.firstOrNull { it.id==id } ?: chosenLandmark
-                            LandmarkCanvas(state.scene,shown,Modifier.fillMaxWidth().height(245.dp)
-                                .clip(RoundedCornerShape(19.dp)))
-                        }
-                    } else {
-                        // Do not waste a 245dp hero on an empty or misleading landmark picture.
-                        LandmarkCanvas(state.scene,chosenLandmark,Modifier.fillMaxWidth().height(112.dp)
-                            .clip(RoundedCornerShape(19.dp)))
-                    }
-                    Row(Modifier.fillMaxWidth().padding(top=9.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(if(chosenLandmark?.hasIllustration==true || chosenLandmark?.hasModel==true) Icons.Rounded.Photo else Icons.Rounded.Construction,
-                            contentDescription=null,tint=Color(0xFFBBD6E6),modifier=Modifier.size(20.dp))
-                        Spacer(Modifier.width(9.dp))
-                        Text(if(chosenLandmark?.hasIllustration==true) "專屬 2D 風格插畫 · 非實景照片" else if(chosenLandmark?.hasModel==true) "地標 2D 概念預覽 · 非高精度實景" else "專屬地標圖像尚未完成",
-                            color=Color(0xFFDAE8F2),fontSize=15.sp,lineHeight=22.sp,
-                            modifier=Modifier.weight(1f))
-                        if(currentLandmarks.size>1) Text("${((openingLandmarkIndex+landmarkStep)%currentLandmarks.size)+1} / ${currentLandmarks.size}",
-                            color=TextSoft,fontSize=15.sp)
-                    }
+                // Atmospheric light and live data replace all 2D landmark galleries and
+                // non-verifiable landmark imagery. This content never claims to be a photo.
+                if(snapshot != null) {
+                    Spacer(Modifier.height(15.dp))
+                    io.atmos.weather.ui.ThinnAtmosphereFocus(
+                        snapshot=snapshot,
+                        location=io.atmos.weather.location.LocationLabels.display(state.city.name),
+                        reducedMotion=reduceCityMotion
+                    )
+                    Spacer(Modifier.height(14.dp))
                 }
-                OutlinedButton(onClick={landmarkGalleryOpen=true},
-                    modifier=Modifier.fillMaxWidth().padding(top=10.dp)) {
-                    Icon(Icons.Rounded.Collections,contentDescription=null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("瀏覽全臺 124 處與國外 8 處 2D 地標",fontSize=15.sp)
-                }
-                Spacer(Modifier.height(14.dp))
                 if(snapshot != null) {
                     GlassCard {
                         // Horizontally draggable curve with a synchronized selected-hour readout.
@@ -1107,8 +998,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (briefingOpen) WeatherBriefingSettingsPage(onClose={briefingOpen=false})
         if (tasksOpen) io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})
         if (weatherAlarmOpen) io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})
-        if (landmarkGalleryOpen && landmarkRegistry!=null) LandmarkGalleryPage(
-            places=landmarkRegistry.places,onClose={landmarkGalleryOpen=false})
         if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
             warnings=state.cwaWarnings,onClose={typhoonPageOpen=false})
         if (updatePageOpen) {
@@ -1201,10 +1090,8 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
             }
         } else Modifier)
         .clip(shape)
-        .background(Brush.linearGradient(listOf(
-            Color(0xED173B55),Color(0xE9092038),Color(0xE014334C)
-        )))
-        .border(1.dp,White.copy(alpha=.25f+appearance.edgeLight*.25f),shape)
+        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
+        .border(1.dp,Color.White.copy(alpha=.19f),shape)
     ) {
         // Specular sheen follows the direction of a drag; it is not a false claim of live wallpaper blur.
         Canvas(Modifier.matchParentSize()) {
@@ -1676,146 +1563,6 @@ private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
     }
 }
 
-/**
- * Safe, native 2D landmark gallery.
- *
- * IMPORTANT: Until vendor-specific Filament native crashes have been reproduced and
- * fixed on real hardware, NEVER start ModelViewer from the home screen. Catching an
- * Exception does not catch native SIGSEGV; disabling that entry point is intentional.
- */
-@Composable
-private fun LandmarkCanvas(scene: WeatherScene?,place:LandmarkPlace?,modifier:Modifier=Modifier) {
-    val ctx=LocalContext.current
-    if(place == null || (!place.hasIllustration && place.preview == null)) {
-        Column(modifier.background(Color(0xFF152E43),RoundedCornerShape(18.dp)),
-            verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
-            Icon(Icons.Rounded.Construction,contentDescription=null,
-                tint=Color(0xFFB4D5E7),modifier=Modifier.size(42.dp))
-            Spacer(Modifier.height(10.dp))
-            Text("這個地標正在獨立建模",color=White,fontSize=18.sp,fontWeight=FontWeight.SemiBold)
-            Text("未完成的模型不冒充實景",color=TextSoft,fontSize=15.sp)
-        }
-        return
-    }
-    // An original, licensed-for-this-app illustration of Chiayi's actual KANO pitcher
-    // sculpture and circular fountain replaces the old generic yellow-block preview.
-    val isChiayiFountain=place.id=="594f0cb510"
-    val previewPath=place.preview
-    val picture=remember(place.id,ctx) {
-        val first=place.illustration ?: if(isChiayiFountain)
-            "landmarks/illustrations/chiayi_fountain_2d.webp" else previewPath
-        listOfNotNull(first,previewPath).distinct().firstNotNullOfOrNull { filename ->
-            runCatching {
-                ctx.assets.open(filename).use { input ->
-                    android.graphics.BitmapFactory.decodeStream(input)?.asImageBitmap()
-                }
-            }.getOrNull()
-        }
-    }
-    if(picture==null) {
-        Box(modifier.background(Color(0xFF132D41)),contentAlignment=Alignment.Center) {
-            Text("${place.caption} · 暫無地標圖片",color=White,fontSize=16.sp)
-        }
-        return
-    }
-    var showGallery by remember(place.id) { mutableStateOf(false) }
-    Box(modifier.background(Color(0xFF16354E)),contentAlignment=Alignment.Center) {
-        Image(bitmap=picture, contentDescription="${place.caption}，2D 地標${if(isChiayiFountain) "藝術插畫" else "模型預覽"}",
-            modifier=Modifier.fillMaxSize().clickable { showGallery=true },
-            contentScale=androidx.compose.ui.layout.ContentScale.Crop)
-        Box(Modifier.align(Alignment.BottomEnd).padding(10.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xE512334C))
-            .clickable { showGallery=true }
-            .padding(horizontal=14.dp,vertical=10.dp)) {
-            Text("放大欣賞 2D",color=White,fontSize=15.sp,fontWeight=FontWeight.Medium)
-        }
-    }
-    if(showGallery) {
-        var zoom by remember(place.id) { mutableFloatStateOf(1f) }
-        var translation by remember(place.id) { mutableStateOf(Offset.Zero) }
-        Dialog(onDismissRequest={showGallery=false},
-            properties=DialogProperties(usePlatformDefaultWidth=false)) {
-            Box(Modifier.fillMaxSize().background(Color(0xFF091929))) {
-                Image(bitmap=picture,contentDescription="${place.caption}，雙指可縮放及拖動的 2D 地標圖片",
-                    modifier=Modifier.fillMaxSize()
-                        .pointerInput(place.id) {
-                            detectTransformGestures { _,pan,gestureZoom,_ ->
-                                zoom=(zoom*gestureZoom).coerceIn(1f,4f)
-                                val maxX=size.width*(zoom-1f)*0.5f
-                                val maxY=size.height*(zoom-1f)*0.5f
-                                translation=Offset(
-                                    (translation.x+pan.x).coerceIn(-maxX,maxX),
-                                    (translation.y+pan.y).coerceIn(-maxY,maxY))
-                            }
-                        }
-                        .graphicsLayer(scaleX=zoom,scaleY=zoom,
-                            translationX=translation.x,translationY=translation.y),
-                    contentScale=androidx.compose.ui.layout.ContentScale.Fit)
-                Column(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color(0xED091929),Color.Transparent)))
-                    .statusBarsPadding().padding(horizontal=18.dp,vertical=15.dp)) {
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Text(place.caption,color=White,fontSize=20.sp,
-                            fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
-                        Text("關閉",color=White,fontSize=16.sp,
-                            modifier=Modifier.clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF264961))
-                                .clickable { showGallery=false }
-                                .padding(horizontal=18.dp,vertical=11.dp))
-                    }
-                    Text(if(place.hasIllustration) "專屬 2D 風格插畫 · 非景點實拍" else "模型概念圖，非景點實拍",
-                        color=Color(0xFFD7E7F0),fontSize=14.sp)
-                }
-                Text("雙指縮放 · 拖曳瀏覽",color=TextSoft,fontSize=14.sp,
-                    modifier=Modifier.align(Alignment.BottomCenter)
-                        .navigationBarsPadding().padding(bottom=16.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xCC112D42)).padding(horizontal=18.dp,vertical=9.dp))
-            }
-        }
-    }
-}
-
-private fun DrawScope.drawTaipei101(w:Float,h:Float,night:Boolean) {
-    val front=Color(0xFF5CB9BA);val side=Color(0xFF2F7F92)
-    drawRect(Color(0xFF375973),Offset(w*.37f,h*.62f),Size(w*.31f,h*.15f))
-    drawRect(Color(0xFF426C78),Offset(w*.43f,h*.24f),Size(w*.18f,h*.39f))
-    for(i in 0..7){
-        val yy=h*(.25f+i*.047f); val half=w*(.1f-i*.002f)
-        val path=Path().apply { moveTo(w*.52f-half,yy);lineTo(w*.52f+half,yy);lineTo(w*.52f+half*.76f,yy+h*.038f);lineTo(w*.52f-half*.76f,yy+h*.038f);close() }
-        drawPath(path,front)
-        drawLine(White.copy(alpha=.39f),Offset(w*.52f-half,yy),Offset(w*.52f+half,yy),1.dp.toPx())
-    }
-    drawLine(side,Offset(w*.52f,h*.11f),Offset(w*.52f,h*.24f),5.dp.toPx())
-    for(row in 0..7) for(col in 0..2){
-        drawRect(if(night) Color(0xFFFFE5A4) else Color(0xFFC3EBEC),
-            Offset(w*(.45f+col*.042f),h*(.27f+row*.048f)),Size(w*.018f,h*.011f))
-    }
-    drawRect(Color(0xFF2A5B72),Offset(w*.41f,h*.65f),Size(w*.23f,h*.11f))
-}
-private fun DrawScope.drawSkytree(w:Float,h:Float) {
-    val c=Color(0xFFE9EEF8);val center=w*.52f
-    drawRect(Color(0xFF577D97),Offset(w*.35f,h*.69f),Size(w*.35f,h*.08f))
-    drawLine(c,Offset(center-w*.065f,h*.7f),Offset(center-w*.025f,h*.21f),4.dp.toPx())
-    drawLine(c,Offset(center+w*.065f,h*.7f),Offset(center+w*.025f,h*.21f),4.dp.toPx())
-    drawLine(c,Offset(center,h*.09f),Offset(center,h*.69f),3.dp.toPx())
-    for(i in 0..11){ val y=h*(.26f+i*.036f); val x=w*(.025f+.034f*i/12f)
-        drawLine(Color(0xFF91BAD7),Offset(center-x,y),Offset(center+x,y),2.dp.toPx()) }
-    drawRoundRect(Color(0xFFBDDDE9),Offset(center-w*.11f,h*.28f),Size(w*.22f,h*.065f),androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()))
-    drawLine(Color(0xFFB8CFDC),Offset(center,h*.1f),Offset(center,h*.23f),3.dp.toPx())
-}
-private fun DrawScope.drawEiffel(w:Float,h:Float) {
-    val metal=Color(0xFFC18E6A); val center=w*.5f
-    drawLine(metal,Offset(center-w*.18f,h*.74f),Offset(center-w*.025f,h*.18f),9.dp.toPx())
-    drawLine(metal,Offset(center+w*.18f,h*.74f),Offset(center+w*.025f,h*.18f),9.dp.toPx())
-    drawLine(Color(0xFFE8BD96),Offset(center-w*.15f,h*.72f),Offset(center+w*.15f,h*.72f),4.dp.toPx())
-    for(i in 0..6){val y=h*(.27f+i*.06f); val width=w*(.036f+i*.018f)
-        drawLine(metal,Offset(center-width,y),Offset(center+width,y),3.dp.toPx())
-        if(i<6){drawLine(Color(0xFFF3D2AC),Offset(center-width,y),Offset(center+width+w*.01f,y+h*.06f),1.dp.toPx())}}
-    drawRect(metal,Offset(center-w*.12f,h*.57f),Size(w*.24f,h*.022f))
-    drawLine(metal,Offset(center,h*.11f),Offset(center,h*.21f),4.dp.toPx())
-}
 private fun WeatherCondition.label() = when(this){
     WeatherCondition.CLEAR -> "晴朗";WeatherCondition.PARTLY_CLOUDY -> "晴時多雲"
     WeatherCondition.CLOUDY -> "多雲";WeatherCondition.FOG -> "有霧"

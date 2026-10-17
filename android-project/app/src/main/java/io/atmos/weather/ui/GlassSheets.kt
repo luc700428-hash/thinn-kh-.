@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-private val glassBorder=Brush.linearGradient(listOf(Color.White.copy(alpha=.60f),Color.White.copy(alpha=.08f),Color(0xFF7AE2FE).copy(alpha=.35f)))
+private val glassBorder: Brush get() = ThinnOpticalMaterial.rim
 
 /** Native full-width bottom sheet with user-controlled drag handle. */
 @Composable
@@ -58,8 +58,9 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
             Column(Modifier.fillMaxWidth().heightIn(max=780.dp)
                 .offset { IntOffset(0,animatedY.toInt()) }
                 .clip(RoundedCornerShape(topStart=28.dp,topEnd=28.dp))
-                .background(Brush.verticalGradient(listOf(Color(0xEE344E65),containerColor,Color(0xFF122339))))
+                .background(ThinnOpticalMaterial.raised)
                 .border(1.dp,glassBorder,RoundedCornerShape(topStart=28.dp,topEnd=28.dp))
+                .thinnSpecularEdge(28.dp)
                 .navigationBarsPadding()) {
                 var dragged by remember { mutableFloatStateOf(0f) }
                 Box(Modifier.fillMaxWidth().height(36.dp)
@@ -97,8 +98,8 @@ fun GlassAlertDialog(onDismissRequest:()->Unit,confirmButton:@Composable ()->Uni
         Column(Modifier.fillMaxWidth()
             .graphicsLayer { scaleX=scale;scaleY=scale;alpha=opacity }
             .clip(RoundedCornerShape(29.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF334B63),Color(0xFF13283C))))
-            .border(1.dp,glassBorder,RoundedCornerShape(29.dp)).padding(22.dp),
+            .background(ThinnOpticalMaterial.raised)
+            .border(1.dp,glassBorder,RoundedCornerShape(29.dp)).thinnSpecularEdge(29.dp).padding(22.dp),
             verticalArrangement=Arrangement.spacedBy(14.dp)) {
             title?.invoke();text?.invoke()
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {confirmButton()}
@@ -122,8 +123,8 @@ fun GlassOutlinedTextField(value:String,onValueChange:(String)->Unit,
             focusedTextColor=Color.White,unfocusedTextColor=Color.White,
             focusedContainerColor=Color.White.copy(alpha=.16f),
             unfocusedContainerColor=Color.White.copy(alpha=.09f),
-            focusedIndicatorColor=ThinnDesignTokens.accent,
-            unfocusedIndicatorColor=Color.White.copy(alpha=.14f),
+            focusedIndicatorColor=Color.Transparent,
+            unfocusedIndicatorColor=Color.Transparent,
             cursorColor=ThinnDesignTokens.accent,
             focusedLabelColor=ThinnDesignTokens.accent,
             unfocusedLabelColor=Color(0xFFCBDCE8)
@@ -146,7 +147,7 @@ fun GlassDropdownMenu(expanded:Boolean,onDismissRequest:()->Unit,
     ) {
         Column(Modifier.widthIn(min=230.dp,max=310.dp).heightIn(max=340.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF304D66),Color(0xFF142A40))))
+            .background(ThinnOpticalMaterial.surface)
             .border(1.dp,glassBorder,RoundedCornerShape(22.dp))
             .verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(7.dp),content=content)
     }

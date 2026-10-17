@@ -22,8 +22,8 @@ class R3FiveUserReports(unittest.TestCase):
     def test_landmark_only_opt_in_native_renderer(self):
         s=source('presentation/home/WeatherHomeScreen.kt')
         self.assertNotIn('FilamentLandmark(',s)
-        self.assertIn('LandmarkGalleryPage(',s)
-        self.assertIn('if(reduceCityMotion)',s)
+        self.assertNotIn('LandmarkGalleryPage(',s)
+        self.assertIn('reducedMotion=reduceCityMotion',s)
         self.assertIn('beyondViewportPageCount = 0',s)
 
     def test_crash_diagnostics_from_weather_screen(self):

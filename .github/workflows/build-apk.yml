@@ -45,6 +45,10 @@ jobs:
           test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnDesignTokens.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnComponents.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/ui/GlassNavigation.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnOpticalMaterial.kt"
+          test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnAtmosphereFocus.kt"
+          test ! -e "$project/app/src/main/java/io/atmos/weather/presentation/home/LandmarkGalleryPage.kt"
+          test ! -e "$project/app/src/main/assets/landmarks/illustrations"
           test -s "$project/app/src/main/java/io/atmos/weather/task/TaskCenterPage.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/task/TaskReminderScheduler.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/earthquake/SeismicPrimaryTab.kt"
@@ -53,7 +57,6 @@ jobs:
           test -s "$project/app/src/main/java/io/atmos/weather/presentation/home/HomeWeatherBriefing.kt"
           for model in taipei101 kaohsiung85 dreammall tamkang_bridge music_center miyahara chihkan xiaoliuqiu_flower lanyu_bay guishan_island hsinchu_gate dongyin_lighthouse alishan_railway tropic_cancer_solar npm_south fenqihu_station chiayi_fountain; do
             test -s "$project/app/src/main/assets/landmarks/individual/$model.glb"
-            test -s "$project/app/src/main/assets/landmarks/individual/previews/$model.png"
           done
           test -s "$project/app/src/main/java/io/atmos/weather/widgets/AtmosWidgets.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/ui/RadarHistoryDialog.kt"
@@ -70,7 +73,6 @@ jobs:
           fi
           for n in $(seq -w 0 21); do
             test -s "$project/app/src/main/assets/landmarks/tw_${n}.glb"
-            test -s "$project/app/src/main/assets/landmarks/previews/tw_${n}.png"
           done
           grep -Fq 'targetSdk = 36' "$project/app/build.gradle.kts"
           echo "Building tracked source commit: $GITHUB_SHA"

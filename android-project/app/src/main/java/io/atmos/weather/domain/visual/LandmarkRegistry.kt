@@ -10,7 +10,7 @@ data class LandmarkPlace(
     val name:String, val model:String?, val preview:String?, val illustration:String?, val geometryStatus:String
 ) {
     val caption:String get() = "$displayRegion、$name"
-    val hasModel:Boolean get() = geometryStatus == "original_prototype" && model != null && preview != null
+    val hasModel:Boolean get() = geometryStatus == "original_prototype" && model != null
     val hasIllustration:Boolean get() = !illustration.isNullOrBlank()
 }
 
