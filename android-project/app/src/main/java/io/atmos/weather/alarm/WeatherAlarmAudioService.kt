@@ -17,6 +17,22 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.os.Handler
+import android.os.Looper
+import java.time.ZonedDateTime
+import io.atmos.weather.AppContainer
+import io.atmos.weather.domain.model.GeoPoint
+import io.atmos.weather.domain.model.WeatherCity
+import io.atmos.weather.domain.repository.WeatherLoadResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.util.Locale
@@ -84,6 +100,9 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     private var player:MediaPlayer?=null
     private var vibrator:Vibrator?=null
     private var tts:TextToSpeech?=null
+    private val uiHandler=Handler(Looper.getMainLooper())
+    private val speechScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
+    private var speechJob:Job?=null
 
     override fun onBind(intent:Intent?):IBinder?=null
 
@@ -96,6 +115,8 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                     if(intent?.action==ACTION_SNOOZE) WeatherAlarmScheduler.scheduleSnooze(this,id)
                     (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
                         .cancel(BASE_NOTIFICATION_ID+id)
+                    stopAudio()
+                    currentId=-1
                     stopSelf()
                 } else if(id>=0) {
                     (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
@@ -128,7 +149,10 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun beginAudio(alarm:WeatherAlarm) {
-        val selected=runCatching { alarm.ringtoneUri?.let(android.net.Uri::parse) }.getOrNull()
+        val tone=R10AlarmTones.resource(alarm.ringtoneUri,
+            WeatherAlarmSpeechCache.load(this),System.currentTimeMillis())
+        val selected=if(tone!=null) android.net.Uri.parse("android.resource://$packageName/$tone")
+            else runCatching { alarm.ringtoneUri?.let(android.net.Uri::parse) }.getOrNull()
         val default=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         for(uri in listOfNotNull(selected,default).distinct()) {
@@ -155,18 +179,81 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     }
 
     override fun onInit(status:Int) {
-        if(status!=TextToSpeech.SUCCESS || currentId<0) return
-        tts?.language=Locale.TAIWAN
-        val prefs=getSharedPreferences("thinn_alarms",Context.MODE_PRIVATE)
-        val savedAt=prefs.getLong("latest_weather_at",0L)
-        val fresh=System.currentTimeMillis()-savedAt in 0L..(3*60*60_000L)
-        val summary=if(fresh) prefs.getString("latest_weather_summary",null)
-            ?:"早安，請查看最新的天氣資訊。"
-            else "早安。天氣資料尚未更新，請開啟天氣 App 查看最新預報及警特報。"
-        tts?.speak(summary,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$currentId")
+        if(status != TextToSpeech.SUCCESS || currentId < 0) return
+        val engine=tts ?: return
+        val availability=runCatching {engine.setLanguage(Locale.TAIWAN)}.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
+        if(availability < TextToSpeech.LANG_AVAILABLE) {
+            Log.w("thinn-alarm","Traditional Chinese TTS is unavailable; preserving ringtone")
+            return
+        }
+        // The user has not opted into sending private alarm/weather text to a
+        // cloud TTS provider. Require an explicitly verified offline zh-TW voice.
+        val best=runCatching {
+            engine.voices.orEmpty().filter { voice ->
+                voice.locale.language == Locale.CHINESE.language &&
+                    voice.locale.country.equals("TW",ignoreCase=true) &&
+                    !voice.isNetworkConnectionRequired
+            }.maxWithOrNull(compareBy<android.speech.tts.Voice> { it.quality }
+                .thenByDescending { it.latency })
+        }.getOrNull()
+        if (best==null || engine.setVoice(best)!=TextToSpeech.SUCCESS) {
+            Log.w("thinn-alarm","No verified offline zh-TW voice installed; ringtone keeps playing")
+            return
+        }
+        engine.setSpeechRate(0.94f)
+        engine.setPitch(1.0f)
+        engine.setAudioAttributes(AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+        val id=currentId
+        engine.setOnUtteranceProgressListener(object:UtteranceProgressListener() {
+            override fun onStart(utteranceId:String?) { }
+            override fun onDone(utteranceId:String?) {
+                uiHandler.post { if(currentId==id) runCatching {player?.setVolume(1f,1f)} }
+            }
+            @Deprecated("Deprecated in platform; still invoked by some TTS engines")
+            override fun onError(utteranceId:String?) {
+                uiHandler.post { if(currentId==id) runCatching {player?.setVolume(1f,1f)} }
+            }
+            override fun onError(utteranceId:String?, errorCode:Int) { onError(utteranceId) }
+        })
+        speechJob?.cancel()
+        speechJob=speechScope.launch {
+            // Alarm audio starts immediately. Network updates, when permitted, are bounded
+            // and NEVER block the alarm; only saved location, no background GPS requests.
+            val updated=withTimeoutOrNull(6_000L) {
+                withContext(Dispatchers.IO) { runCatching { refreshAlarmWeather() }.getOrNull() }
+            }
+            if(currentId!=id) return@launch
+            val reading=updated ?: WeatherAlarmSpeechCache.load(this@WeatherAlarmAudioService)
+            val message=WeatherAlarmNarration.build(ZonedDateTime.now(),reading)
+            runCatching {player?.setVolume(.18f,.18f)}
+            val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
+            if(result != TextToSpeech.SUCCESS) runCatching {player?.setVolume(1f,1f)}
+            // OEM TTS can omit onDone. Never leave the ringing sound quiet indefinitely.
+            uiHandler.postDelayed({ if(currentId==id) runCatching {player?.setVolume(1f,1f)} },120_000L)
+        }
+    }
+
+    private suspend fun refreshAlarmWeather(): AlarmWeatherReading? {
+        val prefs=getSharedPreferences("atmos_settings",Context.MODE_PRIVATE)
+        val gps=prefs.contains("gps_lat") && prefs.contains("gps_lon")
+        val lat=Double.fromBits(prefs.getLong(if(gps)"gps_lat" else "lat",0L))
+        val lon=Double.fromBits(prefs.getLong(if(gps)"gps_lon" else "lon",0L))
+        if(!lat.isFinite() || !lon.isFinite() || lat !in -90.0..90.0 || lon !in -180.0..180.0 || (lat==0.0 && lon==0.0)) return null
+        val city=WeatherCity("alarm",if(gps) prefs.getString("gps_name","目前位置") ?: "目前位置"
+            else prefs.getString("city_name","目前城市") ?: "目前城市",GeoPoint(lat,lon))
+        return when(val result=AppContainer.repository(this).load(city,true)) {
+            is WeatherLoadResult.Success -> if(!result.stale) {
+                WeatherAlarmSpeechCache.save(this,result.value)
+                WeatherAlarmSpeechCache.load(this)
+            } else null
+            is WeatherLoadResult.Failure -> null
+        }
     }
 
     private fun stopAudio() {
+        speechJob?.cancel();speechJob=null
         runCatching {player?.stop();player?.release()};player=null
         runCatching {tts?.stop();tts?.shutdown()};tts=null
         runCatching {vibrator?.cancel()};vibrator=null
@@ -175,6 +262,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         stopAudio()
         currentId=-1
+        speechScope.cancel()
         super.onDestroy()
     }
 }

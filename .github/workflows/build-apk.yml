@@ -47,6 +47,14 @@ jobs:
           test -s "$project/app/src/main/java/io/atmos/weather/ui/GlassNavigation.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnOpticalMaterial.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/ui/ThinnAtmosphereFocus.kt"
+          # R10 alarm, cross-border EEW scope and local-only simulation release gates.
+          for path in alarm/R10AlarmDesign.kt alarm/WeatherAlarmNarration.kt alarm/WeatherAlarmSpeechCache.kt earthquake/TaiwanEewScope.kt earthquake/SeismicSimulation.kt earthquake/SeismicTrainingVoice.kt; do
+            test -s "$project/app/src/main/java/io/atmos/weather/$path"
+          done
+          for sound in dawn dawn_rain rain rain_clear wood water fire metal; do
+            test -s "$project/app/src/main/res/raw/thinn_alarm_${sound}.ogg"
+          done
+
           test ! -e "$project/app/src/main/java/io/atmos/weather/presentation/home/LandmarkGalleryPage.kt"
           test ! -e "$project/app/src/main/assets/landmarks/illustrations"
           test -s "$project/app/src/main/java/io/atmos/weather/task/TaskCenterPage.kt"

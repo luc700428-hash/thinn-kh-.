@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -14,13 +15,15 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.runtime.*
@@ -62,9 +65,13 @@ class WeatherAlarmRingActivity:ComponentActivity() {
                     Text(if(info.weatherVoice)"起床天氣語音" else "日常提醒",color=Color(0xFFAFE5FC),fontSize=18.sp)
                 }
                 Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(15.dp)) {
-                    if(info.snooze) Button(onClick={close(true)},modifier=Modifier.fillMaxWidth().height(72.dp),
-                        colors=ButtonDefaults.buttonColors(containerColor=Color(0xFFFFA939)),shape=RoundedCornerShape(36.dp)) {
-                        Text("稍後提醒 · 10 分鐘",fontSize=21.sp,color=Color.Black)
+                    if(info.snooze) Box(Modifier.fillMaxWidth().height(76.dp)
+                        .clip(RoundedCornerShape(38.dp))
+                        .background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(
+                            Color(0xFFFFC254),Color(0xFFFF982F))))
+                        .border(1.dp,Color(0xFFFFD785),RoundedCornerShape(38.dp))
+                        .clickable {close(true)},contentAlignment=Alignment.Center) {
+                        Text("稍後提醒",fontSize=23.sp,color=Color.White,fontWeight=FontWeight.SemiBold)
                     }
                     // Horizontal slide gesture, with spring-back if not completed.
                     // Separate button below preserves access for TalkBack / switch access.
@@ -104,9 +111,9 @@ class WeatherAlarmRingActivity:ComponentActivity() {
                                 modifier=Modifier.size(26.dp))
                         }
                     }
-                    TextButton(onClick={close(false)},modifier=Modifier.fillMaxWidth()) {
-                        Text("無法滑動？點此停止鬧鐘",color=Color(0xFFD1DFEA),fontSize=15.sp)
-                    }
+                    Text("無法滑動？點此停止鬧鐘",color=Color(0xFFD1DFEA),fontSize=15.sp,
+                        modifier=Modifier.fillMaxWidth().clickable {close(false)}.padding(16.dp),
+                        textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
         }

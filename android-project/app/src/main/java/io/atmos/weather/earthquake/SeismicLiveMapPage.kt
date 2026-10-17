@@ -70,6 +70,7 @@ fun SeismicLiveMapPage(
     }
     val live by ExpTechSeismicService.live.collectAsState()
     var layer by remember { mutableStateOf("綜合") }
+    var simulation by remember { mutableStateOf<EewIncident?>(null) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var panX by remember { mutableFloatStateOf(0f) }
     var panY by remember { mutableFloatStateOf(0f) }
@@ -263,6 +264,12 @@ fun SeismicLiveMapPage(
                     Button(onClick={if(live.enabled) ExpTechSeismicService.stop(ctx) else ExpTechSeismicService.start(ctx)},
                         modifier=Modifier.fillMaxWidth()) {
                         Text(if(live.enabled) "停止監測" else "啟動監測")
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis())},
+                        modifier=Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.PlayArrow,null,tint=iceBlue)
+                        Text("完整地震警示模擬演練 · 不發真實警報",color=iceBlue,fontSize=14.sp)
                     }
                     Spacer(Modifier.height(14.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -664,6 +671,10 @@ fun SeismicLiveMapPage(
         }
         overlay?.let { event ->
             SeismicWarningOverlay(event,overlayReplay,devicePlace?.name,onClose={overlay=null})
+        }
+        simulation?.let { event ->
+            SeismicWarningOverlay(event,replay=true,userCounty=devicePlace?.name,
+                onClose={simulation=null},simulation=true)
         }
         details?.let { report ->
             AlertDialog(onDismissRequest={details=null},

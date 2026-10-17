@@ -61,6 +61,8 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var drillOpen by remember { mutableStateOf(false) }
+    var simulationOpen by remember { mutableStateOf(false) }
+    var simulationScenario by remember { mutableStateOf<EewIncident?>(null) }
     var settingsOpen by remember { mutableStateOf(false) }
     var monitorOpen by remember { mutableStateOf(false) }
     var autoWatch by remember { mutableStateOf(prefs.getBoolean("earthquake_foreground_watch",true)) }
@@ -327,6 +329,17 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(12.dp))
+                    Button(onClick={
+                        simulationScenario=SeismicSimulation.scenario(System.currentTimeMillis())
+                        simulationOpen=true
+                        haptics?.play(HapticEngine.Event.TAP)
+                    },modifier=Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.WarningAmber,null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("體驗完整地震預警演練")
+                    }
+                    Text("模擬警示畫面、22 縣市震度、P/S 波動畫、演練音與語音。全程標示演練，不發送推播或真實警報。",
+                        color=soft,fontSize=14.sp,lineHeight=19.sp,modifier=Modifier.padding(top=7.dp,bottom=12.dp))
                     Button(onClick={drillOpen=true;haptics?.play(HapticEngine.Event.TAP)},modifier=Modifier.fillMaxWidth()) {
                         Icon(Icons.Rounded.PlayArrow,null);Spacer(Modifier.width(8.dp));Text("開始 12 秒防護演練")
                     }
@@ -340,6 +353,10 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                 Spacer(Modifier.height(20.dp))
             }
             if (drillOpen) EarthquakeSafetyDrill(onClose={drillOpen=false})
+            if (simulationOpen) simulationScenario?.let { scenario ->
+                SeismicWarningOverlay(incident=scenario,replay=true,userCounty=SeismicUserLocation.current(context)?.name,
+                    simulation=true,onClose={simulationOpen=false;simulationScenario=null})
+            }
         }
     }
 }

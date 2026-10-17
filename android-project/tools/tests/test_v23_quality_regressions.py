@@ -6,8 +6,11 @@ ROOT = pathlib.Path(__file__).resolve().parents[2] / 'app' / 'src' / 'main' / 'j
 class V23QualityRegressionTests(unittest.TestCase):
     def test_alarm_picker_cannot_be_obscured_by_editor(self):
         src = (ROOT / 'alarm' / 'WeatherAlarmPage.kt').read_text()
-        self.assertIn('if (!wheelOpen) AlertDialog',src)
-        self.assertIn('if(wheelOpen) Dialog(',src)
+        new=(ROOT/'alarm/R10AlarmDesign.kt').read_text()
+        self.assertIn('R10AlarmEditor(',src)
+        self.assertIn('R10RingtonePicker(',new)
+        self.assertNotIn('AndroidView(',new)
+        self.assertNotIn('AlertDialog',new)
         self.assertIn('Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT',src)
         self.assertIn('ActivityResultContracts.RequestPermission()',src)
     def test_typhoon_does_not_connect_unverified_points(self):

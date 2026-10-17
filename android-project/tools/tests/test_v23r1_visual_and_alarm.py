@@ -11,8 +11,10 @@ class VisualAlarmTyphoonV23R1(unittest.TestCase):
         alarm=(JAVA/'alarm/WeatherAlarm.kt').read_text()
         ring=(JAVA/'alarm/WeatherAlarmRingActivity.kt').read_text()
         audio=(JAVA/'alarm/WeatherAlarmAudioService.kt').read_text()
-        for token in ('rememberLauncherForActivityResult','ACTION_RINGTONE_PICKER','ringtoneUri'):
-            self.assertIn(token,editor)
+        design=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
+        for token in ('R10RingtonePicker','R10AlarmTones.resource','R10AlarmEditor','onChoose'):
+            self.assertIn(token,design)
+        self.assertIn('R10AlarmEditor(initial=editing',editor)
         self.assertIn('put("ringtoneUri"',alarm)
         self.assertIn('alarm.ringtoneUri',audio)
         self.assertIn('detectHorizontalDragGestures',ring)

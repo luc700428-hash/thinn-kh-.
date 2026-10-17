@@ -134,27 +134,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snapshot = state.weather
     val alarmContext = LocalContext.current
-    // At alarm time, speak only forecast values actually fetched recently; no made-up data.
+    // Cache time-stamped forecast facts for alarm-time narration. A greeting or stale
+    // weather assertion must never be frozen into the home-screen cache.
     LaunchedEffect(snapshot, state.stale) {
         if (snapshot != null && !state.stale) {
-            val rain = snapshot.nextHours.take(6).mapNotNull { it.precipitationProbabilityPct }.maxOrNull()
-            val temp = snapshot.temperatureC.roundToInt()
-            val feel = snapshot.feelsLikeC?.roundToInt()
-            val clothes = when {
-                (feel ?: temp) >= 29 -> "建議短袖並注意補水防曬。"
-                (feel ?: temp) <= 19 -> "建議攜帶外套注意保暖。"
-                else -> "建議穿著輕便透氣的衣物。"
-            }
-            val umbrella = when {
-                rain == null -> "降雨資料尚未齊全，出門前請再確認。"
-                rain >= 31 -> "降雨機率最高約 ${rain}%，建議攜帶雨具。"
-                else -> "未來六小時最高降雨機率約 ${rain}%。"
-            }
-            val summary = "早安，目前氣溫約 ${temp} 度，${snapshot.condition.label()}。" +
-                (feel?.let { "體感約 ${it} 度。" } ?: "") + umbrella + clothes
-            alarmContext.getSharedPreferences("thinn_alarms",android.content.Context.MODE_PRIVATE)
-                .edit().putLong("latest_weather_at",System.currentTimeMillis())
-                .putString("latest_weather_summary",summary).apply()
+            io.atmos.weather.alarm.WeatherAlarmSpeechCache.save(alarmContext, snapshot)
         }
     }
     val isNight = snapshot?.isDay == false
@@ -1486,13 +1470,15 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
             Spacer(Modifier.width(10.dp))
             Text("今天出門",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
         }
-        Spacer(Modifier.height(9.dp))
+        Spacer(Modifier.height(17.dp))
         Text(if(stale) "天氣資料待更新" else (critical?.heading ?: plan.headline),
-            color=White,fontSize=21.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,maxLines=2)
+            color=White,fontSize=23.sp,lineHeight=32.sp,fontWeight=FontWeight.SemiBold,maxLines=3)
         Spacer(Modifier.height(5.dp))
         Text(if(stale) "目前顯示舊資料，請重新整理後再確認外出安排。" else (critical?.detail ?: plan.reminder),
             color=Color(0xFFF0F6FB),fontSize=16.sp,lineHeight=24.sp,maxLines=3)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(18.dp))
+        Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha=.14f)))
+        Spacer(Modifier.height(17.dp))
         // These are not optional fine print: clothing and rain decisions are always visible.
         HomeAdviceRow("穿著建議",if(stale) "待更新" else plan.top)
         Spacer(Modifier.height(9.dp))
@@ -1513,8 +1499,8 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
 private fun HomeAdviceRow(label:String,value:String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.Top) {
         Text(label,color=Color(0xFFBBDDF1),fontSize=16.sp,fontWeight=FontWeight.SemiBold,
-            modifier=Modifier.width(96.dp))
-        Text(value,color=White,fontSize=16.sp,lineHeight=23.sp,modifier=Modifier.weight(1f))
+            modifier=Modifier.width(84.dp))
+        Text(value,color=White,fontSize=16.sp,lineHeight=24.sp,modifier=Modifier.weight(1f))
     }
 }
 
@@ -1526,8 +1512,8 @@ private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
         Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            Text("現在最重要的天氣", color = White, fontSize = 20.sp,
-                lineHeight = 28.sp, fontWeight = FontWeight.SemiBold)
+            Text("現在最重要的天氣", color = White, fontSize = 21.sp,
+                lineHeight = 29.sp, fontWeight = FontWeight.SemiBold)
             Text("未來 6 小時", color = Color(0xFFC4E8FC), fontSize = 14.sp)
         }
         if (stale) {
@@ -1546,7 +1532,7 @@ private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
                             fontWeight = FontWeight.Medium, lineHeight = 22.sp)
                         Spacer(Modifier.height(5.dp))
                         Text(fact.value, color = White, fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold, lineHeight = 34.sp,
+                            fontWeight = FontWeight.SemiBold, lineHeight = 35.sp,
                             maxLines = 2)
                         Spacer(Modifier.height(3.dp))
                         Text(fact.note, color = Color(0xFFBED6E5), fontSize = 14.sp,

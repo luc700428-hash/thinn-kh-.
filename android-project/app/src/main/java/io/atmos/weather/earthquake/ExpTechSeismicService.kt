@@ -181,6 +181,9 @@ class ExpTechSeismicService : Service() {
         }
         live.update { it.copy(lastEewAt=time) }
         ExpTechRealtimeParser.parseEew(raw).forEach { quake ->
+            // In particular, Japanese EEW that does not affect Taiwan/islands must not
+            // reach the alert, speech, focus-island or recent-event display pipeline.
+            if (!TaiwanEewScope.relevant(quake)) return@forEach
             live.update { state ->
                 state.copy(incident=quake, recentIncidents=(listOf(quake) + state.recentIncidents.filterNot {
                     it.id==quake.id && it.serial==quake.serial

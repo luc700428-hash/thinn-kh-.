@@ -8,7 +8,6 @@ import androidx.core.content.ContextCompat
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import android.media.RingtoneManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
@@ -17,10 +16,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import io.atmos.weather.ui.GlassIconButton as IconButton
+import io.atmos.weather.ui.GlassTextButton as TextButton
 import androidx.compose.runtime.*
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -29,7 +29,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.atmos.weather.ui.ThinnDesignTokens
 import java.util.Locale
 
 private val bg = Color(0xFF10273D)
@@ -122,102 +121,13 @@ fun WeatherAlarmPage(onClose:()->Unit) {
                     Text((if(a.days.isEmpty()) "只響一次" else "每週 ${a.days.sorted().joinToString("、") {days[it-1]}}")+
                         (if(a.weatherVoice) " · 起床天氣語音" else ""),fontSize=14.sp,color=Color(0xFFE1F0F9))
                 }
-                Switch(checked=a.enabled,onCheckedChange={value->update(alarms.map{if(it.id==a.id)it.copy(enabled=value) else it})})
+                R10Switch(checked=a.enabled,onCheckedChange={value->update(alarms.map{if(it.id==a.id)it.copy(enabled=value) else it})})
             }
         }
         Text("實際提醒由 Android 鬧鐘與通知權限控制；Android 14+ 全螢幕顯示須個別授權。",color=Color(0xFFCCE0ED),fontSize=14.sp)
     }
-    if(showEditor) AlarmEditor(initial=editing,onClose={showEditor=false},onDelete={a->
+    if(showEditor) R10AlarmEditor(initial=editing,onClose={showEditor=false},onDelete={a->
         update(alarms.filterNot { it.id==a.id });showEditor=false
     },onSave={a->update(alarms.filterNot { it.id==a.id }+a);showEditor=false})
 }
 
-@Composable
-private fun AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm)->Unit,onSave:(WeatherAlarm)->Unit) {
-    val ctx=LocalContext.current
-    val now=remember {java.time.LocalTime.now().plusMinutes(5)}
-    var hour by remember(initial) { mutableIntStateOf(initial?.hour ?: now.hour) }
-    var minute by remember(initial) { mutableIntStateOf(initial?.minute ?: now.minute) }
-    var label by remember(initial) { mutableStateOf(initial?.title ?: "起床鬧鐘") }
-    var repeat by remember(initial) { mutableStateOf(initial?.days ?: emptySet()) }
-    var voice by remember(initial) { mutableStateOf(initial?.weatherVoice ?: true) }
-    var snooze by remember(initial) { mutableStateOf(initial?.snooze ?: true) }
-    var ringtoneUri by remember(initial) { mutableStateOf(initial?.ringtoneUri) }
-    val ringtonePicker=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if(result.resultCode==android.app.Activity.RESULT_OK) {
-            @Suppress("DEPRECATION")
-            val picked=result.data?.getParcelableExtra<android.net.Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-            ringtoneUri=picked?.toString()
-        }
-    }
-    var ringtonePickerError by remember { mutableStateOf(false) }
-    var wheelOpen by remember { mutableStateOf(false) }
-    if (!wheelOpen) AlertDialog(onDismissRequest=onClose,containerColor=bg,title={Text(if(initial==null)"新增天氣鬧鐘" else "編輯鬧鐘",color=ink)},
-        text={Column(Modifier.verticalScroll(rememberScrollState())) {
-            TextButton(onClick={wheelOpen=true}) {
-                Text(String.format(Locale.TAIWAN,"%02d:%02d  ▾",hour,minute),fontSize=38.sp,color=accent)
-            }
-            OutlinedTextField(label={Text("標籤")},value=label,onValueChange={label=it.take(30)},singleLine=true)
-            Spacer(Modifier.height(13.dp))
-            Text("重複星期（不選表示只響一次）",color=ink,fontSize=16.sp)
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-                days.forEachIndexed {index,text->
-                    val day=index+1
-                    FilterChip(selected=day in repeat,onClick={repeat=if(day in repeat)repeat-day else repeat+day},
-                        label={Text(text,fontSize=14.sp)},modifier=Modifier.weight(1f))
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            Text("鬧鐘鈴聲",color=ink,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-            TextButton(onClick={
-                ringtonePickerError=false
-                runCatching {
-                    ringtonePicker.launch(Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE,RingtoneManager.TYPE_ALARM)
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE,"選擇鬧鐘鈴聲")
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT,false)
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                            ringtoneUri?.let(android.net.Uri::parse)
-                                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
-                    })
-                }.onFailure { ringtonePickerError=true }
-            }) { Text(if(ringtoneUri==null) "選擇系統鈴聲 · 預設" else "變更已選鈴聲",color=accent,fontSize=16.sp) }
-            if(ringtonePickerError) Text("無法開啟系統鈴聲挑選器，請確認裝置有支援的鈴聲 App。",color=Color(0xFFFFD69E),fontSize=14.sp)
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Text("播報天氣與穿著建議",color=ink,fontSize=15.sp,modifier=Modifier.weight(1f))
-                Switch(checked=voice,onCheckedChange={voice=it})
-            }
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Text("允許稍後提醒 10 分鐘",color=ink,fontSize=15.sp,modifier=Modifier.weight(1f))
-                Switch(checked=snooze,onCheckedChange={snooze=it})
-            }
-            Text("語音讀取最近保存的天氣摘要；資料過舊時只提醒開啟 App，不會捏造即時預報。",color=Color(0xFFC8DCE9),fontSize=14.sp)
-        }},confirmButton={
-            Button(onClick={val id=initial?.id ?: ((System.currentTimeMillis()%1000000).toInt()+1)
-                onSave(WeatherAlarm(id,hour,minute,label,repeat,true,voice,snooze,ringtoneUri))}){Text("儲存")}
-        },dismissButton={Row {
-            if(initial!=null) TextButton(onClick={onDelete(initial)}){Text("刪除",color=Color(0xFFFFB7AF))}
-            TextButton(onClick=onClose){Text("取消")}
-        }})
-    if(wheelOpen) Dialog(onDismissRequest={wheelOpen=false}) {
-        Column(Modifier.fillMaxWidth().background(Color(0xFFEAF5FC),RoundedCornerShape(26.dp))
-            .padding(22.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-            Text("選擇鬧鐘時間",fontSize=21.sp,color=Color(0xFF17364E),fontWeight=FontWeight.SemiBold)
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
-                AndroidView(factory={android.widget.NumberPicker(it).apply {
-                    minValue=0;maxValue=23;wrapSelectorWheel=true;value=hour
-                    setFormatter { v->"%02d".format(Locale.TAIWAN,v) }
-                    setOnValueChangedListener { _,_,newValue->hour=newValue }
-                }},modifier=Modifier.weight(1f),update={if(it.value!=hour)it.value=hour})
-                Text(":",fontSize=29.sp,color=Color(0xFF17364E))
-                AndroidView(factory={android.widget.NumberPicker(it).apply {
-                    minValue=0;maxValue=59;wrapSelectorWheel=true;value=minute
-                    setFormatter { v->"%02d".format(Locale.TAIWAN,v) }
-                    setOnValueChangedListener { _,_,newValue->minute=newValue }
-                }},modifier=Modifier.weight(1f),update={if(it.value!=minute)it.value=minute})
-            }
-            Button(onClick={wheelOpen=false}) {Text("完成")}
-        }
-    }
-}

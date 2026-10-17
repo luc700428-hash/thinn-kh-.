@@ -8,6 +8,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import io.atmos.weather.ui.GlassButton as Button
+import io.atmos.weather.ui.GlassTextButton as TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,13 +37,14 @@ private val warningRed = Color(0xFFE75D5B)
  * Animated P/S radii use illustrative constant speeds, NOT arrival predictions.
  */
 @Composable
-fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?,onClose:()->Unit) {
+fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?,onClose:()->Unit,
+    simulation:Boolean=false) {
     val context=LocalContext.current
     val county=userCounty.orEmpty().replace('台','臺')
     val supplied=remember(incident) { SeismicWarningCounties.fromProvider(incident.localIntensityByCounty) }
     val allCounties=remember(incident) { SeismicWarningCounties.allFromProvider(incident.localIntensityByCounty) }
     val local=supplied.firstOrNull { it.county==county || (county.isNotEmpty() && county.contains(it.county)) }?.intensity
-    val eventKey="${incident.id}:${incident.serial}:$replay"
+    val eventKey="${incident.id}:${incident.serial}:$replay:$simulation"
     var frameNow by remember(eventKey) { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(eventKey) {
         while(true) { frameNow=System.currentTimeMillis(); delay(120) }
@@ -51,6 +54,14 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     DisposableEffect(context,eventKey) {
         if(!replay) SeismicContinuousWarning.start(context,incident)
         onDispose { if(!replay) SeismicContinuousWarning.stop() }
+    }
+    DisposableEffect(context,eventKey,simulation) {
+        if(simulation) SeismicSound.practiceLoop(context)
+        onDispose { if(simulation) SeismicSound.stop() }
+    }
+    DisposableEffect(context,eventKey,simulation) {
+        val trainingVoice=if(simulation) SeismicTrainingVoice(context) else null
+        onDispose { trainingVoice?.stop() }
     }
     LaunchedEffect(eventKey) {
         if(!replay && SeismicSpeech.enabled(context,"eew_voice_enabled")) {
@@ -67,11 +78,16 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
             horizontalAlignment=Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(if(replay)"歷史地震演練" else "地震預警",fontSize=27.sp,fontWeight=FontWeight.ExtraBold,color=Color.White)
-                    Text(if(replay) "過去事件回放 · 非即時警報" else "資料來源：${incident.source} · 第三方速報",
+                    Text(if(simulation) "地震預警・模擬演練" else if(replay)"歷史地震演練" else "地震預警",fontSize=27.sp,fontWeight=FontWeight.ExtraBold,color=Color.White)
+                    Text(if(simulation) "【演練】虛構震央與震度 · 並非真實速報" else if(replay) "過去事件回放 · 非即時警報" else "資料來源：${incident.source} · 第三方速報",
                         fontSize=14.sp,color=Color(0xFFE6F1F9))
                 }
                 TextButton(onClick=onClose) { Text("關閉",color=Color.White,fontSize=16.sp) }
+            }
+            if(simulation) {
+                Text("● 演練中 — 此畫面與所有震度均為模擬，不代表目前有地震",
+                    color=Color(0xFFFFE199),fontSize=15.sp,fontWeight=FontWeight.Bold,
+                    modifier=Modifier.fillMaxWidth().padding(vertical=6.dp),textAlign=TextAlign.Center)
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth().background(Color.White.copy(alpha=.10f),RoundedCornerShape(19.dp))
@@ -132,7 +148,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
             Spacer(Modifier.height(10.dp))
             Column(Modifier.fillMaxWidth().heightIn(min=82.dp,max=156.dp)
                 .background(Color.White.copy(alpha=.075f),RoundedCornerShape(18.dp)).padding(12.dp)) {
-                Text("各縣市預估震度 · 已取得 ${supplied.size}/22",fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
+                Text(if(simulation) "演練情境震度（虛構）· 22 縣市" else "各縣市預估震度 · 已取得 ${supplied.size}/22",fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
                 Spacer(Modifier.height(5.dp))
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     allCounties.chunked(2).forEach { row ->
@@ -151,9 +167,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
             Text("趴下 · 掩護 · 穩住",fontSize=25.sp,fontWeight=FontWeight.ExtraBold,
                 color=Color.White,textAlign=TextAlign.Center)
             Spacer(Modifier.height(9.dp))
-            Button(onClick=onClose,modifier=Modifier.fillMaxWidth().height(54.dp),
-                colors=ButtonDefaults.buttonColors(containerColor=if(replay) Color(0xFF377FA2) else Color(0xFF64BBE9))) {
-                Text(if(replay)"結束歷史回放" else "我已採取避難措施",fontSize=18.sp,color=Color(0xFF082338),fontWeight=FontWeight.Bold)
+            Button(onClick=onClose,modifier=Modifier.fillMaxWidth().height(54.dp)) {
+                Text(if(simulation) "結束模擬演練" else if(replay)"結束歷史回放" else "我已採取避難措施",fontSize=18.sp,color=Color(0xFF082338),fontWeight=FontWeight.Bold)
             }
         }
     }

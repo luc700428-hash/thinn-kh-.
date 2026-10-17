@@ -17,3 +17,8 @@ test('valid HMAC',()=>{
  assert.equal(checkHmac(key,timestamp,raw,sig,now),true);
  assert.equal(checkHmac(key,timestamp,raw,sig.substring(0,63)+'f',now),false);
 });
+
+test('Japan event on broad Taiwan route rejected',()=>assert.throws(
+ ()=>validateAlert({...event, title:'日本宮古島地震速報',detail:'台灣無影響',region:'TAIWAN'},now)));
+test('County-routed overseas alert remains possible',()=>assert.equal(
+ validateAlert({...event,title:'日本附近地震',region:'YILAN'},now).region,'YILAN'));

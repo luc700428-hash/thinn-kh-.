@@ -73,6 +73,22 @@ object SeismicSound {
             }
         }
     }
+    /** Bounded local-only simulation tone, never used in a real alert notification. */
+    @Synchronized fun practiceLoop(context:Context) {
+        stop()
+        val audio=context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        val nm=context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if(audio.ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL ||
+            nm.currentInterruptionFilter != android.app.NotificationManager.INTERRUPTION_FILTER_ALL) return
+        runCatching {
+            MediaPlayer.create(context,R.raw.thinn_seismic_drill_alert)?.apply {
+                isLooping=true
+                setVolume(.42f,.42f)
+                active=this
+                start()
+            }
+        }
+    }
     enum class Kind { DRILL_START, STEP, COMPLETE, EEW_PREVIEW }
 }
 

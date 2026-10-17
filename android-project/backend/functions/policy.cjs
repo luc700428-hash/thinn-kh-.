@@ -8,6 +8,11 @@ function validateAlert(a, now=Date.now()) {
   if(!clean(a.eventId,128) || !/^[A-Za-z0-9_.-]{5,128}$/.test(a.eventId)) throw Error('invalid event ID');
   if(!Number.isInteger(a.revision) || a.revision < 0 || a.revision > 999) throw Error('invalid revision');
   if(!REGIONS.has(a.region)) throw Error('region not allowlisted');
+  // Generic Taiwan broadcast may not carry an unrelated Japan EEW. A cross-border
+  // event can only use a specific, validated Taiwan county routing key.
+  const japanNamed = /日本|沖繩|琉球|japan|okinawa/i.test(String(a.title || ''));
+  if (japanNamed && a.region === 'TAIWAN') throw Error('foreign event not routed to a verified Taiwan county');
+
   if(!Number.isFinite(a.issuedAtMillis) || !Number.isFinite(a.expiresAtMillis) ||
      a.issuedAtMillis > now+30000 || now-a.issuedAtMillis>120000 ||
      a.expiresAtMillis<=now || a.expiresAtMillis-a.issuedAtMillis>180000 ||
