@@ -29,7 +29,7 @@ object XiaomiFocusBridge {
 
     /** Every in-app notification is classified before its native Android delivery.
      * Xiaomi independently approves which real-world scenarios may use focus/island UI. */
-    enum class Kind { WEATHER_WARNING, WARNING_SUMMARY, USER_TEST, APP_UPDATE, EARTHQUAKE_REPORT, WEATHER_BRIEFING, SEISMIC_EEW }
+    enum class Kind { WEATHER_WARNING, WARNING_SUMMARY, USER_TEST, APP_UPDATE, EARTHQUAKE_REPORT, WEATHER_BRIEFING, SEISMIC_EEW, STATION_DETECTION }
 
     fun isXiaomi(): Boolean {
         val name = "${Build.MANUFACTURER} ${Build.BRAND}".lowercase()
@@ -66,7 +66,7 @@ object XiaomiFocusBridge {
         val body = detail.take(60)
         val isWarning = kind == Kind.WEATHER_WARNING || kind == Kind.WARNING_SUMMARY || kind == Kind.SEISMIC_EEW
         val headingColor = if (isWarning) "#E74747" else "#70CCFA"
-        val shortLabel = when (kind) { Kind.USER_TEST -> "測試"; Kind.APP_UPDATE -> "更新"; Kind.EARTHQUAKE_REPORT -> "地震報告"; Kind.SEISMIC_EEW -> "地震速報"; else -> "天氣" }
+        val shortLabel = when (kind) { Kind.USER_TEST -> "測試"; Kind.APP_UPDATE -> "更新"; Kind.EARTHQUAKE_REPORT -> "地震報告"; Kind.SEISMIC_EEW -> "地震速報"; Kind.STATION_DETECTION -> "測站檢知"; else -> "天氣" }
         val params = JSONObject().apply {
             put("protocol", 1)
             put("business", "weather")
