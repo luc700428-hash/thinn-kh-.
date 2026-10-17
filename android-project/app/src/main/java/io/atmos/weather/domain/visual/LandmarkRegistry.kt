@@ -7,10 +7,11 @@ import io.atmos.weather.domain.model.GeoPoint
 /** V2 content catalog; a pending model must never be rendered as if a verified 3D landmark. */
 data class LandmarkPlace(
     val id:String, val county:String, val displayRegion:String, val island:String?,
-    val name:String, val model:String?, val preview:String?, val geometryStatus:String
+    val name:String, val model:String?, val preview:String?, val illustration:String?, val geometryStatus:String
 ) {
     val caption:String get() = "$displayRegion、$name"
     val hasModel:Boolean get() = geometryStatus == "original_prototype" && model != null && preview != null
+    val hasIllustration:Boolean get() = !illustration.isNullOrBlank()
 }
 
 class LandmarkRegistry private constructor(val places:List<LandmarkPlace>, val islands:List<IslandRegion>) {
@@ -25,6 +26,7 @@ class LandmarkRegistry private constructor(val places:List<LandmarkPlace>, val i
                         p.optString("island").takeIf { it.isNotBlank() && it!="null" },
                         p.getString("name"),p.optString("model").takeIf { it.isNotBlank() && it!="null" },
                         p.optString("preview").takeIf { it.isNotBlank() && it!="null" },
+                        p.optString("illustration").takeIf { it.isNotBlank() && it!="null" },
                         p.getString("geometry_status")))
                 }
             }
@@ -57,6 +59,6 @@ class LandmarkRegistry private constructor(val places:List<LandmarkPlace>, val i
 
     /** Choose locally modelled first; retain unmodelled candidates for a transparent catalog. */
     fun playable(point:GeoPoint,label:String):List<LandmarkPlace> = forLocation(point,label)
-        .filter { it.hasModel }.ifEmpty { forLocation(point,label) }
+        .filter { it.hasIllustration || it.hasModel }.ifEmpty { forLocation(point,label) }
 
 }

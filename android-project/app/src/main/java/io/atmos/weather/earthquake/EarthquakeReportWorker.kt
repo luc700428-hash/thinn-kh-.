@@ -40,6 +40,9 @@ class EarthquakeReportWorker(ctx: Context, params: WorkerParameters): CoroutineW
         if (age !in 0L..3600L || !PermissionGuide.canNotify(ctx)) return Result.success()
         val minMagnitude = prefs.getFloat("report_min_magnitude",4.5f)
         if (latest.magnitude < minMagnitude) return Result.success()
+        // The weather home can surface a recent official report even after the
+        // notification is dismissed; newer verified reports replace previous ones.
+        RecentEarthquakeNoticeStore.save(ctx,latest,isOfficial)
         SeismicAlertPolicy.ensureChannels(ctx)
         val intent=PendingIntent.getActivity(ctx,18015,
             Intent(ctx,MainActivity::class.java).putExtra("open_earthquake_center",true),

@@ -27,8 +27,7 @@ android {
         listOf(
             "THINN_FIREBASE_APP_ID", "THINN_FIREBASE_API_KEY",
             "THINN_FIREBASE_SENDER_ID", "THINN_FIREBASE_PROJECT_ID",
-            "THINN_PUSH_FUNCTIONS_REGION",
-"THINN_PUSH_WORKER_URL"
+            "THINN_PUSH_FUNCTIONS_REGION"
         ).forEach { key ->
             val value = providers.gradleProperty(key).orNull.orEmpty()
             val escaped = value.replace("\\", "\\\\")

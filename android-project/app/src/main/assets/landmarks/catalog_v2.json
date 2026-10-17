@@ -180,7 +180,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/taipei101.webp"
     },
     {
       "id": "148ca56808",
@@ -197,7 +198,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/148ca56808.webp"
     },
     {
       "id": "a5c2e61de6",
@@ -214,7 +216,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/a5c2e61de6.webp"
     },
     {
       "id": "5182999c5b",
@@ -231,7 +234,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5182999c5b.webp"
     },
     {
       "id": "8f052888b4",
@@ -248,7 +252,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/8f052888b4.webp"
     },
     {
       "id": "tamkang_bridge",
@@ -265,7 +270,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/tamkang_bridge.webp"
     },
     {
       "id": "d2ac2bf27c",
@@ -282,7 +288,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d2ac2bf27c.webp"
     },
     {
       "id": "663cd82455",
@@ -299,7 +306,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/663cd82455.webp"
     },
     {
       "id": "33c0aada4e",
@@ -316,7 +324,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/33c0aada4e.webp"
     },
     {
       "id": "83d8501eb5",
@@ -333,7 +342,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/83d8501eb5.webp"
     },
     {
       "id": "306432c0c5",
@@ -350,7 +360,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/306432c0c5.webp"
     },
     {
       "id": "42b9f7a229",
@@ -367,7 +378,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/42b9f7a229.webp"
     },
     {
       "id": "4bb48f5702",
@@ -384,7 +396,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/4bb48f5702.webp"
     },
     {
       "id": "a4adcbed49",
@@ -401,7 +414,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/a4adcbed49.webp"
     },
     {
       "id": "miyahara",
@@ -418,7 +432,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/miyahara.webp"
     },
     {
       "id": "681ce30c6f",
@@ -435,7 +450,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/681ce30c6f.webp"
     },
     {
       "id": "19ccef9124",
@@ -452,7 +468,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/19ccef9124.webp"
     },
     {
       "id": "deb65e530f",
@@ -469,7 +486,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/deb65e530f.webp"
     },
     {
       "id": "33e107c1c3",
@@ -486,7 +504,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/33e107c1c3.webp"
     },
     {
       "id": "chihkan",
@@ -503,7 +522,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/chihkan.webp"
     },
     {
       "id": "21ba42619e",
@@ -520,7 +540,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/21ba42619e.webp"
     },
     {
       "id": "9b86ff2fe4",
@@ -537,7 +558,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/9b86ff2fe4.webp"
     },
     {
       "id": "3cdd8d5149",
@@ -554,7 +576,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/3cdd8d5149.webp"
     },
     {
       "id": "a31cd8f21a",
@@ -571,7 +594,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/a31cd8f21a.webp"
     },
     {
       "id": "dreammall",
@@ -588,7 +612,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/dreammall.webp"
     },
     {
       "id": "kaohsiung85",
@@ -605,7 +630,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/kaohsiung85.webp"
     },
     {
       "id": "music_center",
@@ -622,7 +648,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/music_center.webp"
     },
     {
       "id": "2d397cb5bf",
@@ -639,7 +666,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/2d397cb5bf.webp"
     },
     {
       "id": "8f1e26e28b",
@@ -656,7 +684,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/8f1e26e28b.webp"
     },
     {
       "id": "ddb3406b63",
@@ -673,7 +702,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/ddb3406b63.webp"
     },
     {
       "id": "d903f01c41",
@@ -690,7 +720,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d903f01c41.webp"
     },
     {
       "id": "eee146bd77",
@@ -707,7 +738,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/eee146bd77.webp"
     },
     {
       "id": "915f5bb18f",
@@ -724,7 +756,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/915f5bb18f.webp"
     },
     {
       "id": "c54c71513b",
@@ -741,7 +774,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/c54c71513b.webp"
     },
     {
       "id": "hsinchu_gate",
@@ -758,7 +792,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/hsinchu_gate.webp"
     },
     {
       "id": "fef86a904d",
@@ -775,7 +810,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/fef86a904d.webp"
     },
     {
       "id": "e6ba59e2cb",
@@ -792,7 +828,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/e6ba59e2cb.webp"
     },
     {
       "id": "58b5dbff8c",
@@ -809,7 +846,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/58b5dbff8c.webp"
     },
     {
       "id": "03b9ed2c4a",
@@ -826,7 +864,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/03b9ed2c4a.webp"
     },
     {
       "id": "594f0cb510",
@@ -834,7 +873,7 @@
       "county": "嘉義市",
       "display_region": "嘉義市",
       "island": null,
-      "name": "嘉義市噴水圓環",
+      "name": "中央噴水圓環",
       "latitude": null,
       "longitude": null,
       "gps_approximate": true,
@@ -843,7 +882,8 @@
       "geometry_status": "original_prototype",
       "license": "original_procedural_geometry",
       "verification": "place_name_verified_geometry_artist_interpretation",
-      "priority": 5
+      "priority": 5,
+      "illustration": "landmarks/illustrations/chiayi_fountain_2d.webp"
     },
     {
       "id": "440bff3849",
@@ -860,7 +900,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/440bff3849.webp"
     },
     {
       "id": "ba440f771d",
@@ -877,7 +918,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/ba440f771d.webp"
     },
     {
       "id": "9062c111d4",
@@ -894,7 +936,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/9062c111d4.webp"
     },
     {
       "id": "5b6bb33014",
@@ -911,7 +954,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5b6bb33014.webp"
     },
     {
       "id": "6d6ebda5d0",
@@ -928,7 +972,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/6d6ebda5d0.webp"
     },
     {
       "id": "9c2681b6c7",
@@ -945,7 +990,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/9c2681b6c7.webp"
     },
     {
       "id": "cceab94c30",
@@ -962,7 +1008,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/cceab94c30.webp"
     },
     {
       "id": "f6c5ae5ed5",
@@ -979,7 +1026,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/f6c5ae5ed5.webp"
     },
     {
       "id": "5c6158c4a4",
@@ -996,7 +1044,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5c6158c4a4.webp"
     },
     {
       "id": "81c2288ec9",
@@ -1013,7 +1062,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/81c2288ec9.webp"
     },
     {
       "id": "56caea96b2",
@@ -1030,7 +1080,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/56caea96b2.webp"
     },
     {
       "id": "38e61850d1",
@@ -1047,7 +1098,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/38e61850d1.webp"
     },
     {
       "id": "fc11d5a041",
@@ -1064,7 +1116,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/fc11d5a041.webp"
     },
     {
       "id": "13997eea22",
@@ -1081,7 +1134,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/13997eea22.webp"
     },
     {
       "id": "678c207f49",
@@ -1098,7 +1152,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/678c207f49.webp"
     },
     {
       "id": "a9b8108e8b",
@@ -1115,7 +1170,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/a9b8108e8b.webp"
     },
     {
       "id": "5983757980",
@@ -1132,7 +1188,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5983757980.webp"
     },
     {
       "id": "46177adeb8",
@@ -1149,7 +1206,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/46177adeb8.webp"
     },
     {
       "id": "3e8af50fc9",
@@ -1166,7 +1224,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/3e8af50fc9.webp"
     },
     {
       "id": "f9ae843d43",
@@ -1183,7 +1242,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/f9ae843d43.webp"
     },
     {
       "id": "ae965da1fd",
@@ -1200,7 +1260,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/ae965da1fd.webp"
     },
     {
       "id": "e29684c941",
@@ -1217,7 +1278,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/e29684c941.webp"
     },
     {
       "id": "fd95feec79",
@@ -1234,7 +1296,8 @@
       "geometry_status": "original_prototype",
       "license": "original_procedural_geometry",
       "verification": "place_name_verified_geometry_artist_interpretation",
-      "priority": 5
+      "priority": 5,
+      "illustration": "landmarks/illustrations/fd95feec79.webp"
     },
     {
       "id": "02ab5cb7a1",
@@ -1251,7 +1314,8 @@
       "geometry_status": "original_prototype",
       "license": "original_procedural_geometry",
       "verification": "place_name_verified_geometry_artist_interpretation",
-      "priority": 5
+      "priority": 5,
+      "illustration": "landmarks/illustrations/02ab5cb7a1.webp"
     },
     {
       "id": "ebfedb5815",
@@ -1268,7 +1332,8 @@
       "geometry_status": "original_prototype",
       "license": "original_procedural_geometry",
       "verification": "place_name_verified_geometry_artist_interpretation",
-      "priority": 5
+      "priority": 5,
+      "illustration": "landmarks/illustrations/ebfedb5815.webp"
     },
     {
       "id": "4f808c7c94",
@@ -1285,7 +1350,8 @@
       "geometry_status": "original_prototype",
       "license": "original_procedural_geometry",
       "verification": "place_name_verified_geometry_artist_interpretation",
-      "priority": 5
+      "priority": 5,
+      "illustration": "landmarks/illustrations/4f808c7c94.webp"
     },
     {
       "id": "7d88f6e45e",
@@ -1302,7 +1368,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/7d88f6e45e.webp"
     },
     {
       "id": "5d9b5c3165",
@@ -1319,7 +1386,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5d9b5c3165.webp"
     },
     {
       "id": "xiaoliuqiu_flower",
@@ -1336,7 +1404,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/xiaoliuqiu_flower.webp"
     },
     {
       "id": "67b69bcc83",
@@ -1353,7 +1422,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/67b69bcc83.webp"
     },
     {
       "id": "6c852ee40a",
@@ -1370,7 +1440,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/6c852ee40a.webp"
     },
     {
       "id": "guishan_island",
@@ -1387,7 +1458,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/guishan_island.webp"
     },
     {
       "id": "33588beba2",
@@ -1404,7 +1476,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/33588beba2.webp"
     },
     {
       "id": "51d01b4fb5",
@@ -1421,7 +1494,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/51d01b4fb5.webp"
     },
     {
       "id": "12c623bdf9",
@@ -1438,7 +1512,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/12c623bdf9.webp"
     },
     {
       "id": "2899c82d98",
@@ -1455,7 +1530,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/2899c82d98.webp"
     },
     {
       "id": "948e12ba30",
@@ -1472,7 +1548,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/948e12ba30.webp"
     },
     {
       "id": "1550866e4f",
@@ -1489,7 +1566,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/1550866e4f.webp"
     },
     {
       "id": "d881f4ae64",
@@ -1506,7 +1584,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d881f4ae64.webp"
     },
     {
       "id": "28924ea859",
@@ -1523,7 +1602,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/28924ea859.webp"
     },
     {
       "id": "lanyu_bay",
@@ -1540,7 +1620,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/lanyu_bay.webp"
     },
     {
       "id": "5fb93bab50",
@@ -1557,7 +1638,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5fb93bab50.webp"
     },
     {
       "id": "1bd52bcb80",
@@ -1574,7 +1656,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/1bd52bcb80.webp"
     },
     {
       "id": "7e69e21092",
@@ -1591,7 +1674,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/7e69e21092.webp"
     },
     {
       "id": "5d9ce0c6dd",
@@ -1608,7 +1692,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5d9ce0c6dd.webp"
     },
     {
       "id": "d6d71e9fd6",
@@ -1625,7 +1710,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d6d71e9fd6.webp"
     },
     {
       "id": "d4fba9767a",
@@ -1642,7 +1728,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d4fba9767a.webp"
     },
     {
       "id": "d9073436f7",
@@ -1659,7 +1746,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d9073436f7.webp"
     },
     {
       "id": "12c8f46486",
@@ -1676,7 +1764,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/12c8f46486.webp"
     },
     {
       "id": "6676954a1e",
@@ -1693,7 +1782,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/6676954a1e.webp"
     },
     {
       "id": "a22153603f",
@@ -1710,7 +1800,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/a22153603f.webp"
     },
     {
       "id": "d72e5e68f0",
@@ -1727,7 +1818,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d72e5e68f0.webp"
     },
     {
       "id": "58966dd451",
@@ -1744,7 +1836,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/58966dd451.webp"
     },
     {
       "id": "dongyin_lighthouse",
@@ -1761,7 +1854,8 @@
       "geometry_status": "original_prototype",
       "license": "original_app_project",
       "verification": "needs_visual_and_location_review",
-      "priority": 1
+      "priority": 1,
+      "illustration": "landmarks/illustrations/dongyin_lighthouse.webp"
     },
     {
       "id": "ad2b0e3580",
@@ -1778,7 +1872,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/ad2b0e3580.webp"
     },
     {
       "id": "62b987ee53",
@@ -1795,7 +1890,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/62b987ee53.webp"
     },
     {
       "id": "5a63946d3c",
@@ -1812,7 +1908,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5a63946d3c.webp"
     },
     {
       "id": "c738874089",
@@ -1829,7 +1926,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/c738874089.webp"
     },
     {
       "id": "5e6dae87a2",
@@ -1846,7 +1944,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/5e6dae87a2.webp"
     },
     {
       "id": "b9d76d8eec",
@@ -1863,7 +1962,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/b9d76d8eec.webp"
     },
     {
       "id": "3e7084aa62",
@@ -1880,7 +1980,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/3e7084aa62.webp"
     },
     {
       "id": "6edce5a5f3",
@@ -1897,7 +1998,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/6edce5a5f3.webp"
     },
     {
       "id": "eddbfc2496",
@@ -1914,7 +2016,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/eddbfc2496.webp"
     },
     {
       "id": "2a7714634b",
@@ -1931,7 +2034,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/2a7714634b.webp"
     },
     {
       "id": "42ecbdf10c",
@@ -1948,7 +2052,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/42ecbdf10c.webp"
     },
     {
       "id": "bc20c318c7",
@@ -1965,7 +2070,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/bc20c318c7.webp"
     },
     {
       "id": "d284a29afd",
@@ -1982,7 +2088,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d284a29afd.webp"
     },
     {
       "id": "fbb5bcc3ea",
@@ -1999,7 +2106,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/fbb5bcc3ea.webp"
     },
     {
       "id": "46f9c3f853",
@@ -2016,7 +2124,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/46f9c3f853.webp"
     },
     {
       "id": "ce37e68a33",
@@ -2033,7 +2142,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/ce37e68a33.webp"
     },
     {
       "id": "b129734f9c",
@@ -2050,7 +2160,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/b129734f9c.webp"
     },
     {
       "id": "2f6517b984",
@@ -2067,7 +2178,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/2f6517b984.webp"
     },
     {
       "id": "d5fd26b00d",
@@ -2084,7 +2196,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/d5fd26b00d.webp"
     },
     {
       "id": "a106a35414",
@@ -2101,7 +2214,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/a106a35414.webp"
     },
     {
       "id": "ddfe04bd56",
@@ -2118,7 +2232,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/ddfe04bd56.webp"
     },
     {
       "id": "690110aff7",
@@ -2135,7 +2250,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/690110aff7.webp"
     },
     {
       "id": "1f8af1ec29",
@@ -2152,7 +2268,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/1f8af1ec29.webp"
     },
     {
       "id": "14c93ef3e0",
@@ -2169,7 +2286,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/14c93ef3e0.webp"
     },
     {
       "id": "641d9eb4ee",
@@ -2186,7 +2304,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/641d9eb4ee.webp"
     },
     {
       "id": "2f7851a5b9",
@@ -2203,7 +2322,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/2f7851a5b9.webp"
     },
     {
       "id": "606642455a",
@@ -2220,7 +2340,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/606642455a.webp"
     },
     {
       "id": "c1e422ef32",
@@ -2237,7 +2358,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/c1e422ef32.webp"
     },
     {
       "id": "db0a46548b",
@@ -2254,7 +2376,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/db0a46548b.webp"
     },
     {
       "id": "70fb49ae16",
@@ -2271,7 +2394,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 2
+      "priority": 2,
+      "illustration": "landmarks/illustrations/70fb49ae16.webp"
     },
     {
       "id": "68da3847ae",
@@ -2288,7 +2412,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/68da3847ae.webp"
     },
     {
       "id": "94d2751ba4",
@@ -2305,7 +2430,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/94d2751ba4.webp"
     },
     {
       "id": "23cd1cb57f",
@@ -2322,7 +2448,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/23cd1cb57f.webp"
     },
     {
       "id": "f24ca92559",
@@ -2339,7 +2466,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/f24ca92559.webp"
     },
     {
       "id": "83ba493c50",
@@ -2356,7 +2484,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/83ba493c50.webp"
     },
     {
       "id": "5fe36b7a9d",
@@ -2373,7 +2502,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/5fe36b7a9d.webp"
     },
     {
       "id": "8440273add",
@@ -2390,7 +2520,8 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/8440273add.webp"
     },
     {
       "id": "ec57cb8783",
@@ -2407,7 +2538,10 @@
       "geometry_status": "not_modelled",
       "license": null,
       "verification": "needs_visual_and_location_review",
-      "priority": 3
+      "priority": 3,
+      "illustration": "landmarks/illustrations/ec57cb8783.webp"
     }
-  ]
+  ],
+  "illustrations_version": "v23-r4-2d-catalog-20261017",
+  "illustrations_notice": "The 2D art is custom stylized interpretive imagery, not photographic or survey-accurate representation."
 }

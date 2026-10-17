@@ -62,11 +62,16 @@ object WeatherAdviceEngine {
             feels >= 30 -> suggestions += WeatherAdvice("天氣較熱", "體感約 ${feels.roundToInt()}°C，建議穿透氣衣物、補充水分並避免長時間曝曬。", 7)
             else -> suggestions += WeatherAdvice("穿搭建議", "體感約 ${feels.roundToInt()}°C，建議舒適透氣的日常衣物。", 3)
         }
+        // Aerosol optical depth is NOT a dust-storm observation or the official Taiwan AQI.
+        // Explain model uncertainty instead of frightening people in warm, clear localities.
         if (weather.condition in setOf(WeatherCondition.HAZE, WeatherCondition.DUST, WeatherCondition.DUST_STORM)) {
-            val severe = weather.condition == WeatherCondition.DUST_STORM
-            suggestions += WeatherAdvice(if(severe) "疑似強烈揚塵影響視線" else "空氣中氣膠／沙塵偏多",
-                if(severe) "模型顯示粉塵、風速及低能見度同時升高；建議減少外出，關閉迎風窗戶並查詢官方警報。此非官方沙塵暴通報。"
-                else "敏感族群減少戶外運動；室內視空氣品質選擇關窗與開啟清淨機，模型資料不是官方警報。", 9)
+            val severe = weather.condition == WeatherCondition.DUST_STORM &&
+                (weather.visibilityM ?: Double.MAX_VALUE) < 1800.0
+            val heading = if (severe) "懸浮微粒與能見度請留意" else "空氣中懸浮微粒可能較多"
+            val detail = if (severe)
+                "氣象模型推估空氣混濁且能見度偏低；請確認環境部實測空品與中央氣象署警報。此非官方沙塵暴通知。"
+            else "Open-Meteo 模型顯示氣膠光學厚度或揚塵訊號可能偏高；氣膠是空氣中的微小懸浮粒子，不等於正在發生沙塵暴。可再查詢環境部測站確認。"
+            suggestions += WeatherAdvice(heading,detail,if(severe) 8 else 4)
         }
         if ((weather.currentUv ?: 0.0) >= 6) suggestions += WeatherAdvice("紫外線偏強", "外出建議遮陽、防曬，並留意長時間日曬。", 6)
         if (weather.condition == WeatherCondition.FOG || (visibilityOverrideKm?.times(1000.0) ?: weather.visibilityM ?: Double.MAX_VALUE) < 1000.0) {

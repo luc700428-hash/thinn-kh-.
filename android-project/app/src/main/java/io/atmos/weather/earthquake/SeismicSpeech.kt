@@ -7,7 +7,6 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import java.util.Locale
 
 /** App-managed optional Mandarin speech, never claims official-origin predictions. */
@@ -37,33 +36,52 @@ object SeismicSpeech {
         val grade=SeismicWavePhysics.intensityLabel(report.maxIntensity)?.let { "最大觀測震度${it}級。" }.orEmpty()
         return "第三方彙整的震後地震報告，${report.location}，規模${String.format(Locale.TAIWAN,"%.1f",report.magnitude)}。${grade}請以中央氣象署最新正式資訊為準。"
     }
+    // Reuse the Android TTS engine across notification and foreground alert. Creating
+    // and destroying one engine per message caused race conditions and missing speech.
+    private var engine:TextToSpeech?=null
+    private var starting=false
+    private var queued:String?=null
+    private var lastSpoken=""
+    private var lastAt=0L
+
     fun speak(ctx:Context,message:String) {
         val app=ctx.applicationContext
         val audio=app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val notice=app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Optional voice follows user silent/DND decisions; not a system emergency broadcast.
-        if(audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
-        if(notice.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) return
+        val notifications=app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // Follow user silent/DND settings. This is not the government's PWS system.
+        if(audio.ringerMode!=AudioManager.RINGER_MODE_NORMAL ||
+            notifications.currentInterruptionFilter!=NotificationManager.INTERRUPTION_FILTER_ALL) return
         main.post {
-            var tts:TextToSpeech?=null
-            val stamp="thinn_seismic_${System.nanoTime()}"
-            tts=TextToSpeech(app) { status ->
-                if(status==TextToSpeech.SUCCESS) {
-                    val engine=tts ?: return@TextToSpeech
-                    engine.language=Locale.TAIWAN
-                    engine.setSpeechRate(1.04f)
-                    engine.setAudioAttributes(AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-                    engine.setOnUtteranceProgressListener(object:UtteranceProgressListener(){
-                        override fun onStart(utteranceId:String?){}
-                        override fun onDone(utteranceId:String?) { main.post { engine.shutdown() } }
-                        @Deprecated("Deprecated in Java") override fun onError(utteranceId:String?) { main.post { engine.shutdown() } }
-                    })
-                    engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,stamp)
-                } else tts?.shutdown()
+            val now=System.currentTimeMillis()
+            if(message==lastSpoken && now-lastAt<6_000L) return@post
+            queued=message
+            engine?.let { speakQueued(it);return@post }
+            if(starting) return@post
+            starting=true
+            var pendingEngine:TextToSpeech?=null
+            pendingEngine=TextToSpeech(app) { status ->
+                main.post {
+                    starting=false
+                    val prepared=pendingEngine
+                    if(status==TextToSpeech.SUCCESS && prepared!=null) {
+                        val available=prepared.isLanguageAvailable(Locale.TAIWAN)
+                        prepared.language=if(available>=TextToSpeech.LANG_AVAILABLE) Locale.TAIWAN else Locale.CHINESE
+                        prepared.setSpeechRate(.97f)
+                        prepared.setAudioAttributes(AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                        engine=prepared
+                        speakQueued(prepared)
+                    } else { prepared?.shutdown();queued=null }
+                }
             }
-            main.postDelayed({ tts?.stop();tts?.shutdown() },15_000L)
         }
+    }
+    private fun speakQueued(tts:TextToSpeech) {
+        val message=queued ?: return
+        queued=null
+        lastSpoken=message
+        lastAt=System.currentTimeMillis()
+        tts.speak(message,TextToSpeech.QUEUE_FLUSH,null,"thinn_eq_${System.nanoTime()}")
     }
 }

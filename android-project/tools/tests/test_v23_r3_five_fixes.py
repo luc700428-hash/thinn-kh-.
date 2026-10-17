@@ -21,8 +21,8 @@ class R3FiveUserReports(unittest.TestCase):
 
     def test_landmark_only_opt_in_native_renderer(self):
         s=source('presentation/home/WeatherHomeScreen.kt')
-        self.assertIn('var showLive3d by remember(place.id)',s)
-        self.assertIn('if(showLive3d)',s)
+        self.assertNotIn('FilamentLandmark(',s)
+        self.assertIn('LandmarkGalleryPage(',s)
         self.assertIn('if(reduceCityMotion)',s)
         self.assertIn('beyondViewportPageCount = 0',s)
 

@@ -272,7 +272,7 @@ fun SeismicLiveMapPage(
                             Row(verticalAlignment=Alignment.CenterVertically) {
                                 Icon(Icons.Rounded.WarningAmber,null,tint=Color(0xFFFFD09E))
                                 Spacer(Modifier.width(8.dp))
-                                Text("收到第三方即時地震速報",color=light,fontWeight=FontWeight.Bold,fontSize=16.sp)
+                                Text("收到地震預警 · 第三方來源",color=light,fontWeight=FontWeight.Bold,fontSize=16.sp)
                             }
                             Text("${quake?.epicenter ?: "震央位置待確認"}  ·  ${quake?.magnitude?.let { "M${"%.1f".format(Locale.US,it)}" } ?: "規模未提供"}",
                                 color=light,fontSize=16.sp,modifier=Modifier.padding(top=4.dp))

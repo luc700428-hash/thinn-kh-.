@@ -268,6 +268,8 @@ class ExpTechSeismicService : Service() {
             builder.setFullScreenIntent(alertIntent(),true)
         val notification=builder.build()
         WeatherNotificationDispatcher.post(this,29200,notification,title,detail,XiaomiFocusBridge.Kind.SEISMIC_EEW)
+        // A bounded foreground-service event tone; never a perpetual background siren.
+        SeismicContinuousWarning.start(this,quake)
         if(SeismicSpeech.enabled(this,"eew_voice_enabled")) {
             SeismicSpeech.speak(this,SeismicSpeech.warning(quake,SeismicUserLocation.current(this)))
         }

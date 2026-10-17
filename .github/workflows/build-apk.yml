@@ -1,4 +1,3 @@
-
 name: Build thinn-khì v23 major OTA from tracked Android source
 on:
   workflow_dispatch:
@@ -162,7 +161,6 @@ jobs:
           THINN_FIREBASE_SENDER_ID: ${{ vars.THINN_FIREBASE_SENDER_ID }}
           THINN_FIREBASE_PROJECT_ID: ${{ vars.THINN_FIREBASE_PROJECT_ID }}
           THINN_PUSH_FUNCTIONS_REGION: ${{ vars.THINN_PUSH_FUNCTIONS_REGION }}
-          THINN_PUSH_WORKER_URL: ${{ vars.THINN_PUSH_WORKER_URL }}
         run: |
           set -euo pipefail
           project=android-project
@@ -174,8 +172,7 @@ jobs:
              -PTHINN_FIREBASE_API_KEY="${THINN_FIREBASE_API_KEY:-}"
              -PTHINN_FIREBASE_SENDER_ID="${THINN_FIREBASE_SENDER_ID:-}"
              -PTHINN_FIREBASE_PROJECT_ID="${THINN_FIREBASE_PROJECT_ID:-}"
-             -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}"
-             -PTHINN_PUSH_WORKER_URL="${THINN_PUSH_WORKER_URL:-}")
+             -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}")
           gradle "${args[@]}" :app:testDebugUnitTest 2>&1 | tee build.log
           if [[ "$SIGN_READY" == 'true' ]]; then task=:app:assembleRelease; else task=:app:assembleDebug; fi
           gradle "${args[@]}" "$task" 2>&1 | tee -a build.log

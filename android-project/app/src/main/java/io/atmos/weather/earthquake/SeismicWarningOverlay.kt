@@ -2,12 +2,13 @@ package io.atmos.weather.earthquake
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -15,84 +16,144 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.delay
 import java.util.Locale
 
-/** Incident sheet with a strict source label. The arrival countdown is deliberately
- * unavailable unless a verified local estimate is in the incoming provider payload.
- * A schematic wave animation must never pretend to be predictive seismology.
+private val warningIce = Color(0xFF8DEAFF)
+private val warningAmber = Color(0xFFFFCE82)
+private val warningRed = Color(0xFFE75D5B)
+
+/** Native Android warning sheet. No copied DPIP source or assets.
+ * County intensities are NEVER fabricated: only validated source fields are shown.
+ * Animated P/S radii use illustrative constant speeds, NOT arrival predictions.
  */
 @Composable
 fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?,onClose:()->Unit) {
+    val context=LocalContext.current
     val county=userCounty.orEmpty().replace('台','臺')
-    val local=incident.localIntensityByCounty.entries.firstOrNull {
-        county.contains(it.key) || it.key.contains(county) && county.isNotEmpty()
-    }?.value
+    val supplied=remember(incident) { SeismicWarningCounties.fromProvider(incident.localIntensityByCounty) }
+    val allCounties=remember(incident) { SeismicWarningCounties.allFromProvider(incident.localIntensityByCounty) }
+    val local=supplied.firstOrNull { it.county==county || (county.isNotEmpty() && county.contains(it.county)) }?.intensity
+    val eventKey="${incident.id}:${incident.serial}:$replay"
+    var frameNow by remember(eventKey) { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(eventKey) {
+        while(true) { frameNow=System.currentTimeMillis(); delay(120) }
+    }
+    // A true incident plays a bounded looping alert tone and one descriptive spoken warning.
+    // Historical replay never uses the live alarm tone.
+    DisposableEffect(context,eventKey) {
+        if(!replay) SeismicContinuousWarning.start(context,incident)
+        onDispose { if(!replay) SeismicContinuousWarning.stop() }
+    }
+    LaunchedEffect(eventKey) {
+        if(!replay && SeismicSpeech.enabled(context,"eew_voice_enabled")) {
+            SeismicSpeech.speak(context,SeismicSpeech.warning(incident,SeismicUserLocation.current(context)))
+        }
+    }
+    val origin=incident.originAtMs
+    val wave=if(origin!=null && SeismicGeo.visible(incident.latitude,incident.longitude))
+        SeismicWavePhysics.wavefront(origin,frameNow,incident.depthKm ?: 0.0) else null
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
-            if(replay) Color(0xFF24354B) else Color(0xFF6C271F), Color(0xFF091829))))
-            .statusBarsPadding().navigationBarsPadding().padding(horizontal=22.dp,vertical=20.dp),
+            if(replay) Color(0xFF153651) else Color(0xFF48202C), Color(0xFF071A2E))))
+            .statusBarsPadding().navigationBarsPadding().padding(horizontal=18.dp,vertical=12.dp),
             horizontalAlignment=Alignment.CenterHorizontally) {
-            Text(if(replay) "歷史預警回顧 · 模擬畫面" else "第三方即時地震速報",
-                color=if(replay) Color(0xFFFFD38F) else Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold)
-            Text(if(replay) "過去真實歷史資料回放，並非現在發生地震" else "僅在前景收到有效來源資料時顯示，不是官方 PWS",
-                fontSize=15.sp,color=Color(0xFFF1E1DD),textAlign=TextAlign.Center)
-            Spacer(Modifier.height(15.dp))
-            Box(Modifier.fillMaxWidth().weight(1f).background(Color(0x80203248),RoundedCornerShape(25.dp)),
-                contentAlignment=Alignment.Center) {
-                Canvas(Modifier.fillMaxSize().padding(18.dp)) {
-                    val shape=Path()
-                    SeismicGeo.island.forEachIndexed {i,p ->
-                        val pt=Offset(SeismicGeo.screenX(p.first,size.width,size.height), SeismicGeo.screenY(p.second,size.width,size.height))
-                        if(i==0) shape.moveTo(pt.x,pt.y) else shape.lineTo(pt.x,pt.y)
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(if(replay)"歷史地震演練" else "地震預警",fontSize=27.sp,fontWeight=FontWeight.ExtraBold,color=Color.White)
+                    Text(if(replay) "過去事件回放 · 非即時警報" else "資料來源：${incident.source} · 第三方速報",
+                        fontSize=14.sp,color=Color(0xFFE6F1F9))
+                }
+                TextButton(onClick=onClose) { Text("關閉",color=Color.White,fontSize=16.sp) }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth().background(Color.White.copy(alpha=.10f),RoundedCornerShape(19.dp))
+                .padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(incident.epicenter,fontSize=22.sp,fontWeight=FontWeight.Bold,color=Color.White,maxLines=2)
+                    Text("規模 ${incident.magnitude?.let { "M${"%.1f".format(Locale.US,it)}" } ?: "來源未提供"}  ·  深度 ${incident.depthKm?.let {"${"%.0f".format(Locale.US,it)} km"} ?: "來源未提供"}",
+                        color=Color(0xFFE6F1F9),fontSize=15.sp)
+                }
+                Text(local?.let { "${it}級" } ?: "—",fontSize=23.sp,fontWeight=FontWeight.Bold,color=warningAmber)
+            }
+            Spacer(Modifier.height(12.dp))
+            Box(Modifier.fillMaxWidth().weight(1f).background(Color(0xFF09243B),RoundedCornerShape(22.dp))
+                .border(1.dp,Color.White.copy(alpha=.13f),RoundedCornerShape(22.dp))) {
+                Canvas(Modifier.fillMaxSize().padding(9.dp)) {
+                    val land=Path()
+                    SeismicGeo.island.forEachIndexed { index,p ->
+                        val pt=Offset(SeismicGeo.screenX(p.first,size.width,size.height),SeismicGeo.screenY(p.second,size.width,size.height))
+                        if(index==0) land.moveTo(pt.x,pt.y) else land.lineTo(pt.x,pt.y)
                     }
-                    shape.close()
-                    drawPath(shape,Color(0xFF28647A))
-                    drawPath(shape,Color(0xFF81D8F2),style=Stroke(2.dp.toPx()))
+                    land.close()
+                    drawPath(land,Color(0xFF194D63))
+                    drawPath(land,warningIce.copy(alpha=.8f),style=Stroke(1.8.dp.toPx()))
                     SeismicGeo.outlyingIslands.forEach { island ->
-                        val islandPath=Path()
-                        island.points.forEachIndexed {index,(longitude,latitude) ->
-                            val x=SeismicGeo.screenX(longitude,size.width,size.height)
-                            val y=SeismicGeo.screenY(latitude,size.width,size.height)
-                            if(index==0)islandPath.moveTo(x,y) else islandPath.lineTo(x,y)
+                        val path=Path()
+                        island.points.forEachIndexed { i,(lon,lat)->
+                            val pt=Offset(SeismicGeo.screenX(lon,size.width,size.height),SeismicGeo.screenY(lat,size.width,size.height))
+                            if(i==0)path.moveTo(pt.x,pt.y) else path.lineTo(pt.x,pt.y)
                         }
-                        islandPath.close()
-                        drawPath(islandPath,Color(0xFF28647A))
-                        drawPath(islandPath,Color(0xFF81D8F2),style=Stroke(1.dp.toPx()))
+                        path.close()
+                        drawPath(path,Color(0xFF194D63));drawPath(path,warningIce.copy(alpha=.8f),style=Stroke(1.dp.toPx()))
                     }
-                    SeismicGeo.smallerIslands.forEach { (_, geo) ->
-                        val at=Offset(SeismicGeo.screenX(geo.first,size.width,size.height),
-                            SeismicGeo.screenY(geo.second,size.width,size.height))
-                        drawCircle(Color(0xFF81D8F2),2.5.dp.toPx(),at)
+                    SeismicGeo.smallerIslands.forEach { (_,coord) ->
+                        val pt=Offset(SeismicGeo.screenX(coord.first,size.width,size.height),SeismicGeo.screenY(coord.second,size.width,size.height))
+                        drawCircle(warningIce,2.dp.toPx(),pt)
                     }
-                    val lat=incident.latitude;val lon=incident.longitude
-                    if(SeismicGeo.visible(lat,lon)) {
-                        val center=Offset(SeismicGeo.screenX(lon!!,size.width,size.height),SeismicGeo.screenY(lat!!,size.width,size.height))
-                        drawCircle(Color(0xFFFFB57A),24.dp.toPx(),center,style=Stroke(3.dp.toPx()))
-                        drawCircle(Color.White,5.dp.toPx(),center)
+                    if(SeismicGeo.visible(incident.latitude,incident.longitude)) {
+                        val epicenter=Offset(SeismicGeo.screenX(incident.longitude!!,size.width,size.height),
+                            SeismicGeo.screenY(incident.latitude!!,size.width,size.height))
+                        // Only if origin timestamp is supplied and suitable for animation.
+                        if(wave!=null) {
+                            val kmPerPx=SeismicGeo.kmPerPixel(size.width,size.height)
+                            if(wave.pSurfaceRadiusKm>0) drawCircle(warningIce.copy(alpha=.8f),
+                                (wave.pSurfaceRadiusKm/kmPerPx).toFloat(),epicenter,style=Stroke(2.5.dp.toPx()))
+                            if(wave.sSurfaceRadiusKm>0) drawCircle(warningAmber.copy(alpha=.85f),
+                                (wave.sSurfaceRadiusKm/kmPerPx).toFloat(),epicenter,style=Stroke(3.dp.toPx()))
+                        }
+                        drawCircle(warningRed,9.dp.toPx(),epicenter)
+                        drawCircle(Color.White,3.5.dp.toPx(),epicenter)
+                    }
+                }
+                Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
+                    Text("臺灣及離島 · 地理示意",fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
+                    Text(if(wave==null)"P／S 波資料不足，暫不繪製" else "P 波（青）  S 波（橘）· 速度示意，非到達預測",
+                        fontSize=14.sp,color=Color(0xFFC7DDEA))
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Column(Modifier.fillMaxWidth().heightIn(min=82.dp,max=156.dp)
+                .background(Color.White.copy(alpha=.075f),RoundedCornerShape(18.dp)).padding(12.dp)) {
+                Text("各縣市預估震度 · 已取得 ${supplied.size}/22",fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
+                Spacer(Modifier.height(5.dp))
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    allCounties.chunked(2).forEach { row ->
+                        Row(Modifier.fillMaxWidth().padding(vertical=2.dp)) {
+                            row.forEach { entry ->
+                                Text("${entry.county}  ${entry.intensity?.let { "${it}級" } ?: "待來源提供"}",fontSize=14.sp,
+                                    color=if(entry.county==county) warningAmber else if(entry.intensity==null) Color(0xFFA6BBCC) else Color.White,
+                                    modifier=Modifier.weight(1f))
+                            }
+                            if(row.size==1) Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
-            Text(incident.epicenter,fontSize=24.sp,color=Color.White,fontWeight=FontWeight.Bold)
-            Text("規模 ${incident.magnitude?.let { "M${"%.1f".format(Locale.US,it)}" } ?: "尚未提供"} · " +
-                "深度 ${incident.depthKm?.let {"${"%.0f".format(Locale.US,it)} km"} ?: "尚未提供"}",
-                fontSize=18.sp,color=Color.White)
-            Spacer(Modifier.height(6.dp))
-            Text("所在地預估震度：${local ?: "來源未提供"}",fontSize=18.sp,color=Color(0xFFFFDFAF))
-            Text("震波到達倒數：缺少可驗證資料，不顯示虛構秒數",fontSize=15.sp,
-                color=Color(0xFFFFDFAF),textAlign=TextAlign.Center)
-            Spacer(Modifier.height(17.dp))
-            Text("趴下　掩護　穩住",fontSize=29.sp,fontWeight=FontWeight.ExtraBold,
+            Spacer(Modifier.height(10.dp))
+            Text("趴下 · 掩護 · 穩住",fontSize=25.sp,fontWeight=FontWeight.ExtraBold,
                 color=Color.White,textAlign=TextAlign.Center)
-            Spacer(Modifier.height(12.dp))
-            Button(onClick=onClose,modifier=Modifier.fillMaxWidth().height(58.dp)) {
-                Text(if(replay)"返回歷史回放" else "我知道了",fontSize=19.sp)
+            Spacer(Modifier.height(9.dp))
+            Button(onClick=onClose,modifier=Modifier.fillMaxWidth().height(54.dp),
+                colors=ButtonDefaults.buttonColors(containerColor=if(replay) Color(0xFF377FA2) else Color(0xFF64BBE9))) {
+                Text(if(replay)"結束歷史回放" else "我已採取避難措施",fontSize=18.sp,color=Color(0xFF082338),fontWeight=FontWeight.Bold)
             }
         }
     }

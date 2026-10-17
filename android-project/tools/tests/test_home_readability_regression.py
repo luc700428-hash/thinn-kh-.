@@ -38,18 +38,18 @@ class HomeReadabilityTests(unittest.TestCase):
         self.assertIn('fontSize=24.sp,lineHeight=33.sp',home)
         canvas=home.split('private fun LandmarkCanvas(')[1].split('private fun DrawScope.drawTaipei101')[0]
         self.assertNotIn('WeatherArtRenderer.drawScene',canvas)
-        self.assertIn('不以通用小屋冒充真實景點',canvas)
-        self.assertIn('ctx.assets.open(place.preview)',canvas)
+        self.assertIn('未完成的模型不冒充實景',canvas)
+        self.assertIn('ctx.assets.open(filename)',canvas)
         self.assertIn('contentDescription="${place.caption}',canvas)
     def test_chiayi_county_now_has_separate_place_models(self):
         c=json.loads((ASSETS/'catalog_v2.json').read_text())
-        expected=['阿里山森林鐵道','北回歸線太陽館','故宮南院','奮起湖車站','嘉義市噴水圓環']
+        expected=['阿里山森林鐵道','北回歸線太陽館','故宮南院','奮起湖車站','中央噴水圓環']
         for title in expected:
             matches=[p for p in c['landmarks'] if p['name']==title]
             self.assertEqual(len(matches),1)
             place=matches[0]
             self.assertEqual(place['geometry_status'],'original_prototype')
-            for key in ['model','preview']:
+            for key in ['model','preview','illustration']:
                 asset=ASSETS.parent/place[key]
                 self.assertGreater(asset.stat().st_size,1000,place['name'])
             self.assertEqual((ASSETS.parent/place['model']).read_bytes()[:4],b'glTF')
