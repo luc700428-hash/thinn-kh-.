@@ -244,7 +244,7 @@ fun SeismicLiveMapPage(
                 IconButton(onClick=onSettings) { Icon(Icons.Rounded.Settings,"地震設定",tint=iceBlue) }
             }
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .navigationBarsPadding().padding(horizontal=15.dp, bottom=114.dp)) {
+                .navigationBarsPadding().padding(horizontal=15.dp).padding(bottom=114.dp)) {
                 MapGlass {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
