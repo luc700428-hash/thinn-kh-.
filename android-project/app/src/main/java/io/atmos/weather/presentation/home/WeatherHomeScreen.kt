@@ -1479,10 +1479,8 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
     val critical=remember(weather){
         io.atmos.weather.domain.model.WeatherAdviceEngine.suggest(weather).firstOrNull{it.priority>=8}
     }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
-        .background(Color(0xEF0B2B43))
-        .border(1.dp,Color.White.copy(alpha=.30f),RoundedCornerShape(26.dp))
-        .padding(horizontal=19.dp,vertical=17.dp)) {
+    io.atmos.weather.ui.ThinnAtmospherePanel(accent=Color(0xFFFFD69B)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=20.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Icon(Icons.Rounded.Lightbulb,contentDescription=null,tint=Color(0xFFFFD690),modifier=Modifier.size(23.dp))
             Spacer(Modifier.width(10.dp))
@@ -1505,7 +1503,8 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
         }
         Spacer(Modifier.height(9.dp))
         TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
-            Text("調整個人偏好與計算依據",color=Color(0xFFC9EBFF),fontSize=16.sp,fontWeight=FontWeight.Medium)
+            Text("調整個人偏好與計算依據",color=Color(0xFFC9EBFF),fontSize=15.sp,fontWeight=FontWeight.Medium)
+        }
         }
     }
 }
@@ -1523,16 +1522,12 @@ private fun HomeAdviceRow(label:String,value:String) {
 private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
     // The four actionable facts are ALWAYS on the homepage: no collapsed detail sheet.
     val highlights = remember(weather) { HomeWeatherBriefing.build(weather) }
-    Column(Modifier.fillMaxWidth()
-        .clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
-        .background(Brush.verticalGradient(listOf(Color(0xF3163852), Color(0xF10B2943))))
-        .border(1.dp, Color.White.copy(alpha = .29f),
-            RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))) {
+    io.atmos.weather.ui.ThinnAtmospherePanel(accent=Color(0xFF9ADAFE)) {
         Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Text("現在最重要的天氣", color = White, fontSize = 20.sp,
-                lineHeight = 28.sp, fontWeight = FontWeight.Bold)
+                lineHeight = 28.sp, fontWeight = FontWeight.SemiBold)
             Text("未來 6 小時", color = Color(0xFFC4E8FC), fontSize = 14.sp)
         }
         if (stale) {

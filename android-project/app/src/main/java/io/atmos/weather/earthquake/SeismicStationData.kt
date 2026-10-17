@@ -5,6 +5,8 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+enum class StationAvailability { UNKNOWN, ONLINE, OFFLINE, MAINTENANCE }
+
 /** Metadata and live magnitudes are untrusted, independent third-party telemetry.
  * Never convert a single station's reading into a nationwide EEW alarm.
  */
@@ -14,7 +16,8 @@ data class SeismicStation(
     val latitude: Double?,
     val longitude: Double?,
     val intensity: Double?,
-    val accelerationGal: Double?
+    val accelerationGal: Double?,
+    val availability: StationAvailability = StationAvailability.UNKNOWN
 )
 
 object SeismicStationData {
@@ -45,8 +48,19 @@ object SeismicStationData {
                     val pga = number(node, "pga", "gal", "acc", "acceleration")?.takeIf { it in 0.0..10000.0 }
                     if (id != null && id.length <= 100 && (locLat != null || known != null || level != null || pga != null)) {
                         val name = node.optString("name").ifBlank { node.optString("loc") }.ifBlank { known?.label ?: id }
+                        // Only EXPLICIT per-station provider state can justify a red offline marker.
+                        // A missing frame, missing intensity or a stale SSE never proves a station is broken.
+                        val status = node.optString("status").lowercase()
+                        val availability = when {
+                            status in setOf("maintenance", "maintaining", "repair", "repairing", "維修") -> StationAvailability.MAINTENANCE
+                            status in setOf("offline", "disconnected", "down", "離線") ||
+                                (node.has("online") && node.opt("online") == false) -> StationAvailability.OFFLINE
+                            status in setOf("online", "connected", "active", "正常") ||
+                                (node.has("online") && node.opt("online") == true) -> StationAvailability.ONLINE
+                            else -> StationAvailability.UNKNOWN
+                        }
                         val point = SeismicStation(id, name.take(70),
-                            locLat?.takeIf { it in 21.0..26.5 }, locLon?.takeIf { it in 118.0..123.5 }, level, pga)
+                            locLat?.takeIf { it in 21.0..26.5 }, locLon?.takeIf { it in 118.0..123.5 }, level, pga, availability)
                         if (point.latitude != null && point.longitude != null) seen[id] = point
                     }
                     if (id == null || (!node.has("i") && !node.has("pga") && !node.has("lat") && !node.has("intensity"))) {

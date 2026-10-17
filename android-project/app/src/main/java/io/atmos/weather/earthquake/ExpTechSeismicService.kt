@@ -169,8 +169,14 @@ class ExpTechSeismicService : Service() {
         val time=System.currentTimeMillis()
         if(type=="RTS") {
             val stations = SeismicStationData.parse(raw, stationMetadata)
-            live.update { it.copy(lastRtsAt=time,stationCount=ExpTechRealtimeParser.stationCount(raw),stations=stations.take(1500)) }
-            maybeNotifyStation(stations,time)
+            // Empty/unlocatable frames are not proof of a new valid observation.
+            // Keep the last verified snapshot for labelled historical display;
+            // importantly, do NOT advance lastRtsAt or send a detection notification.
+            if (stations.any { it.intensity != null || it.accelerationGal != null }) {
+                live.update { it.copy(lastRtsAt=time,
+                    stationCount=ExpTechRealtimeParser.stationCount(raw),stations=stations.take(1500)) }
+                maybeNotifyStation(stations,time)
+            }
             return
         }
         live.update { it.copy(lastEewAt=time) }
