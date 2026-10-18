@@ -27,22 +27,46 @@ class R102UserRequirements(unittest.TestCase):
         train=self.read('earthquake/SeismicTrainingVoice.kt')
         self.assertIn('模擬演練',train)
         self.assertIn('removePrefix("地震速報！慎防強烈搖晃！趴下、掩護、穩住！")',train)
-    def test_wheel_has_true_inertia_and_only_one_ampm_label(self):
+    def test_wheel_has_fast_settle_and_reliable_meridiem(self):
         s=self.read('alarm/R10AlarmDesign.kt')
         self.assertIn('VelocityTracker()',s)
-        self.assertIn('animateDecay(',s)
-        self.assertIn('exponentialDecay(',s)
+        self.assertNotIn('animateDecay(',s)
+        self.assertNotIn('exponentialDecay(',s)
+        self.assertIn('tween(durationMillis=145)',s)
+        self.assertIn('tween(durationMillis=140)',s)
         self.assertIn('animateTo(',s)
         self.assertNotIn('while(acc>36f)',s)
         self.assertIn('MeridiemWheel(if(hour<12) 0 else 1',s)
-        self.assertIn('val direction=when {',s)
+        self.assertIn('val direction=if(travel>=0f) 1 else -1',s)
+        self.assertIn('if(dragged) {',s)
+        self.assertNotIn('val expected=offsetPx+velocity*.065f',s)
+        self.assertIn('val coastPx=if(reduceMotion) 0f',s)
         self.assertIn('updateValue(1-currentValue)',s)
+        self.assertIn('liveUpdate(((liveValue-nearest)%count+count)%count)',s)
+        self.assertIn('offsetPx-=nearest*stepPx',s)
         self.assertIn('val selectedDetent=',s)
         self.assertIn('LaunchedEffect(selectedDetent)',s)
         self.assertNotIn('HapticEngine.Event.DRAG',s)
         self.assertIn('Layout(content = {',s)
         self.assertIn('center+(index-3)*rowHeight+fraction.roundToInt()',s)
         self.assertNotIn('.clickable { hour=(hour+12)%24 }',s)
+    def test_meridiem_animation_cannot_delay_state_commit(self):
+        s=self.read('alarm/R10AlarmDesign.kt')
+        meridiem=s.split('private fun MeridiemWheel(',1)[1].split('private fun Wheel(',1)[0]
+        self.assertLess(meridiem.index('updateValue(1-currentValue)'),
+                        meridiem.index('animation=scope.launch {',meridiem.index('onDragEnd={')))
+        self.assertNotIn('VelocityTracker()',meridiem)
+        self.assertIn('tween(durationMillis=145)',meridiem)
+        self.assertIn('if(travel>=0f) 1 else -1',meridiem)
+
+    def test_hour_minute_snap_does_not_wait_for_fling(self):
+        s=self.read('alarm/R10AlarmDesign.kt')
+        wheel=s.split('private fun Wheel(',1)[1].split('fun R10AlarmEditor(',1)[0]
+        self.assertIn('coerceIn(-stepPx*2f,stepPx*2f)',wheel)
+        self.assertIn('tween(durationMillis=140)',wheel)
+        self.assertLess(wheel.index('liveUpdate(((liveValue-nearest)%count+count)%count)'),
+                        wheel.index('movingJob=scope.launch {',wheel.index('onDragEnd={')))
+
     def test_air_quality_short_labels_are_honest(self):
         p=(PKG/'presentation/home/HomeWeatherBriefing.kt').read_text()
         self.assertIn('HomeWeatherFact("空氣品質"',p)

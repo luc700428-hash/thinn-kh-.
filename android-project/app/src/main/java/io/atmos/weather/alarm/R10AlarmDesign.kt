@@ -7,7 +7,6 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.draw.alpha
@@ -112,11 +111,9 @@ private fun GlassSetting(label:String, detail:String?=null,click:(()->Unit)?=nul
 @Composable
 private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp).background(Color.White.copy(alpha=.13f)))}
 
-/** Foundation-drawn, continuous inertial wheel: drag follows the finger, release decays,
- * then settles with a damped spring. Value is committed only after the animation finishes.
- */
-/** One AM/PM column, swiped vertically: commit on release so Save always sees
- * the selected half-day. Spring motion is visual only and cannot lose the state.
+/** Two-state meridiem control with deterministic gestures, no fling and a short
+ * visual settlement. Every completed vertical drag changes AM <-> PM exactly once,
+ * whether the gesture was slow or fast. State is saved BEFORE animation begins.
  */
 @Composable
 private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
@@ -132,50 +129,51 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
     val otherSide=if(offsetPx>0f) -1 else 1
     Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
         .pointerInput(stepPx,reduceMotion) {
+            var dragged=false
             var travel=0f
-            var tracker=VelocityTracker()
             detectVerticalDragGestures(
                 onDragStart={
                     animation?.cancel()
+                    // A fresh gesture starts at the selected, centered label.
+                    offsetPx=0f
+                    dragged=false
                     travel=0f
-                    tracker=VelocityTracker()
                 },
                 onVerticalDrag={ change,dy ->
                     change.consume()
-                    travel+=dy
-                    tracker.addPosition(change.uptimeMillis,change.position)
-                    offsetPx=(offsetPx+dy).coerceIn(-stepPx*1.15f,stepPx*1.15f)
+                    if(dy!=0f) {
+                        dragged=true
+                        travel+=dy
+                        offsetPx=travel.coerceIn(-stepPx*.98f,stepPx*.98f)
+                    }
                 },
                 onDragEnd={
-                    val speed=tracker.calculateVelocity().y.coerceIn(-3200f,3200f)
-                    // A small intentional swipe is enough; no tap is needed.
-                    val direction=when {
-                        abs(travel)>=stepPx*.16f -> if(travel>0f) 1 else -1
-                        abs(speed)>210f -> if(speed>0f) 1 else -1
-                        else -> 0
+                    // Drag detection itself already checks system touch slop. There is
+                    // NO second distance or velocity threshold to accidentally reject PM.
+                    if(dragged) {
+                        val direction=if(travel>=0f) 1 else -1
+                        offsetPx-=direction*stepPx
+                        updateValue(1-currentValue)
+                        feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     }
+                    val visualStart=offsetPx
                     animation=scope.launch {
-                        if(direction!=0) {
-                            // Change saved time first. Rebase the displayed position so
-                            // the arriving label springs into the central selected row.
-                            offsetPx-=direction*stepPx
-                            updateValue(1-currentValue)
-                            feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        }
-                        val motion=Animatable(offsetPx)
                         if(!reduceMotion) {
-                            motion.animateTo(0f,
-                                spring(dampingRatio=.8f,stiffness=410f),
-                                initialVelocity=speed*.18f) { offsetPx=this.value }
+                            Animatable(visualStart).animateTo(0f,tween(durationMillis=145)) {
+                                offsetPx=this.value
+                            }
                         }
                         offsetPx=0f
                     }
                 },
                 onDragCancel={
                     animation=scope.launch {
-                        val motion=Animatable(offsetPx)
-                        if(!reduceMotion) motion.animateTo(0f,
-                            spring(dampingRatio=.86f,stiffness=390f)) {offsetPx=this.value}
+                        val visualStart=offsetPx
+                        if(!reduceMotion) {
+                            Animatable(visualStart).animateTo(0f,tween(durationMillis=110)) {
+                                offsetPx=this.value
+                            }
+                        }
                         offsetPx=0f
                     }
                 }
@@ -240,25 +238,22 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                     offsetPx=(offsetPx+distance).coerceIn(-stepPx*160f,stepPx*160f)
                 },
                 onDragEnd={
-                    val speed=tracker.calculateVelocity().y.coerceIn(-4400f,4400f)
+                    val speed=tracker.calculateVelocity().y.coerceIn(-2400f,2400f)
+                    // Keep a small fling prediction, but NEVER run a long decay + spring.
+                    // The value is committed synchronously, before Save could be pressed.
+                    val coastPx=if(reduceMotion) 0f
+                        else (speed*.065f).coerceIn(-stepPx*2f,stepPx*2f)
+                    val nearest=((offsetPx+coastPx)/stepPx).roundToInt().coerceIn(-160,160)
+                    offsetPx-=nearest*stepPx
+                    if(nearest!=0) {
+                        liveUpdate(((liveValue-nearest)%count+count)%count)
+                    }
+                    val visualStart=offsetPx
                     movingJob=scope.launch {
-                        val motion=Animatable(offsetPx)
-                        if(!reduceMotion && abs(speed)>120f) {
-                            motion.animateDecay(speed,exponentialDecay(frictionMultiplier=1.65f)) {
-                                offsetPx=this.value.coerceIn(-stepPx*160f,stepPx*160f)
-                            }
-                        }
-                        val nearest=(offsetPx/stepPx).roundToInt().coerceIn(-160,160)
-                        // Decay finishes at a new offset. Snap the animator to that current
-                        // position first, or the spring jumps back to the pre-fling offset.
-                        motion.snapTo(offsetPx)
                         if(!reduceMotion) {
-                            motion.animateTo(nearest*stepPx,spring(dampingRatio=.79f,stiffness=360f)) {
+                            Animatable(visualStart).animateTo(0f,tween(durationMillis=140)) {
                                 offsetPx=this.value
                             }
-                        }
-                        if(nearest!=0) {
-                            liveUpdate(((liveValue-nearest)%count+count)%count)
                         }
                         offsetPx=0f
                     }
