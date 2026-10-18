@@ -33,8 +33,8 @@ object HomeWeatherBriefing {
                 (weather.windGustKmh ?: 0.0)>=55 -> "陣風較強，外出留意安全"
                 else -> "平均風速"
             })
-        val airFact=if(weather.usAqi!=null) HomeWeatherFact("空氣品質模型",
-            "US AQI ${weather.usAqi}","模型推估，非官方 AQI")
+        val airFact=if(weather.usAqi!=null) HomeWeatherFact("空氣品質",
+            "AQI ${weather.usAqi}","美國標準模型推估，非臺灣環境部官方 AQI")
         else HomeWeatherFact("相對濕度",weather.humidityPct?.let { "$it%" } ?: "—",
             if(weather.humidityPct==null) "尚無濕度資料" else "目前觀測／估計")
         return listOf(rain,trend,windFact,airFact)

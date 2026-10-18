@@ -115,72 +115,58 @@ private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp
 /** Foundation-drawn, continuous inertial wheel: drag follows the finger, release decays,
  * then settles with a damped spring. Value is committed only after the animation finishes.
  */
-/** A dedicated two-choice inertial wheel: there is one AM and one PM label.
- * Swiping up OR down changes the period, with a short inertial coast and spring landing.
- * No tap is required and selection only commits on a completed gesture.
+/** One AM/PM column, swiped vertically: commit on release so Save always sees
+ * the selected half-day. Spring motion is visual only and cannot lose the state.
  */
 @Composable
 private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
     val stepPx=with(LocalDensity.current) { 41.dp.toPx() }
     val scope=rememberCoroutineScope()
     val feedback=LocalHapticFeedback.current
-    val engine=io.atmos.weather.haptics.LocalHapticEngine.current
     val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
     val currentValue by rememberUpdatedState(value)
     val updateValue by rememberUpdatedState(onValue)
     var offsetPx by remember { mutableFloatStateOf(0f) }
     var animation by remember { mutableStateOf<Job?>(null) }
-    // The other period is drawn on only one side, so AM / PM never repeat in the wheel.
     val otherSide=if(offsetPx>0f) -1 else 1
     Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
         .pointerInput(stepPx,reduceMotion) {
+            var travel=0f
             var tracker=VelocityTracker()
-            var ticked=false
             detectVerticalDragGestures(
                 onDragStart={
                     animation?.cancel()
+                    travel=0f
                     tracker=VelocityTracker()
-                    ticked=false
                 },
                 onVerticalDrag={ change,dy ->
                     change.consume()
+                    travel+=dy
                     tracker.addPosition(change.uptimeMillis,change.position)
-                    offsetPx=(offsetPx+dy).coerceIn(-stepPx*1.12f,stepPx*1.12f)
-                    if(!ticked && abs(offsetPx)>=stepPx*.20f) {
-                        if(engine!=null) engine.play(io.atmos.weather.haptics.HapticEngine.Event.DRAG)
-                        else feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        ticked=true
-                    }
-                    if(ticked && abs(offsetPx)<stepPx*.08f) ticked=false
+                    offsetPx=(offsetPx+dy).coerceIn(-stepPx*1.15f,stepPx*1.15f)
                 },
                 onDragEnd={
-                    val velocity=tracker.calculateVelocity().y.coerceIn(-3500f,3500f)
-                    val expected=offsetPx+velocity*.065f
-                    val turn=when {
-                        abs(expected)>=stepPx*.22f -> if(expected>0f) 1 else -1
-                        abs(velocity)>280f -> if(velocity>0f) 1 else -1
+                    val speed=tracker.calculateVelocity().y.coerceIn(-3200f,3200f)
+                    // A small intentional swipe is enough; no tap is needed.
+                    val direction=when {
+                        abs(travel)>=stepPx*.16f -> if(travel>0f) 1 else -1
+                        abs(speed)>210f -> if(speed>0f) 1 else -1
                         else -> 0
                     }
                     animation=scope.launch {
+                        if(direction!=0) {
+                            // Change saved time first. Rebase the displayed position so
+                            // the arriving label springs into the central selected row.
+                            offsetPx-=direction*stepPx
+                            updateValue(1-currentValue)
+                            feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
                         val motion=Animatable(offsetPx)
                         if(!reduceMotion) {
-                            motion.updateBounds(lowerBound=-stepPx*1.12f,upperBound=stepPx*1.12f)
-                            // Short inertial coast using the same physics as hour/minute wheels.
-                            if(abs(velocity)>130f) {
-                                motion.animateDecay(velocity,exponentialDecay(frictionMultiplier=2.7f)) {
-                                    offsetPx=this.value
-                                }
-                            }
-                            motion.snapTo(offsetPx)
-                            motion.animateTo(turn*stepPx,spring(dampingRatio=.82f,stiffness=310f)) {
-                                offsetPx=this.value
-                            }
-                        }
-                        if(turn!=0) {
-                            updateValue(1-currentValue)
-                            if(engine!=null) engine.play(io.atmos.weather.haptics.HapticEngine.Event.RELEASE)
-                            else feedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            motion.animateTo(0f,
+                                spring(dampingRatio=.8f,stiffness=410f),
+                                initialVelocity=speed*.18f) { offsetPx=this.value }
                         }
                         offsetPx=0f
                     }
@@ -188,9 +174,8 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
                 onDragCancel={
                     animation=scope.launch {
                         val motion=Animatable(offsetPx)
-                        if(!reduceMotion) motion.animateTo(0f,spring(dampingRatio=.86f,stiffness=330f)) {
-                            offsetPx=this.value
-                        }
+                        if(!reduceMotion) motion.animateTo(0f,
+                            spring(dampingRatio=.86f,stiffness=390f)) {offsetPx=this.value}
                         offsetPx=0f
                     }
                 }
@@ -223,7 +208,6 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
     val stepPx=with(density) { 41.dp.toPx() }
     val scope=rememberCoroutineScope()
     val haptics=LocalHapticFeedback.current
-    val hapticEngine=io.atmos.weather.haptics.LocalHapticEngine.current
     val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
     var offsetPx by remember { mutableFloatStateOf(0f) }
@@ -232,27 +216,28 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
     val liveUpdate by rememberUpdatedState(onValue)
     val shifted= (offsetPx/stepPx).roundToInt()
     val fraction=offsetPx-shifted*stepPx
+    val selectedDetent=((value-shifted)%count+count)%count
+    var lastFeedbackValue by remember { mutableIntStateOf(selectedDetent) }
+    LaunchedEffect(selectedDetent) {
+        if(selectedDetent!=lastFeedbackValue) {
+            // One tactile request per visible time unit (subject to Android hardware settings).
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            lastFeedbackValue=selectedDetent
+        }
+    }
     Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
         .pointerInput(count,stepPx,reduceMotion) {
             var tracker=VelocityTracker()
-            var lastTick=0
             detectVerticalDragGestures(
                 onDragStart={ position ->
                     movingJob?.cancel()
                     tracker=VelocityTracker()
-                    lastTick=0
                     // Initial contact is recorded by the first real drag event.
                 },
                 onVerticalDrag={ change, distance ->
                     change.consume()
                     tracker.addPosition(change.uptimeMillis,change.position)
                     offsetPx=(offsetPx+distance).coerceIn(-stepPx*160f,stepPx*160f)
-                    val detent=(offsetPx/stepPx).roundToInt()
-                    if(detent!=lastTick) {
-                        if(hapticEngine!=null) hapticEngine.play(io.atmos.weather.haptics.HapticEngine.Event.DRAG)
-                        else haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        lastTick=detent
-                    }
                 },
                 onDragEnd={
                     val speed=tracker.calculateVelocity().y.coerceIn(-4400f,4400f)
@@ -274,8 +259,6 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                         }
                         if(nearest!=0) {
                             liveUpdate(((liveValue-nearest)%count+count)%count)
-                            if(hapticEngine!=null) hapticEngine.play(io.atmos.weather.haptics.HapticEngine.Event.RELEASE)
-                            else haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         }
                         offsetPx=0f
                     }
@@ -299,7 +282,6 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                     movingJob?.cancel()
                     liveUpdate(item)
                     offsetPx=0f
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 },contentAlignment=Alignment.Center) {
                     if(count!=2 || row==0 || row==1) Text(display(item),textAlign=TextAlign.Center,
                         color=Color.White.copy(alpha=when {
