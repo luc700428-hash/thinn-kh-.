@@ -18,20 +18,67 @@ import io.atmos.weather.notifications.XiaomiFocusBridge
 import io.atmos.weather.notifications.WeatherNotificationDispatcher
 import io.atmos.weather.notifications.ThinnNotificationChannels
 import io.atmos.weather.domain.model.GeoPoint
+import io.atmos.weather.typhoon.TyphoonOfficialWarning
+import io.atmos.weather.typhoon.TyphoonWarningStore
+import io.atmos.weather.typhoon.TyphoonWarningLevel
 import io.atmos.weather.domain.visual.TaiwanLandmarks
 import java.util.concurrent.TimeUnit
 
 class CwaAlertWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         val context = applicationContext
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return Result.success()
+        val canPost=Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED
         val prefs = context.getSharedPreferences("atmos_settings", Context.MODE_PRIVATE)
         val cityName = prefs.getString("city_name", null) ?: return Result.success()
         if (!TaiwanLandmarks.counties.any { cityName.replace('臺','台').contains(it) } && !cityName.contains("臺灣") && !cityName.contains("台灣")) return Result.success()
         val point = if (prefs.contains("lat") && prefs.contains("lon"))
             GeoPoint(Double.fromBits(prefs.getLong("lat",0)),Double.fromBits(prefs.getLong("lon",0))) else null
+        // Official all-area sea / land warning notices must not depend on a county RSS
+        // filter. Only a source-verified issued warning is allowed to notify.
+        val national=CwaWarningFeed.fetchNational()
+        if(national.checkSucceeded) {
+            val warning=TyphoonOfficialWarning.newest(national.warnings)
+            val release=national.warnings.filter { TyphoonOfficialWarning.isOfficialCancellation(it) }
+                .maxByOrNull { it.issuedAt }
+            if(release!=null && (warning==null || !release.issuedAt.isBefore(warning.issuedAt))) {
+                TyphoonWarningStore.clear(context)
+            } else if(warning!=null) {
+                TyphoonWarningStore.save(context,warning)
+                ThinnNotificationChannels.ensure(context)
+                if(canPost && TyphoonWarningStore.shouldNotify(context,warning)) {
+                    val ownCounty=TyphoonWarningStore.county(cityName)
+                    val local=warning.localLandWarning(ownCounty)
+                    val isLand=warning.level==TyphoonWarningLevel.LAND
+                    val title=if(isLand) "中央氣象署 · 陸上颱風警報" else "中央氣象署 · 海上颱風警報"
+                    val places=if(isLand) warning.landCounties else warning.seaAreas
+                    val placeText=if(places.isNotEmpty()) places.joinToString("、") else "請以氣象署最新公告為準"
+                    val body=when {
+                        local -> "${ownCounty}已列入陸上警戒；避免非必要外出並做好防颱準備。"
+                        isLand -> "陸上警戒地區：$placeText；請確認您的所在地是否列入警戒。"
+                        else -> "海上警戒海域：$placeText；避免前往海邊及從事海上活動。"
+                    }
+                    val open=PendingIntent.getActivity(context,19031,
+                        Intent(context,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                    val notification=NotificationCompat.Builder(context,
+                        ThinnNotificationChannels.channelId(context,ThinnNotificationChannels.Type.WARNINGS))
+                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setContentTitle(title).setContentText(body.take(170))
+                        .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(450)))
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setCategory(NotificationCompat.CATEGORY_STATUS)
+                        .setAutoCancel(true).setContentIntent(open).build()
+                    if(WeatherNotificationDispatcher.post(context,
+                            ("typhoon_"+warning.level.name).hashCode(),notification,
+                            title,cityName,XiaomiFocusBridge.Kind.WEATHER_WARNING)) {
+                        TyphoonWarningStore.markNotified(context,warning)
+                    }
+                }
+            }
+        }
         val fetched = CwaWarningFeed.fetch(cityName,point)
-        val alerts = fetched.warnings
+        val alerts = fetched.warnings.filterNot { TyphoonOfficialWarning.classify(it)!=null }
         context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).edit()
             .putLong("cwa_last_check",System.currentTimeMillis())
             .putInt("cwa_last_count",alerts.size)
