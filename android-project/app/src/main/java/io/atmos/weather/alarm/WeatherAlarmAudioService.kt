@@ -242,9 +242,25 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             if(currentId!=id) return@launch
             val reading=updated ?: WeatherAlarmSpeechCache.load(this@WeatherAlarmAudioService)
             val message=WeatherAlarmNarration.build(ZonedDateTime.now(),reading)
-            runCatching {player?.setVolume(.18f,.18f)}
-            val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
-            if(result != TextToSpeech.SUCCESS) runCatching {player?.setVolume(1f,1f)}
+            // Keep ringtone audible at system alarm volume during cloud generation.
+            val cloudAccepted=io.atmos.weather.voice.NaturalVoiceHub.offer(
+                this@WeatherAlarmAudioService,
+                io.atmos.weather.voice.NaturalVoiceHub.Request(
+                    message,io.atmos.weather.voice.NaturalVoiceHub.Priority.DAILY,
+                    "alarm-weather:$id:${System.currentTimeMillis()/60_000L}",
+                    alarmAudio=true,
+                    onFinished={ if(currentId==id) runCatching {player?.setVolume(1f,1f)} },
+                    onFailure={ if(currentId==id) {
+                        runCatching {player?.setVolume(.18f,.18f)}
+                        val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
+                        if(result != TextToSpeech.SUCCESS) runCatching{player?.setVolume(1f,1f)}
+                    } }
+                ))
+            if(!cloudAccepted) {
+                runCatching {player?.setVolume(.18f,.18f)}
+                val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
+                if(result != TextToSpeech.SUCCESS) runCatching{player?.setVolume(1f,1f)}
+            }
             // OEM TTS can omit onDone. Never leave the ringing sound quiet indefinitely.
             uiHandler.postDelayed({ if(currentId==id) runCatching {player?.setVolume(1f,1f)} },120_000L)
         }
@@ -268,6 +284,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun stopAudio() {
+        io.atmos.weather.voice.NaturalVoiceHub.stopAlarm()
         speechJob?.cancel();speechJob=null
         runCatching {player?.stop();player?.release()};player=null
         runCatching {tts?.stop();tts?.shutdown()};tts=null

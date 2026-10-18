@@ -114,6 +114,8 @@ jobs:
           pathlib.Path('expected-build-source-proof.json').write_text(rendered,encoding='utf-8')
           print('Source audit SHA:',proof['commit_sha'])
           PYPROOF
+      - name: Test Azure Speech Worker request and safety contracts
+        run: node --test android-project/backend/azure-speech-worker/worker.test.js
       - name: Test public OTA manifest generator
         run: python3 -m unittest discover -s android-project/tools/tests -p test_*.py -v
       - name: Restore public-domain rain and thunder recordings BEFORE Kotlin compile
@@ -171,6 +173,7 @@ jobs:
           THINN_FIREBASE_SENDER_ID: ${{ vars.THINN_FIREBASE_SENDER_ID }}
           THINN_FIREBASE_PROJECT_ID: ${{ vars.THINN_FIREBASE_PROJECT_ID }}
           THINN_PUSH_FUNCTIONS_REGION: ${{ vars.THINN_PUSH_FUNCTIONS_REGION }}
+          THINN_AZURE_PROXY_URL: ${{ vars.THINN_AZURE_PROXY_URL }}
         run: |
           set -euo pipefail
           project=android-project
@@ -182,7 +185,8 @@ jobs:
              -PTHINN_FIREBASE_API_KEY="${THINN_FIREBASE_API_KEY:-}"
              -PTHINN_FIREBASE_SENDER_ID="${THINN_FIREBASE_SENDER_ID:-}"
              -PTHINN_FIREBASE_PROJECT_ID="${THINN_FIREBASE_PROJECT_ID:-}"
-             -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}")
+             -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}"
+             -PTHINN_AZURE_PROXY_URL="${THINN_AZURE_PROXY_URL:-}")
           gradle "${args[@]}" :app:testDebugUnitTest 2>&1 | tee build.log
           if [[ "$SIGN_READY" == 'true' ]]; then task=:app:assembleRelease; else task=:app:assembleDebug; fi
           gradle "${args[@]}" "$task" 2>&1 | tee -a build.log

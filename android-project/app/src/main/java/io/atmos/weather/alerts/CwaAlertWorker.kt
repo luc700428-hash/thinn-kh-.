@@ -119,6 +119,11 @@ class CwaAlertWorker(appContext: Context, params: WorkerParameters) : CoroutineW
                     XiaomiFocusBridge.Kind.WEATHER_WARNING
                 )) {
                 sentCount++
+                io.atmos.weather.voice.NaturalVoiceHub.offer(context,
+                    io.atmos.weather.voice.NaturalVoiceHub.Request(
+                        ("中央氣象署警報。"+alert.title+"。"+alert.summary).take(220),
+                        io.atmos.weather.voice.NaturalVoiceHub.Priority.WEATHER_ALERT,
+                        "cwa-alert:$keyId",cacheable=false))
                 settings.edit().putBoolean("cwa_seen_$keyId", true).apply()
             }
         }

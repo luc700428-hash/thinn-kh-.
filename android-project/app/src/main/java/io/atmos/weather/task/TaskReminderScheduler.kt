@@ -74,6 +74,12 @@ class TaskReminderWorker(context:Context,params:WorkerParameters):CoroutineWorke
         // Do not put private note body into the island's public condensed text.
         WeatherNotificationDispatcher.post(applicationContext,task.id.hashCode(),message,
             task.title.take(36),"個人事項提醒",XiaomiFocusBridge.Kind.TASK_REMINDER)
+        io.atmos.weather.voice.NaturalVoiceHub.offer(applicationContext,
+            io.atmos.weather.voice.NaturalVoiceHub.Request(
+                (task.title+"。"+task.note).take(220),
+                io.atmos.weather.voice.NaturalVoiceHub.Priority.PERSONAL,
+                "task-reminder:${task.id}:${task.dueMillis()}",
+                privacySensitive=true,cacheable=false))
         return Result.success()
     }
 }

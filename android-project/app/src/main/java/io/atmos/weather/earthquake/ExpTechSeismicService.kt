@@ -285,6 +285,7 @@ class ExpTechSeismicService : Service() {
         WeatherNotificationDispatcher.post(this,29200,notification,title,detail,XiaomiFocusBridge.Kind.SEISMIC_EEW)
         // A bounded foreground-service event tone; never a perpetual background siren.
         SeismicContinuousWarning.start(this,quake)
+        io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
         if(SeismicSpeech.enabled(this,"eew_voice_enabled")) {
             SeismicSpeech.speak(this,SeismicSpeech.warning(quake,SeismicUserLocation.current(this)))
         }

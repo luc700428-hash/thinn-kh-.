@@ -188,7 +188,7 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
 fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppearance)->Unit,
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
     onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
-    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
+    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={}) {
     val ctx=LocalContext.current
     val prefs=remember(ctx){ctx.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     var reduceMotion by remember {mutableStateOf(prefs.getBoolean("reduce_motion",false))}
@@ -215,6 +215,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         Spacer(Modifier.height(8.dp))
         ThinnSection("個人偏好") {
             ThinnRow("智慧穿搭與開源 AI","穿搭、雨具與個人化選擇",Icons.Rounded.Checkroom,onClick=onLifestyle)
+            GlassDivider()
+            ThinnRow("自然語音","曉臻／曉雨、語速、試聽與本機備援",Icons.Rounded.RecordVoiceOver,onClick=onNaturalVoice)
             GlassDivider()
             ThinnRow("進階視覺、環境音與觸感","主觸覺強度、音效、實境演示",Icons.Rounded.Tune,onClick=onAdvanced)
         }

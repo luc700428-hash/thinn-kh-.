@@ -65,6 +65,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     }
     LaunchedEffect(eventKey) {
         if(!replay && !simulation && SeismicSpeech.enabled(context,"eew_voice_enabled")) {
+            io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
             SeismicSpeech.speak(context,SeismicSpeech.warning(incident,SeismicUserLocation.current(context)))
         }
     }

@@ -66,6 +66,9 @@ class WeatherBriefingWorker(context:Context,params:WorkerParameters):CoroutineWo
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
             WeatherNotificationDispatcher.post(ctx,38000+id,n,title,summary.subtitle,XiaomiFocusBridge.Kind.WEATHER_BRIEFING)
+            io.atmos.weather.voice.NaturalVoiceHub.offer(ctx,io.atmos.weather.voice.NaturalVoiceHub.Request(
+                summary.body.take(220),io.atmos.weather.voice.NaturalVoiceHub.Priority.DAILY,
+                "weather-briefing:$id:$ms"))
             return Result.success()
         } finally {
             // WorkManager persists this next occurrence even across restarts. If the user
