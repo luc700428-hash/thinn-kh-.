@@ -146,13 +146,13 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                         val motion=Animatable(offsetPx)
                         if(!reduceMotion && abs(speed)>120f) {
                             motion.animateDecay(speed,exponentialDecay(frictionMultiplier=1.65f)) {
-                                offsetPx=value.coerceIn(-stepPx*160f,stepPx*160f)
+                                offsetPx=this.value.coerceIn(-stepPx*160f,stepPx*160f)
                             }
                         }
                         val nearest=(offsetPx/stepPx).roundToInt().coerceIn(-160,160)
                         if(!reduceMotion) {
                             motion.animateTo(nearest*stepPx,spring(dampingRatio=.79f,stiffness=360f)) {
-                                offsetPx=value
+                                offsetPx=this.value
                             }
                         }
                         if(nearest!=0) {
