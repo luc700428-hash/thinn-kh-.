@@ -2,6 +2,7 @@ package io.atmos.weather.alarm
 
 import android.content.Context
 import android.media.MediaPlayer
+import android.media.AudioAttributes
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -114,12 +115,115 @@ private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp
 /** Foundation-drawn, continuous inertial wheel: drag follows the finger, release decays,
  * then settles with a damped spring. Value is committed only after the animation finishes.
  */
+/** A dedicated two-choice inertial wheel: there is one AM and one PM label.
+ * Swiping up OR down changes the period, with a short inertial coast and spring landing.
+ * No tap is required and selection only commits on a completed gesture.
+ */
+@Composable
+private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
+    val stepPx=with(LocalDensity.current) { 41.dp.toPx() }
+    val scope=rememberCoroutineScope()
+    val feedback=LocalHapticFeedback.current
+    val engine=io.atmos.weather.haptics.LocalHapticEngine.current
+    val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
+        .getBoolean("reduce_motion",false)
+    val currentValue by rememberUpdatedState(value)
+    val updateValue by rememberUpdatedState(onValue)
+    var offsetPx by remember { mutableFloatStateOf(0f) }
+    var animation by remember { mutableStateOf<Job?>(null) }
+    // The other period is drawn on only one side, so AM / PM never repeat in the wheel.
+    val otherSide=if(offsetPx>0f) -1 else 1
+    Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
+        .pointerInput(stepPx,reduceMotion) {
+            var tracker=VelocityTracker()
+            var ticked=false
+            detectVerticalDragGestures(
+                onDragStart={
+                    animation?.cancel()
+                    tracker=VelocityTracker()
+                    ticked=false
+                },
+                onVerticalDrag={ change,dy ->
+                    change.consume()
+                    tracker.addPosition(change.uptimeMillis,change.position)
+                    offsetPx=(offsetPx+dy).coerceIn(-stepPx*1.12f,stepPx*1.12f)
+                    if(!ticked && abs(offsetPx)>=stepPx*.20f) {
+                        if(engine!=null) engine.play(io.atmos.weather.haptics.HapticEngine.Event.DRAG)
+                        else feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        ticked=true
+                    }
+                    if(ticked && abs(offsetPx)<stepPx*.08f) ticked=false
+                },
+                onDragEnd={
+                    val velocity=tracker.calculateVelocity().y.coerceIn(-3500f,3500f)
+                    val expected=offsetPx+velocity*.065f
+                    val turn=when {
+                        abs(expected)>=stepPx*.22f -> if(expected>0f) 1 else -1
+                        abs(velocity)>280f -> if(velocity>0f) 1 else -1
+                        else -> 0
+                    }
+                    animation=scope.launch {
+                        val motion=Animatable(offsetPx)
+                        if(!reduceMotion) {
+                            motion.updateBounds(lowerBound=-stepPx*1.12f,upperBound=stepPx*1.12f)
+                            // Short inertial coast using the same physics as hour/minute wheels.
+                            if(abs(velocity)>130f) {
+                                motion.animateDecay(velocity,exponentialDecay(frictionMultiplier=2.7f)) {
+                                    offsetPx=this.value
+                                }
+                            }
+                            motion.snapTo(offsetPx)
+                            motion.animateTo(turn*stepPx,spring(dampingRatio=.82f,stiffness=310f)) {
+                                offsetPx=this.value
+                            }
+                        }
+                        if(turn!=0) {
+                            updateValue(1-currentValue)
+                            if(engine!=null) engine.play(io.atmos.weather.haptics.HapticEngine.Event.RELEASE)
+                            else feedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        offsetPx=0f
+                    }
+                },
+                onDragCancel={
+                    animation=scope.launch {
+                        val motion=Animatable(offsetPx)
+                        if(!reduceMotion) motion.animateTo(0f,spring(dampingRatio=.86f,stiffness=330f)) {
+                            offsetPx=this.value
+                        }
+                        offsetPx=0f
+                    }
+                }
+            )
+        },contentAlignment=Alignment.Center) {
+        Layout(content={
+            Box(Modifier.fillMaxWidth().height(41.dp),contentAlignment=Alignment.Center) {
+                Text(if(value==0) "上午" else "下午",color=Color.White,fontSize=30.sp,
+                    fontWeight=FontWeight.Light,maxLines=1)
+            }
+            Box(Modifier.fillMaxWidth().height(41.dp),contentAlignment=Alignment.Center) {
+                Text(if(value==0) "下午" else "上午",color=Color.White.copy(alpha=.60f),
+                    fontSize=23.sp,fontWeight=FontWeight.Light,maxLines=1)
+            }
+        },modifier=Modifier.fillMaxSize()) {measurables,constraints ->
+            val rowHeight=41.dp.roundToPx()
+            val cells=measurables.map {it.measure(Constraints.fixed(constraints.maxWidth,rowHeight))}
+            layout(constraints.maxWidth,constraints.maxHeight) {
+                val center=(constraints.maxHeight-rowHeight)/2
+                cells[0].placeRelative(0,center+offsetPx.roundToInt())
+                cells[1].placeRelative(0,center+otherSide*rowHeight+offsetPx.roundToInt())
+            }
+        }
+    }
+}
+
 @Composable
 private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
     val density=LocalDensity.current
     val stepPx=with(density) { 41.dp.toPx() }
     val scope=rememberCoroutineScope()
     val haptics=LocalHapticFeedback.current
+    val hapticEngine=io.atmos.weather.haptics.LocalHapticEngine.current
     val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
     var offsetPx by remember { mutableFloatStateOf(0f) }
@@ -131,16 +235,24 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
     Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
         .pointerInput(count,stepPx,reduceMotion) {
             var tracker=VelocityTracker()
+            var lastTick=0
             detectVerticalDragGestures(
                 onDragStart={ position ->
                     movingJob?.cancel()
                     tracker=VelocityTracker()
+                    lastTick=0
                     // Initial contact is recorded by the first real drag event.
                 },
                 onVerticalDrag={ change, distance ->
                     change.consume()
                     tracker.addPosition(change.uptimeMillis,change.position)
                     offsetPx=(offsetPx+distance).coerceIn(-stepPx*160f,stepPx*160f)
+                    val detent=(offsetPx/stepPx).roundToInt()
+                    if(detent!=lastTick) {
+                        if(hapticEngine!=null) hapticEngine.play(io.atmos.weather.haptics.HapticEngine.Event.DRAG)
+                        else haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        lastTick=detent
+                    }
                 },
                 onDragEnd={
                     val speed=tracker.calculateVelocity().y.coerceIn(-4400f,4400f)
@@ -152,6 +264,9 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                             }
                         }
                         val nearest=(offsetPx/stepPx).roundToInt().coerceIn(-160,160)
+                        // Decay finishes at a new offset. Snap the animator to that current
+                        // position first, or the spring jumps back to the pre-fling offset.
+                        motion.snapTo(offsetPx)
                         if(!reduceMotion) {
                             motion.animateTo(nearest*stepPx,spring(dampingRatio=.79f,stiffness=360f)) {
                                 offsetPx=this.value
@@ -159,7 +274,8 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                         }
                         if(nearest!=0) {
                             liveUpdate(((liveValue-nearest)%count+count)%count)
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            if(hapticEngine!=null) hapticEngine.play(io.atmos.weather.haptics.HapticEngine.Event.RELEASE)
+                            else haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         }
                         offsetPx=0f
                     }
@@ -235,8 +351,8 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
             Box(Modifier.fillMaxWidth().padding(horizontal=32.dp).height(235.dp),contentAlignment=Alignment.Center) {
                 Box(Modifier.fillMaxWidth().height(45.dp).background(Color(0xFF303137),RoundedCornerShape(12.dp)))
                 Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-                    // Same inertial wheel, two values. One AM/PM choice in the center.
-                    Wheel(if(hour<12) 0 else 1,2,{ if(it==0) "上午" else "下午" },
+                    // A dedicated AM/PM wheel handles both swipe directions reliably.
+                    MeridiemWheel(if(hour<12) 0 else 1,
                         {part -> hour=(hour%12)+part*12},Modifier.weight(1.15f))
                     Wheel(hour%12,12,{if(it==0)"12" else "$it"},
                         {v->hour=(hour/12)*12+v},Modifier.weight(.85f))
@@ -292,6 +408,22 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     }
 }
 
+/** Preview through Android's ALARM volume stream, not the media-volume stream. */
+private fun prepareAlarmPreview(context:Context,uri:Uri):MediaPlayer? {
+    val player=MediaPlayer()
+    return try {
+        player.setAudioAttributes(AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+        player.setDataSource(context,uri)
+        player.prepare()
+        player
+    } catch(_ : Exception) {
+        player.release()
+        null
+    }
+}
+
 @Composable
 private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:()->Unit) {
     val ctx=androidx.compose.ui.platform.LocalContext.current
@@ -304,7 +436,7 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
             runCatching { ctx.contentResolver.takePersistableUriPermission(picked,access) }
             preview?.release(); preview=null
             active=picked.toString()
-            preview=runCatching { MediaPlayer.create(ctx,picked)?.apply {
+            preview=runCatching { prepareAlarmPreview(ctx,picked)?.apply {
                 setOnCompletionListener {player->player.release();if(preview===player)preview=null}
                 start()
             } }.getOrNull()
@@ -332,7 +464,7 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                                     active=R10AlarmTones.prefix+choice.id
                                     preview?.release()
                                     val res=R10AlarmTones.resource(active,WeatherAlarmSpeechCache.load(ctx),System.currentTimeMillis())
-                                    preview=if(res!=null) runCatching {MediaPlayer.create(ctx,res)?.apply {
+                                    preview=if(res!=null) runCatching {prepareAlarmPreview(ctx,Uri.parse("android.resource://${ctx.packageName}/$res"))?.apply {
                                         setOnCompletionListener {p->p.release();if(preview===p)preview=null}
                                         start()
                                     }}.getOrNull() else null

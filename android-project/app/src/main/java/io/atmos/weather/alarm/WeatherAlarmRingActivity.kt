@@ -2,6 +2,7 @@ package io.atmos.weather.alarm
 
 import android.app.NotificationManager
 import android.content.Context
+import android.media.AudioManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -47,6 +48,8 @@ class WeatherAlarmRingActivity:ComponentActivity() {
     private var alarmId=-1
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+        // Hardware volume keys during ringing change Alarm volume, not Media volume.
+        setVolumeControlStream(AudioManager.STREAM_ALARM)
         if(android.os.Build.VERSION.SDK_INT>=27) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)

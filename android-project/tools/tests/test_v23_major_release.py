@@ -67,7 +67,8 @@ class MajorV23Contract(unittest.TestCase):
         push=(JAVA/'push/SeismicPushSettingsPage.kt').read_text()
         self.assertNotIn('if (!cityName.startsWith("台灣")',worker)
         self.assertIn('TaiwanLandmarks.counties.any',worker)
-        self.assertIn('Firebase 尚未配置',push)
+        self.assertIn('FCM 公開專案設定不足，無法訂閱主題',push)
+        self.assertIn('訂閱成功不等於後端已部署',push)
     def test_release_notes_disclose_remaining_work(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()
         for term in ['第 23 代','全臺','實機','Firebase','颱風','鬧鐘']:
