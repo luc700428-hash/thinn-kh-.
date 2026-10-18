@@ -26,7 +26,7 @@ object WeatherNotificationDispatcher {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         // Vendor failure must never prevent a real weather alert from reaching Android.
         val vendorAttached = runCatching {
-            XiaomiFocusBridge.decorate(context, notification, title, detail, kind)
+            XiaomiFocusBridge.decorate(context, notification, title, detail, kind, id)
         }.getOrDefault(false)
         return try {
             manager.notify(id, notification)

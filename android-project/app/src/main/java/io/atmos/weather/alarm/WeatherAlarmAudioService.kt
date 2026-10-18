@@ -35,6 +35,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import io.atmos.weather.notifications.XiaomiFocusBridge
 import java.util.Locale
 
 /** Real ringing is owned by a service rather than a notification Activity.
@@ -79,14 +80,25 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                 .setContentTitle(alarm.title.ifBlank { "天氣鬧鐘" })
                 .setContentText(String.format(Locale.TAIWAN,"%02d:%02d · 輕觸開啟響鈴畫面",alarm.hour,alarm.minute))
                 .setContentIntent(openIntent(ctx,alarm.id))
-                .setFullScreenIntent(openIntent(ctx,alarm.id),true)
+                // On an unlocked, authorized HyperOS 3 device prefer the official island;
+                // locked/unavailable devices retain the untouched full-screen alarm UI.
                 .setOngoing(true).setAutoCancel(false)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel,"停止",controlIntent(ctx,alarm.id,ACTION_STOP))
             if(alarm.snooze) b.addAction(android.R.drawable.ic_popup_reminder,"10 分鐘後",controlIntent(ctx,alarm.id,ACTION_SNOOZE))
-            return b.build()
+            val islandPreferred = XiaomiFocusBridge.shouldUseAlarmIsland(ctx)
+            if (!islandPreferred) b.setFullScreenIntent(openIntent(ctx,alarm.id),true)
+            var note = b.build()
+            if (islandPreferred) {
+                val text = String.format(Locale.TAIWAN,"%02d:%02d 鬧鐘響鈴中",alarm.hour,alarm.minute)
+                // If Xiaomi rejects the island (including a higher-priority EEW),
+                // the same ringing service and standard heads-up notification remain.
+                XiaomiFocusBridge.decorate(ctx,note,"鬧鐘",text,
+                    XiaomiFocusBridge.Kind.ALARM_RINGING,BASE_NOTIFICATION_ID+alarm.id)
+            }
+            return note
         }
 
         /** Safe fallback if Android blocks foreground-service launch. Does NOT claim sound is active. */
@@ -117,6 +129,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                         .cancel(BASE_NOTIFICATION_ID+id)
                     stopAudio()
                     currentId=-1
+                    XiaomiFocusBridge.finish(BASE_NOTIFICATION_ID+id)
                     stopSelf()
                 } else if(id>=0) {
                     (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)

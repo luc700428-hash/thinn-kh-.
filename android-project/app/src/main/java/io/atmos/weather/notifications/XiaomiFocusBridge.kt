@@ -1,6 +1,8 @@
 package io.atmos.weather.notifications
 
 import android.app.Notification
+import android.app.KeyguardManager
+import android.os.PowerManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -29,7 +31,35 @@ object XiaomiFocusBridge {
 
     /** Every in-app notification is classified before its native Android delivery.
      * Xiaomi independently approves which real-world scenarios may use focus/island UI. */
-    enum class Kind { WEATHER_WARNING, WARNING_SUMMARY, USER_TEST, APP_UPDATE, EARTHQUAKE_REPORT, WEATHER_BRIEFING, SEISMIC_EEW, STATION_DETECTION }
+    enum class Kind {
+        WEATHER_WARNING, WARNING_SUMMARY, USER_TEST, APP_UPDATE, EARTHQUAKE_REPORT,
+        WEATHER_BRIEFING, SEISMIC_EEW, STATION_DETECTION,
+        ALARM_RINGING, TIMER_RUNNING, VERIFIED_MINUTE_RAIN, TASK_REMINDER, AMBIENT_WEATHER
+    }
+
+    private val guard = Any()
+    private var activeIsland: ActiveIsland? = null
+
+    internal fun rank(kind: Kind): IslandPriority = when(kind) {
+        Kind.SEISMIC_EEW -> IslandPriority.SEISMIC
+        Kind.WEATHER_WARNING, Kind.WARNING_SUMMARY -> IslandPriority.WEATHER_ALERT
+        Kind.ALARM_RINGING, Kind.TIMER_RUNNING, Kind.VERIFIED_MINUTE_RAIN -> IslandPriority.TIME_CRITICAL
+        Kind.TASK_REMINDER -> IslandPriority.REMINDER
+        else -> IslandPriority.AMBIENT
+    }
+
+    /** No full-screen alarm takeover while unlocked on an approved HyperOS 3 device. */
+    fun shouldUseAlarmIsland(context: Context): Boolean {
+        if (protocol(context) < 3 || availability(context) != Availability.ENABLED) return false
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        return pm.isInteractive && !km.isKeyguardLocked
+    }
+
+    /** Release arbitration when the alarm/timer is explicitly stopped. */
+    fun finish(notificationId: Int) = synchronized(guard) {
+        if (activeIsland?.key?.endsWith(":$notificationId") == true) activeIsland = null
+    }
 
     fun isXiaomi(): Boolean {
         val name = "${Build.MANUFACTURER} ${Build.BRAND}".lowercase()
@@ -64,16 +94,29 @@ object XiaomiFocusBridge {
     internal fun focusJson(protocol: Int, title: String, detail: String, kind: Kind): String {
         val heading = title.take(36)
         val body = detail.take(60)
-        val isWarning = kind == Kind.WEATHER_WARNING || kind == Kind.WARNING_SUMMARY || kind == Kind.SEISMIC_EEW
+        val isWarning = rank(kind).rank <= IslandPriority.WEATHER_ALERT.rank
         val headingColor = if (isWarning) "#E74747" else "#70CCFA"
-        val shortLabel = when (kind) { Kind.USER_TEST -> "測試"; Kind.APP_UPDATE -> "更新"; Kind.EARTHQUAKE_REPORT -> "地震報告"; Kind.SEISMIC_EEW -> "地震速報"; Kind.STATION_DETECTION -> "測站檢知"; else -> "天氣" }
+        val shortLabel = when(kind) {
+            Kind.SEISMIC_EEW -> "地震速報"
+            Kind.WEATHER_WARNING, Kind.WARNING_SUMMARY -> "天氣警報"
+            Kind.ALARM_RINGING -> "鬧鐘"
+            Kind.TIMER_RUNNING -> "計時器"
+            Kind.VERIFIED_MINUTE_RAIN -> "即時降雨"
+            Kind.TASK_REMINDER -> "待辦提醒"
+            Kind.AMBIENT_WEATHER -> "目前天氣"
+            Kind.USER_TEST -> "測試"
+            Kind.APP_UPDATE -> "更新"
+            Kind.EARTHQUAKE_REPORT -> "地震報告"
+            Kind.STATION_DETECTION -> "測站檢知"
+            Kind.WEATHER_BRIEFING -> "天氣"
+        }
         val params = JSONObject().apply {
             put("protocol", 1)
             put("business", "weather")
-            put("islandFirstFloat", kind == Kind.WEATHER_WARNING)
+            put("islandFirstFloat", isWarning)
             put("enableFloat", false)
-            put("updatable", false)
-            put("timeout", if (kind == Kind.USER_TEST) 2 else 45)
+            put("updatable", kind == Kind.ALARM_RINGING || kind == Kind.TIMER_RUNNING)
+            put("timeout", if (kind == Kind.USER_TEST) 2 else if (kind == Kind.ALARM_RINGING) 10 else 45)
             // Never filter out normal Android notifications because Xiaomi approval is missing.
             put("filterWhenNoPermission", false)
             put("ticker", heading.take(18))  // HyperOS 2 state bar
@@ -86,8 +129,8 @@ object XiaomiFocusBridge {
             })
             if (protocol >= 3) {
                 put("param_island", JSONObject().apply {
-                    put("islandProperty", 1)
-                    put("islandTimeout", if (kind == Kind.USER_TEST) 10 else 60)
+                    put("islandProperty", if (kind == Kind.ALARM_RINGING || kind == Kind.TIMER_RUNNING) 2 else 1)
+                    put("islandTimeout", if (kind == Kind.USER_TEST) 10 else if (kind == Kind.ALARM_RINGING) 600 else rank(kind).holdMillis / 1000L)
                     put("smallIslandArea", JSONObject().apply {
                         put("picInfo", JSONObject().apply {
                             put("type", 1)
@@ -121,9 +164,15 @@ object XiaomiFocusBridge {
      */
     fun decorate(
         context: Context, notification: Notification, title: String, detail: String,
-        kind: Kind = Kind.WEATHER_WARNING
+        kind: Kind = Kind.WEATHER_WARNING, notificationId: Int = 0
     ): Boolean {
         if (availability(context) != Availability.ENABLED) return false
+        val category = rank(kind)
+        val key = "${kind.name}:$notificationId"
+        val now = System.currentTimeMillis()
+        synchronized(guard) {
+            if (!IslandPriorityPolicy.shouldPresent(activeIsland,key,category,now)) return false
+        }
         return runCatching {
             val p = protocol(context)
             notification.extras.putString("miui.focus.param", focusJson(p, title, detail, kind))
@@ -131,6 +180,25 @@ object XiaomiFocusBridge {
                 putParcelable("miui.focus.pic_alert", Icon.createWithResource(context, R.mipmap.ic_launcher))
             }
             notification.extras.putBundle("miui.focus.pics", pics)
+            // Officially documented action bridge; the actions already belong to this notification.
+            if (p >= 3 && (kind == Kind.ALARM_RINGING || kind == Kind.TIMER_RUNNING)) {
+                val nativeActions = notification.actions.orEmpty().take(2)
+                if (nativeActions.isNotEmpty()) {
+                    val actions = Bundle()
+                    val json = JSONObject(notification.extras.getString("miui.focus.param").orEmpty())
+                    val body = json.getJSONObject("param_v2")
+                    val refs = org.json.JSONArray()
+                    nativeActions.forEachIndexed { index, action ->
+                        val actionKey = "miui.focus.action_${index + 1}"
+                        actions.putParcelable(actionKey, action)
+                        refs.put(JSONObject().put("action",actionKey))
+                    }
+                    body.put("actions", refs)
+                    notification.extras.putString("miui.focus.param",json.toString())
+                    notification.extras.putBundle("miui.focus.actions", actions)
+                }
+            }
+            synchronized(guard) { activeIsland = IslandPriorityPolicy.next(key,category,now) }
             true
         }.getOrDefault(false)
     }
