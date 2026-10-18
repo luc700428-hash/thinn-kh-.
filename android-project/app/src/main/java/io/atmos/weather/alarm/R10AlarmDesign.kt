@@ -152,7 +152,7 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
                     // NO second distance or velocity threshold to accidentally reject PM.
                     if(dragged) {
                         val direction=if(travel>=0f) 1 else -1
-                        offsetPx-=direction*stepPx
+                        offsetPx=0f
                         updateValue(1-currentValue)
                         feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     }
@@ -194,7 +194,7 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
             layout(constraints.maxWidth,constraints.maxHeight) {
                 val center=(constraints.maxHeight-rowHeight)/2
                 cells[0].placeRelative(0,center+offsetPx.roundToInt())
-                cells[1].placeRelative(0,center+otherSide*rowHeight+offsetPx.roundToInt())
+                if(offsetPx!=0f) cells[1].placeRelative(0,center+otherSide*rowHeight+offsetPx.roundToInt())
             }
         }
     }
