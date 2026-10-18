@@ -1,0 +1,13 @@
+name = "thinn-khi-eew-relay"
+main = "src/index.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+FIREBASE_PROJECT_ID = "REPLACE_WITH_FIREBASE_PROJECT_ID"
+DRY_RUN = "true"
+
+[[d1_databases]]
+binding = "ALERT_DB"
+database_name = "thinn-khi-eew-state"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
