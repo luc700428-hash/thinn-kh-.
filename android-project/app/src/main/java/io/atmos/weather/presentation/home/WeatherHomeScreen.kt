@@ -239,6 +239,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     var updatePageOpen by remember { mutableStateOf(fromUpdateNotification) }
     var typhoonPageOpen by remember { mutableStateOf(false) }
     var officialStormActive by remember { mutableStateOf(false) }
+    var approachingStorm by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
+    var approachingStormPopupOpen by remember { mutableStateOf(false) }
+    var alreadyShownStormVersion by remember { mutableStateOf("") }
     // Query official storm positions only while the weather tab is visible. When unavailable
     // fail closed (no invented typhoon); locally issued official warnings still show.
     LaunchedEffect(mainPager.currentPage) {
@@ -246,10 +249,24 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             while(true) {
                 officialStormActive = try {
                     val data=io.atmos.weather.earthquake.CwaOfficialGateway.read(context,"W-C0034-002")
+                    val tracks=io.atmos.weather.typhoon.OfficialStormTimeline.parse(data)
+                    val approaching=tracks.firstOrNull {
+                        io.atmos.weather.typhoon.TaiwanStormRelevance.isMovingTowardTaiwan(it)
+                    }
+                    approachingStorm=approaching
+                    if(approaching!=null && approaching.signature!=alreadyShownStormVersion) {
+                        alreadyShownStormVersion=approaching.signature
+                        approachingStormPopupOpen=true
+                    } else if(approaching==null) approachingStormPopupOpen=false
                     io.atmos.weather.typhoon.TyphoonVisibility.hasActiveStorm(
                         io.atmos.weather.typhoon.OfficialTyphoonTrack.extract(data))
                 } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
-                  catch (_:Exception) { false }
+                  catch (_:Exception) {
+                      approachingStorm=null
+                      approachingStormPopupOpen=false
+                      false
+                  }
+                // 20-minute foreground poll; official issue cadence is independent.
                 delay(20*60_000L)
             }
         }
@@ -984,6 +1001,14 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (weatherAlarmOpen) io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})
         if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
             warnings=state.cwaWarnings,onClose={typhoonPageOpen=false})
+        if (approachingStormPopupOpen && mainPager.currentPage==0 && !typhoonPageOpen &&
+            !locationOpen && !settingsOpen && !lifestyleSettingsOpen && !updatePageOpen && !earthquakePageOpen) {
+            approachingStorm?.let { storm ->
+                io.atmos.weather.typhoon.StormTimelineOverlay(storm) {
+                    approachingStormPopupOpen=false
+                }
+            }
+        }
         if (updatePageOpen) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }

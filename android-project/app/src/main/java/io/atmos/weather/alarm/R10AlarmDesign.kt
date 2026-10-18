@@ -126,7 +126,9 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
     val updateValue by rememberUpdatedState(onValue)
     var offsetPx by remember { mutableFloatStateOf(0f) }
     var animation by remember { mutableStateOf<Job?>(null) }
-    val otherSide=if(offsetPx>0f) -1 else 1
+    // The inactive option remains visible at a stable detent even after release.
+    // AM is always above the selected PM, and PM below the selected AM.
+    val otherSide=if(value==0) 1 else -1
     Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
         .pointerInput(stepPx,reduceMotion) {
             var dragged=false
@@ -194,7 +196,7 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
             layout(constraints.maxWidth,constraints.maxHeight) {
                 val center=(constraints.maxHeight-rowHeight)/2
                 cells[0].placeRelative(0,center+offsetPx.roundToInt())
-                if(offsetPx!=0f) cells[1].placeRelative(0,center+otherSide*rowHeight+offsetPx.roundToInt())
+                cells[1].placeRelative(0,center+otherSide*rowHeight+offsetPx.roundToInt())
             }
         }
     }

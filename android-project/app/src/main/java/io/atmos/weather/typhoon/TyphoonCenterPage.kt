@@ -30,6 +30,8 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
     val scope=rememberCoroutineScope()
     val typhoonWarnings=warnings.filter { it.title.contains("颱風") || it.summary.contains("颱風警報") }
     var fixes by remember { mutableStateOf<List<TyphoonFix>>(emptyList()) }
+    var timelines by remember { mutableStateOf<List<StormTimeline>>(emptyList()) }
+    var selectedTimeline by remember { mutableStateOf<StormTimeline?>(null) }
     var lastUpdate by remember { mutableStateOf("") }
     val verifiedTracks=remember(fixes) { VerifiedTrackPlanner.verifiedForecastSegments(fixes.map {
         DatedTyphoonPosition(it.stormId,it.latitude,it.longitude,it.kind==TyphoonFix.Kind.FORECAST,it.timestamp)
@@ -44,6 +46,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
                 val data=CwaOfficialGateway.read(context,"W-C0034-002")
                 val points=OfficialTyphoonTrack.extract(data)
                 fixes=points
+                timelines=OfficialStormTimeline.parse(data)
                 lastUpdate=java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Taipei"))
                     .format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))
                 status=if(points.isEmpty()) "目前官方回覆無可驗證的颱風座標；不顯示虛構路徑" else "官方座標 ${points.size} 筆 · 僅顯示官方資料回傳內容"
@@ -74,6 +77,18 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
                 else "藍線：符合時序與速度檢查、同一颱風、具有預報時間的 ${verifiedTracks.size} 段路徑；藍點預報、橘點觀測、灰點待確認。",
                 color=Color(0xFFC7DBEA),fontSize=14.sp,lineHeight=20.sp)
         }
+        if(timelines.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            timelines.forEach { storm ->
+                androidx.compose.foundation.layout.Box(
+                    Modifier.fillMaxWidth().padding(vertical=5.dp)
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF3D7492),Color(0xFF1A3856))),RoundedCornerShape(22.dp))
+                        .border(1.dp,Color.White.copy(alpha=.26f),RoundedCornerShape(22.dp))
+                        .clickable { selectedTimeline=storm }.padding(19.dp)) {
+                    Text("${storm.name} · 查看可拖曳預報時間軸  ↗",color=Color.White,fontSize=17.sp)
+                }
+            }
+        }
         Spacer(Modifier.height(16.dp))
         Text("颱風公告 ${typhoonWarnings.size} 則",color=Color.White,fontSize=20.sp)
         if(typhoonWarnings.isEmpty()) Text("目前沒有從已讀取的 RSS 確認颱風公告；不代表全臺無颱風。",
@@ -97,6 +112,9 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
         Spacer(Modifier.height(14.dp))
         Text("目前為官方資料點位檢視，尚非完整風圈／預測錐。發布及通知可能受到官方更新時間、網路與 Android 省電限制；重大警報以官方災防管道為準。",
             color=Color(0xFFCDE1ED),fontSize=15.sp,lineHeight=22.sp)
+    }
+    selectedTimeline?.let { storm ->
+        StormTimelineOverlay(storm) { selectedTimeline=null }
     }
 }
 
