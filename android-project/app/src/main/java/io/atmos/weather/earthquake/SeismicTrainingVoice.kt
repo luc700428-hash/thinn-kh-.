@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** A private, user-initiated practice voice. Never creates an EEW notification.
  * It can be immediately shut down without stopping an independent real EEW voice.
  */
-class SeismicTrainingVoice(context: Context) {
+class SeismicTrainingVoice(context: Context, incident: EewIncident, place:SeismicPlace?) {
     private val active = AtomicBoolean(true)
     private var engine: TextToSpeech? = null
     init {
@@ -32,7 +32,8 @@ class SeismicTrainingVoice(context: Context) {
                     tts.setAudioAttributes(AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-                    tts.speak("請注意，這是 thinn-khì 地震模擬演練，不是真實地震速報。現在模擬花蓮近海發生地震。請立即趴下、掩護、穩住，保護頭部與頸部。",
+                    tts.speak("注意！這是地震模擬演練，所有位置和震度都是虛構，不是真實地震。" +
+                            SeismicSpeech.warning(incident,place).removePrefix("地震速報，第三方資料。")+"演練中，請練習趴下、掩護、穩住。",
                         TextToSpeech.QUEUE_FLUSH,null,"thinn_practice_only")
                 } else tts?.shutdown()
             }

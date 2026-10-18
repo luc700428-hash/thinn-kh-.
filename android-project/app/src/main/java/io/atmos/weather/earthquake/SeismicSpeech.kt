@@ -17,15 +17,9 @@ object SeismicSpeech {
     fun setEnabled(ctx:Context,key:String,value:Boolean) {
         ctx.getSharedPreferences("thinn_seismic_v15",Context.MODE_PRIVATE).edit().putBoolean(key,value).apply()
     }
-    fun warning(incident:EewIncident,place:SeismicPlace?):String {
-        val local=place?.let { target ->
-            incident.localIntensityByCounty.entries.firstOrNull { (name,_) ->
-                target.name.contains(name.replace("台","臺")) || name.replace("台","臺").contains(target.name.removeSuffix("附近"))
-            }?.value?.let { grade -> SeismicWavePhysics.intensityLabel(grade)?.let { safe -> "${target.name}預估震度${safe}級。" } }
-        }.orEmpty()
-        val magnitude=incident.magnitude?.let { "規模${String.format(Locale.TAIWAN,"%.1f",it)}。" }.orEmpty()
-        return "地震速報，第三方資料。${local}震央${incident.epicenter}。${magnitude}請立即趴下、掩護、穩住。"
-    }
+    fun warning(incident:EewIncident,place:SeismicPlace?):String =
+        SeismicWarningNarration.build(
+            incident.epicenter,incident.magnitude,incident.localIntensityByCounty,place?.name)
     fun replay(report:EarthquakeReport, incident:EewIncident):String {
         val magnitude=incident.magnitude ?: report.magnitude
         return "歷史地震回放，這不是現在發生的地震，也不是即時預警。" +

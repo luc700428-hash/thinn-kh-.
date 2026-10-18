@@ -22,7 +22,7 @@ class AlarmServiceAndMapTests(unittest.TestCase):
         screen=(APP/'alarm/WeatherAlarmRingActivity.kt').read_text()
         for token in ['ACTION_STOP','ACTION_SNOOZE','scheduleSnooze','stopAudio()']:
             self.assertIn(token,service)
-        for token in ['detectHorizontalDragGestures','滑動停止鬧鐘','無法滑動？點此停止鬧鐘']:
+        for token in ['detectHorizontalDragGestures','滑動來停止','無法滑動？輕觸這裡停止鬧鐘']:
             self.assertIn(token,screen)
         self.assertNotIn('MediaPlayer.create(',screen)
     def test_alarm_manifest_foreground_permissions(self):

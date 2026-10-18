@@ -52,19 +52,19 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     // A true incident plays a bounded looping alert tone and one descriptive spoken warning.
     // Historical replay never uses the live alarm tone.
     DisposableEffect(context,eventKey) {
-        if(!replay) SeismicContinuousWarning.start(context,incident)
-        onDispose { if(!replay) SeismicContinuousWarning.stop() }
+        if(!replay && !simulation) SeismicContinuousWarning.start(context,incident)
+        onDispose { if(!replay && !simulation) SeismicContinuousWarning.stop() }
     }
     DisposableEffect(context,eventKey,simulation) {
         if(simulation) SeismicSound.practiceLoop(context)
         onDispose { if(simulation) SeismicSound.stop() }
     }
     DisposableEffect(context,eventKey,simulation) {
-        val trainingVoice=if(simulation) SeismicTrainingVoice(context) else null
+        val trainingVoice=if(simulation) SeismicTrainingVoice(context,incident,SeismicUserLocation.current(context)) else null
         onDispose { trainingVoice?.stop() }
     }
     LaunchedEffect(eventKey) {
-        if(!replay && SeismicSpeech.enabled(context,"eew_voice_enabled")) {
+        if(!replay && !simulation && SeismicSpeech.enabled(context,"eew_voice_enabled")) {
             SeismicSpeech.speak(context,SeismicSpeech.warning(incident,SeismicUserLocation.current(context)))
         }
     }

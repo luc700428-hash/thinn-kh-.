@@ -173,7 +173,9 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             vibrator=if(Build.VERSION.SDK_INT>=31)
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
                 else (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0,450,380),0))
+            val timings=longArrayOf(0,65,135,90,360,130,410)
+            val amplitudes=intArrayOf(0,90,0,160,0,120,0)
+            vibrator?.vibrate(VibrationEffect.createWaveform(timings,amplitudes,0))
         }
         if(alarm.weatherVoice) tts=TextToSpeech(this,this)
     }
