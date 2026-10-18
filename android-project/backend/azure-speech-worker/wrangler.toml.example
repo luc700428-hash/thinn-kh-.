@@ -1,0 +1,13 @@
+name = "thinn-khi-azure-speech"
+main = "src.js"
+compatibility_date = "2026-08-01"
+workers_dev = true
+[vars]
+AZURE_REGION = "eastasia"
+FIREBASE_PROJECT_ID = "REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID"
+[[d1_databases]]
+binding = "DB"
+database_name = "thinn-khi-speech-usage"
+database_id = "REPLACE_WITH_CREATED_D1_DATABASE_ID"
+# Set Azure key ONLY with `npx wrangler secret put AZURE_SPEECH_KEY`.
+# Configure Cloudflare route/access policy and Azure F0 resource explicitly before deploy.

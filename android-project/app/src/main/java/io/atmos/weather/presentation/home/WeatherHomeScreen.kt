@@ -238,6 +238,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val fromUpdateNotification = remember { (context as? android.app.Activity)?.intent?.getBooleanExtra("open_update_center",false) == true }
     var updatePageOpen by remember { mutableStateOf(fromUpdateNotification) }
     var typhoonPageOpen by remember { mutableStateOf(false) }
+    var naturalVoiceOpen by remember { mutableStateOf(false) }
     var officialStormActive by remember { mutableStateOf(false) }
     var verifiedTyphoonWarning by remember { mutableStateOf(io.atmos.weather.typhoon.TyphoonWarningStore.current(context)) }
     LaunchedEffect(context) {
@@ -285,9 +286,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
     BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
         pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen ||
-        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || naturalVoiceOpen ||
         mainPager.currentPage != 0) {
         when {
+            naturalVoiceOpen -> naturalVoiceOpen=false
             weatherAlarmOpen -> weatherAlarmOpen=false
             typhoonPageOpen -> typhoonPageOpen=false
             earthquakePageOpen -> earthquakePageOpen=false
@@ -779,7 +781,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onPushSettings = { pushSettingsOpen = true },
                 onUpdateCenter = { updatePageOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
-                onTyphoons = { typhoonPageOpen = true })
+                onTyphoons = { typhoonPageOpen = true },
+                onNaturalVoice = { naturalVoiceOpen=true })
             } // when(page)
             } // HorizontalPager
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
@@ -1042,6 +1045,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
             }
         }
+        if (naturalVoiceOpen) io.atmos.weather.voice.NaturalVoiceSettingsPage(onClose={naturalVoiceOpen=false})
         if (diagnosticsOpen) SettingsDiagnosticsPage(onClose={diagnosticsOpen=false})
         if (briefingOpen) WeatherBriefingSettingsPage(onClose={briefingOpen=false})
         if (tasksOpen) io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})
