@@ -19,7 +19,7 @@ object SeismicSpeech {
     }
     fun warning(incident:EewIncident,place:SeismicPlace?):String =
         SeismicWarningNarration.build(
-            incident.epicenter,incident.magnitude,incident.localIntensityByCounty,place?.name)
+            incident.epicenter,incident.magnitude,incident.localIntensityByCounty,place?.name,incident.depthKm)
     fun replay(report:EarthquakeReport, incident:EewIncident):String {
         val magnitude=incident.magnitude ?: report.magnitude
         return "歷史地震回放，這不是現在發生的地震，也不是即時預警。" +

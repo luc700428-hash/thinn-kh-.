@@ -269,7 +269,12 @@ fun SeismicLiveMapPage(
                     TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis())},
                         modifier=Modifier.fillMaxWidth()) {
                         Icon(Icons.Rounded.PlayArrow,null,tint=iceBlue)
-                        Text("完整地震警示模擬演練 · 不發真實警報",color=iceBlue,fontSize=14.sp)
+                        Text("一般地震警示演練 · 全程虛構，不發真實警報",color=iceBlue,fontSize=14.sp)
+                    }
+                    TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis(),strong=true)},
+                        modifier=Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.WarningAmber,null,tint=Color(0xFFFFC38D))
+                        Text("強震 7 級演練 · 中央氣象署最高震度（虛構）",color=Color(0xFFFFC38D),fontSize=14.sp)
                     }
                     Spacer(Modifier.height(14.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {

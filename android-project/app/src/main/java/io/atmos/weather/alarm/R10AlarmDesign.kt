@@ -19,6 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -170,8 +172,10 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                 }
             )
         },contentAlignment=Alignment.Center) {
-        Column(Modifier.fillMaxWidth().offset {IntOffset(0,fraction.roundToInt())},
-            horizontalAlignment=Alignment.CenterHorizontally) {
+        // Place the actual selected value at the middle of the 213dp viewport.
+        // A constrained Column previously clipped its 7 rows and shifted the selected
+        // white digits one row below the grey highlight, saving the WRONG alarm time.
+        Layout(content = {
             for (row in -3..3) {
                 val distance=abs(row-fraction/stepPx)
                 val item=((value+row-shifted)%count+count)%count
@@ -181,7 +185,7 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                     offsetPx=0f
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 },contentAlignment=Alignment.Center) {
-                    Text(display(item),textAlign=TextAlign.Center,
+                    if(count!=2 || row==0 || row==1) Text(display(item),textAlign=TextAlign.Center,
                         color=Color.White.copy(alpha=when {
                             distance<.6f -> 1f
                             distance<1.6f -> .58f
@@ -189,6 +193,15 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                             else -> .06f
                         }),fontSize=if(distance<.6f) 30.sp else 23.sp,fontWeight=FontWeight.Light,
                         maxLines=1)
+                }
+            }
+        }, modifier=Modifier.fillMaxSize()) { measurables, constraints ->
+            val rowHeight = 41.dp.roundToPx()
+            val cells = measurables.map { it.measure(Constraints.fixed(constraints.maxWidth,rowHeight)) }
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                val center = (constraints.maxHeight-rowHeight)/2
+                cells.forEachIndexed { index, placeable ->
+                    placeable.placeRelative(0, center+(index-3)*rowHeight+fraction.roundToInt())
                 }
             }
         }
@@ -222,12 +235,9 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
             Box(Modifier.fillMaxWidth().padding(horizontal=32.dp).height(235.dp),contentAlignment=Alignment.Center) {
                 Box(Modifier.fillMaxWidth().height(45.dp).background(Color(0xFF303137),RoundedCornerShape(12.dp)))
                 Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f).height(58.dp).clip(RoundedCornerShape(18.dp))
-                        .background(Color.White.copy(alpha=.11f))
-                        .border(1.dp,Color.White.copy(alpha=.24f),RoundedCornerShape(18.dp))
-                        .clickable { hour=(hour+12)%24 },contentAlignment=Alignment.Center) {
-                        Text(if(hour<12) "上午" else "下午",color=Color.White,fontSize=24.sp)
-                    }
+                    // Same inertial wheel, two values. One AM/PM choice in the center.
+                    Wheel(if(hour<12) 0 else 1,2,{ if(it==0) "上午" else "下午" },
+                        {part -> hour=(hour%12)+part*12},Modifier.weight(1.15f))
                     Wheel(hour%12,12,{if(it==0)"12" else "$it"},
                         {v->hour=(hour/12)*12+v},Modifier.weight(.85f))
                     Wheel(minute,60,{"%02d".format(Locale.TAIWAN,it)},

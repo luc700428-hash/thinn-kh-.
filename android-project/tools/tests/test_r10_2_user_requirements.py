@@ -26,7 +26,7 @@ class R102UserRequirements(unittest.TestCase):
         self.assertIn('SeismicTrainingVoice(context,incident',ui)
         train=self.read('earthquake/SeismicTrainingVoice.kt')
         self.assertIn('模擬演練',train)
-        self.assertIn('removePrefix("地震速報，第三方資料。")',train)
+        self.assertIn('removePrefix("地震速報！慎防強烈搖晃！趴下、掩護、穩住！")',train)
     def test_wheel_has_true_inertia_and_only_one_ampm_label(self):
         s=self.read('alarm/R10AlarmDesign.kt')
         self.assertIn('VelocityTracker()',s)
@@ -34,8 +34,10 @@ class R102UserRequirements(unittest.TestCase):
         self.assertIn('exponentialDecay(',s)
         self.assertIn('animateTo(',s)
         self.assertNotIn('while(acc>36f)',s)
-        self.assertIn('Text(if(hour<12) "上午" else "下午"',s)
-        self.assertNotIn('Wheel(if(hour>=12)',s)
+        self.assertIn('Wheel(if(hour<12) 0 else 1,2',s)
+        self.assertIn('Layout(content = {',s)
+        self.assertIn('center+(index-3)*rowHeight+fraction.roundToInt()',s)
+        self.assertNotIn('.clickable { hour=(hour+12)%24 }',s)
     def test_ringtone_import_with_persisted_permission(self):
         s=self.read('alarm/R10AlarmDesign.kt')
         self.assertIn('ActivityResultContracts.OpenDocument()',s)
