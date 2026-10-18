@@ -24,7 +24,8 @@ import kotlinx.coroutines.launch
 
 /** Official reports + CWA dataset view: an unavailable feed never becomes a fake forecast. */
 @Composable
-fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
+fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
+    initialBackup:List<GdacsCyclone> = emptyList(), primaryUnavailable:Boolean = false) {
     val context=LocalContext.current
     val link=LocalUriHandler.current
     val scope=rememberCoroutineScope()
@@ -38,6 +39,8 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
     }) }
     var status by remember { mutableStateOf("尚未查詢 CWA 颱風資料") }
     var loading by remember { mutableStateOf(false) }
+    var gdacs by remember { mutableStateOf(initialBackup) }
+    var gdacsStatus by remember { mutableStateOf("尚未查詢 GDACS 備援") }
     fun refresh() {
         if(loading) return
         loading=true; status="查詢官方資料中…"
@@ -54,21 +57,62 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
             catch (ex:Exception) {status="官方資料暫時無法查詢：${ex.localizedMessage?.take(100) ?: "連線失敗"}"}
             finally {loading=false}
         }
+        scope.launch {
+            try {
+                gdacs=GdacsCycloneFeed.read()
+                gdacsStatus=if(gdacs.isEmpty()) "GDACS 最近沒有符合範圍與時間的熱帶氣旋資料"
+                    else "GDACS 備援可用 · ${gdacs.size} 筆近期熱帶氣旋"
+            } catch (cancel:CancellationException) { throw cancel }
+              catch (_:Exception) {
+                gdacsStatus="GDACS 備援連線失敗，請稍後重試"
+              }
+        }
     }
     LaunchedEffect(Unit){refresh()}
     Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
         .padding(horizontal=20.dp,vertical=20.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
-            IconButton(onClick=onClose) { Icon(Icons.Rounded.ArrowBack,"返回",tint=Color.White) }
+            Box(Modifier.size(48.dp).background(Color.White.copy(alpha=.12f),RoundedCornerShape(24.dp))
+                .clickable(onClick=onClose),contentAlignment=Alignment.Center) {
+                Icon(Icons.Rounded.ArrowBack,"返回",tint=Color.White)
+            }
             Text("颱風動向與警報",fontSize=26.sp,color=Color.White,modifier=Modifier.weight(1f))
-            IconButton(onClick={refresh()}) { Icon(Icons.Rounded.Refresh,"重新查詢",tint=Color.White) }
+            Box(Modifier.size(48.dp).background(Color.White.copy(alpha=.12f),RoundedCornerShape(24.dp))
+                .clickable { refresh() },contentAlignment=Alignment.Center) {
+                Icon(Icons.Rounded.Refresh,"重新查詢",tint=Color.White)
+            }
         }
         Spacer(Modifier.height(12.dp))
         Text("中央氣象署 · 官方資料",color=Color(0xFFAAE6FF),fontSize=20.sp)
         Spacer(Modifier.height(8.dp))
         Text(status,color=Color.White,fontSize=16.sp,lineHeight=22.sp)
         if(lastUpdate.isNotEmpty()) Text("App 查詢：$lastUpdate（不代表官方發布時間）",color=Color(0xFFCCE0EA),fontSize=14.sp)
+        Spacer(Modifier.height(14.dp))
+        // Separate information provenance: GDACS is NOT an official Taiwan warning.
+        Column(Modifier.fillMaxWidth()
+            .background(Color(0xFF183C56),RoundedCornerShape(22.dp))
+            .border(1.dp,Color(0xFF90CAE6).copy(alpha=.45f),RoundedCornerShape(22.dp))
+            .padding(16.dp)) {
+            Text("獨立備援 · GDACS 熱帶氣旋資訊",color=Color.White,fontSize=18.sp)
+            Text("聯合國／歐盟合作全球災害資訊系統，非臺灣中央氣象署預報或警報。",
+                color=Color(0xFFCEDFEB),fontSize=14.sp)
+            Text(gdacsStatus,color=Color(0xFFFFD5A4),fontSize=14.sp)
+            if(primaryUnavailable) Text("中央氣象署資料代理異常；仍可透過備援查看近期氣旋。",
+                color=Color(0xFFFFD5A4),fontSize=14.sp)
+            gdacs.forEach { storm ->
+                Column(Modifier.fillMaxWidth().padding(top=9.dp)
+                    .background(Color.White.copy(alpha=.09f),RoundedCornerShape(16.dp))
+                    .clickable { link.openUri("https://www.gdacs.org/report.aspx?eventid=${storm.id}&eventtype=TC") }
+                    .padding(13.dp)) {
+                    Text(storm.name,color=Color.White,fontSize=17.sp)
+                    Text("中心 ${"%.1f".format(java.util.Locale.US,storm.latitude)}°N、${"%.1f".format(java.util.Locale.US,storm.longitude)}°E · 資料 ${storm.updatedAt}",
+                        color=Color(0xFFD4EAF3),fontSize=14.sp)
+                    Text("未取得官方預報軌跡及完整風圈時，不提供推測時間軸。詳見 GDACS ↗",
+                        color=Color(0xFFAFE9FA),fontSize=14.sp)
+                }
+            }
+        }
         Spacer(Modifier.height(14.dp))
         if(fixes.isNotEmpty()) {
             OfficialTrackPlot(fixes,verifiedTracks)
@@ -103,11 +147,15 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit) {
             }
         }
         Spacer(Modifier.height(18.dp))
-        Button(onClick={link.openUri("https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_WARN.html")},
-            modifier=Modifier.fillMaxWidth().height(55.dp)) {
-            Icon(Icons.Rounded.OpenInNew,null)
+        Row(Modifier.fillMaxWidth().height(55.dp)
+            .background(Brush.horizontalGradient(listOf(Color(0xFF4B8FAB),Color(0xFF27658A))),RoundedCornerShape(28.dp))
+            .border(1.dp,Color.White.copy(alpha=.33f),RoundedCornerShape(28.dp))
+            .clickable { link.openUri("https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_WARN.html") }
+            .padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.Center) {
+            Icon(Icons.Rounded.OpenInNew,null,tint=Color.White)
             Spacer(Modifier.width(8.dp))
-            Text("查看中央氣象署完整路徑圖",fontSize=17.sp)
+            Text("查看中央氣象署完整路徑圖",fontSize=17.sp,color=Color.White)
         }
         Spacer(Modifier.height(14.dp))
         Text("目前為官方資料點位檢視，尚非完整風圈／預測錐。發布及通知可能受到官方更新時間、網路與 Android 省電限制；重大警報以官方災防管道為準。",

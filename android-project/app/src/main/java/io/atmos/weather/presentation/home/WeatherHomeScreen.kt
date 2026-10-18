@@ -240,6 +240,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     var typhoonPageOpen by remember { mutableStateOf(false) }
     var naturalVoiceOpen by remember { mutableStateOf(false) }
     var officialStormActive by remember { mutableStateOf(false) }
+    var typhoonPrimaryUnavailable by remember { mutableStateOf(false) }
+    var typhoonBackupUnavailable by remember { mutableStateOf(false) }
+    var gdacsCyclones by remember { mutableStateOf<List<io.atmos.weather.typhoon.GdacsCyclone>>(emptyList()) }
     var verifiedTyphoonWarning by remember { mutableStateOf(io.atmos.weather.typhoon.TyphoonWarningStore.current(context)) }
     LaunchedEffect(context) {
         io.atmos.weather.alerts.CwaAlertWorker.checkNow(context)
@@ -258,6 +261,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             while(true) {
                 officialStormActive = try {
                     val data=io.atmos.weather.earthquake.CwaOfficialGateway.read(context,"W-C0034-002")
+                    typhoonPrimaryUnavailable=false
                     val tracks=io.atmos.weather.typhoon.OfficialStormTimeline.parse(data)
                     val approaching=tracks.firstOrNull {
                         io.atmos.weather.typhoon.TaiwanStormRelevance.isMovingTowardTaiwan(it)
@@ -271,10 +275,20 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         io.atmos.weather.typhoon.OfficialTyphoonTrack.extract(data))
                 } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
                   catch (_:Exception) {
+                      typhoonPrimaryUnavailable=true
                       approachingStorm=null
                       approachingStormPopupOpen=false
                       false
                   }
+                // Second, independent public feed. Failure is not equivalent to no storm.
+                try {
+                    gdacsCyclones=io.atmos.weather.typhoon.GdacsCycloneFeed.read()
+                    typhoonBackupUnavailable=false
+                } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
+                  catch (_:Exception) {
+                    typhoonBackupUnavailable=true
+                    gdacsCyclones=emptyList()
+                }
                 // 20-minute foreground poll; official issue cadence is independent.
                 delay(20*60_000L)
             }
@@ -630,7 +644,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 val typhoonNotices = state.cwaWarnings.filter {
                     it.title.contains("颱風") || it.summary.contains("颱風警報")
                 }
-                if (typhoonNotices.isNotEmpty() || officialStormActive || verifiedTyphoonWarning!=null) {
+                if (typhoonNotices.isNotEmpty() || officialStormActive || verifiedTyphoonWarning!=null ||
+                    gdacsCyclones.isNotEmpty() || typhoonPrimaryUnavailable || typhoonBackupUnavailable) {
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
                         .background(White.copy(alpha=.11f))
                         .border(1.dp, White.copy(alpha=.22f), RoundedCornerShape(20.dp))
@@ -642,8 +657,34 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Column(Modifier.weight(1f)) {
                             Text("颱風動向與官方路徑", fontSize=17.sp,
                                 fontWeight=FontWeight.SemiBold, color=White)
-                            Text(if(typhoonNotices.isNotEmpty()) "${typhoonNotices.size} 則官方颱風公告 · 查看影響"
-                                else "氣象署有有效期內的颱風資料 · 查看路徑",fontSize=14.sp,color=TextSoft)
+                            Text(when {
+                                verifiedTyphoonWarning!=null -> "中央氣象署 · 有效颱風警報"
+                                typhoonNotices.isNotEmpty() -> "${typhoonNotices.size} 則中央氣象署颱風公告"
+                                officialStormActive -> "中央氣象署 · 有效颱風動向"
+                                gdacsCyclones.isNotEmpty() -> "GDACS 備援：${gdacsCyclones.first().name.take(36)} · 非臺灣官方預報"
+                                typhoonPrimaryUnavailable -> "中央氣象署資料連線異常 · 可查看備援及官方網站"
+                                else -> "備援資料暫時無法取得 · 查看官方網站"
+                            },fontSize=14.sp,color=TextSoft,maxLines=3)
+                            approachingStorm?.let { storm ->
+                                Text("${storm.name} · 颱風編號 ${storm.typhoonNumber.ifBlank { "未提供" }}",
+                                    color=White,fontSize=14.sp)
+                                storm.fixes.firstOrNull()?.let { point ->
+                                    Text("移向 ${point.officialDirection ?: "未提供"} · 中心氣壓 ${point.pressureHpa?.let { "${it.toInt()} hPa" } ?: "未提供"}",
+                                        color=TextSoft,fontSize=14.sp,maxLines=2)
+                                    Text("最大風速 ${point.windMs?.let { "${it} m/s" } ?: "未提供"} · 瞬間陣風 ${point.gustMs?.let { "${it} m/s" } ?: "未提供"}",
+                                        color=TextSoft,fontSize=14.sp,maxLines=2)
+                                    Text("七級風半徑 ${point.radius7Km?.let { "${it} km" } ?: "未提供"} · 預報有效 ${point.time}",
+                                        color=TextSoft,fontSize=14.sp,maxLines=2)
+                                }
+                            }
+                            if (!officialStormActive) gdacsCyclones.firstOrNull()?.let { storm ->
+                                Text("GDACS 中心 ${storm.latitude}°N、${storm.longitude}°E · 更新 ${storm.updatedAt}",
+                                    color=TextSoft,fontSize=14.sp,maxLines=2)
+                            }
+                            if (typhoonPrimaryUnavailable || typhoonBackupUnavailable) {
+                                Text("來源狀態：${if(typhoonPrimaryUnavailable) "氣象署代理異常" else "氣象署正常"}／${if(typhoonBackupUnavailable) "GDACS 異常" else "GDACS 已查詢"}",
+                                    color=Color(0xFFFFD6A5),fontSize=14.sp,maxLines=2)
+                            }
                         }
                         Icon(Icons.Rounded.ChevronRight,contentDescription="查看颱風動向",tint=TextSoft)
                     }
@@ -1051,7 +1092,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (tasksOpen) io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})
         if (weatherAlarmOpen) io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})
         if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
-            warnings=state.cwaWarnings,onClose={typhoonPageOpen=false})
+            warnings=state.cwaWarnings,onClose={typhoonPageOpen=false},
+            initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable)
         if (approachingStormPopupOpen && mainPager.currentPage==0 && !typhoonPageOpen &&
             !locationOpen && !settingsOpen && !lifestyleSettingsOpen && !updatePageOpen && !earthquakePageOpen) {
             approachingStorm?.let { storm ->
