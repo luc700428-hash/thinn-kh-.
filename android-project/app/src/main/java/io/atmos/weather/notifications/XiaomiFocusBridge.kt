@@ -39,6 +39,8 @@ object XiaomiFocusBridge {
 
     private val guard = Any()
     private var activeIsland: ActiveIsland? = null
+    // State is in-process and bounded; we never tick notifications purely to animate.
+    private val motionByEvent = LinkedHashMap<String, IslandMotionFrame>()
 
     internal fun rank(kind: Kind): IslandPriority = when(kind) {
         Kind.SEISMIC_EEW -> IslandPriority.SEISMIC
@@ -59,6 +61,7 @@ object XiaomiFocusBridge {
     /** Release arbitration when the alarm/timer is explicitly stopped. */
     fun finish(notificationId: Int) = synchronized(guard) {
         if (activeIsland?.key?.endsWith(":$notificationId") == true) activeIsland = null
+        motionByEvent.keys.removeAll { it.endsWith(":$notificationId") }
     }
 
     fun isXiaomi(): Boolean {
@@ -113,14 +116,18 @@ object XiaomiFocusBridge {
         val params = JSONObject().apply {
             put("protocol", 1)
             put("business", "weather")
-            put("islandFirstFloat", isWarning)
+            // Request expansion for an initial ringing alarm only; SystemUI decides.
+            put("islandFirstFloat", isWarning || kind == Kind.ALARM_RINGING)
             put("enableFloat", false)
             put("updatable", kind == Kind.ALARM_RINGING || kind == Kind.TIMER_RUNNING)
             put("timeout", if (kind == Kind.USER_TEST) 2 else if (kind == Kind.ALARM_RINGING) 10 else 45)
             // Never filter out normal Android notifications because Xiaomi approval is missing.
             put("filterWhenNoPermission", false)
             put("ticker", heading.take(18))  // HyperOS 2 state bar
+            put("tickerPic", "miui.focus.pic_alert")
+            put("tickerPicDark", "miui.focus.pic_alert")
             put("aodTitle", heading.take(24))
+            put("aodPic", "miui.focus.pic_alert")
             put("baseInfo", JSONObject().apply {
                 put("type", 2)
                 put("title", heading)
@@ -175,9 +182,25 @@ object XiaomiFocusBridge {
         }
         return runCatching {
             val p = protocol(context)
+            // Motion frames only change on *real* notification updates; no redraw loop.
+            val scene = IslandIconClassifier.choose(kind.name,title,detail)
+            val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            val interactive = power.isInteractive && !power.isPowerSaveMode
+            val appReduce = context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
+                .getBoolean("reduce_motion",false)
+            val systemReduce = runCatching { Settings.Global.getFloat(
+                context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+            }.getOrDefault(false)
+            val signature = "${scene.name}:${title.take(60)}:${detail.take(90)}"
+            val frame = synchronized(guard) { IslandIconMotionPolicy.next(
+                motionByEvent[key],signature,now,interactive,appReduce || systemReduce
+            ) }
+            val vectorId = IslandMotionResources.drawable(scene,frame.frame)
             notification.extras.putString("miui.focus.param", focusJson(p, title, detail, kind))
+            // The system may show one static state; Xiaomi has NOT documented a
+            // general-purpose animated-vector playback contract inside compact islands.
             val pics = Bundle().apply {
-                putParcelable("miui.focus.pic_alert", Icon.createWithResource(context, R.mipmap.ic_launcher))
+                putParcelable("miui.focus.pic_alert",Icon.createWithResource(context,vectorId))
             }
             notification.extras.putBundle("miui.focus.pics", pics)
             // Officially documented action bridge; the actions already belong to this notification.
@@ -198,7 +221,13 @@ object XiaomiFocusBridge {
                     notification.extras.putBundle("miui.focus.actions", actions)
                 }
             }
-            synchronized(guard) { activeIsland = IslandPriorityPolicy.next(key,category,now) }
+            synchronized(guard) {
+                if(motionByEvent.size >= 64 && key !in motionByEvent) {
+                    motionByEvent.remove(motionByEvent.keys.first())
+                }
+                motionByEvent[key] = frame
+                activeIsland = IslandPriorityPolicy.next(key,category,now)
+            }
             true
         }.getOrDefault(false)
     }
