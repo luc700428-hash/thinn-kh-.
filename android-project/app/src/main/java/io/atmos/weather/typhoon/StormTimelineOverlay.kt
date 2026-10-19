@@ -23,6 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import io.atmos.weather.maps.rememberNlscMap
+import io.atmos.weather.maps.NlscTerrain
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -79,6 +84,14 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     val light=rememberInfiniteTransition(label="optic glow")
     val breathing by light.animateFloat(.55f,1f,
         infiniteRepeatable(tween(2500),RepeatMode.Reverse),label="storm glow")
+    var terrainCanvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val terrainPoints=storm.fixes.map { it.latitude to it.longitude }+
+        TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
+    val terrainPad=with(LocalDensity.current) { 28.dp.toPx() }
+    val terrainBounds=if(terrainCanvasSize.width>60 && terrainCanvasSize.height>60)
+        TyphoonViewport.forPoints(terrainPoints,terrainCanvasSize.width.toFloat(),
+            terrainCanvasSize.height.toFloat(),terrainPad).rasterBounds() else null
+    val terrain=rememberNlscMap(terrainBounds,terrainCanvasSize.width,terrainCanvasSize.height)
     Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(.95f)
             .padding(horizontal=8.dp).clip(RoundedCornerShape(34.dp))
@@ -97,10 +110,14 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                 StormText("未來動向 · 官方預報時間軸",17,cream,FontWeight.Medium)
                 Box(Modifier.fillMaxWidth().height(315.dp).clip(RoundedCornerShape(26.dp))
                     .background(Brush.radialGradient(listOf(Color(0xFF24587B),Color(0xFF081D34),Color(0xFF051426))))) {
-                    Canvas(Modifier.fillMaxSize()) {
+                    Canvas(Modifier.fillMaxSize().onSizeChanged { terrainCanvasSize=it }) {
                         val pad=28.dp.toPx()
-                        val positions=storm.fixes.map { it.latitude to it.longitude }
-                        val viewport=TyphoonViewport.forPoints(positions,size.width,size.height,pad)
+                        val viewport=TyphoonViewport.forPoints(terrainPoints,size.width,size.height,pad)
+                        if(terrain!=null) {
+                            drawImage(terrain,dstSize=IntSize(size.width.toInt(),size.height.toInt()))
+                            with(NlscTerrain) { drawCredit() }
+                        } else with(TyphoonGeoBackdrop) { draw(viewport) }
+                        TyphoonGeoBackdrop.drawLabels(this,viewport)
                         val pts=storm.fixes.map {fix ->
                             val (x,y)=viewport.project(fix.longitude,fix.latitude)
                             Offset(x,y)

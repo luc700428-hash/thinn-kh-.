@@ -1,0 +1,35 @@
+"""R19: official map WMS projection and no invented storm probabilities."""
+import unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]/"app/src/main/java/io/atmos/weather"
+
+def code(p): return (ROOT/p).read_text(encoding="utf-8")
+
+class R19GeographicDataTests(unittest.TestCase):
+    def test_official_wms_used_by_seismic_and_both_typhoon_maps(self):
+        terrain=code("maps/NlscTerrain.kt")
+        self.assertIn("https://wms.nlsc.gov.tw/wms",terrain)
+        self.assertIn("EMAP5",terrain)
+        self.assertIn("VERSION=1.1.1",terrain)
+        for p in ("typhoon/TyphoonCenterPage.kt","typhoon/StormTimelineOverlay.kt",
+                  "earthquake/SeismicLiveMapPage.kt"):
+            self.assertIn("rememberNlscMap(",code(p))
+        radar=(ROOT.parents[5]/"src/main/assets/radar/history.html").read_text(encoding="utf-8")
+        self.assertIn("wmts.nlsc.gov.tw/wmts/EMAP5",radar)
+        self.assertIn("rasterBounds()",code("typhoon/TyphoonViewport.kt"))
+
+    def test_official_probability_is_parsed_not_fake_numbers(self):
+        prob=code("typhoon/CwaWindProbability.kt")
+        self.assertIn("W-C0034-003",prob)
+        self.assertIn("ZipInputStream",prob)
+        self.assertIn("XmlPullParser",prob)
+        self.assertIn("polygonContains",prob)
+        self.assertIn("holes.none",prob)
+        home=code("presentation/home/WeatherHomeScreen.kt")
+        detail=code("typhoon/TyphoonCenterPage.kt")
+        self.assertIn("homeWindProbability",home)
+        self.assertIn("七級風暴風圈侵襲機率",detail)
+        self.assertNotIn("目前侵台機率：68%",home)
+        self.assertIn('?: "—"',detail)
+
+if __name__=="__main__": unittest.main()

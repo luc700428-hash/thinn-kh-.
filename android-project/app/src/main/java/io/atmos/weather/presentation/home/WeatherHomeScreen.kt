@@ -251,6 +251,18 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             delay(30_000L)
         }
     }
+    // Official seven-BF wind-circle probabilities: only a real KML polygon may yield a value.
+    val homeWindProbability by androidx.compose.runtime.produceState<String?>(
+        initialValue=null,officialStormActive,verifiedTyphoonWarning,state.city.coordinate) {
+        value=null
+        if(officialStormActive || verifiedTyphoonWarning!=null) {
+            while(true) {
+                val snapshot=io.atmos.weather.typhoon.CwaWindProbability.read()
+                value=snapshot?.at(state.city.coordinate.longitude,state.city.coordinate.latitude)
+                kotlinx.coroutines.delay(20*60_000L)
+            }
+        }
+    }
     var approachingStorm by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
     // Query official storm positions only while the weather tab is visible. When unavailable
     // fail closed (no invented typhoon); locally issued official warnings still show.
@@ -662,6 +674,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             if (verifiedTyphoonWarning!=null)
                                 Text("已發布正式颱風警報 · 點選查看",color=Color(0xFFFFD8B9),fontSize=14.sp)
                             else Text("尚非正式海上／陸上颱風警報",color=Color(0xFFBDE4F6),fontSize=14.sp)
+                            Text("七級風暴風圈侵襲機率 · ${state.city.name}：${homeWindProbability ?: "尚無官方數值"}",
+                                color=Color(0xFFFFDEA7),fontSize=14.sp,maxLines=2)
+
                         }
                         Icon(Icons.Rounded.ChevronRight,contentDescription="查看颱風動向",tint=TextSoft)
                     }
@@ -1110,7 +1125,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (weatherAlarmOpen) io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})
         if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
             warnings=state.cwaWarnings,onClose={typhoonPageOpen=false},
-            initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable)
+            initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable,
+            currentLat=state.city.coordinate.latitude,currentLon=state.city.coordinate.longitude,
+            currentName=state.city.name)
         if (updatePageOpen) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }

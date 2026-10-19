@@ -10,6 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import io.atmos.weather.maps.rememberNlscMap
+import io.atmos.weather.maps.NlscTerrain
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -25,7 +31,8 @@ import kotlinx.coroutines.launch
 /** Official reports + CWA dataset view: an unavailable feed never becomes a fake forecast. */
 @Composable
 fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
-    initialBackup:List<GdacsCyclone> = emptyList(), primaryUnavailable:Boolean = false) {
+    initialBackup:List<GdacsCyclone> = emptyList(), primaryUnavailable:Boolean = false,
+    currentLat:Double=Double.NaN,currentLon:Double=Double.NaN,currentName:String="目前位置") {
     val context=LocalContext.current
     val link=LocalUriHandler.current
     val scope=rememberCoroutineScope()
@@ -38,9 +45,13 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
     }) }
     var status by remember { mutableStateOf("尚未查詢 CWA 颱風資料") }
     var loading by remember { mutableStateOf(false) }
+    var officialProbability by remember { mutableStateOf<CwaWindProbability.Snapshot?>(null) }
     fun refresh() {
         if(loading) return
         loading=true; status="查詢官方資料中…"
+        scope.launch {
+            officialProbability=CwaWindProbability.read()
+        }
         scope.launch {
             try {
                 val data=CwaOfficialGateway.read(context,"W-C0034-005")
@@ -95,16 +106,36 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
         Spacer(Modifier.height(16.dp))
         Column(Modifier.fillMaxWidth()
             .background(Color(0xFF183C56),RoundedCornerShape(22.dp))
-            .padding(16.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            Text("七級風暴風圈侵襲機率",color=Color.White,fontSize=18.sp,
-                fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
-            Text("官方機率尚未取得 · 不以單一路徑換算百分比",
-                color=Color(0xFFD4EAF3),fontSize=14.sp)
-            Text("機率並非颱風登陸機率；請查看氣象署最新機率圖。",
+            .padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Text("七級風暴風圈侵襲機率",color=Color.White,fontSize=19.sp,
+                fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+            val risks = listOf(
+                Triple(currentName,currentLon,currentLat),
+                Triple("臺灣中部參考點",120.98,23.76),
+                Triple("澎湖參考點",119.57,23.57),
+                Triple("金門參考點",118.38,24.44),
+                Triple("馬祖參考點",119.95,26.17)
+            ).distinctBy { it.first }
+            risks.chunked(2).forEach { group ->
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    group.forEach { (name,lon,lat) ->
+                        Column(Modifier.weight(1f)
+                            .background(Color.White.copy(alpha=.08f),RoundedCornerShape(12.dp))
+                            .padding(11.dp)) {
+                            Text(name,color=Color(0xFFDBEAF4),fontSize=14.sp,maxLines=2)
+                            Text(officialProbability?.at(lon,lat) ?: "—",color=Color.White,
+                                fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                        }
+                    }
+                    if(group.size==1) Spacer(Modifier.weight(1f))
+                }
+            }
+            Text(if(officialProbability==null) "官方侵襲機率尚未提供，或暫時無法讀取"
+                else "— 表示此位置沒有可驗證的官方機率；非 0%。",
                 color=Color(0xFFBDD8E9),fontSize=14.sp)
-            TextButton(onClick={
-                link.openUri("https://opendata.cwa.gov.tw/dataset/warning/W-C0034-003")
-            }) { Text("查看官方侵襲機率圖 ↗",color=Color.White,fontSize=14.sp) }
+            Text("此為七級風暴風圈侵襲機率；參考點不代表整區平均，也不是登陸機率。",
+                color=Color(0xFFBDD8E9),fontSize=14.sp)
+            Text("資料來源：中央氣象署 W-C0034-003",color=Color(0xFFBDD8E9),fontSize=14.sp)
         }
         if(typhoonWarnings.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
@@ -145,19 +176,30 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
         points.filter { it.kind==TyphoonFix.Kind.OBSERVED }.takeLast(10) +
             points.filter { it.kind==TyphoonFix.Kind.FORECAST }.takeLast(16)
     }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val pxPad=with(LocalDensity.current) { 20.dp.toPx() }
+    val reference=displayPoints.map {it.latitude to it.longitude}+
+        TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
+    val bounds=if(canvasSize.width>60 && canvasSize.height>60)
+        TyphoonViewport.forPoints(reference,canvasSize.width.toFloat(),canvasSize.height.toFloat(),pxPad).rasterBounds()
+        else null
+    val terrain=rememberNlscMap(bounds,canvasSize.width,canvasSize.height)
     Canvas(Modifier.fillMaxWidth().height(290.dp)
+        .onSizeChanged { canvasSize=it }
         .background(Color(0xFF102D4A),RoundedCornerShape(18.dp))) {
         val pad=20.dp.toPx()
-        val viewport=TyphoonViewport.forPoints(
-            displayPoints.map {it.latitude to it.longitude}+
-                TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first },
-            size.width,size.height,pad)
-        with(TyphoonGeoBackdrop) { draw(viewport) }
+        val viewport=TyphoonViewport.forPoints(reference,size.width,size.height,pad)
+        if(terrain!=null) {
+            drawImage(terrain,dstSize=IntSize(size.width.toInt(),size.height.toInt()))
+            with(NlscTerrain) { drawCredit() }
+        } else {
+            with(TyphoonGeoBackdrop) { draw(viewport) }
+        }
         fun p(point:TyphoonFix):Offset {
             val (x,y)=viewport.project(point.longitude,point.latitude)
             return Offset(x,y)
         }
-        for(i in 1..3) {
+        if(terrain==null) for(i in 1..3) {
             val x=pad+(size.width-2*pad)*i/4
             val y=pad+(size.height-2*pad)*i/4
             drawLine(Color.White.copy(alpha=.13f),Offset(x,pad),Offset(x,size.height-pad),1.dp.toPx())
@@ -172,6 +214,8 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
                     strokeWidth=3.dp.toPx())
             }
         }
+        // All four places stay geographically registered to NLSC raster or vector fallback.
+        TyphoonGeoBackdrop.drawLabels(this,viewport)
         // Land outlines above are geographic references; official forecasts remain independent.
         displayPoints.forEach { pt ->
             val c=when(pt.kind) {

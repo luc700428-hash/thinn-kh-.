@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 
 /** Simplified coastline display reference only, not a hazard or probability polygon.
@@ -41,6 +42,24 @@ object TyphoonGeoBackdrop {
     val keyAnchors = listOf(
         121.0 to 23.65, 119.57 to 23.57, 118.38 to 24.44, 119.95 to 26.17
     )
+
+    /** Region labels share the same projector as the track and terrain, not screen-relative dots. */
+    fun drawLabels(scope:DrawScope,viewport:TyphoonViewport) {
+        val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color=android.graphics.Color.WHITE
+            textSize=scope.density*13f
+            typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.BOLD)
+            setShadowLayer(2f,0f,2f,android.graphics.Color.BLACK)
+        }
+        val names=listOf("台灣" to (121.0 to 23.65),"澎湖" to (119.57 to 23.57),
+            "金門" to (118.38 to 24.44),"馬祖" to (119.95 to 26.17))
+        val canvas=scope.drawContext.canvas.nativeCanvas
+        names.forEach { (name,loc) ->
+            val (x,y)=viewport.project(loc.first,loc.second)
+            if(x>8f && y>8f && x<scope.size.width-30f && y<scope.size.height-9f)
+                canvas.drawText(name,x+4f,y-5f,paint)
+        }
+    }
 
     fun DrawScope.draw(viewport:TyphoonViewport) {
         val fill=Color(0xFF3E776F)

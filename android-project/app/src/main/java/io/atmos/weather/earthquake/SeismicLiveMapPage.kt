@@ -25,6 +25,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
+import io.atmos.weather.maps.NlscTerrain
+import io.atmos.weather.maps.rememberNlscMap
 import androidx.compose.ui.geometry.Size
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,6 +94,17 @@ fun SeismicLiveMapPage(
     var replaySpeed by remember { mutableFloatStateOf(1f) }
     var replaySpoken by remember { mutableStateOf(false) }
     var lastReplayShown by remember { mutableStateOf("") }
+    var baseMapSize by remember { mutableStateOf(IntSize.Zero) }
+    val terrainBounds=if(baseMapSize.width>60 && baseMapSize.height>60) {
+        val km=SeismicGeo.kmPerPixel(baseMapSize.width.toFloat(),baseMapSize.height.toFloat()).toDouble()
+        val lonHalf=baseMapSize.width*km/(2.0*111.2*0.91354546)
+        val latHalf=baseMapSize.height*km/(2.0*111.2)
+        val centerLon=(SeismicGeo.WEST+SeismicGeo.EAST)/2.0
+        val centerLat=(SeismicGeo.SOUTH+SeismicGeo.NORTH)/2.0
+        NlscTerrain.Bounds(centerLon-lonHalf,centerLat-latHalf,
+            centerLon+lonHalf,centerLat+latHalf)
+    } else null
+    val terrain=rememberNlscMap(terrainBounds,baseMapSize.width,baseMapSize.height)
     val inReplay = replayStatus == "回放中"
 
     // No fake history frames. Only replay archive EEW records actually matching a past report.
@@ -386,7 +401,8 @@ fun SeismicLiveMapPage(
                     Box(Modifier.fillMaxWidth().height(410.dp).clip(RoundedCornerShape(19.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xFF0A1D34),Color(0xFF152A41))))) {
                         val pins=if(layer=="震央") emptyList() else stations.take(900)
-                        Canvas(Modifier.fillMaxSize().pointerInput(pins,zoom,panX,panY) {
+                        Canvas(Modifier.fillMaxSize().onSizeChanged { baseMapSize=it }
+                            .pointerInput(pins,zoom,panX,panY) {
                             detectTapGestures { clicked ->
                                 val unscaledX = (clicked.x - panX - size.width*0.5f) / zoom + size.width*0.5f
                                 val unscaledY = (clicked.y - panY - size.height*0.5f) / zoom + size.height*0.5f
@@ -408,14 +424,19 @@ fun SeismicLiveMapPage(
                         }) {
                             withTransform({ translate(panX,panY)
                                 scale(zoom,zoom,pivot=Offset(size.width/2f,size.height/2f)) }) {
-                                for (i in 0..6) {
-                                    val x=(i+.5f)/7f*size.width
+                                if(terrain!=null) {
+                                    drawImage(terrain,dstSize=IntSize(size.width.toInt(),size.height.toInt()))
+                                    with(NlscTerrain) { drawCredit() }
+                                }
+                                if(terrain==null) for (i in 0..6) {
+                                     val x=(i+.5f)/7f*size.width
                                     drawLine(iceBlue.copy(alpha=.08f),Offset(x,0f),Offset(x,size.height),1.dp.toPx())
                                 }
-                                for (i in 0..8) {
+                                if(terrain==null) for (i in 0..8) {
                                     val y=(i+.5f)/9f*size.height
                                     drawLine(iceBlue.copy(alpha=.08f),Offset(0f,y),Offset(size.width,y),1.dp.toPx())
                                 }
+                                 if(terrain==null) {
                                 val path=Path()
                                 SeismicGeo.island.forEachIndexed { index,(longitude,latitude) ->
                                     val xx=SeismicGeo.screenX(longitude,size.width,size.height)
@@ -446,6 +467,7 @@ fun SeismicLiveMapPage(
                                     drawCircle(iceBlue.copy(alpha=.83f),5.dp.toPx(),here,
                                         style=Stroke(1.4.dp.toPx()))
                                 }
+                                 }
                                 // Distinct P (cyan) and S (amber) travel wavefronts. Educational speeds only.
                                 if(layer!="測站" && wavefront!=null && waveLat!=null && waveLon!=null) {
                                     val epicenter=Offset(SeismicGeo.screenX(waveLon,size.width,size.height),SeismicGeo.screenY(waveLat,size.width,size.height))
