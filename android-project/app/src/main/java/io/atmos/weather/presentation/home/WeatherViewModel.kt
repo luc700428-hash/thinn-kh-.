@@ -11,6 +11,8 @@ import io.atmos.weather.domain.repository.WeatherLoadResult
 import io.atmos.weather.domain.visual.*
 import io.atmos.weather.widgets.WidgetSync
 import io.atmos.weather.widgets.WidgetSnapshotStore
+import io.atmos.weather.alerts.CwaCountyHazardFeed
+import io.atmos.weather.alerts.CwaCountyHazard
 import io.atmos.weather.alerts.CwaWarningFeed
 import io.atmos.weather.alerts.CwaAlertWorker
 import io.atmos.weather.alerts.CwaWarning
@@ -52,6 +54,8 @@ data class WeatherUiState(
     val savedCities: List<WeatherCity> = emptyList(),
     val searchExecuted: Boolean = false,
     val searchError: String? = null,
+    val officialHazards: List<CwaCountyHazard> = emptyList(),
+    val officialHazardsStatus: String = "尚未檢查縣市警特報",
     val cwaWarnings: List<CwaWarning> = emptyList(),
     val cwaCheckStatus: String = "尚未查詢中央氣象署特報"
 )
@@ -116,7 +120,7 @@ class WeatherViewModel(
             }
             edit.apply()
             WidgetSnapshotStore.clear(context)
-            mutableState.update { it.copy(city=c, weather=null, scene=null, error=null, searchResults= emptyList(),searchExecuted=false) }
+            mutableState.update { it.copy(city=c, weather=null, scene=null, error=null, officialHazards=emptyList(), cwaWarnings=emptyList(), searchResults= emptyList(),searchExecuted=false) }
             load(false)
             loadWarnings()
             CwaAlertWorker.checkNow(context)
@@ -154,14 +158,19 @@ class WeatherViewModel(
     private fun loadWarnings() {
         warningJob?.cancel()
         val city = mutableState.value.city
-        if (!city.name.startsWith("台灣") && !city.name.startsWith("臺灣")) {
-            mutableState.update { it.copy(cwaWarnings = emptyList(), cwaCheckStatus = "非台灣定位，無本地中央氣象署特報") }
+        if (!io.atmos.weather.location.LocationLabels.probablyTaiwan(city.coordinate) &&
+            !city.name.startsWith("台灣") && !city.name.startsWith("臺灣")) {
+            mutableState.update { it.copy(cwaWarnings = emptyList(), officialHazards=emptyList(),
+                officialHazardsStatus="非台灣定位", cwaCheckStatus = "非台灣定位，無本地中央氣象署特報") }
             return
         }
         warningJob = viewModelScope.launch {
-            val result = CwaWarningFeed.fetch(city.name,city.coordinate)
-            if (mutableState.value.city.id == city.id) {
-                mutableState.update { it.copy(cwaWarnings = result.warnings, cwaCheckStatus = result.detail) }
+            val official=CwaCountyHazardFeed.fetch(city.name,city.coordinate)
+            val result=CwaWarningFeed.fetch(city.name,city.coordinate)
+            if (mutableState.value.city.id == city.id && mutableState.value.city.coordinate == city.coordinate) {
+                mutableState.update { it.copy(
+                    officialHazards=official.hazards, officialHazardsStatus=official.detail,
+                    cwaWarnings=result.warnings, cwaCheckStatus=result.detail) }
             }
         }
     }

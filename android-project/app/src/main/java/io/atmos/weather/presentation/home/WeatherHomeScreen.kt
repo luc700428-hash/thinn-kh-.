@@ -719,6 +719,46 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // 避免出現「中央氣象署特報 1 則所在地相關公告」與
                 // 「資料來源：官方 RSS 最新公告……」等額外說明文字。
 
+                // Active CWA county hazards are independent of the Taiwan-bound typhoon tile.
+                state.officialHazards.forEach { hazard ->
+                    Column(Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF763941),Color(0xFF4C2B45))))
+                        .border(1.dp,Color(0xFFFFBCAC).copy(alpha=.72f),RoundedCornerShape(20.dp))
+                        .clickable { uriHandler.openUri(io.atmos.weather.alerts.CwaCountyHazardFeed.OFFICIAL_URL) }
+                        .padding(16.dp)) {
+                        Text("中央氣象署 · ${hazard.title}",color=White,
+                            fontSize=18.sp,fontWeight=FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        val end = hazard.expiresAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
+                        Text("${hazard.county} · 有效至 ${end.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))}",
+                            color=White.copy(alpha=.9f),fontSize=14.sp)
+                        Text("官方 W-C0033-001 縣市警特報 · 點選查看警戒範圍 ↗",
+                            color=Color(0xFFFFD5D0),fontSize=12.sp)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+                // RSS is a recent official notice, not a proven still-active CAP warning.
+                val recentCwaNotices=state.cwaWarnings.filter { notice ->
+                    val age=java.time.Instant.now().epochSecond-notice.issuedAt.epochSecond
+                    age in 0L..(24L*3600L) &&
+                        notice.link.startsWith("https://www.cwa.gov.tw/") &&
+                        !state.officialHazards.any { notice.title.contains(it.phenomenon) } &&
+                        listOf("解除","取消","測試","演練","颱風").none { notice.title.contains(it) }
+                }.take(2)
+                recentCwaNotices.forEach { notice ->
+                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF243F59))
+                        .border(1.dp,White.copy(alpha=.24f),RoundedCornerShape(20.dp))
+                        .clickable { uriHandler.openUri(notice.link) }.padding(14.dp)) {
+                        Text("中央氣象署公告 · ${notice.title}",color=White,
+                            fontSize=17.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
+                        Text("近 24 小時官方 RSS 公告；是否仍有效請核對官方資訊 ↗",
+                            color=TextSoft,fontSize=13.sp)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 if (snapshot != null) {
                     // Weather always takes precedence over decor: show real six-hour facts
                     // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.
