@@ -76,7 +76,7 @@ object SamsungTtsSelector {
         }.getOrNull() ?: return null
         return if(tts.setVoice(best)==TextToSpeech.SUCCESS) best.name else null
     }
-    /** Short fixed, non-private preview. Report the real bound engine rather than a requested label. */
+    /** Short, non-private preview. Android public TTS API does not expose the bound engine; report request and voice, not an invented identity. */
     fun preview(ctx:Context,onResult:(String)->Unit) {
         val handler=Handler(Looper.getMainLooper())
         if(!canStart(ctx)) {onResult(label(ctx));return}
@@ -95,22 +95,20 @@ object SamsungTtsSelector {
                 if(finished)return@post
                 val engine=spoken
                 if(result!=TextToSpeech.SUCCESS || engine==null) {finish("引擎無法啟動；未切換到 Google");return@post}
-                val actual=runCatching {engine.currentEngine}.getOrNull().orEmpty()
-                if(requested!=null && !actual.equals(requested,true)) {
-                    finish("指定 $requested，但系統實際啟動 $actual；已停止，未冒充三星語音")
-                    return@post
-                }
+                // No public Android TTS API exposes the actual bound engine. Do not pretend that
+                // the requested package name proves which TTS engine Android actually bound.
+                val requestedLabel=if(requested==null) "系統預設引擎" else "指定引擎：$requested"
                 val voice=prepare(engine)
-                if(voice==null) {finish("$actual 沒有可用的離線繁體中文聲線；未切換 Google");return@post}
+                if(voice==null) {finish("$requestedLabel 沒有可用的離線繁體中文聲線；App 未主動切換 Google");return@post}
                 engine.setSpeechRate(.94f)
                 engine.setOnUtteranceProgressListener(object:UtteranceProgressListener() {
                     override fun onStart(utteranceId:String?) {}
-                    override fun onDone(utteranceId:String?) { handler.post {finish("實際引擎：$actual；聲線：$voice")}}
-                    @Deprecated("TTS") override fun onError(utteranceId:String?) {handler.post {finish("$actual 播放失敗")}}
+                    override fun onDone(utteranceId:String?) { handler.post {finish("$requestedLabel；聲線：$voice（系統未提供實際引擎識別）")}}
+                    @Deprecated("TTS") override fun onError(utteranceId:String?) {handler.post {finish("$requestedLabel 播放失敗")}}
                     override fun onError(utteranceId:String?,errorCode:Int) {onError(utteranceId)}
                 })
                 if(engine.speak("早安，現在是天氣鬧鐘語音試聽。",TextToSpeech.QUEUE_FLUSH,null,"thinn_alarm_test")!=TextToSpeech.SUCCESS)
-                    finish("$actual 試聽啟動失敗")
+                    finish("$requestedLabel 試聽啟動失敗")
             }
         }
         spoken=if(requested==null) TextToSpeech(ctx.applicationContext,init)

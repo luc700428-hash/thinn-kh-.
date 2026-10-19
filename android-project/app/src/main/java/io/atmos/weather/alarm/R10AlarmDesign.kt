@@ -357,7 +357,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     if(voice) {
                         Line()
                         GlassSetting("播報聲線／引擎",detail=ttsLabel+"  ›",click={ttsOptions=true})
-                        Text("上次實際使用："+SamsungTtsSelector.lastStatus(ctx),
+                        Text("上次語音狀態："+SamsungTtsSelector.lastStatus(ctx),
                             color=secondary,fontSize=14.sp,modifier=Modifier.padding(14.dp))
                     }
                 }

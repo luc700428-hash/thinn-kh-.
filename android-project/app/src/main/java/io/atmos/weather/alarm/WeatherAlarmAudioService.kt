@@ -218,19 +218,16 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             return
         }
         val engine=tts ?: return
-        val actual=runCatching {engine.currentEngine}.getOrNull().orEmpty()
+        // Public Android TextToSpeech has no current-engine accessor. Only the
+        // requested package and successfully selected offline voice can be reported.
         val intended=SamsungTtsSelector.intended(this)
-        // Android may bind a default engine even if the requested package is missing.
-        if(intended!=null && !actual.equals(intended,true)) {
-            ttsUnavailable("要求 $intended，實際是 $actual；已停止錯誤播報")
-            return
-        }
+        val requestedLabel=if(intended==null) "系統預設引擎" else "指定引擎：$intended"
         val voiceName=SamsungTtsSelector.prepare(engine)
         if(voiceName==null) {
-            ttsUnavailable("$actual 沒有可用的離線繁體中文聲線；未退回 Google")
+            ttsUnavailable("$requestedLabel 沒有可用的離線繁體中文聲線；App 未主動切換 Google")
             return
         }
-        SamsungTtsSelector.record(this,"實際引擎：$actual；聲線：$voiceName")
+        SamsungTtsSelector.record(this,"$requestedLabel；聲線：$voiceName（系統未提供實際引擎識別）")
         engine.setSpeechRate(0.94f)
         engine.setPitch(1.0f)
         engine.setAudioAttributes(AudioAttributes.Builder()
