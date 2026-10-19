@@ -72,21 +72,21 @@ fun NextOtaStatusCard(
     }
     NextOpticalSurface(modifier = modifier.fillMaxWidth(), reduceTransparency = reduceTransparency) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("THINN-KHÌ NEXT", color = Color(0xFFB6DDF4), fontSize = 11.sp,
+            Text("THINN-KHÌ NEXT", color = Color(0xFFB6DDF4), fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold)
             Text(title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
             Text(body, color = Color(0xFFD8EAF7), fontSize = 14.sp, lineHeight = 20.sp)
             if (state is NextOtaState.Available) {
                 state.notes.take(20).forEach { note ->
-                    Text("• $note", color = Color(0xFFE6F5FC), fontSize = 13.sp)
+                    Text("• $note", color = Color(0xFFE6F5FC), fontSize = 14.sp)
                 }
             }
             if (state is NextOtaState.Downloading) {
                 val p = state.progress.coerceIn(0f, 1f)
                 Row {
-                    Text("下載進度", color = Color.White, fontSize = 13.sp,
+                    Text("下載進度", color = Color.White, fontSize = 14.sp,
                         modifier = Modifier.weight(1f))
-                    Text("${(p * 100).toInt()}%", color = Color.White, fontSize = 13.sp)
+                    Text("${(p * 100).toInt()}%", color = Color.White, fontSize = 14.sp)
                 }
                 Box(Modifier.fillMaxWidth().height(7.dp)
                     .background(Color(0x605D88A0), RoundedCornerShape(5.dp))
