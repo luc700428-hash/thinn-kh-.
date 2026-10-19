@@ -43,7 +43,7 @@ class CwaFilamentIntegration(unittest.TestCase):
     def test_typhoon_dataset_uses_only_actual_issued_coordinates(self):
         ui=(JAVA/'typhoon/TyphoonCenterPage.kt').read_text()
         parser=(JAVA/'typhoon/OfficialTyphoonTrack.kt').read_text()
-        self.assertIn('CwaOfficialGateway.read(context,"W-C0034-002")',ui)
+        self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',ui)
         self.assertIn('if(fixes.isNotEmpty())',ui)
         self.assertIn('lat in 0.0..55.0',parser)
     def test_workflow_rejects_old_leaked_api_key_file(self):
