@@ -19,9 +19,10 @@ class R11UITests(unittest.TestCase):
         self.assertIn('BasicText',s)
         self.assertIn('尚未提供',s)
         self.assertNotIn('material3',s)
-    def test_popup_only_when_relevant_and_checks_at_20min(self):
+    def test_no_auto_popup_and_checks_at_20min(self):
         s=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
         self.assertIn('TaiwanStormRelevance.isMovingTowardTaiwan',s)
-        self.assertIn('approachingStormPopupOpen && mainPager.currentPage==0',s)
+        self.assertNotIn('approachingStormPopupOpen',s)
+        self.assertIn('if (officialStormActive || verifiedTyphoonWarning!=null)',s)
         self.assertIn('delay(20*60_000L)',s)
 if __name__=='__main__':unittest.main()

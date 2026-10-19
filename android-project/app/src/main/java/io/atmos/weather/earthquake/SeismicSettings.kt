@@ -180,7 +180,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                 Button(onClick={
                                     runCatching {
                                         if(realtime.enabled) ExpTechSeismicService.stop(ctx)
-                                        else ExpTechSeismicService.start(ctx)
+                                        else ExpTechSeismicService.start(ctx,promoteLive=true)
                                     }
                                 }) { Text(if(realtime.enabled) "停止" else "啟動") }
                             }

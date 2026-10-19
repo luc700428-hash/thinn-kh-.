@@ -185,7 +185,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                         Button(onClick={
                             runCatching {
                                 if(realtime.enabled) ExpTechSeismicService.stop(context)
-                                else ExpTechSeismicService.start(context)
+                                else ExpTechSeismicService.start(context,promoteLive=true)
                             }.onFailure { error="無法啟動背景監測：${it.localizedMessage}" }
                         }) {Text(if(realtime.enabled) "停止" else "啟動")}
                     }

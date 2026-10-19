@@ -27,14 +27,16 @@ class IntegratedTyphoonFallbackTests(unittest.TestCase):
         self.assertIn('verifiedTyphoonWarning?.let { official ->',h)
         self.assertNotIn('GDACS 備援：',h)
         c=read('typhoon/TyphoonCenterPage.kt')
-        self.assertIn('非臺灣中央氣象署預報或警報',c)
-        self.assertIn('GDACS 熱帶氣旋資訊',c)
+        self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',c)
+        self.assertNotIn('GDACS 備援連線失敗',c)
+        self.assertNotIn('GDACS 熱帶氣旋資訊',c)
     def test_gdacs_not_a_fabricated_forecast(self):
         g=read('typhoon/GdacsCycloneFeed.kt')
         for token in ['val ageSec=', 'now.epochSecond-last.epochSecond','MAX_BYTES','HttpsURLConnection','if(!lat.isFinite() || !lon.isFinite()']:
             self.assertIn(token,g)
         c=read('typhoon/TyphoonCenterPage.kt')
-        self.assertIn('不提供推測時間軸',c)
+        self.assertIn('OfficialTrackPlot(fixes,verifiedTracks)',c)
+        self.assertNotIn('GdacsCycloneFeed.read()',c)
     def test_original_alert_and_island_unmodified(self):
         self.assertIn('正式警戒範圍以氣象署為準',read('presentation/home/WeatherHomeScreen.kt'))
         self.assertIn('OfficialTrackPlot(',read('typhoon/TyphoonCenterPage.kt'))
