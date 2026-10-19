@@ -64,8 +64,8 @@ object R10AlarmTones {
     const val prefix="thinn://alarm/"
     data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color)
     val choices=listOf(
-        Choice("dawn","晨曦微風","隨天氣變化 · 清晨光感",Color(0xFFEF7AB0),Color(0xFF9D428F)),
-        Choice("rain","雨後窗聲","隨天氣變化 · 雨滴與木音",Color(0xFF90EFF3),Color(0xFF258FC1)),
+        Choice("dawn","晨光序曲","14 種天氣的清新鋼琴與自然音",Color(0xFFEF7AB0),Color(0xFF9D428F)),
+        Choice("rain","天氣絮語","14 種天氣的舒緩和聲與環境白噪音",Color(0xFF90EFF3),Color(0xFF258FC1)),
         Choice("wood","木息 Forest","林間木琴 · 自然柔和",Color(0xFF74D1B9),Color(0xFF286E69)),
         Choice("water","水漣 Spring","山泉水滴 · 透明鐘音",Color(0xFF99C1F4),Color(0xFF516BBB)),
         Choice("fire","曜火 Dawn","溫暖漸進 · 日出能量",Color(0xFFFFB877),Color(0xFFD16B68)),

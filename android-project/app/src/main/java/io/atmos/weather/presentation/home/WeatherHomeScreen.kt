@@ -64,7 +64,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import io.atmos.weather.R
-import io.atmos.weather.audio.WeatherAudio
+import io.atmos.weather.next.NextWeatherAmbience
+import io.atmos.weather.next.NextWeatherBackdrop
+import io.atmos.weather.next.WeatherScenes
 import io.atmos.weather.briefing.WeatherBriefingSettingsPage
 import io.atmos.weather.update.AppUpdatePage
 import io.atmos.weather.earthquake.EarthquakeCenterPage
@@ -341,7 +343,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
 
     // Open-Meteo air-quality and forecast visibility are fetched in OpenMeteoProvider.
     // No account, extra API key, or duplicate network request is needed.
-    var soundOn by remember { mutableStateOf(settingsPrefs.getBoolean("sound_enabled", true)) }
+    var soundOn by remember { mutableStateOf(settingsPrefs.getBoolean("sound_enabled", false)) }
     var soundVolume by remember { mutableFloatStateOf(settingsPrefs.getFloat("sound_volume", .50f)) }
     var refreshMinutes by remember { mutableIntStateOf(settingsPrefs.getInt("refresh_minutes", 30).coerceIn(5,120)) }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -448,10 +450,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     LaunchedEffect(demoCompleted) {
         if (demoCompleted) { delay(2500L); demoCompleted = false }
     }
-    WeatherAudio(demoCondition ?: snapshot?.condition, soundOn || demoRemaining > 0,
+    NextWeatherAmbience(demoCondition ?: snapshot?.condition, soundOn || demoRemaining > 0,
         if(demoRemaining > 0) soundVolume.coerceAtLeast(.5f) else soundVolume,
         if (demoCondition == WeatherCondition.THUNDERSTORM) 95 else if (demoCondition == WeatherCondition.RAIN) 61 else snapshot?.weatherCode,
-        thunderCue + demoThunderCue)
+        snapshot?.visibilityM, thunderCue + demoThunderCue)
     var details by remember { mutableStateOf<Pair<String,String>?>(null) }
     var showLifestyleDetails by remember { mutableStateOf(false) }
     val reducedMotion = settingsPrefs.getBoolean("reduce_motion",false)
@@ -510,7 +512,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     SkyEffects(demoCondition ?: snapshot?.condition, isNight,
                         heavyRain || demoCondition == WeatherCondition.THUNDERSTORM,
                         hazy, appearance.liquidMotion, motionState, if(reducedMotion)0f else lightningAlpha,
-                        lightningBolt, snapshot?.windKmh ?: 0.0)
+                        lightningBolt, snapshot?.windKmh ?: 0.0, snapshot?.weatherCode, snapshot?.visibilityM)
                     // A fixed dark scrim prevents white copy washing out against bright daylight skies.
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
                         Color(0x9807192C),Color(0x4207192C),Color(0x9B07192C)))))
@@ -1421,7 +1423,8 @@ private fun TemperatureCurve(hours: List<HourlyWeather>, modifier: Modifier=Modi
 @Composable
 private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boolean,
                        hazy:Boolean, liquidMotion:Float, motion: State<Float>,
-                       lightningAlpha:Float, boltSeed:Int, windKmh:Double) {
+                       lightningAlpha:Float, boltSeed:Int, windKmh:Double,
+                       weatherCode:Int?, visibilityM:Double?) {
     val phase=if(liquidMotion > .001f) motion.value else 0f
     AtmosphereCanvas(condition ?: WeatherCondition.CLEAR, night, phase, Modifier.fillMaxSize())
     if (hazy && condition != WeatherCondition.FOG) Canvas(Modifier.fillMaxSize()) {
@@ -1437,6 +1440,8 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
     }
     // Single time-based scene: no abrupt restarting of particle clocks when the source changes.
     WeatherSurfaceOverlay(weatherSurface, windKmh.toFloat(), Modifier.fillMaxSize())
+    // NEXT secondary layer. Existing sky, brand, forecast layout and pager remain unchanged.
+    NextWeatherBackdrop(WeatherScenes.classify(condition,weatherCode,visibilityM),phase,night)
     if (condition in setOf(WeatherCondition.RAIN, WeatherCondition.THUNDERSTORM, WeatherCondition.HAIL, WeatherCondition.FREEZING_RAIN)) {
         ContinuousRain(heavyRain || condition == WeatherCondition.THUNDERSTORM, Modifier.fillMaxSize())
     } else if (condition in setOf(WeatherCondition.SNOW, WeatherCondition.SLEET)) {

@@ -21,6 +21,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.os.Handler
 import android.os.Looper
 import java.time.ZonedDateTime
+import io.atmos.weather.next.NextWeatherAlarmPlayer
 import io.atmos.weather.AppContainer
 import io.atmos.weather.domain.model.GeoPoint
 import io.atmos.weather.domain.model.WeatherCity
@@ -110,6 +111,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
 
     private var currentId:Int=-1
     private var player:MediaPlayer?=null
+    private var nextPlayer:NextWeatherAlarmPlayer?=null
     private var vibrator:Vibrator?=null
     private var tts:TextToSpeech?=null
     private var samsungTtsSelected=false
@@ -139,7 +141,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                 return START_NOT_STICKY
             }
             ACTION_RING -> {
-                if(currentId==id && player?.isPlaying==true) return START_NOT_STICKY
+                if(currentId==id && (player?.isPlaying==true || nextPlayer?.isPlaying==true)) return START_NOT_STICKY
                 val alarm=WeatherAlarmStore.load(this).firstOrNull { it.id==id }
                     ?: run {stopSelf();return START_NOT_STICKY}
                 stopAudio()
@@ -169,7 +171,10 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             else runCatching { alarm.ringtoneUri?.let(android.net.Uri::parse) }.getOrNull()
         val default=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        for(uri in listOfNotNull(selected,default).distinct()) {
+        // Only the first two bundled themes get the weather-aware sound engine.
+        // If assets/cache are unavailable the existing MediaPlayer tone still works.
+        nextPlayer=NextWeatherAlarmPlayer.start(this,alarm.ringtoneUri,WeatherAlarmSpeechCache.load(this))
+        if(nextPlayer==null) for(uri in listOfNotNull(selected,default).distinct()) {
             val next=runCatching {
                 MediaPlayer().apply {
                     setAudioAttributes(AudioAttributes.Builder()
@@ -202,6 +207,11 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                     else TextToSpeech(this,this) // explicitly/system-default on non-Samsung
             }
         }
+    }
+
+    private fun setAlarmVolume(v:Float) {
+        runCatching {player?.setVolume(v,v)}
+        runCatching {nextPlayer?.setMasterVolume(v)}
     }
 
     private fun ttsUnavailable(message:String) {
@@ -237,11 +247,11 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
         engine.setOnUtteranceProgressListener(object:UtteranceProgressListener() {
             override fun onStart(utteranceId:String?) { }
             override fun onDone(utteranceId:String?) {
-                uiHandler.post { if(currentId==id) runCatching {player?.setVolume(1f,1f)} }
+                uiHandler.post { if(currentId==id) setAlarmVolume(1f) }
             }
             @Deprecated("Deprecated in platform; still invoked by some TTS engines")
             override fun onError(utteranceId:String?) {
-                uiHandler.post { if(currentId==id) runCatching {player?.setVolume(1f,1f)} }
+                uiHandler.post { if(currentId==id) setAlarmVolume(1f) }
             }
             override fun onError(utteranceId:String?, errorCode:Int) { onError(utteranceId) }
         })
@@ -262,20 +272,20 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                     message,io.atmos.weather.voice.NaturalVoiceHub.Priority.DAILY,
                     "alarm-weather:$id:${System.currentTimeMillis()/60_000L}",
                     alarmAudio=true,
-                    onFinished={ if(currentId==id) runCatching {player?.setVolume(1f,1f)} },
+                    onFinished={ if(currentId==id) setAlarmVolume(1f) },
                     onFailure={ if(currentId==id) {
-                        runCatching {player?.setVolume(.18f,.18f)}
+                        setAlarmVolume(.18f)
                         val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
                         if(result != TextToSpeech.SUCCESS) runCatching{player?.setVolume(1f,1f)}
                     } }
                 ))
             if(!cloudAccepted) {
-                runCatching {player?.setVolume(.18f,.18f)}
+                setAlarmVolume(.18f)
                 val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
                 if(result != TextToSpeech.SUCCESS) runCatching{player?.setVolume(1f,1f)}
             }
             // OEM TTS can omit onDone. Never leave the ringing sound quiet indefinitely.
-            uiHandler.postDelayed({ if(currentId==id) runCatching {player?.setVolume(1f,1f)} },120_000L)
+            uiHandler.postDelayed({ if(currentId==id) setAlarmVolume(1f) },120_000L)
         }
     }
 
@@ -299,6 +309,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     private fun stopAudio() {
         io.atmos.weather.voice.NaturalVoiceHub.stopAlarm()
         speechJob?.cancel();speechJob=null
+        runCatching {nextPlayer?.close()};nextPlayer=null
         runCatching {player?.stop();player?.release()};player=null
         runCatching {tts?.stop();tts?.shutdown()};tts=null
         runCatching {vibrator?.cancel()};vibrator=null
