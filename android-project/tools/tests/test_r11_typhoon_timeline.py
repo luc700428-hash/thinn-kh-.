@@ -11,7 +11,7 @@ class R11UITests(unittest.TestCase):
         self.assertNotIn('if(offsetPx!=0f) cells[1]',s)
     def test_official_only_track_and_taiwan_filter(self):
         s=(JAVA/'typhoon/OfficialStormTimeline.kt').read_text()
-        for token in ('OfficialTyphoonTrack.extract','verifiedForecastSegments','isMovingTowardTaiwan','closest <= 550.0','closest < first-40.0'):
+        for token in ('OfficialTyphoonTrack.extract','verifiedForecastSegments','isMovingTowardTaiwan','closest <= 900.0','closest < first-75.0'):
             self.assertIn(token,s)
     def test_scrubbing_visual_without_material_widgets(self):
         s=(JAVA/'typhoon/StormTimelineOverlay.kt').read_text()

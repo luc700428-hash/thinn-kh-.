@@ -46,7 +46,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
         loading=true; status="查詢官方資料中…"
         scope.launch {
             try {
-                val data=CwaOfficialGateway.read(context,"W-C0034-002")
+                val data=CwaOfficialGateway.read(context,"W-C0034-005")
                 val points=OfficialTyphoonTrack.extract(data)
                 fixes=points
                 timelines=OfficialStormTimeline.parse(data)

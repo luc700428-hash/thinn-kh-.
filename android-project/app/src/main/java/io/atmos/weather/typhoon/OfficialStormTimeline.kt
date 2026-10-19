@@ -25,8 +25,8 @@ object OfficialStormTimeline {
         val wind: Double?, val gust: Double?, val radius7: Double?, val direction: String?,
         val chineseName: String, val number: String
     )
-    private val latitudeKeys = listOf("latitude", "Latitude", "lat", "Lat")
-    private val longitudeKeys = listOf("longitude", "Longitude", "lon", "Lon", "lng")
+    private val latitudeKeys = listOf("latitude", "Latitude", "lat", "Lat", "CoordinateLatitude")
+    private val longitudeKeys = listOf("longitude", "Longitude", "lon", "Lon", "lng", "CoordinateLongitude")
 
     private fun string(o: JSONObject, keys: List<String>): String = keys.firstNotNullOfOrNull {
         o.optString(it).trim().takeIf { text -> text.isNotBlank() && text != "null" }
@@ -64,9 +64,9 @@ object OfficialStormTimeline {
             if (depth > 20 || attributes.size > 500) return
             when (node) {
                 is JSONObject -> {
-                    val localName = string(node,listOf("cwa_typhoon_name", "cwaTyphoonName", "cwaTyphoonNameZh", "typhoonNameZh"))
+                    val localName = string(node,listOf("CwaTyphoonName", "cwa_typhoon_name", "cwaTyphoonName", "cwaTyphoonNameZh", "typhoonNameZh"))
                         .ifBlank { name }
-                    val localNumber = string(node,listOf("cwa_ty_no", "cwaTyNo", "typhoonNo", "TyphoonNo"))
+                    val localNumber = string(node,listOf("CwaTyNo", "CwaTdNo", "cwa_ty_no", "cwaTyNo", "typhoonNo", "TyphoonNo"))
                         .ifBlank { number }
                     // A coordinate MUST belong to this fix, not an arbitrary nested descendant.
                     val coordinate = node.optJSONObject("coordinate") ?: node
@@ -79,11 +79,13 @@ object OfficialStormTimeline {
                         fun bounded(keys: List<String>, range: ClosedFloatingPointRange<Double>): Double? =
                             number(node, keys)?.takeIf { it in range }
                         attributes += AttributeFix(lat, lon,
-                            bounded(listOf("pressure", "centralPressure", "pressure_hpa"), 800.0..1100.0),
-                            bounded(listOf("max_wind_speed", "maxWindSpeed", "maxWind"), 0.0..120.0),
-                            bounded(listOf("max_gust_speed", "maxGustSpeed", "maxGust"), 0.0..150.0),
-                            bounded(listOf("circle_of_15ms", "radius7", "radius7Km", "sevenLevelRadius"), 0.0..900.0),
-                            string(node,listOf("moving_direction", "movingDirection")).take(30).ifBlank { null },
+                            bounded(listOf("Pressure", "pressure", "centralPressure", "pressure_hpa"), 800.0..1100.0),
+                            bounded(listOf("MaxWindSpeed", "max_wind_speed", "maxWindSpeed", "maxWind"), 0.0..120.0),
+                            bounded(listOf("MaxGustSpeed", "max_gust_speed", "maxGustSpeed", "maxGust"), 0.0..150.0),
+                            (node.optJSONObject("Circle15ms")?.optString("Radius")?.toDoubleOrNull()
+                                ?: bounded(listOf("circle_of_15ms", "radius7", "radius7Km", "sevenLevelRadius"), 0.0..900.0))
+                                ?.takeIf { it in 0.0..900.0 },
+                            string(node,listOf("MovingDirection", "moving_direction", "movingDirection")).take(30).ifBlank { null },
                             localName.take(60), localNumber.take(24))
                     }
                     val keys = node.keys()
@@ -131,6 +133,6 @@ object TaiwanStormRelevance {
         val first=distance(upcoming.first())
         val closest=upcoming.drop(1).minOf(::distance)
         // Notify only if the issued path approaches land/island centers materially and comes nearby.
-        return closest <= 550.0 && closest < first-40.0
+        return closest <= 900.0 && closest < first-75.0
     }
 }
