@@ -192,48 +192,45 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             vibrator?.vibrate(VibrationEffect.createWaveform(timings,amplitudes,0))
         }
         if(alarm.weatherVoice) {
-            val preferred=SamsungTtsSelector.preferredEngine(this)
-            samsungTtsSelected=preferred!=null
-            tts=if(preferred!=null) TextToSpeech(this,this,preferred)
-                else TextToSpeech(this,this)
+            // An unavailable Samsung engine never silently becomes Google TTS.
+            if (!SamsungTtsSelector.canStart(this)) {
+                SamsungTtsSelector.record(this,"選定的播報引擎尚未安裝；鬧鐘鈴聲正常播放")
+            } else {
+                val chosen=SamsungTtsSelector.intended(this)
+                samsungTtsSelected=chosen!=null && chosen.startsWith("com.samsung.",true)
+                tts=if(chosen!=null) TextToSpeech(this,this,chosen)
+                    else TextToSpeech(this,this) // explicitly/system-default on non-Samsung
+            }
         }
     }
 
-    private fun fallBackToDefaultEngine() {
-        if (!samsungTtsSelected || currentId<0) return
-        samsungTtsSelected=false
+    private fun ttsUnavailable(message:String) {
+        Log.w("thinn-alarm",message)
+        SamsungTtsSelector.record(this,message)
         runCatching { tts?.shutdown() }
-        tts=TextToSpeech(this,this)
+        tts=null // ringtone and vibration MUST continue.
     }
 
     override fun onInit(status:Int) {
         if(currentId < 0) return
         if(status != TextToSpeech.SUCCESS) {
-            fallBackToDefaultEngine()
+            ttsUnavailable("指定的語音引擎無法啟動；沒有自動切換 Google")
             return
         }
         val engine=tts ?: return
-        val availability=runCatching {engine.setLanguage(Locale.TAIWAN)}.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
-        if(availability < TextToSpeech.LANG_AVAILABLE) {
-            Log.w("thinn-alarm","Traditional Chinese TTS unavailable for this engine")
-            fallBackToDefaultEngine()
+        val actual=runCatching {engine.currentEngine}.getOrNull().orEmpty()
+        val intended=SamsungTtsSelector.intended(this)
+        // Android may bind a default engine even if the requested package is missing.
+        if(intended!=null && !actual.equals(intended,true)) {
+            ttsUnavailable("要求 $intended，實際是 $actual；已停止錯誤播報")
             return
         }
-        // The user has not opted into sending private alarm/weather text to a
-        // cloud TTS provider. Require an explicitly verified offline zh-TW voice.
-        val best=runCatching {
-            engine.voices.orEmpty().filter { voice ->
-                voice.locale.language == Locale.CHINESE.language &&
-                    voice.locale.country.equals("TW",ignoreCase=true) &&
-                    !voice.isNetworkConnectionRequired
-            }.maxWithOrNull(compareBy<android.speech.tts.Voice> { it.quality }
-                .thenByDescending { it.latency })
-        }.getOrNull()
-        if (best==null || engine.setVoice(best)!=TextToSpeech.SUCCESS) {
-            Log.w("thinn-alarm","No offline zh-TW voice in this engine")
-            fallBackToDefaultEngine()
+        val voiceName=SamsungTtsSelector.prepare(engine)
+        if(voiceName==null) {
+            ttsUnavailable("$actual 沒有可用的離線繁體中文聲線；未退回 Google")
             return
         }
+        SamsungTtsSelector.record(this,"實際引擎：$actual；聲線：$voiceName")
         engine.setSpeechRate(0.94f)
         engine.setPitch(1.0f)
         engine.setAudioAttributes(AudioAttributes.Builder()

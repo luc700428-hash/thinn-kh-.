@@ -305,6 +305,10 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
 
 @Composable
 fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm)->Unit,onSave:(WeatherAlarm)->Unit) {
+    val ctx=LocalContext.current
+    var ttsOptions by remember { mutableStateOf(false) }
+    var ttsLabel by remember { mutableStateOf(SamsungTtsSelector.label(ctx)) }
+    var ttsPreview by remember { mutableStateOf(SamsungTtsSelector.lastStatus(ctx)) }
     val now=remember { LocalTime.now().plusMinutes(5) }
     var hour by remember(initial) { mutableIntStateOf(initial?.hour?:now.hour) }
     var minute by remember(initial) { mutableIntStateOf(initial?.minute?:now.minute) }
@@ -350,6 +354,12 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {
                     GlassSetting("智慧天氣語音",trailing={R10Switch(voice){voice=it}})
+                    if(voice) {
+                        Line()
+                        GlassSetting("播報聲線／引擎",detail=ttsLabel+"  ›",click={ttsOptions=true})
+                        Text("上次實際使用："+SamsungTtsSelector.lastStatus(ctx),
+                            color=secondary,fontSize=14.sp,modifier=Modifier.padding(14.dp))
+                    }
                 }
                 if(initial!=null) {
                     Spacer(Modifier.height(10.dp))
@@ -358,6 +368,33 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                             .clickable {onDelete(initial)}.padding(17.dp))
                 }
             }
+        }
+    }
+    if(ttsOptions) Dialog(onDismissRequest={ttsOptions=false}) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+            .background(night).padding(20.dp).verticalScroll(rememberScrollState())) {
+            Text("鬧鐘播報引擎",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Color.White)
+            Spacer(Modifier.height(8.dp))
+            Text("每支手機分開設定。Samsung TTS 需要手機已安裝繁中離線聲線；Bixby 非公開 TTS。",
+                fontSize=14.sp,color=secondary)
+            SamsungTtsSelector.choices(ctx).forEach { item ->
+                Text((if(SamsungTtsSelector.selected(ctx)==item.id)"●  " else "○  ")+item.title,
+                    color=Color.White,fontSize=15.sp,
+                    modifier=Modifier.fillMaxWidth().clickable {
+                        SamsungTtsSelector.setSelected(ctx,item.id)
+                        ttsLabel=SamsungTtsSelector.label(ctx)
+                        ttsPreview="已選擇，請按試聽"
+                    }.padding(vertical=12.dp))
+            }
+            Text("試聽所選引擎",fontSize=16.sp,color=amber,modifier=Modifier
+                .fillMaxWidth().clickable {
+                    ttsPreview="正在試聽…"
+                    SamsungTtsSelector.preview(ctx) { result -> ttsPreview=result }
+                }.padding(vertical=14.dp))
+            Text(ttsPreview,color=secondary,fontSize=14.sp)
+            Spacer(Modifier.height(8.dp))
+            Text("完成",fontSize=16.sp,color=amber,modifier=Modifier.align(Alignment.End)
+                .clickable {ttsOptions=false}.padding(12.dp))
         }
     }
     if(choosing) R10RingtonePicker(selected=uri,onChoose={uri=it;choosing=false},onClose={choosing=false})
