@@ -164,7 +164,7 @@ fun NextReorderableToolDock(
                     ) {
                         Image(action.icon, null, modifier = Modifier.size(22.dp),
                             colorFilter = ColorFilter.tint(if (selected) Color.White else Color(0xFFD1E4F2)))
-                        Text(action.label, fontSize = 10.sp,
+                        Text(action.label, fontSize = 14.sp,
                             color = if (selected) Color.White else Color(0xFFCDDFEB), maxLines = 1)
                     }
                 }
@@ -179,7 +179,7 @@ fun NextReorderableToolDock(
                     ) {
                         Image(Icons.Rounded.MoreHoriz, null, Modifier.size(22.dp),
                             colorFilter = ColorFilter.tint(Color.White))
-                        Text("更多", fontSize = 10.sp, color = Color.White)
+                        Text("更多", fontSize = 14.sp, color = Color.White)
                     }
                     if (showOverflow) {
                         Popup(onDismissRequest = { showOverflow = false },
