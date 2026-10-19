@@ -252,8 +252,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     var approachingStorm by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
-    var approachingStormPopupOpen by remember { mutableStateOf(false) }
-    var alreadyShownStormVersion by remember { mutableStateOf("") }
     // Query official storm positions only while the weather tab is visible. When unavailable
     // fail closed (no invented typhoon); locally issued official warnings still show.
     LaunchedEffect(mainPager.currentPage) {
@@ -267,17 +265,13 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         io.atmos.weather.typhoon.TaiwanStormRelevance.isMovingTowardTaiwan(it)
                     }
                     approachingStorm=approaching
-                    if(approaching!=null && approaching.signature!=alreadyShownStormVersion) {
-                        alreadyShownStormVersion=approaching.signature
-                        approachingStormPopupOpen=true
-                    } else if(approaching==null) approachingStormPopupOpen=false
+                    // Do not interrupt App launch; typhoon details open only on user tap.
                     // Only a CWA forecast trajectory that is heading toward Taiwan activates the tile.
                     approaching != null
                 } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
                   catch (_:Exception) {
                       typhoonPrimaryUnavailable=true
                       approachingStorm=null
-                      approachingStormPopupOpen=false
                       false
                   }
                 // Second, independent public feed. Failure is not equivalent to no storm.
@@ -645,38 +639,29 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     it.title.contains("颱風") || it.summary.contains("颱風警報")
                 }
                 if (officialStormActive || verifiedTyphoonWarning!=null) {
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                        .background(White.copy(alpha=.11f))
-                        .border(1.dp, White.copy(alpha=.22f), RoundedCornerShape(20.dp))
+                    Spacer(Modifier.height(20.dp))
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF17405D),Color(0xFF1F5675))))
+                        .border(1.dp, Color(0xFF94D7EE).copy(alpha=.56f), RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
-                        .padding(horizontal=16.dp, vertical=13.dp), verticalAlignment=Alignment.CenterVertically) {
+                        .padding(horizontal=17.dp, vertical=18.dp), verticalAlignment=Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Cyclone, contentDescription=null,
                             tint=Color(0xFFFFC47D),modifier=Modifier.size(25.dp))
                         Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("颱風動向與官方路徑", fontSize=17.sp,
-                                fontWeight=FontWeight.SemiBold, color=White)
-                            Text(when {
-                                verifiedTyphoonWarning!=null -> "中央氣象署 · 有效颱風警報"
-                                officialStormActive -> "中央氣象署 · 預報路徑接近臺灣（尚非颱風警報）"
-                                else -> "中央氣象署 · 已發布颱風警報"
-                            },fontSize=14.sp,color=TextSoft,maxLines=3)
+                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                            Text("颱風動向與官方路徑",fontSize=18.sp,
+                                fontWeight=FontWeight.Bold,color=White)
                             approachingStorm?.let { storm ->
-                                Text("${storm.name} · 颱風編號 ${storm.typhoonNumber.ifBlank { "未提供" }}",
-                                    color=White,fontSize=14.sp)
-                                storm.fixes.firstOrNull()?.let { point ->
-                                    Text("移向 ${point.officialDirection ?: "未提供"} · 中心氣壓 ${point.pressureHpa?.let { "${it.toInt()} hPa" } ?: "未提供"}",
-                                        color=TextSoft,fontSize=14.sp,maxLines=2)
-                                    Text("最大風速 ${point.windMs?.let { "${it} m/s" } ?: "未提供"} · 瞬間陣風 ${point.gustMs?.let { "${it} m/s" } ?: "未提供"}",
-                                        color=TextSoft,fontSize=14.sp,maxLines=2)
-                                    Text("七級風半徑 ${point.radius7Km?.let { "${it} km" } ?: "未提供"} · 預報有效 ${point.time}",
-                                        color=TextSoft,fontSize=14.sp,maxLines=2)
-                                }
+                                Text("${storm.name} · ${storm.typhoonNumber.ifBlank { "颱風" }}號",
+                                    color=White,fontSize=16.sp,fontWeight=FontWeight.Medium)
+                                val current=storm.fixes.firstOrNull()
+                                Text(current?.officialDirection?.let { "移動方向 $it · 預報接近台澎金馬" }
+                                    ?: "中央氣象署預報：接近台澎金馬",
+                                    color=TextSoft,fontSize=14.sp,maxLines=2)
                             }
-                            if (typhoonPrimaryUnavailable || typhoonBackupUnavailable) {
-                                Text("來源狀態：${if(typhoonPrimaryUnavailable) "氣象署代理異常" else "氣象署正常"}／${if(typhoonBackupUnavailable) "GDACS 異常" else "GDACS 已查詢"}",
-                                    color=Color(0xFFFFD6A5),fontSize=14.sp,maxLines=2)
-                            }
+                            if (verifiedTyphoonWarning!=null)
+                                Text("已發布正式颱風警報 · 點選查看",color=Color(0xFFFFD8B9),fontSize=14.sp)
+                            else Text("尚非正式海上／陸上颱風警報",color=Color(0xFFBDE4F6),fontSize=14.sp)
                         }
                         Icon(Icons.Rounded.ChevronRight,contentDescription="查看颱風動向",tint=TextSoft)
                     }
@@ -734,7 +719,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Text("${hazard.county} · 有效至 ${end.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))}",
                             color=White.copy(alpha=.9f),fontSize=14.sp)
                         Text("官方 W-C0033-001 縣市警特報 · 點選查看警戒範圍 ↗",
-                            color=Color(0xFFFFD5D0),fontSize=12.sp)
+                            color=Color(0xFFFFD5D0),fontSize=14.sp)
                     }
                     Spacer(Modifier.height(12.dp))
                 }
@@ -754,7 +739,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Text("中央氣象署公告 · ${notice.title}",color=White,
                             fontSize=17.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
                         Text("近 24 小時官方 RSS 公告；是否仍有效請核對官方資訊 ↗",
-                            color=TextSoft,fontSize=13.sp)
+                            color=TextSoft,fontSize=14.sp)
                     }
                     Spacer(Modifier.height(12.dp))
                 }
@@ -1126,14 +1111,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
             warnings=state.cwaWarnings,onClose={typhoonPageOpen=false},
             initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable)
-        if (approachingStormPopupOpen && mainPager.currentPage==0 && !typhoonPageOpen &&
-            !locationOpen && !settingsOpen && !lifestyleSettingsOpen && !updatePageOpen && !earthquakePageOpen) {
-            approachingStorm?.let { storm ->
-                io.atmos.weather.typhoon.StormTimelineOverlay(storm) {
-                    approachingStormPopupOpen=false
-                }
-            }
-        }
         if (updatePageOpen) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }

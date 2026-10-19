@@ -33,14 +33,11 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
     var fixes by remember { mutableStateOf<List<TyphoonFix>>(emptyList()) }
     var timelines by remember { mutableStateOf<List<StormTimeline>>(emptyList()) }
     var selectedTimeline by remember { mutableStateOf<StormTimeline?>(null) }
-    var lastUpdate by remember { mutableStateOf("") }
     val verifiedTracks=remember(fixes) { VerifiedTrackPlanner.verifiedForecastSegments(fixes.map {
         DatedTyphoonPosition(it.stormId,it.latitude,it.longitude,it.kind==TyphoonFix.Kind.FORECAST,it.timestamp)
     }) }
     var status by remember { mutableStateOf("尚未查詢 CWA 颱風資料") }
     var loading by remember { mutableStateOf(false) }
-    var gdacs by remember { mutableStateOf(initialBackup) }
-    var gdacsStatus by remember { mutableStateOf("尚未查詢 GDACS 備援") }
     fun refresh() {
         if(loading) return
         loading=true; status="查詢官方資料中…"
@@ -50,22 +47,10 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                 val points=OfficialTyphoonTrack.extract(data)
                 fixes=points
                 timelines=OfficialStormTimeline.parse(data)
-                lastUpdate=java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Taipei"))
-                    .format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))
-                status=if(points.isEmpty()) "目前官方回覆無可驗證的颱風座標；不顯示虛構路徑" else "官方座標 ${points.size} 筆 · 僅顯示官方資料回傳內容"
+                status=if(points.isEmpty()) "目前沒有可顯示的官方路徑" else ""
             } catch (cancel:CancellationException) {throw cancel}
-            catch (ex:Exception) {status="官方資料暫時無法查詢：${ex.localizedMessage?.take(100) ?: "連線失敗"}"}
+            catch (_:Exception) {status="目前無法更新官方路徑，請稍後重新整理"}
             finally {loading=false}
-        }
-        scope.launch {
-            try {
-                gdacs=GdacsCycloneFeed.read()
-                gdacsStatus=if(gdacs.isEmpty()) "GDACS 最近沒有符合範圍與時間的熱帶氣旋資料"
-                    else "GDACS 備援可用 · ${gdacs.size} 筆近期熱帶氣旋"
-            } catch (cancel:CancellationException) { throw cancel }
-              catch (_:Exception) {
-                gdacsStatus="GDACS 備援連線失敗，請稍後重試"
-              }
         }
     }
     LaunchedEffect(Unit){refresh()}
@@ -83,43 +68,17 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                 Icon(Icons.Rounded.Refresh,"重新查詢",tint=Color.White)
             }
         }
-        Spacer(Modifier.height(12.dp))
-        Text("中央氣象署 · 官方資料",color=Color(0xFFAAE6FF),fontSize=20.sp)
-        Spacer(Modifier.height(8.dp))
-        Text(status,color=Color.White,fontSize=16.sp,lineHeight=22.sp)
-        if(lastUpdate.isNotEmpty()) Text("App 查詢：$lastUpdate（不代表官方發布時間）",color=Color(0xFFCCE0EA),fontSize=14.sp)
-        Spacer(Modifier.height(14.dp))
-        // Separate information provenance: GDACS is NOT an official Taiwan warning.
-        Column(Modifier.fillMaxWidth()
-            .background(Color(0xFF183C56),RoundedCornerShape(22.dp))
-            .border(1.dp,Color(0xFF90CAE6).copy(alpha=.45f),RoundedCornerShape(22.dp))
-            .padding(16.dp)) {
-            Text("獨立備援 · GDACS 熱帶氣旋資訊",color=Color.White,fontSize=18.sp)
-            Text("聯合國／歐盟合作全球災害資訊系統，非臺灣中央氣象署預報或警報。",
-                color=Color(0xFFCEDFEB),fontSize=14.sp)
-            Text(gdacsStatus,color=Color(0xFFFFD5A4),fontSize=14.sp)
-            if(primaryUnavailable) Text("中央氣象署資料代理異常；仍可透過備援查看近期氣旋。",
-                color=Color(0xFFFFD5A4),fontSize=14.sp)
-            gdacs.forEach { storm ->
-                Column(Modifier.fillMaxWidth().padding(top=9.dp)
-                    .background(Color.White.copy(alpha=.09f),RoundedCornerShape(16.dp))
-                    .clickable { link.openUri("https://www.gdacs.org/report.aspx?eventid=${storm.id}&eventtype=TC") }
-                    .padding(13.dp)) {
-                    Text(storm.name,color=Color.White,fontSize=17.sp)
-                    Text("中心 ${"%.1f".format(java.util.Locale.US,storm.latitude)}°N、${"%.1f".format(java.util.Locale.US,storm.longitude)}°E · 資料 ${storm.updatedAt}",
-                        color=Color(0xFFD4EAF3),fontSize=14.sp)
-                    Text("未取得官方預報軌跡及完整風圈時，不提供推測時間軸。詳見 GDACS ↗",
-                        color=Color(0xFFAFE9FA),fontSize=14.sp)
-                }
-            }
+        Spacer(Modifier.height(15.dp))
+        Text("中央氣象署 · 颱風預報",color=Color(0xFFAAE6FF),fontSize=17.sp)
+        if(status.isNotBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Text(status,color=Color.White,fontSize=15.sp)
         }
         Spacer(Modifier.height(14.dp))
         if(fixes.isNotEmpty()) {
             OfficialTrackPlot(fixes,verifiedTracks)
-            Spacer(Modifier.height(7.dp))
-            Text(if(verifiedTracks.isEmpty()) "僅有點位，尚無足夠、可核對的同一颱風預報時間序列；不畫虛構路徑。"
-                else "藍線：符合時序與速度檢查、同一颱風、具有預報時間的 ${verifiedTracks.size} 段路徑；藍點預報、橘點觀測、灰點待確認。",
-                color=Color(0xFFC7DBEA),fontSize=14.sp,lineHeight=20.sp)
+            Spacer(Modifier.height(12.dp))
+            Text("官方預報路徑 · 台灣、澎湖、金門、馬祖",color=Color(0xFFCDE7F3),fontSize=14.sp)
         }
         if(timelines.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
@@ -134,9 +93,23 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
             }
         }
         Spacer(Modifier.height(16.dp))
-        Text("颱風公告 ${typhoonWarnings.size} 則",color=Color.White,fontSize=20.sp)
-        if(typhoonWarnings.isEmpty()) Text("目前沒有從已讀取的 RSS 確認颱風公告；不代表全臺無颱風。",
-            color=Color.White,fontSize=16.sp)
+        Column(Modifier.fillMaxWidth()
+            .background(Color(0xFF183C56),RoundedCornerShape(22.dp))
+            .padding(16.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+            Text("七級風暴風圈侵襲機率",color=Color.White,fontSize=18.sp,
+                fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
+            Text("官方機率尚未取得 · 不以單一路徑換算百分比",
+                color=Color(0xFFD4EAF3),fontSize=14.sp)
+            Text("機率並非颱風登陸機率；請查看氣象署最新機率圖。",
+                color=Color(0xFFBDD8E9),fontSize=14.sp)
+            TextButton(onClick={
+                link.openUri("https://opendata.cwa.gov.tw/dataset/warning/W-C0034-003")
+            }) { Text("查看官方侵襲機率圖 ↗",color=Color.White,fontSize=14.sp) }
+        }
+        if(typhoonWarnings.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text("最新官方颱風公告",color=Color.White,fontSize=18.sp)
+        }
         typhoonWarnings.forEach { a ->
             Column(Modifier.fillMaxWidth().padding(vertical=6.dp)
                 .background(Color.White.copy(alpha=.13f),RoundedCornerShape(22.dp))
@@ -157,9 +130,9 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
             Spacer(Modifier.width(8.dp))
             Text("查看中央氣象署完整路徑圖",fontSize=17.sp,color=Color.White)
         }
-        Spacer(Modifier.height(14.dp))
-        Text("目前為官方資料點位檢視，尚非完整風圈／預測錐。發布及通知可能受到官方更新時間、網路與 Android 省電限制；重大警報以官方災防管道為準。",
-            color=Color(0xFFCDE1ED),fontSize=15.sp,lineHeight=22.sp)
+        Spacer(Modifier.height(12.dp))
+        Text("路徑與警報以中央氣象署最新公告為準。",
+            color=Color(0xFFCDE1ED),fontSize=14.sp)
     }
     selectedTimeline?.let { storm ->
         StormTimelineOverlay(storm) { selectedTimeline=null }
@@ -168,10 +141,18 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
 
 @Composable
 private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<DatedTyphoonPosition>>) {
-    Canvas(Modifier.fillMaxWidth().height(220.dp)
+    val displayPoints=remember(points) {
+        points.filter { it.kind==TyphoonFix.Kind.OBSERVED }.takeLast(10) +
+            points.filter { it.kind==TyphoonFix.Kind.FORECAST }.takeLast(16)
+    }
+    Canvas(Modifier.fillMaxWidth().height(290.dp)
         .background(Color(0xFF102D4A),RoundedCornerShape(18.dp))) {
         val pad=20.dp.toPx()
-        val viewport=TyphoonViewport.forPoints(points.map {it.latitude to it.longitude},size.width,size.height,pad)
+        val viewport=TyphoonViewport.forPoints(
+            displayPoints.map {it.latitude to it.longitude}+
+                TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first },
+            size.width,size.height,pad)
+        with(TyphoonGeoBackdrop) { draw(viewport) }
         fun p(point:TyphoonFix):Offset {
             val (x,y)=viewport.project(point.longitude,point.latitude)
             return Offset(x,y)
@@ -188,16 +169,11 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
                 val (x1,y1)=viewport.project(from.longitude,from.latitude)
                 val (x2,y2)=viewport.project(to.longitude,to.latitude)
                 drawLine(Color(0xFF69BDF5),Offset(x1,y1),Offset(x2,y2),
-                    strokeWidth=2.dp.toPx())
+                    strokeWidth=3.dp.toPx())
             }
         }
-        val (twX,twY)=viewport.project(121.0,23.6)
-        if (twX in pad..(size.width-pad) && twY in pad..(size.height-pad)) {
-            drawCircle(Color(0xFFA6F2EE),3.dp.toPx(),Offset(twX,twY))
-            drawCircle(Color(0xFFA6F2EE).copy(alpha=.4f),7.dp.toPx(),Offset(twX,twY),
-                style=Stroke(1.dp.toPx()))
-        }
-        points.forEach { pt ->
+        // Land outlines above are geographic references; official forecasts remain independent.
+        displayPoints.forEach { pt ->
             val c=when(pt.kind) {
                 TyphoonFix.Kind.FORECAST->Color(0xFF69BDF5)
                 TyphoonFix.Kind.OBSERVED->Color(0xFFFFCE82)

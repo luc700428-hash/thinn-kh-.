@@ -112,6 +112,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     private var player:MediaPlayer?=null
     private var vibrator:Vibrator?=null
     private var tts:TextToSpeech?=null
+    private var samsungTtsSelected=false
     private val uiHandler=Handler(Looper.getMainLooper())
     private val speechScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private var speechJob:Job?=null
@@ -190,15 +191,32 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             val amplitudes=intArrayOf(0,90,0,160,0,120,0)
             vibrator?.vibrate(VibrationEffect.createWaveform(timings,amplitudes,0))
         }
-        if(alarm.weatherVoice) tts=TextToSpeech(this,this)
+        if(alarm.weatherVoice) {
+            val preferred=SamsungTtsSelector.preferredEngine(this)
+            samsungTtsSelected=preferred!=null
+            tts=if(preferred!=null) TextToSpeech(this,this,preferred)
+                else TextToSpeech(this,this)
+        }
+    }
+
+    private fun fallBackToDefaultEngine() {
+        if (!samsungTtsSelected || currentId<0) return
+        samsungTtsSelected=false
+        runCatching { tts?.shutdown() }
+        tts=TextToSpeech(this,this)
     }
 
     override fun onInit(status:Int) {
-        if(status != TextToSpeech.SUCCESS || currentId < 0) return
+        if(currentId < 0) return
+        if(status != TextToSpeech.SUCCESS) {
+            fallBackToDefaultEngine()
+            return
+        }
         val engine=tts ?: return
         val availability=runCatching {engine.setLanguage(Locale.TAIWAN)}.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
         if(availability < TextToSpeech.LANG_AVAILABLE) {
-            Log.w("thinn-alarm","Traditional Chinese TTS is unavailable; preserving ringtone")
+            Log.w("thinn-alarm","Traditional Chinese TTS unavailable for this engine")
+            fallBackToDefaultEngine()
             return
         }
         // The user has not opted into sending private alarm/weather text to a
@@ -212,7 +230,8 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                 .thenByDescending { it.latency })
         }.getOrNull()
         if (best==null || engine.setVoice(best)!=TextToSpeech.SUCCESS) {
-            Log.w("thinn-alarm","No verified offline zh-TW voice installed; ringtone keeps playing")
+            Log.w("thinn-alarm","No offline zh-TW voice in this engine")
+            fallBackToDefaultEngine()
             return
         }
         engine.setSpeechRate(0.94f)
