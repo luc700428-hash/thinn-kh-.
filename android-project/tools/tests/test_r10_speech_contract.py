@@ -23,7 +23,11 @@ class AlarmSpeechR10Contract(unittest.TestCase):
         self.assertIn('SamsungTtsSelector.prepare(engine)',service)
         self.assertNotIn('engine.currentEngine',service)
         self.assertIn('SamsungTtsSelector.intended(this)',service)
-        self.assertIn('player?.setVolume(1f,1f)',service)
+        # Shared volume restore covers both legacy MediaPlayer and NEXT tracks.
+        self.assertIn('runCatching {player?.setVolume(v,v)}',service)
+        self.assertIn('runCatching {nextPlayer?.setMasterVolume(v)}',service)
+        self.assertIn('if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)',service)
+        self.assertIn('onFinished={ if(currentId==id) setAlarmVolume(1f) }',service)
         self.assertIn('w.fetchedAt.toEpochMilli()',cache)
         self.assertIn('w.observedAt.toEpochMilli()',cache)
 

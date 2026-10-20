@@ -45,7 +45,16 @@ class IOSUIContractTests(unittest.TestCase):
     def test_reduced_motion_and_real_download_progress(self):
         source=self.source('update/AppUpdatePage.kt')
         self.assertIn('reduce_motion',source)
-        self.assertIn('ThinnProgressLine(fraction',source)
+        # NEXT progress comes from AppUpdater's actual downloaded/total bytes.
+        # Do not require the removed legacy ThinnProgressLine control.
+        self.assertIn('downloaded=soFar',source)
+        self.assertIn('totalBytes=total',source)
+        self.assertIn('NextOtaState.Downloading(',source)
+        self.assertIn('downloaded.toFloat()/it',source)
+        self.assertIn('NextOtaStatusCard(',source)
+        next_card=self.source('next/NextOtaPresentation.kt')
+        self.assertIn('state.progress.coerceIn(0f, 1f)',next_card)
+        self.assertIn('ProgressBarRangeInfo(p, 0f..1f)',next_card)
         self.assertIn('取消下載',source)
         self.assertIn('ensureActive()',self.source('update/AppUpdater.kt'))
 
