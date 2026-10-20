@@ -35,8 +35,16 @@ object CwaWindProbability {
             return contained.maxByOrNull { labelScore(it.label) }?.label
         }
     }
+    enum class FetchState { NOT_CHECKED, CURRENT, CACHED, UNAVAILABLE, NO_USABLE_REGIONS, STALE }
+    @Volatile var fetchState:FetchState=FetchState.NOT_CHECKED
+        private set
     @Volatile private var lastAttempt=0L
     @Volatile private var cached:Snapshot?=null
+    private fun fallback(now:Long,reason:FetchState):Snapshot? {
+        val previous=validCache(now)
+        fetchState=if(previous==null) reason else FetchState.CACHED
+        return previous
+    }
 
     suspend fun read():Snapshot? = withContext(Dispatchers.IO) {
         val now=System.currentTimeMillis()
@@ -48,25 +56,26 @@ object CwaWindProbability {
             conn.connectTimeout=10_000; conn.readTimeout=12_000
             conn.instanceFollowRedirects=false
             conn.setRequestProperty("Accept","application/vnd.google-earth.kmz, application/zip, */*")
-            if(conn.responseCode!=200 || conn.contentLengthLong>MAX_DOWNLOAD) return@withContext validCache(now)
+            if(conn.responseCode!=200 || conn.contentLengthLong>MAX_DOWNLOAD)
+                return@withContext fallback(now,FetchState.UNAVAILABLE)
             val buf=ByteArrayOutputStream()
             conn.inputStream.use { input ->
                 val chunk=ByteArray(8192)
                 while(true) {
                     val n=input.read(chunk)
                     if(n<0) break
-                    if(buf.size()+n>MAX_DOWNLOAD) return@withContext validCache(now)
+                    if(buf.size()+n>MAX_DOWNLOAD) return@withContext fallback(now,FetchState.UNAVAILABLE)
                     buf.write(chunk,0,n)
                 }
             }
             val regions=parseKmz(buf.toByteArray())
-            if(regions.isEmpty()) return@withContext validCache(now)
+            if(regions.isEmpty()) return@withContext fallback(now,FetchState.NO_USABLE_REGIONS)
             // A stale Last-Modified timestamp is not a live probability product.
             val m=conn.lastModified.takeIf { it>0 }
-            if(m!=null && now-m>48L*3600_000L) return@withContext validCache(now)
-            Snapshot(regions,now,m).also { cached=it }
+            if(m!=null && now-m>48L*3600_000L) return@withContext fallback(now,FetchState.STALE)
+            Snapshot(regions,now,m).also { cached=it; fetchState=FetchState.CURRENT }
         } catch (cancel:CancellationException) { throw cancel }
-          catch (_:Exception) { validCache(now) }
+          catch (_:Exception) { fallback(now,FetchState.UNAVAILABLE) }
         finally { conn?.disconnect() }
     }
 

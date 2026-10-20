@@ -19,15 +19,15 @@ import androidx.compose.ui.unit.dp
  */
 object ThinnOpticalMaterial {
     val page: Brush get() = Brush.verticalGradient(listOf(
-        Color(0xFF07111E), Color(0xFF10283D), Color(0xFF153550), Color(0xFF0A192B)
+        Color(0xFF0A1524), Color(0xFF1B324B), Color(0xFF24455C), Color(0xFF101B2D)
     ))
     // Quiet content material: avoids a thick translucent rectangle around every paragraph.
     val surface: Brush get() = Brush.linearGradient(listOf(
-        Color(0xEF31465C), Color(0xF024394F), Color(0xF01B2D40)
+        Color(0xED273746), Color(0xEF202D3B), Color(0xF01C2937)
     ))
     // Floating lens for the navigation/interactive layer.
     val raised: Brush get() = Brush.linearGradient(listOf(
-        Color(0xB5D9ECF8), Color(0x906F91A9), Color(0xB3375875), Color(0xBC799AB0)
+        Color(0xCEDDECF7), Color(0xA48AAEC3), Color(0xB039637F), Color(0xCB86AEC4)
     ))
     val opaque: Brush get() = Brush.verticalGradient(listOf(
         Color(0xFF324D65), Color(0xFF152D44)

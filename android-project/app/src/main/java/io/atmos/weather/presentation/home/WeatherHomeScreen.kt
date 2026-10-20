@@ -521,7 +521,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // the background, independently of whether weather data loads.
                     Column(Modifier.fillMaxSize().zIndex(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=22.dp,bottom=124.dp)) {
+                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=124.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically,
                     horizontalArrangement=Arrangement.SpaceBetween) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
@@ -530,7 +530,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text("thinn-khì",color=White,fontFamily=appearance.family,fontWeight=FontWeight(appearance.fontWeight.roundToInt()),fontSize=(21f*appearance.fontScale).coerceIn(20f,29f).sp,letterSpacing=.4.sp)
-                            Text("即時天氣 · 每一刻都有溫度",color=TextSoft,fontSize=14.sp)
+                            Text("現在的天氣",color=TextSoft,fontSize=14.sp)
                         }
                     }
                     Row {
@@ -599,11 +599,19 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 if (snapshot != null) {
                     CenteredTemperature(snapshot.temperatureC.roundToInt(), appearance)
-                    Text(if(heavyRain && !stormy) "強降雨" else snapshot.condition.label(),color=White,fontSize=18.sp,fontWeight=FontWeight.Medium,
-                        modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
-                    Spacer(Modifier.height(7.dp))
-                    Text("最高 ${snapshot.maxTempC?.roundToInt()?.let { "$it°" } ?: "—"}   最低 ${snapshot.minTempC?.roundToInt()?.let { "$it°" } ?: "—"}     體感 ${snapshot.feelsLikeC?.roundToInt()?.let { "$it°" } ?: "—"}",
-                        color=TextSoft,fontSize=16.sp,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
+                    Column(Modifier.fillMaxWidth().padding(horizontal=9.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(Brush.verticalGradient(listOf(
+                            Color.White.copy(alpha=.17f),Color.White.copy(alpha=.07f))))
+                        .border(1.dp,White.copy(alpha=.28f),RoundedCornerShape(28.dp))
+                        .padding(horizontal=18.dp,vertical=15.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(7.dp)) {
+                        Text(if(heavyRain && !stormy) "強降雨" else snapshot.condition.label(),
+                            color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                        Text("最高 ${snapshot.maxTempC?.roundToInt()?.let { "$it°" } ?: "—"}    最低 ${snapshot.minTempC?.roundToInt()?.let { "$it°" } ?: "—"}    體感 ${snapshot.feelsLikeC?.roundToInt()?.let { "$it°" } ?: "—"}",
+                            color=TextSoft,fontSize=15.sp,textAlign=TextAlign.Center)
+                    }
                 } else if(state.loading) {
                     Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=White,modifier=Modifier.align(Alignment.CenterHorizontally))
                 } else {
@@ -1175,8 +1183,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
 @Composable
 private fun HeaderButton(image: androidx.compose.ui.graphics.vector.ImageVector, description: String, click: ()->Unit) {
     val feedback=LocalHapticEngine.current
-    Box(Modifier.size(48.dp).clip(CircleShape).background(Color(0xB81A3751))
-        .border(1.dp,White.copy(alpha=.16f),CircleShape).clickable { feedback?.play(HapticEngine.Event.TAP);click() }, contentAlignment=Alignment.Center) {
+    Box(Modifier.size(48.dp).clip(CircleShape)
+        .background(io.atmos.weather.ui.ThinnOpticalMaterial.raised)
+        .border(1.dp,White.copy(alpha=.42f),CircleShape)
+        .clickable { feedback?.play(HapticEngine.Event.TAP);click() }, contentAlignment=Alignment.Center) {
         Icon(image,contentDescription=description,tint=White,modifier=Modifier.size(19.dp))
     }
 }
@@ -1245,7 +1255,7 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
         } else Modifier)
         .clip(shape)
         .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
-        .border(1.dp,Color.White.copy(alpha=.19f),shape)
+        .border(1.dp,Color.White.copy(alpha=.27f),shape)
     ) {
         // Specular sheen follows the direction of a drag; it is not a false claim of live wallpaper blur.
         Canvas(Modifier.matchParentSize()) {
@@ -1267,8 +1277,8 @@ private fun MetricCard(title: String, value: String, subtitle: String,
                        modifier: Modifier=Modifier, onClick:()->Unit) {
     val appearance=LocalAppearance.current
     Column(modifier.clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
-        .background(White.copy(alpha=.04f+appearance.glassOpacity*.19f))
-        .border(1.dp,White.copy(alpha=.09f+appearance.edgeLight*.36f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
+        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
+        .border(1.dp,White.copy(alpha=.19f+appearance.edgeLight*.26f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .clickable(onClick=onClick).padding(17.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Icon(symbol,contentDescription=null,tint=TextSoft,modifier=Modifier.size(16.dp))

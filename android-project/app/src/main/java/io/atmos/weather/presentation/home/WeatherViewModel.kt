@@ -149,6 +149,9 @@ class WeatherViewModel(
                     name.substringAfterLast('·').trim(),
                     name.removeSuffix("鄉").removeSuffix("鎮").removeSuffix("區").removeSuffix("市"))
                     .filter { it.length >= 2 }.distinct().take(4)
+                val localCandidates=(SampleCities.all+mutableState.value.savedCities)
+                    .distinctBy { it.id }
+                    .filter { io.atmos.weather.location.TaiwanPlaceSearch.matches(name,it.name) }
                 val candidates=mutableListOf<WeatherCity>()
                 var apiSucceeded=false
                 for(term in alternatives) {
@@ -160,9 +163,10 @@ class WeatherViewModel(
                       catch (_:Exception) { /* try another spelling; never invent locations */ }
                     if(candidates.size>=30) break
                 }
-                val results=candidates.distinctBy { it.id }.take(40)
+                val results=(localCandidates+candidates).distinctBy { it.id }.take(40)
                 mutableState.update {it.copy(searching=false,searchResults=results,
-                    searchError=if(!apiSucceeded) "目前無法連線搜尋地點，請稍後再試" else null)}
+                    searchError=if(!apiSucceeded && localCandidates.isEmpty())
+                        "目前無法連線搜尋地點，請稍後再試" else null)}
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { mutableState.update { it.copy(searching=false,searchResults=emptyList(),
                 searchError="地點搜尋失敗，請確認網路後重試") } }

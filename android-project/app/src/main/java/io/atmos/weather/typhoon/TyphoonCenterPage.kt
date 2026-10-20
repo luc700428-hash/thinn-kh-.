@@ -10,6 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -46,11 +50,16 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
     var status by remember { mutableStateOf("尚未更新颱風資訊") }
     var loading by remember { mutableStateOf(false) }
     var officialProbability by remember { mutableStateOf<CwaWindProbability.Snapshot?>(null) }
+    var probabilityLoading by remember { mutableStateOf(false) }
     fun refresh() {
         if(loading) return
         loading=true; status="查詢官方資料中…"
         scope.launch {
-            officialProbability=CwaWindProbability.read()
+            probabilityLoading=true
+            try { officialProbability=CwaWindProbability.read() }
+            catch (cancel:CancellationException) { throw cancel }
+            catch (_:Exception) { officialProbability=null }
+            finally { probabilityLoading=false }
         }
         scope.launch {
             try {
@@ -130,9 +139,14 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                     if(group.size==1) Spacer(Modifier.weight(1f))
                 }
             }
-            Text(if(officialProbability==null) "目前無法讀取官方機率圖；並非代表 0%。"
-                else "未提供表示此地不在可核對的官方機率區間內，並非 0%。",
-                color=Color(0xFFBDD8E9),fontSize=14.sp)
+            val probabilityMessage = when {
+                probabilityLoading -> "正在取得最新侵襲機率…"
+                officialProbability != null -> "未提供表示此地不在可核對的官方區間內，不代表 0%。"
+                CwaWindProbability.fetchState == CwaWindProbability.FetchState.STALE -> "官方機率資料已過期，請稍後更新。"
+                CwaWindProbability.fetchState == CwaWindProbability.FetchState.NO_USABLE_REGIONS -> "目前沒有可辨識的官方機率區域。"
+                else -> "暫時無法讀取官方機率資料，請稍後重試。"
+            }
+            Text(probabilityMessage,color=Color(0xFFBDD8E9),fontSize=14.sp)
             Text("此為七級風暴風圈侵襲機率；參考點不代表整區平均，也不是登陸機率。",
                 color=Color(0xFFBDD8E9),fontSize=14.sp)
             Text("資料更新後會顯示官方區間；可至氣象署查詢最新資訊。",color=Color(0xFFBDD8E9),fontSize=14.sp)
@@ -177,6 +191,8 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
             points.filter { it.kind==TyphoonFix.Kind.FORECAST }.takeLast(16)
     }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var mapZoom by remember { mutableFloatStateOf(1f) }
+    var mapPan by remember { mutableStateOf(Offset.Zero) }
     val pxPad=with(LocalDensity.current) { 20.dp.toPx() }
     val reference=displayPoints.map {it.latitude to it.longitude}+
         TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
@@ -184,9 +200,25 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
         TyphoonViewport.forPoints(reference,canvasSize.width.toFloat(),canvasSize.height.toFloat(),pxPad).rasterBounds()
         else null
     val terrain=rememberNlscMap(bounds,canvasSize.width,canvasSize.height)
-    Canvas(Modifier.fillMaxWidth().height(370.dp)
-        .onSizeChanged { canvasSize=it }
-        .background(Color(0xFF102D4A),RoundedCornerShape(18.dp))) {
+    Box(Modifier.fillMaxWidth().height(400.dp)
+        .clip(RoundedCornerShape(18.dp))
+        .background(Color(0xFF102D4A))
+        .pointerInput(Unit) {
+            detectTransformGestures { _, move, magnification, _ ->
+                val next=(mapZoom*magnification).coerceIn(1f,4f)
+                mapZoom=next
+                val maxX=(size.width*(next-1f)/2f)
+                val maxY=(size.height*(next-1f)/2f)
+                mapPan=if(next<=1.01f) Offset.Zero else Offset(
+                    (mapPan.x+move.x).coerceIn(-maxX,maxX),
+                    (mapPan.y+move.y).coerceIn(-maxY,maxY))
+            }
+        }) {
+    Canvas(Modifier.matchParentSize().onSizeChanged { canvasSize=it }
+        .graphicsLayer {
+            scaleX=mapZoom; scaleY=mapZoom
+            translationX=mapPan.x; translationY=mapPan.y
+        }) {
         val pad=20.dp.toPx()
         val viewport=TyphoonViewport.forPoints(reference,size.width,size.height,pad)
         if(terrain!=null) {
@@ -227,5 +259,12 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
             drawCircle(c,5.dp.toPx(),at)
             drawCircle(c.copy(alpha=.4f),9.dp.toPx(),at,style=Stroke(1.dp.toPx()))
         }
+    }
+    }
+    Row(Modifier.fillMaxWidth().padding(top=9.dp),
+        horizontalArrangement=Arrangement.spacedBy(17.dp),verticalAlignment=Alignment.CenterVertically) {
+        Text("● 實測位置",color=Color(0xFFFFCE82),fontSize=14.sp)
+        Text("● 官方預報",color=Color(0xFF69BDF5),fontSize=14.sp)
+        Text("雙指縮放地圖",color=Color(0xFFCDE1ED),fontSize=14.sp)
     }
 }

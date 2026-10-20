@@ -32,7 +32,7 @@ fun NextOpticalSurface(
     val background = if (reduceTransparency) {
         Brush.verticalGradient(listOf(Color(0xFF263E51), Color(0xFF183044)))
     } else {
-        Brush.verticalGradient(listOf(Color(0xB15F8EAD), Color(0x9742627B), Color(0xB5223F58)))
+        Brush.verticalGradient(listOf(Color(0xC19EBED2), Color(0x9C506E86), Color(0xC22B4258)))
     }
     Box(modifier.clip(shape).background(background).drawWithContent {
         val w = size.width
@@ -44,7 +44,7 @@ fun NextOpticalSurface(
             drawRoundRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = if (pressed) .26f else .09f),
+                        Color.White.copy(alpha = if (pressed) .31f else .12f),
                         Color(0xFF9FDFF7).copy(alpha = if (pressed) .11f else .03f),
                         Color.Transparent
                     ), center = light, radius = radius
