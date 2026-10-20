@@ -23,8 +23,13 @@ import java.security.MessageDigest
 data class ReleaseInfo(val version:String,val notes:String,val url:String,val sha256:String)
 object AppUpdater {
     /** Public Release asset: no api.github.com access or GitHub login required. */
-    private const val manifestUrl =
+    private const val officialManifestUrl =
         "https://github.com/luc700428-hash/thinn-kh-./releases/latest/download/ota.json"
+    // This release is marked PRERELEASE and is never GitHub's official latest release.
+    private const val previewManifestUrl =
+        "https://github.com/luc700428-hash/thinn-kh-./releases/download/v25-preview/ota.json"
+    private val inPreviewChannel: Boolean get() = BuildConfig.THINN_OTA_CHANNEL == "preview"
+    private val manifestUrl: String get() = if (inPreviewChannel) previewManifestUrl else officialManifestUrl
     private const val downloadBase =
         "https://github.com/luc700428-hash/thinn-kh-./releases/download/"
 
@@ -63,7 +68,9 @@ object AppUpdater {
             val sha = info.getString("sha256")
             require(Regex("[A-Fa-f0-9]{64}").matches(sha)) { "OTA SHA-256 格式不正確" }
             val url = info.getString("apk_url")
-            require(url == "${downloadBase}v$version/thinn-khi.apk") { "OTA APK 來源不受信任" }
+            val expectedTag = if (inPreviewChannel) "v25-preview" else "v$version"
+            if (inPreviewChannel) require(version.startsWith("25.0.")) { "測試 OTA 版本不合法" }
+            require(url == "${downloadBase}$expectedTag/thinn-khi.apk") { "OTA APK 來源不受信任" }
             if (!newer(version, BuildConfig.VERSION_NAME)) return@withContext null
             ReleaseInfo(version, info.optString("notes").take(16000), url, sha)
         } finally {

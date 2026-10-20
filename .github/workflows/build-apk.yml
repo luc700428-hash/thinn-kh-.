@@ -187,6 +187,7 @@ jobs:
              -PTHINN_VERSION_CODE="$((25000000 + GITHUB_RUN_NUMBER))"
              -PTHINN_VERSION_NAME="25.0.$GITHUB_RUN_NUMBER"
              -PTHINN_BUILD_SHA="$GITHUB_SHA"
+             -PTHINN_OTA_CHANNEL="${{ inputs.publish_release == true && 'official' || 'preview' }}"
              -PTHINN_FIREBASE_APP_ID="${THINN_FIREBASE_APP_ID:-}"
              -PTHINN_FIREBASE_API_KEY="${THINN_FIREBASE_API_KEY:-}"
              -PTHINN_FIREBASE_SENDER_ID="${THINN_FIREBASE_SENDER_ID:-}"
@@ -285,12 +286,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          preview_args=()
+          # Signed build from main becomes a labelled preview, NEVER the official Latest.
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then preview_args+=(--preview); fi
           python3 android-project/tools/create_ota_manifest.py \
             --apk thinn-khi.apk \
             --notes android-project/app/src/main/assets/current_release_notes.md \
             --version "25.0.$GITHUB_RUN_NUMBER" \
             --version-code "$((25000000 + GITHUB_RUN_NUMBER))" \
-            --output ota.json
+            --output ota.json "${preview_args[@]}"
           test -s ota.json
           # Validate JSON and verify the published digest against the built signed APK.
           python3 -m json.tool ota.json >/dev/null
@@ -329,6 +333,58 @@ jobs:
           path: |
             android-project/app/build/outputs/apk/debug/*.apk
             embedded-build-source-proof.json
+      - name: Publish V25 test OTA (pre-release only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.SIGN_READY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v25-preview
+          repo="$GITHUB_REPOSITORY"
+          latest_sha="$(gh api "repos/$repo/commits/main" --jq '.sha')"
+          [[ "$latest_sha" == "$GITHUB_SHA" ]] || {
+            echo "::error::main changed while test OTA was building"; exit 1;
+          }
+          # Make it impossible to turn this preview tag into an official latest release.
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            is_pre="$(gh release view "$tag" --repo "$repo" --json isPrerelease --jq .isPrerelease)"
+            [[ "$is_pre" == 'true' ]] || {
+              echo '::error::Refuse overwrite: preview tag is not a prerelease'; exit 1;
+            }
+            # Never publish the same app sources under a newer version number.
+            previous="$RUNNER_TEMP/previous-preview"
+            mkdir -p "$previous"
+            gh release download "$tag" --repo "$repo" --dir "$previous"               --pattern embedded-build-source-proof.json --pattern ota.json
+            python3 - "$previous" embedded-build-source-proof.json ota.json <<'PYCHECKPREVIEW'
+          import json,pathlib,sys
+          old=pathlib.Path(sys.argv[1]); fresh=pathlib.Path(sys.argv[2]); new_meta=pathlib.Path(sys.argv[3])
+          before=json.loads((old/'embedded-build-source-proof.json').read_text())
+          after=json.loads(fresh.read_text())
+          old_manifest=json.loads((old/'ota.json').read_text())
+          new_manifest=json.loads(new_meta.read_text())
+          if before.get('app_tree_sha256') == after.get('app_tree_sha256'):
+              raise SystemExit('::error::Refusing version-only preview OTA: no actual App source changes')
+          if new_manifest['version_code'] <= old_manifest['version_code']:
+              raise SystemExit('::error::Preview OTA versionCode did not increase')
+          PYCHECKPREVIEW
+            # Upload APK before manifest. Clients verify SHA256 and cannot install a mismatch.
+            for asset in thinn-khi.apk thinn-khi.apk.sha256 embedded-build-source-proof.json ota.json; do
+              gh release upload "$tag" "$asset" --repo "$repo" --clobber
+            done
+            gh release edit "$tag" --repo "$repo" --prerelease --latest=false \
+              --title "thinn-khì V25 TEST — ${GITHUB_RUN_NUMBER}" \
+              --notes "V25 TEST CHANNEL ONLY. Signed candidate, not the complete V25 release. Commit: $GITHUB_SHA"
+          else
+            gh release create "$tag" thinn-khi.apk thinn-khi.apk.sha256 embedded-build-source-proof.json ota.json \
+              --repo "$repo" --target "$GITHUB_SHA" \
+              --title "thinn-khì V25 TEST — ${GITHUB_RUN_NUMBER}" \
+              --notes "V25 TEST CHANNEL ONLY. Signed candidate, not the complete V25 release. Commit: $GITHUB_SHA" \
+              --prerelease --latest=false
+          fi
+          [[ "$(gh release view "$tag" --repo "$repo" --json isPrerelease --jq .isPrerelease)" == 'true' ]]
+          # GitHub's latest release endpoint excludes prereleases; never change stable latest.
+          [[ "$(gh api "repos/$repo/releases/latest" --jq .tag_name)" != "$tag" ]]
       - name: Publish official OTA GitHub Release
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
         env:

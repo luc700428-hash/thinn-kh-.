@@ -77,14 +77,16 @@ fun AppUpdatePage(onClose: () -> Unit) {
         pendingDelta = ""
         lastError = null
         installerPrompted = false
-        status = "正在檢查最新正式版本…"
+        status = if (BuildConfig.THINN_OTA_CHANNEL == "preview") "正在檢查 V25 測試更新…"
+        else "正在檢查最新正式版本…"
         haptic?.play(HapticEngine.Event.TAP)
         scope.launch {
             runCatching { AppUpdater.findUpdate(context) }
                 .onSuccess {
                     pending = it
                     if (it == null) {
-                        status = "目前沒有偵測到較新的正式版本"
+                        status = if (BuildConfig.THINN_OTA_CHANNEL == "preview") "目前沒有較新的測試更新"
+                            else "目前沒有偵測到較新的正式版本"
                     } else {
                         status = "有可安裝的新版"
                         haptic?.play(HapticEngine.Event.RELEASE)

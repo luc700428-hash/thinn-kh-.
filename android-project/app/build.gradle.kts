@@ -19,6 +19,10 @@ android {
             "THINN_BUILD_SHA must be a 40-character commit id or 'local'"
         }
         buildConfigField("String", "THINN_BUILD_SHA", "\"$sourceCommit\"")
+        // Candidate builds receive a separate, opt-in test OTA stream.
+        val otaChannel = providers.gradleProperty("THINN_OTA_CHANNEL").orNull ?: "preview"
+        require(otaChannel == "preview" || otaChannel == "official") { "Invalid OTA channel" }
+        buildConfigField("String", "THINN_OTA_CHANNEL", "\"$otaChannel\"")
         vectorDrawables.useSupportLibrary = true
 
         // BuildConfig values belong to defaultConfig (ApplicationDefaultConfig),
