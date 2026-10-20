@@ -266,6 +266,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     var approachingStorm by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
+    // NEXT_INTEGRATED_OFFICIAL_STORM_PROMPT: CWA-only, rate-limited one-time forecast sheet.
+    var nextOfficialStormPrompt by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
     // Query official storm positions only while the weather tab is visible. When unavailable
     // fail closed (no invented typhoon); locally issued official warnings still show.
     LaunchedEffect(mainPager.currentPage) {
@@ -279,7 +281,20 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         io.atmos.weather.typhoon.TaiwanStormRelevance.isMovingTowardTaiwan(it)
                     }
                     approachingStorm=approaching
-                    // Do not interrupt App launch; typhoon details open only on user tap.
+                    // A first verified Taiwan-bound forecast may open a forecast timeline,
+                    // never a fabricated emergency warning. Rate limit to 12 hours.
+                    if (approaching != null) {
+                        val prompts = context.getSharedPreferences("thinn_next_official_typhoon_sheet",android.content.Context.MODE_PRIVATE)
+                        val now = System.currentTimeMillis()
+                        val last = prompts.getLong("last_display_millis",0L)
+                        if (prompts.getString("last_signature","") != approaching.signature &&
+                            now-last >= 12L*60L*60L*1000L) {
+                            prompts.edit().putString("last_signature",approaching.signature)
+                                .putLong("last_display_millis",now).apply()
+                            nextOfficialStormPrompt=approaching
+                        }
+                    }
+                    // Only a CWA forecast trajectory that is heading toward Taiwan activates the tile.
                     // Only a CWA forecast trajectory that is heading toward Taiwan activates the tile.
                     approaching != null
                 } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
@@ -681,6 +696,25 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
 
                         }
                         Icon(Icons.Rounded.ChevronRight,contentDescription="查看颱風動向",tint=TextSoft)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                } else {
+                    // NEXT_INTEGRATED_TYPOON_NEUTRAL_ENTRY: ordinary navigation, not an emergency alert.
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF183C57),Color(0xFF214860))))
+                        .border(1.dp,Color(0xFFB1E3F5).copy(alpha=.35f),RoundedCornerShape(22.dp))
+                        .clickable { typhoonPageOpen = true }
+                        .padding(horizontal=17.dp,vertical=15.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Cyclone,null,tint=Color(0xFF9ED8F1),modifier=Modifier.size(24.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                            Text("颱風資訊",fontSize=18.sp,fontWeight=FontWeight.SemiBold,color=White)
+                            Text("目前未顯示臺灣相關有效颱風警報 · 點選查看官方資料",
+                                fontSize=14.sp,color=TextSoft,maxLines=2)
+                        }
+                        Icon(Icons.Rounded.ChevronRight,"開啟颱風資訊",tint=TextSoft)
                     }
                     Spacer(Modifier.height(12.dp))
                 }
@@ -1130,6 +1164,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable,
             currentLat=state.city.coordinate.latitude,currentLon=state.city.coordinate.longitude,
             currentName=state.city.name)
+        nextOfficialStormPrompt?.let { storm ->
+            io.atmos.weather.typhoon.StormTimelineOverlay(storm) { nextOfficialStormPrompt=null }
+        }
         if (updatePageOpen) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }

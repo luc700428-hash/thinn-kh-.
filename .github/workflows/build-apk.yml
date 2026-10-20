@@ -229,7 +229,8 @@ jobs:
           sha256sum thinn-khi.apk > thinn-khi.apk.sha256
           rm -f "$RUNNER_TEMP/thinn-release.jks"
       - name: Verify OTA upgrade compatibility with the current published APK
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
+        # Preflight signed candidate builds as well; publishing still needs the NEXT 22 gate.
+        if: env.SIGN_READY == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
