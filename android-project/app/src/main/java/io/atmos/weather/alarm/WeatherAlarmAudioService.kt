@@ -276,13 +276,13 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                     onFailure={ if(currentId==id) {
                         setAlarmVolume(.18f)
                         val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
-                        if(result != TextToSpeech.SUCCESS) runCatching{player?.setVolume(1f,1f)}
+                        if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)
                     } }
                 ))
             if(!cloudAccepted) {
                 setAlarmVolume(.18f)
                 val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
-                if(result != TextToSpeech.SUCCESS) runCatching{player?.setVolume(1f,1f)}
+                if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)
             }
             // OEM TTS can omit onDone. Never leave the ringing sound quiet indefinitely.
             uiHandler.postDelayed({ if(currentId==id) setAlarmVolume(1f) },120_000L)

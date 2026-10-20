@@ -1,0 +1,127 @@
+{
+  "title": "thinn-khì NEXT single-release gate",
+  "released": false,
+  "verified_full_release": false,
+  "requirements": [
+    {
+      "id": "home_layout",
+      "name": "保留首頁排版與重要卡片",
+      "status": "partial"
+    },
+    {
+      "id": "scene_14",
+      "name": "14 天氣分類與動態背景",
+      "status": "partial"
+    },
+    {
+      "id": "ambience_14",
+      "name": "14 對應環境音無縫循環",
+      "status": "partial"
+    },
+    {
+      "id": "alarm_28",
+      "name": "兩首鬧鐘主題 × 14 天氣音樂",
+      "status": "partial"
+    },
+    {
+      "id": "hi_fi_audio",
+      "name": "專業音樂品質和完整循環實機驗證",
+      "status": "blocked"
+    },
+    {
+      "id": "liquid_optics",
+      "name": "折射/光澤/動態反射/環境光/對比",
+      "status": "partial"
+    },
+    {
+      "id": "motion_physics",
+      "name": "全 App 彈簧物理/速度繼承/中斷",
+      "status": "partial"
+    },
+    {
+      "id": "drag_toolbar",
+      "name": "長按拖動/自適應選單/排序持久化",
+      "status": "partial"
+    },
+    {
+      "id": "icons_typography",
+      "name": "全域動態圖示/文字/元件一致",
+      "status": "blocked"
+    },
+    {
+      "id": "haptics",
+      "name": "全域觸覺協調",
+      "status": "blocked"
+    },
+    {
+      "id": "typhoon",
+      "name": "官方颱風資料/時間軸/地圖/警報",
+      "status": "blocked"
+    },
+    {
+      "id": "quake",
+      "name": "台灣/離島速報/測站/播報/模擬",
+      "status": "blocked"
+    },
+    {
+      "id": "radar",
+      "name": "雷達與地圖完整介面",
+      "status": "blocked"
+    },
+    {
+      "id": "alarm_reliability",
+      "name": "鬧鐘完整響鈴/AM-PM/TTS/Spotify兼容性",
+      "status": "blocked"
+    },
+    {
+      "id": "super_island",
+      "name": "小米超級島動態資訊/鬧鐘",
+      "status": "blocked"
+    },
+    {
+      "id": "ota_ui",
+      "name": "版本特性/下載/驗證/安裝/錯誤介面",
+      "status": "partial"
+    },
+    {
+      "id": "apple_resource_audit",
+      "name": "Apple HIG 逐項對照",
+      "status": "blocked"
+    },
+    {
+      "id": "ios27_design_system_audit",
+      "name": "GitHub Design System 逐元件對照",
+      "status": "blocked"
+    },
+    {
+      "id": "swiftui27_article_audit",
+      "name": "Blake SwiftUI 27 深度追蹤子連結",
+      "status": "blocked"
+    },
+    {
+      "id": "android_build",
+      "name": "Gradle APK build/CI",
+      "status": "partial"
+    },
+    {
+      "id": "device_validation",
+      "name": "三星/小米/Android16 效能與實機",
+      "status": "blocked"
+    },
+    {
+      "id": "signed_ota",
+      "name": "簽章比對和一次正式 OTA",
+      "status": "blocked"
+    }
+  ],
+  "evidence": {
+    "test_branch": "next-test-10200414",
+    "previous_ci_run": 207,
+    "previous_ci_result": "success (before this integration patch)",
+    "this_patch_gradle_build": "not_run",
+    "samsung_device_test": "not_run",
+    "xiaomi_device_test": "not_run",
+    "signed_ota_published": false,
+    "release_protection": "publish_release=true blocked until all 22 requirements verified"
+  }
+}

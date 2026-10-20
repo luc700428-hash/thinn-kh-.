@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import io.atmos.weather.next.NextOtaState
+import io.atmos.weather.next.NextOtaStatusCard
 import io.atmos.weather.BuildConfig
 import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine
@@ -65,6 +67,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
     var downloaded by remember { mutableLongStateOf(0L) }
     var totalBytes by remember { mutableStateOf<Long?>(null) }
     var lastError by remember { mutableStateOf<String?>(null) }
+    var installerPrompted by remember { mutableStateOf(false) }
 
     fun check() {
         if (checking || installing) return
@@ -72,6 +75,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
         pending = null
         pendingDelta = ""
         lastError = null
+        installerPrompted = false
         status = "正在檢查最新正式版本…"
         haptic?.play(HapticEngine.Event.TAP)
         scope.launch {
@@ -95,6 +99,36 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     status = "檢查失敗"
                 }
             checking = false
+        }
+    }
+
+    // A real download path shared by the new NEXT button and legacy cancel action.
+    // Installation success is intentionally NOT inferred from an installer handoff.
+    fun downloadOfficial(release:ReleaseInfo) {
+        if(installing || checking) return
+        haptic?.play(HapticEngine.Event.TAP)
+        installing=true
+        installerPrompted=false
+        downloaded=0L
+        totalBytes=null
+        lastError=null
+        downloadJob=scope.launch {
+            val result=runCatching {
+                AppUpdater.downloadAndInstall(context,release) { soFar,total ->
+                    downloaded=soFar
+                    totalBytes=total
+                }
+            }
+            result.onSuccess {
+                // Android owns the confirmation; do not claim installed.
+                status="已交由 Android 安裝程式，請完成系統確認。"
+                installerPrompted=true
+            }.onFailure {err ->
+                if(err is CancellationException) status="已取消下載"
+                else {lastError=err.localizedMessage ?: "請稍後重試";status="更新失敗"}
+            }
+            installing=false
+            downloadJob=null
         }
     }
 
@@ -167,107 +201,49 @@ fun AppUpdatePage(onClose: () -> Unit) {
                 }
 
                 Spacer(Modifier.height(18.dp))
-
-                UpdatePanel(glow = light) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.SystemUpdate, null, tint = UpdateBlue, modifier = Modifier.size(28.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("下一個版本", color = UpdateSoft, fontSize=14.sp)
-                            Text(
-                                when {
-                                    checking -> "檢查中…"
-                                    pending != null -> pending?.version ?: "暫無新版"
-                                    lastError != null -> "檢查失敗"
-                                    else -> "暫無新版"
-                                },
-                                color = UpdateText,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                // This card uses actual AppUpdater.findUpdate/downloadAndInstall state;
+                // its actions are not simulated and it never reports fake installation.
+                val otaState:NextOtaState = when {
+                    checking -> NextOtaState.Checking
+                    installing -> NextOtaState.Downloading(
+                        totalBytes?.takeIf {it>0L}?.let { (downloaded.toFloat()/it).coerceIn(0f,1f) } ?: 0f)
+                    lastError != null -> NextOtaState.Failed(lastError ?: "更新失敗")
+                    installerPrompted -> NextOtaState.Installing
+                    pending != null -> NextOtaState.Available(
+                        pending?.version ?: "新版",
+                        pendingDelta.lineSequence().map {it.trim()}
+                            .filter {it.startsWith("- ") || it.startsWith("* ")}
+                            .take(12).map {it.drop(2)}.toList())
+                    else -> NextOtaState.Idle
+                }
+                NextOtaStatusCard(
+                    state=otaState,
+                    onCheck={check()},
+                    onDownload={pending?.let {downloadOfficial(it)}},
+                    onInstall={pending?.let {downloadOfficial(it)}},
+                    reduceTransparency=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
+                        .getBoolean("reduce_transparency",false)
+                )
+                if(status.isNotBlank()) {
                     Spacer(Modifier.height(12.dp))
-                    AnimatedVisibility(visible = checking) {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = UpdateBlue)
-                    }
-                    if (!checking) Spacer(Modifier.height(2.dp))
-                    Text(status, color = UpdateSoft, fontSize=15.sp, lineHeight = 19.sp)
-
-                    if (lastError != null) {
-                        Spacer(Modifier.height(12.dp))
-                        Text("檢查失敗：", color = UpdateText, fontSize=15.sp, fontWeight = FontWeight.SemiBold)
-                        Text(lastError ?: "", color = UpdateSoft, fontSize=14.sp, lineHeight = 18.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
-                    }
-
-                    pending?.let { release ->
-                        Spacer(Modifier.height(14.dp))
-                        HorizontalDivider(color = Color.White.copy(alpha = .15f))
-                        Spacer(Modifier.height(12.dp))
-                        Text("新增功能與修復", color = UpdateText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(status,color=UpdateSoft,fontSize=14.sp,lineHeight=19.sp)
+                }
+                pending?.let {
+                    Spacer(Modifier.height(14.dp))
+                    UpdatePanel(glow=light) {
+                        Text("本次更新內容",color=UpdateText,fontSize=17.sp,fontWeight=FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
-                        UpdateReleaseNotes(pendingDelta.ifBlank { "正在整理版本差異…" })
-                        Spacer(Modifier.height(16.dp))
-                        if (installing) {
-                            val fraction = totalBytes?.takeIf { it > 0L }?.let { (downloaded.toFloat() / it).coerceIn(0f, 1f) }
-                            io.atmos.weather.ui.ThinnProgressLine(fraction,
-                                if(fraction==null) "正在下載，檔案大小尚未提供…" else "已下載 ${(fraction*100).roundToInt()}%")
-                            Spacer(Modifier.height(12.dp))
-                        }
-                        Button(
-                            onClick = {
-                                haptic?.play(HapticEngine.Event.TAP)
-                                installing = true
-                                downloaded = 0L
-                                totalBytes = null
-                                lastError = null
-                                downloadJob = scope.launch {
-                                    val result = runCatching {
-                                        AppUpdater.downloadAndInstall(context, release) { soFar, total ->
-                                            downloaded = soFar
-                                            totalBytes = total
-                                        }
-                                    }
-                                    result.onSuccess {
-                                        status = "APK 已下載驗證，請在 Android 安裝程式確認更新。"
-                                    }.onFailure { err ->
-                                        if(err is CancellationException) status = "已取消下載"
-                                        else {lastError = err.localizedMessage ?: "請稍後重試";status = "更新失敗"}
-                                    }
-                                    installing = false
-                                    downloadJob = null
-                                }
-                            },
-                            enabled = !installing && !checking,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .35f))
-                        ) {
-                            Icon(Icons.Rounded.Download, null, tint = UpdateText)
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (installing) "正在下載與驗證…" else "下載並更新", color = UpdateText)
-                        }
-                        if(installing) {
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedButton(onClick={downloadJob?.cancel();status="正在取消下載…"},
-                                modifier=Modifier.fillMaxWidth()) {
-                                Text("取消下載",color=UpdateSoft)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    OutlinedButton(
-                        onClick = { check() },
-                        enabled = !checking && !installing,
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = .35f))
-                    ) {
-                        Icon(Icons.Rounded.Refresh, null, tint = UpdateText)
-                        Spacer(Modifier.width(8.dp))
-                        Text("重新檢查更新", color = UpdateText)
+                        UpdateReleaseNotes(pendingDelta.ifBlank {"正在整理版本差異…"})
                     }
                 }
-
+                if(installing) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick={downloadJob?.cancel();status="正在取消下載…"},
+                        modifier=Modifier.fillMaxWidth()) {
+                        Text("取消下載",color=UpdateSoft,fontSize=14.sp)
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
                 Text(
                     "更新來源：GitHub Releases。APK 會進行 SHA-256、套件名稱與版本檢查；覆蓋升級需相同簽署金鑰，安裝需經 Android 系統確認。",
@@ -282,7 +258,13 @@ fun AppUpdatePage(onClose: () -> Unit) {
 
 @Composable
 private fun UpdatePanel(glow: Float, content: @Composable ColumnScope.() -> Unit) {
-    io.atmos.weather.ui.GlassSurface(Modifier.fillMaxWidth(),content)
+    val context=LocalContext.current
+    val opaque=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
+        .getBoolean("reduce_transparency",false)
+    io.atmos.weather.next.NextOpticalSurface(
+        modifier=Modifier.fillMaxWidth(),reduceTransparency=opaque) {
+        Column(Modifier.padding(18.dp),content=content)
+    }
 }
 
 /** Format the exact bundled/GitHub Release markdown consistently with thinn-khì glass UI. */

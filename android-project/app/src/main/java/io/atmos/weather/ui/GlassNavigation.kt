@@ -110,46 +110,45 @@ private val navTabs=listOf(
 
 @Composable
 fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier) {
-    val feedback=LocalHapticEngine.current
+    // NEXT navigation remains aligned to the existing four main Pager pages.
+    // Persist stable tool IDs rather than array positions so reordering never
+    // changes the semantic destination of a tab or breaks a deep link.
     val context=LocalContext.current
-    val prefs=remember(context){context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
-    val reduced=prefs.getBoolean("reduce_motion",false)
-    val opaque=prefs.getBoolean("reduce_transparency",false)
-    val barShape=RoundedCornerShape(ThinnDesignTokens.radiusNav)
-    Row(modifier.fillMaxWidth().padding(horizontal=18.dp)
-        .height(68.dp).clip(barShape)
-        .background(if(opaque) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.raised)
-        .border(1.dp,ThinnOpticalMaterial.rim,barShape)
-        .thinnSpecularEdge(ThinnDesignTokens.radiusNav)
-        .padding(5.dp),verticalAlignment=Alignment.CenterVertically) {
-        navTabs.forEachIndexed { index,tab ->
-            val active=selected==index
-            val filled by animateFloatAsState(if(active)1f else 0f,
-                animationSpec=if(reduced) tween(0) else spring(dampingRatio=.76f,stiffness=370f),
-                label="iOS 視覺分頁鏡片")
-            val selectedShape=RoundedCornerShape(29.dp)
-            Column(Modifier.weight(1f).fillMaxHeight()
-                .clip(selectedShape)
-                .background(Brush.verticalGradient(listOf(
-                    Color.White.copy(alpha=.35f*filled),
-                    Color(0xFFDBF1FF).copy(alpha=.18f*filled),
-                    Color.White.copy(alpha=.07f*filled)
-                )))
-                .then(if(active) Modifier.thinnSpecularEdge(29.dp) else Modifier)
-                .semantics { contentDescription="${tab.label}分頁" }
-                .selectable(selected=active,role=Role.Tab,onClick={
-                    if(selected!=index)feedback?.play(HapticEngine.Event.TAP)
-                    onSelect(index)
-                }),verticalArrangement=Arrangement.Center,
-                horizontalAlignment=Alignment.CenterHorizontally) {
-                Icon(tab.icon,null,modifier=Modifier.size(22.dp),
-                    tint=if(active)Color.White else Color(0xFFE0ECF5).copy(alpha=.80f))
-                Spacer(Modifier.height(1.dp))
-                Text(tab.label,fontSize=14.sp,fontWeight=if(active)FontWeight.SemiBold else FontWeight.Medium,
-                    color=if(active)Color.White else Color(0xFFE0ECF5).copy(alpha=.80f))
-            }
-        }
+    val feedback=LocalHapticEngine.current
+    val prefs=remember(context) {context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
+    val canonical=listOf("weather","quake","tools","settings")
+    val tabs=listOf(
+        io.atmos.weather.next.NextToolAction("weather","天氣",Icons.Rounded.WbSunny),
+        io.atmos.weather.next.NextToolAction("quake","地震",Icons.Rounded.Waves),
+        io.atmos.weather.next.NextToolAction("tools","工具",Icons.Rounded.GridView),
+        io.atmos.weather.next.NextToolAction("settings","設定",Icons.Rounded.Settings)
+    )
+    fun normalized(saved:List<String>):List<String> =
+        saved.filter { it in canonical }.distinct() + canonical.filter { it !in saved }
+    var toolOrder by remember(prefs) {
+        mutableStateOf(normalized(prefs.getString("next_navigation_order",null)?.split(",") ?: emptyList()))
     }
+    val orderedActions=toolOrder.mapNotNull { id -> tabs.firstOrNull { it.id == id } }
+    io.atmos.weather.next.NextReorderableToolDock(
+        actions=orderedActions,
+        selectedId=canonical.getOrNull(selected),
+        onSelected={ id ->
+            val page=canonical.indexOf(id)
+            if(page>=0) {
+                if(page != selected) feedback?.play(HapticEngine.Event.TAP)
+                onSelect(page)
+            }
+        },
+        onOrderChanged={ changed ->
+            val valid=normalized(changed)
+            toolOrder=valid
+            prefs.edit().putString("next_navigation_order",valid.joinToString(",")).apply()
+        },
+        maxVisible=4,
+        reduceMotion=prefs.getBoolean("reduce_motion",false),
+        reduceTransparency=prefs.getBoolean("reduce_transparency",false),
+        modifier=modifier.fillMaxWidth().padding(horizontal=18.dp).height(74.dp)
+    )
 }
 
 @Composable

@@ -97,12 +97,15 @@ fun NextReorderableToolDock(
         return true
     }
 
-    NextOpticalSurface(modifier = modifier, touchX = .5f,
+    val lightIndex=visible.indexOfFirst {it.id == draggingId}.takeIf {it >= 0}
+        ?: visible.indexOfFirst {it.id == selectedId}.coerceAtLeast(0)
+    val lightX=if(visible.isEmpty()) .5f else (lightIndex+.5f)/visible.size
+    NextOpticalSurface(modifier = modifier, touchX = lightX,
         pressed = draggingId != null, reduceTransparency = reduceTransparency) {
         Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(1.dp)
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             visible.forEach { action ->
                 key(action.id) {

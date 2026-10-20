@@ -142,6 +142,10 @@ jobs:
           done
       - name: Node backend policy regression tests
         run: node --test android-project/backend/tests/*.test.cjs
+      - name: NEXT complete feature acceptance gate
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+        shell: bash
+        run: python3 android-project/tools/verify_next_release_gate.py
       - name: Prepare signing mode
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}
