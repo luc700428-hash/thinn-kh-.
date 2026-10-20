@@ -72,10 +72,10 @@ fun NextOtaStatusCard(
     }
     NextOpticalSurface(modifier = modifier.fillMaxWidth(), reduceTransparency = reduceTransparency) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("THINN-KHÌ NEXT", color = Color(0xFFB6DDF4), fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold)
-            Text(title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = Color(0xFFD8EAF7), fontSize = 14.sp, lineHeight = 20.sp)
+                        Text("V25 · 更新狀態", color = Color(0xFFB6DDF4), fontSize = 14.sp,
+                fontWeight = FontWeight.Medium)
+            Text(title, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
+            Text(body, color = Color(0xFFD8EAF7), fontSize = 15.sp, lineHeight = 22.sp)
             if (state is NextOtaState.Available) {
                 state.notes.take(20).forEach { note ->
                     Text("• $note", color = Color(0xFFE6F5FC), fontSize = 14.sp)
