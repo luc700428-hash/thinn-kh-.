@@ -266,8 +266,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     var approachingStorm by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
-    // NEXT_INTEGRATED_OFFICIAL_STORM_PROMPT: CWA-only, rate-limited one-time forecast sheet.
-    var nextOfficialStormPrompt by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
     // Query official storm positions only while the weather tab is visible. When unavailable
     // fail closed (no invented typhoon); locally issued official warnings still show.
     LaunchedEffect(mainPager.currentPage) {
@@ -281,19 +279,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         io.atmos.weather.typhoon.TaiwanStormRelevance.isMovingTowardTaiwan(it)
                     }
                     approachingStorm=approaching
-                    // A first verified Taiwan-bound forecast may open a forecast timeline,
-                    // never a fabricated emergency warning. Rate limit to 12 hours.
-                    if (approaching != null) {
-                        val prompts = context.getSharedPreferences("thinn_next_official_typhoon_sheet",android.content.Context.MODE_PRIVATE)
-                        val now = System.currentTimeMillis()
-                        val last = prompts.getLong("last_display_millis",0L)
-                        if (prompts.getString("last_signature","") != approaching.signature &&
-                            now-last >= 12L*60L*60L*1000L) {
-                            prompts.edit().putString("last_signature",approaching.signature)
-                                .putLong("last_display_millis",now).apply()
-                            nextOfficialStormPrompt=approaching
-                        }
-                    }
+                    // Forecast updates change the card only; details open on an explicit tap.
                     // Only a CWA forecast trajectory that is heading toward Taiwan activates the tile.
                     // Only a CWA forecast trajectory that is heading toward Taiwan activates the tile.
                     approaching != null
@@ -684,14 +670,14 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                 Text("${storm.name} · ${storm.typhoonNumber.ifBlank { "颱風" }}號",
                                     color=White,fontSize=16.sp,fontWeight=FontWeight.Medium)
                                 val current=storm.fixes.firstOrNull()
-                                Text(current?.officialDirection?.let { "移動方向 $it · 預報接近台澎金馬" }
+                                Text(current?.officialDirection?.let { "移動方向 ${io.atmos.weather.typhoon.TyphoonDirection.zh(it) ?: "待確認"} · 預報接近台澎金馬" }
                                     ?: "中央氣象署預報：接近台澎金馬",
                                     color=TextSoft,fontSize=14.sp,maxLines=2)
                             }
                             if (verifiedTyphoonWarning!=null)
                                 Text("已發布正式颱風警報 · 點選查看",color=Color(0xFFFFD8B9),fontSize=14.sp)
                             else Text("尚非正式海上／陸上颱風警報",color=Color(0xFFBDE4F6),fontSize=14.sp)
-                            Text("七級風暴風圈侵襲機率 · ${state.city.name}：${homeWindProbability ?: "尚無官方數值"}",
+                            Text("七級風暴風圈通過機率 · ${io.atmos.weather.location.LocationLabels.microcity(state.city.name)}：${homeWindProbability ?: "暫無官方機率"}",
                                 color=Color(0xFFFFDEA7),fontSize=14.sp,maxLines=2)
 
                         }
@@ -769,7 +755,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         val end = hazard.expiresAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
                         Text("${hazard.county} · 有效至 ${end.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))}",
                             color=White.copy(alpha=.9f),fontSize=14.sp)
-                        Text("官方 W-C0033-001 縣市警特報 · 點選查看警戒範圍 ↗",
+                        Text("查看警戒區域與防護建議 ↗",
                             color=Color(0xFFFFD5D0),fontSize=14.sp)
                     }
                     Spacer(Modifier.height(12.dp))
@@ -783,14 +769,18 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         listOf("解除","取消","測試","演練","颱風").none { notice.title.contains(it) }
                 }.take(2)
                 recentCwaNotices.forEach { notice ->
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF243F59))
-                        .border(1.dp,White.copy(alpha=.24f),RoundedCornerShape(20.dp))
-                        .clickable { uriHandler.openUri(notice.link) }.padding(14.dp)) {
-                        Text("中央氣象署公告 · ${notice.title}",color=White,
-                            fontSize=17.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
-                        Text("近 24 小時官方 RSS 公告；是否仍有效請核對官方資訊 ↗",
-                            color=TextSoft,fontSize=14.sp)
+                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                        .background(Brush.verticalGradient(listOf(Color(0xB2A43B47),Color(0xB16A2B3C))))
+                        .border(1.dp,Color(0xFFFFB4AE).copy(alpha=.64f),RoundedCornerShape(22.dp))
+                        .clickable { uriHandler.openUri(notice.link) }.padding(17.dp)) {
+                        Text("中央氣象署 · ${notice.title}",color=White,
+                            fontSize=18.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
+                        Spacer(Modifier.height(7.dp))
+                        Text(notice.summary.ifBlank { "查看公告內容與受影響地區" }.take(98),
+                            color=White.copy(alpha=.94f),fontSize=14.sp,maxLines=3)
+                        Spacer(Modifier.height(7.dp))
+                        Text("${notice.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} 發布 · 查看詳情 ↗",
+                            color=Color(0xFFFFDBD7),fontSize=14.sp)
                     }
                     Spacer(Modifier.height(12.dp))
                 }
@@ -1010,9 +1000,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(9.dp))
                 Text("桌面與背景更新最快約每 15 分鐘排程一次，實際可能受系統省電措施延遲；Widget 會同步最近一次天氣和地標快照。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(20.dp))
-                Text("空氣品質資料來源",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                Text("空氣品質",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.height(5.dp))
-                Text("使用 Open-Meteo 空氣品質 API，依所在地自動提供 PM2.5、PM10；能見度由 Open-Meteo 天氣預報取得。無需使用者註冊或輸入金鑰。這些是模型資料，非台灣環境部測站 AQI。",color=TextSoft,fontSize=14.sp)
+                Text("顯示所在地的空氣品質資訊。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(20.dp))
                 HorizontalDivider(color=White.copy(alpha=.13f))
                 Spacer(Modifier.height(18.dp))
@@ -1164,9 +1154,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable,
             currentLat=state.city.coordinate.latitude,currentLon=state.city.coordinate.longitude,
             currentName=state.city.name)
-        nextOfficialStormPrompt?.let { storm ->
-            io.atmos.weather.typhoon.StormTimelineOverlay(storm) { nextOfficialStormPrompt=null }
-        }
         if (updatePageOpen) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }
@@ -1302,6 +1289,14 @@ private fun LocationSheet(selected: WeatherCity, saved: List<WeatherCity>, resul
     onRemove:(String)->Unit,onClose:()->Unit) {
     var query by remember { mutableStateOf("") }
     var submittedQuery by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(query) {
+        val cleaned=query.trim()
+        if(cleaned.length>=2) {
+            kotlinx.coroutines.delay(380L)
+            submittedQuery=cleaned
+            onQuery(cleaned)
+        }
+    }
     ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF102A44),contentColor=White) {
         Column(Modifier.fillMaxWidth().padding(horizontal=22.dp).padding(bottom=28.dp)) {
             Text("地點與城市",fontSize=23.sp,fontWeight=FontWeight.Bold,color=White)

@@ -30,6 +30,7 @@ class R19GeographicDataTests(unittest.TestCase):
         self.assertIn("homeWindProbability",home)
         self.assertIn("七級風暴風圈侵襲機率",detail)
         self.assertNotIn("目前侵台機率：68%",home)
-        self.assertIn('?: "—"',detail)
+        self.assertIn('officialProbability?.at(lon,lat) ?: "未提供"',detail)
+        self.assertIn("未提供表示此地不在可核對的官方機率區間內",detail)
 
 if __name__=="__main__": unittest.main()

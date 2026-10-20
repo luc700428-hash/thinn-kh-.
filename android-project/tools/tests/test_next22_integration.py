@@ -17,14 +17,20 @@ class NextIntegratedSafety(unittest.TestCase):
         self.assertIn('verifiedTyphoonWarning?.let { official ->',s)
         self.assertIn('TaiwanStormRelevance.isMovingTowardTaiwan',s)
 
-    def test_verified_forecast_only_and_limited_popup(self):
+    def test_forecast_never_opens_a_modal_automatically(self):
         s=HOME.read_text(encoding='utf-8')
-        self.assertIn('NEXT_INTEGRATED_OFFICIAL_STORM_PROMPT',s)
         self.assertIn('OfficialStormTimeline.parse(data)',s)
-        self.assertIn('12L*60L*60L*1000L',s)
-        self.assertIn('StormTimelineOverlay(storm)',s)
-        self.assertIn('approaching.signature',s)
-        self.assertIn('nextOfficialStormPrompt=null',s)
+        self.assertNotIn('nextOfficialStormPrompt',s)
+        self.assertNotIn('thinn_next_official_typhoon_sheet',s)
+        self.assertIn('if (typhoonPageOpen)',s)
+        self.assertIn('TyphoonDirection.zh(it)',s)
+
+    def test_rss_readability_and_no_technical_copy(self):
+        s=HOME.read_text(encoding='utf-8')
+        self.assertIn('notice.summary.ifBlank',s)
+        self.assertIn('Color(0xB2A43B47)',s)
+        self.assertNotIn('近 24 小時官方 RSS 公告；是否仍有效請核對官方資訊',s)
+        self.assertIn('LaunchedEffect(query)',s)
 
     def test_full_release_gate_is_not_bypassed(self):
         g=json.loads(GATE.read_text(encoding='utf-8'))

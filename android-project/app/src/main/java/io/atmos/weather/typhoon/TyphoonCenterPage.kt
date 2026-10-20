@@ -43,7 +43,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
     val verifiedTracks=remember(fixes) { VerifiedTrackPlanner.verifiedForecastSegments(fixes.map {
         DatedTyphoonPosition(it.stormId,it.latitude,it.longitude,it.kind==TyphoonFix.Kind.FORECAST,it.timestamp)
     }) }
-    var status by remember { mutableStateOf("尚未查詢 CWA 颱風資料") }
+    var status by remember { mutableStateOf("尚未更新颱風資訊") }
     var loading by remember { mutableStateOf(false) }
     var officialProbability by remember { mutableStateOf<CwaWindProbability.Snapshot?>(null) }
     fun refresh() {
@@ -123,19 +123,19 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                             .background(Color.White.copy(alpha=.08f),RoundedCornerShape(12.dp))
                             .padding(11.dp)) {
                             Text(name,color=Color(0xFFDBEAF4),fontSize=14.sp,maxLines=2)
-                            Text(officialProbability?.at(lon,lat) ?: "—",color=Color.White,
+                            Text(officialProbability?.at(lon,lat) ?: "未提供",color=Color.White,
                                 fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
                         }
                     }
                     if(group.size==1) Spacer(Modifier.weight(1f))
                 }
             }
-            Text(if(officialProbability==null) "官方侵襲機率尚未提供，或暫時無法讀取"
-                else "— 表示此位置沒有可驗證的官方機率；非 0%。",
+            Text(if(officialProbability==null) "目前無法讀取官方機率圖；並非代表 0%。"
+                else "未提供表示此地不在可核對的官方機率區間內，並非 0%。",
                 color=Color(0xFFBDD8E9),fontSize=14.sp)
             Text("此為七級風暴風圈侵襲機率；參考點不代表整區平均，也不是登陸機率。",
                 color=Color(0xFFBDD8E9),fontSize=14.sp)
-            Text("資料來源：中央氣象署 W-C0034-003",color=Color(0xFFBDD8E9),fontSize=14.sp)
+            Text("資料更新後會顯示官方區間；可至氣象署查詢最新資訊。",color=Color(0xFFBDD8E9),fontSize=14.sp)
         }
         if(typhoonWarnings.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
@@ -184,7 +184,7 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
         TyphoonViewport.forPoints(reference,canvasSize.width.toFloat(),canvasSize.height.toFloat(),pxPad).rasterBounds()
         else null
     val terrain=rememberNlscMap(bounds,canvasSize.width,canvasSize.height)
-    Canvas(Modifier.fillMaxWidth().height(290.dp)
+    Canvas(Modifier.fillMaxWidth().height(370.dp)
         .onSizeChanged { canvasSize=it }
         .background(Color(0xFF102D4A),RoundedCornerShape(18.dp))) {
         val pad=20.dp.toPx()

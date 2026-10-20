@@ -9,9 +9,10 @@ WORKFLOW=ROOT.parent/'.github/workflows/build-apk.yml'
 class MajorV23Contract(unittest.TestCase):
     def test_workflow_is_new_major_and_tracks_real_code(self):
         w=WORKFLOW.read_text()
-        self.assertIn('23000000 + GITHUB_RUN_NUMBER',w)
-        self.assertIn('23.0.$GITHUB_RUN_NUMBER',w)
-        self.assertIn('^v(22|23)',w)
+        # V25 replaces V23 as the next major; old release tags remain upgrade inputs.
+        self.assertIn('25000000 + GITHUB_RUN_NUMBER',w)
+        self.assertIn('25.0.$GITHUB_RUN_NUMBER',w)
+        self.assertIn('^v(22|23|25)',w)
         self.assertNotIn('source_archive=',w)
         self.assertIn(':app:testDebugUnitTest',w)
         self.assertIn('expected-build-source-proof.json',w)

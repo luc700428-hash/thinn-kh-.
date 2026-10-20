@@ -133,7 +133,7 @@ class WeatherViewModel(
     fun removeSavedCity(id:String) {
         mutableState.update{it.copy(savedCities=SavedCityStore.remove(context,id))}
     }
-    /** Only the explicit Search button / keyboard IME action invokes the API. */
+    /** Debounced query or explicit search; preserve earlier saved locations. */
     fun search(query: String) {
         searchJob?.cancel()
         if (query.trim().length < 2) {
@@ -144,8 +144,25 @@ class WeatherViewModel(
         searchJob = viewModelScope.launch {
             mutableState.update { it.copy(searching=true,searchExecuted=true,searchError=null,searchResults=emptyList()) }
             try {
-                val results = AppContainer.geoApi.search(query.trim()).results.orEmpty().map{it.asCity()}
-                mutableState.update{it.copy(searching=false,searchResults=results)}
+                val name=query.trim().replace('臺','台')
+                val alternatives=listOf(query.trim(),name,
+                    name.substringAfterLast('·').trim(),
+                    name.removeSuffix("鄉").removeSuffix("鎮").removeSuffix("區").removeSuffix("市"))
+                    .filter { it.length >= 2 }.distinct().take(4)
+                val candidates=mutableListOf<WeatherCity>()
+                var apiSucceeded=false
+                for(term in alternatives) {
+                    try {
+                        val incoming=AppContainer.geoApi.search(term,count=40).results.orEmpty().map { it.asCity() }
+                        candidates.addAll(incoming)
+                        apiSucceeded=true
+                    } catch (cancel: CancellationException) { throw cancel }
+                      catch (_:Exception) { /* try another spelling; never invent locations */ }
+                    if(candidates.size>=30) break
+                }
+                val results=candidates.distinctBy { it.id }.take(40)
+                mutableState.update {it.copy(searching=false,searchResults=results,
+                    searchError=if(!apiSucceeded) "目前無法連線搜尋地點，請稍後再試" else null)}
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { mutableState.update { it.copy(searching=false,searchResults=emptyList(),
                 searchError="地點搜尋失敗，請確認網路後重試") } }
