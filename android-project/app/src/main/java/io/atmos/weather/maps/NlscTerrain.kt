@@ -34,16 +34,17 @@ object NlscTerrain {
             "地形底圖 © 內政部國土測繪中心",8f*density,size.height-9f*density,paint)
     }
 
-    private const val MAX_IMAGE_BYTES = 2_800_000
+    // EMAP5 was the older contour-heavy backdrop; EMAP6 is cleaner and easier to read.
+    private const val MAX_IMAGE_BYTES = 4_000_000
     suspend fun fetch(bounds: Bounds, width:Int, height:Int):ImageBitmap? = withContext(Dispatchers.IO) {
         if (!bounds.valid() || width < 50 || height < 50) return@withContext null
-        val scale = minOf(1.0, 1024.0 / maxOf(width,height))
+        val scale = minOf(1.5, 1600.0 / maxOf(width,height))
         val w = (width*scale).toInt().coerceAtLeast(50)
         val h = (height*scale).toInt().coerceAtLeast(50)
         val bbox=String.format(Locale.US,"%.6f,%.6f,%.6f,%.6f",bounds.west,bounds.south,bounds.east,bounds.north)
         // WMS 1.1.1 and EPSG:4326 use longitude,latitude order.
         val url="https://wms.nlsc.gov.tw/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"+
-            "&LAYERS=EMAP5&STYLES=&SRS=EPSG%3A4326&FORMAT=image%2Fjpeg"+
+            "&LAYERS=EMAP6&STYLES=&SRS=EPSG%3A4326&FORMAT=image%2Fjpeg"+
             "&BBOX="+URLEncoder.encode(bbox,"UTF-8")+"&WIDTH=$w&HEIGHT=$h"
         var conn:HttpsURLConnection?=null
         try {

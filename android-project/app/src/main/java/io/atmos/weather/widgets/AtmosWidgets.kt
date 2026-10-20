@@ -83,8 +83,18 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
     val viewSize=LocalSize.current
     val wide=viewSize.width>220.dp
     // Glance uses a bitmap because it cannot run a live 3D renderer or blur the launcher wallpaper.
-    val bitmap=remember(variant,city,temp,condition,scene,viewSize,opacity,edge){
-        WeatherArtRenderer.widgetBitmap(scene,condition,variant,glassOpacity=opacity,edgeLight=edge)
+    val lightPhase=((System.currentTimeMillis()/300_000L)%4).toInt()
+    val bitmap=remember(variant,city,temp,condition,scene,viewSize,opacity,edge,lightPhase){
+        WeatherArtRenderer.widgetBitmap(scene,condition,variant,glassOpacity=opacity,edgeLight=edge,
+            lightPhase=lightPhase)
+    }
+    val moodText = when {
+        condition==WeatherCondition.THUNDERSTORM -> "⚡ 雷雨來了，我陪你留意天氣"
+        condition in setOf(WeatherCondition.RAIN,WeatherCondition.FREEZING_RAIN) -> "☔ 帶把傘，我幫你看著雨勢"
+        condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET) -> "❄ 今天是雪白的天氣"
+        scene.nightLight>.4f -> "☾ 夜深了，天氣仍在守候"
+        condition==WeatherCondition.CLEAR -> "☀ 陽光剛好，出門走走吧"
+        else -> "✦ 今天的天空也有故事"
     }
     val widgetTypography = WidgetTypography(fontScale,fontWeight)
     val white=Color.White
@@ -131,6 +141,10 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
                     WText(temp,white,if(wide) 40 else 31,true)
                     WText("${condition.label()} / ${if(condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)) "降雪" else "降雨"} $rain",soft,11)
                 }
+            }
+            if(viewSize.height>170.dp && wide) {
+                Spacer(GlanceModifier.height(5.dp))
+                WText(moodText,soft,11)
             }
             if(viewSize.height>136.dp && wide){
                 Spacer(GlanceModifier.height(6.dp))

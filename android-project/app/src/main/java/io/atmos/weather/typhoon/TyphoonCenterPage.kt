@@ -14,6 +14,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -51,6 +56,26 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
     var loading by remember { mutableStateOf(false) }
     var officialProbability by remember { mutableStateOf<CwaWindProbability.Snapshot?>(null) }
     var probabilityLoading by remember { mutableStateOf(false) }
+    var googlePath by remember { mutableStateOf<List<WeatherLabLocalCsv.Position>>(emptyList()) }
+    var googleMessage by remember { mutableStateOf("尚未匯入 Google Weather Lab 路徑") }
+    val weatherLabPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if(uri != null) scope.launch {
+            try {
+                val csv=withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val bytes=stream.readNBytes(1_000_001)
+                        require(bytes.size<=1_000_000) { "檔案超過 1 MB" }
+                        bytes.toString(Charsets.UTF_8)
+                    } ?: error("無法讀取 CSV")
+                }
+                googlePath=WeatherLabLocalCsv.parse(csv)
+                googleMessage="已匯入 ${googlePath.size} 個 Google AI 預測座標（僅本機比較）"
+            } catch(_:Exception) {
+                googlePath=emptyList()
+                googleMessage="無法讀取路徑，請確認是 Weather Lab 匯出的 CSV"
+            }
+        }
+    }
     fun refresh() {
         if(loading) return
         loading=true; status="查詢官方資料中…"
@@ -95,10 +120,39 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
             Text(status,color=Color.White,fontSize=15.sp)
         }
         Spacer(Modifier.height(14.dp))
-        if(fixes.isNotEmpty()) {
-            OfficialTrackPlot(fixes,verifiedTracks)
+        if(fixes.isNotEmpty() || googlePath.isNotEmpty()) {
+            if (googlePath.isEmpty()) OfficialTrackPlot(fixes,verifiedTracks)
+            else OfficialTrackPlot(fixes,verifiedTracks,googlePath)
             Spacer(Modifier.height(12.dp))
-            Text("官方預報路徑 · 台灣、澎湖、金門、馬祖",color=Color(0xFFCDE7F3),fontSize=14.sp)
+            Text(if(fixes.isNotEmpty()) "官方預報路徑 · 台灣、澎湖、金門、馬祖" else "Weather Lab 本機匯入路徑 · 尚無官方路徑",                color=Color(0xFFCDE7F3),fontSize=14.sp)
+        }
+        Spacer(Modifier.height(15.dp))
+        Column(Modifier.fillMaxWidth()
+            .background(Color.White.copy(alpha=.075f),RoundedCornerShape(26.dp))
+            .border(1.dp,Color.White.copy(alpha=.15f),RoundedCornerShape(26.dp))
+            .padding(17.dp),verticalArrangement=Arrangement.spacedBy(11.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Icon(Icons.Rounded.AutoAwesome,null,tint=Color(0xFF9CE9FF))
+                Spacer(Modifier.width(9.dp))
+                Text("Google Weather Lab · AI 預測對照",fontSize=17.sp,color=Color.White)
+            }
+            Text("官方路徑以中央氣象署為準。Google 是實驗性 AI 預測，僅供比較。",
+                fontSize=14.sp,color=Color(0xFFCEE2F2))
+            Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                    .background(Color.White.copy(alpha=.13f))
+                    .clickable { link.openUri("https://deepmind.google.com/science/weatherlab") }
+                    .padding(13.dp),contentAlignment=Alignment.Center) {
+                    Text("開啟 Weather Lab ↗",color=Color.White,fontSize=14.sp)
+                }
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFF275C73))
+                    .clickable { weatherLabPicker.launch(arrayOf("*/*")) }
+                    .padding(13.dp),contentAlignment=Alignment.Center) {
+                    Text("匯入 CSV 對照",color=Color.White,fontSize=14.sp)
+                }
+            }
+            Text(googleMessage,color=Color(0xFFCEE2F2),fontSize=14.sp)
         }
         if(timelines.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
@@ -185,7 +239,8 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
 }
 
 @Composable
-private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<DatedTyphoonPosition>>) {
+private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<DatedTyphoonPosition>>,
+    googlePath:List<WeatherLabLocalCsv.Position> = emptyList()) {
     val displayPoints=remember(points) {
         points.filter { it.kind==TyphoonFix.Kind.OBSERVED }.takeLast(10) +
             points.filter { it.kind==TyphoonFix.Kind.FORECAST }.takeLast(16)
@@ -194,77 +249,105 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
     var mapZoom by remember { mutableFloatStateOf(1f) }
     var mapPan by remember { mutableStateOf(Offset.Zero) }
     val pxPad=with(LocalDensity.current) { 20.dp.toPx() }
-    val reference=displayPoints.map {it.latitude to it.longitude}+
+    val reference=displayPoints.map { it.latitude to it.longitude } +
+        googlePath.map { it.latitude to it.longitude } +
         TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
-    val bounds=if(canvasSize.width>60 && canvasSize.height>60)
-        TyphoonViewport.forPoints(reference,canvasSize.width.toFloat(),canvasSize.height.toFloat(),pxPad).rasterBounds()
-        else null
-    val terrain=rememberNlscMap(bounds,canvasSize.width,canvasSize.height)
-    Box(Modifier.fillMaxWidth().height(400.dp)
-        .clip(RoundedCornerShape(18.dp))
-        .background(Color(0xFF102D4A))
+    val baseline=remember(reference,canvasSize,pxPad) {
+        TyphoonViewport.forPoints(reference,canvasSize.width.toFloat().coerceAtLeast(1f),
+            canvasSize.height.toFloat().coerceAtLeast(1f),pxPad)
+    }
+    // Geographic camera: every pointer move reprojects the vectors and CWA track at native pixels.
+    // Camera is rendered through projection; request a fresh WMS BBOX after gestures settle.
+    val view=remember(baseline,mapZoom,mapPan) {
+        val scale=baseline.pxPerKm*mapZoom
+        TyphoonViewport(
+            baseline.originXKm - mapPan.x/scale,
+            baseline.originYKm + mapPan.y/scale,
+            scale,baseline.widthPx,baseline.heightPx,baseline.cosCenter)
+    }
+    val bounds=if(canvasSize.width>60 && canvasSize.height>60) view.rasterBounds() else null
+    val settledBounds by produceState<io.atmos.weather.maps.NlscTerrain.Bounds?>(
+        null,bounds) {
+        value=null
+        if(bounds!=null) { delay(420); value=bounds }
+    }
+    val terrain=rememberNlscMap(settledBounds,canvasSize.width,canvasSize.height)
+    val rasterReady=settledBounds==bounds && terrain!=null
+    Box(Modifier.fillMaxWidth().height(430.dp)
+        .clip(RoundedCornerShape(25.dp))
+        .background(Color(0xFF0B253B))
+        .border(1.dp,Color.White.copy(alpha=.19f),RoundedCornerShape(25.dp))
         .pointerInput(Unit) {
             detectTransformGestures { _, move, magnification, _ ->
-                val next=(mapZoom*magnification).coerceIn(1f,4f)
+                val next=(mapZoom*magnification).coerceIn(1f,8f)
                 mapZoom=next
-                val maxX=(size.width*(next-1f)/2f)
-                val maxY=(size.height*(next-1f)/2f)
+                val maxX=size.width*next*0.65f
+                val maxY=size.height*next*0.65f
                 mapPan=if(next<=1.01f) Offset.Zero else Offset(
                     (mapPan.x+move.x).coerceIn(-maxX,maxX),
                     (mapPan.y+move.y).coerceIn(-maxY,maxY))
             }
         }) {
-    Canvas(Modifier.matchParentSize().onSizeChanged { canvasSize=it }
-        .graphicsLayer {
-            scaleX=mapZoom; scaleY=mapZoom
-            translationX=mapPan.x; translationY=mapPan.y
-        }) {
-        val pad=20.dp.toPx()
-        val viewport=TyphoonViewport.forPoints(reference,size.width,size.height,pad)
-        if(terrain!=null) {
-            drawImage(terrain,dstSize=IntSize(size.width.toInt(),size.height.toInt()))
-            with(NlscTerrain) { drawCredit() }
-        } else {
-            with(TyphoonGeoBackdrop) { draw(viewport) }
-        }
-        fun p(point:TyphoonFix):Offset {
-            val (x,y)=viewport.project(point.longitude,point.latitude)
-            return Offset(x,y)
-        }
-        if(terrain==null) for(i in 1..3) {
-            val x=pad+(size.width-2*pad)*i/4
-            val y=pad+(size.height-2*pad)*i/4
-            drawLine(Color.White.copy(alpha=.13f),Offset(x,pad),Offset(x,size.height-pad),1.dp.toPx())
-            drawLine(Color.White.copy(alpha=.13f),Offset(pad,y),Offset(size.width-pad,y),1.dp.toPx())
-        }
-        verifiedTracks.forEach { track ->
-            for(i in 0 until track.size-1) {
-                val from=track[i];val to=track[i+1]
+        Canvas(Modifier.matchParentSize().onSizeChanged { canvasSize=it }) {
+            val viewport=view
+            if(rasterReady && terrain!=null) {
+                drawImage(terrain,dstSize=IntSize(size.width.toInt(),size.height.toInt()))
+                with(NlscTerrain) { drawCredit() }
+            } else {
+                // Crisp vector fallback while the new-resolution map loads.
+                with(TyphoonGeoBackdrop) { draw(viewport) }
+                for(i in 1..3) {
+                    val x=size.width*i/4f
+                    val y=size.height*i/4f
+                    drawLine(Color.White.copy(alpha=.07f),Offset(x,0f),Offset(x,size.height),1.dp.toPx())
+                    drawLine(Color.White.copy(alpha=.07f),Offset(0f,y),Offset(size.width,y),1.dp.toPx())
+                }
+            }
+            verifiedTracks.forEach { track ->
+                for(i in 0 until track.size-1) {
+                    val from=track[i];val to=track[i+1]
+                    val (x1,y1)=viewport.project(from.longitude,from.latitude)
+                    val (x2,y2)=viewport.project(to.longitude,to.latitude)
+                    drawLine(Color(0xFF66C7FF),Offset(x1,y1),Offset(x2,y2),
+                        strokeWidth=3.dp.toPx())
+                }
+            }
+            // Imported research data is NEVER represented as an official warning or CWA forecast.
+            for(i in 0 until googlePath.size-1) {
+                val from=googlePath[i];val to=googlePath[i+1]
                 val (x1,y1)=viewport.project(from.longitude,from.latitude)
                 val (x2,y2)=viewport.project(to.longitude,to.latitude)
-                drawLine(Color(0xFF69BDF5),Offset(x1,y1),Offset(x2,y2),
-                    strokeWidth=3.dp.toPx())
+                drawLine(Color(0xFFF6A8F3),Offset(x1,y1),Offset(x2,y2),
+                    strokeWidth=2.5.dp.toPx())
+            }
+            TyphoonGeoBackdrop.drawLabels(this,viewport)
+            displayPoints.forEach { pt ->
+                val color=when(pt.kind) {
+                    TyphoonFix.Kind.FORECAST->Color(0xFF66C7FF)
+                    TyphoonFix.Kind.OBSERVED->Color(0xFFFFD389)
+                    TyphoonFix.Kind.UNSPECIFIED->Color(0xFFDDE6EF)
+                }
+                val (x,y)=viewport.project(pt.longitude,pt.latitude)
+                val at=Offset(x,y)
+                drawCircle(color,5.dp.toPx(),at)
+                drawCircle(color.copy(alpha=.33f),10.dp.toPx(),at,style=Stroke(1.dp.toPx()))
             }
         }
-        // All four places stay geographically registered to NLSC raster or vector fallback.
-        TyphoonGeoBackdrop.drawLabels(this,viewport)
-        // Land outlines above are geographic references; official forecasts remain independent.
-        displayPoints.forEach { pt ->
-            val c=when(pt.kind) {
-                TyphoonFix.Kind.FORECAST->Color(0xFF69BDF5)
-                TyphoonFix.Kind.OBSERVED->Color(0xFFFFCE82)
-                TyphoonFix.Kind.UNSPECIFIED->Color(0xFFDDE6EF)
-            }
-            val at=p(pt)
-            drawCircle(c,5.dp.toPx(),at)
-            drawCircle(c.copy(alpha=.4f),9.dp.toPx(),at,style=Stroke(1.dp.toPx()))
+        Box(Modifier.align(Alignment.TopEnd).padding(12.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(Color(0xBC183950))
+            .clickable { mapZoom=1f;mapPan=Offset.Zero }
+            .padding(horizontal=14.dp,vertical=9.dp)) {
+            Text("重設視角",color=Color.White,fontSize=14.sp)
         }
     }
-    }
-    Row(Modifier.fillMaxWidth().padding(top=9.dp),
-        horizontalArrangement=Arrangement.spacedBy(17.dp),verticalAlignment=Alignment.CenterVertically) {
-        Text("● 實測位置",color=Color(0xFFFFCE82),fontSize=14.sp)
-        Text("● 官方預報",color=Color(0xFF69BDF5),fontSize=14.sp)
-        Text("雙指縮放地圖",color=Color(0xFFCDE1ED),fontSize=14.sp)
+    Column(Modifier.padding(top=9.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+            Text("● 實測位置",color=Color(0xFFFFD389),fontSize=14.sp)
+            Text("● 官方預報",color=Color(0xFF66C7FF),fontSize=14.sp)
+            if(googlePath.isNotEmpty()) Text("● Weather Lab（匯入）",color=Color(0xFFF6A8F3),fontSize=14.sp)
+        }
+        Text("雙指縮放、拖移 · 地圖將依視角重新載入清晰圖資",
+            color=Color(0xFFCCE3ED),fontSize=14.sp)
     }
 }

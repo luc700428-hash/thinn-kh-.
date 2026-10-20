@@ -243,7 +243,8 @@ object WeatherArtRenderer {
 
     /** Scenic Bitmap is generated from current chosen city, sky condition, day/night and landmark. */
     fun widgetBitmap(scene:WeatherScene,condition:WeatherCondition,variant:Int,
-        width:Int=520,height:Int=320,glassOpacity:Float=.66f,edgeLight:Float=.65f):Bitmap{
+        width:Int=520,height:Int=320,glassOpacity:Float=.66f,edgeLight:Float=.65f,
+        lightPhase:Int=0):Bitmap{
         val bm=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
         val canvas=Canvas(bm)
         val night=scene.nightLight>.4f
@@ -281,6 +282,44 @@ object WeatherArtRenderer {
         canvas.drawRoundRect(2f,2f,width-2f,height-2f,38f,38f,frame);frame.style=Paint.Style.FILL
         // Specular rim and short high-light streak emulate refractive glass instead of opaque background.
         line(canvas,37f,11f,width*.62f,11f,2f,AndroidColor.WHITE,76)
+        // thinn-khì's original expressive cloud companion (not a borrowed mascot).
+        // An optical highlight phase changes when Android refreshes the widget snapshot;
+        // RemoteViews/Glance does not support a permanent per-frame animation loop.
+        val phase=(lightPhase%4+4)%4
+        val mx=width*.80f;val my=height*.31f
+        val radius=width*.072f
+        p.reset();p.isAntiAlias=true
+        p.shader=RadialGradient(mx,my,radius*2.7f,
+            intArrayOf(AndroidColor.argb(140,205,237,255),AndroidColor.argb(0,180,226,255)),
+            null,Shader.TileMode.CLAMP)
+        canvas.drawCircle(mx,my,radius*2.7f,p);p.shader=null
+        val glowColor=if(storm)color("#CBDDFF") else if(night)color("#DBE9FF") else color("#FFF7E7")
+        circle(canvas,mx-radius*.43f,my-radius*.18f,radius*.58f,glowColor)
+        circle(canvas,mx+radius*.43f,my-radius*.21f,radius*.62f,glowColor)
+        circle(canvas,mx,my-radius*.47f,radius*.72f,glowColor)
+        round(canvas,mx-radius*.94f,my-radius*.25f,mx+radius*.94f,my+radius*.61f,
+            radius*.46f,glowColor)
+        val face=color("#27465E")
+        if(storm || condition==WeatherCondition.RAIN) {
+            // Protective, concerned expression in bad weather.
+            line(canvas,mx-radius*.52f,my+radius*.12f,mx-radius*.25f,my+radius*.15f,2.6f,face)
+            line(canvas,mx+radius*.24f,my+radius*.15f,mx+radius*.53f,my+radius*.12f,2.6f,face)
+        } else if(night) {
+            // Sleepy eyelids.
+            line(canvas,mx-radius*.49f,my+radius*.16f,mx-radius*.24f,my+radius*.16f,3f,face)
+            line(canvas,mx+radius*.23f,my+radius*.16f,mx+radius*.48f,my+radius*.16f,3f,face)
+        } else {
+            circle(canvas,mx-radius*.36f,my+radius*.14f,radius*.09f,face)
+            circle(canvas,mx+radius*.35f,my+radius*.14f,radius*.09f,face)
+        }
+        val mouth=android.graphics.RectF(mx-radius*.22f,my+radius*.21f,
+            mx+radius*.22f,my+radius*.46f)
+        val expression=paint(face).apply {style=Paint.Style.STROKE;strokeWidth=2.2f}
+        canvas.drawArc(mouth,15f,150f,false,expression);expression.style=Paint.Style.FILL
+        val sparkX=mx+radius*(1.45f+phase*.12f)
+        val sparkY=my-radius*(1.5f-phase*.1f)
+        line(canvas,sparkX-6f,sparkY,sparkX+6f,sparkY,1.9f,AndroidColor.WHITE,160)
+        line(canvas,sparkX,sparkY-6f,sparkX,sparkY+6f,1.9f,AndroidColor.WHITE,160)
         return bm
     }
 }
