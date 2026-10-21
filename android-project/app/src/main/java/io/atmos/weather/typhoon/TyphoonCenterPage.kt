@@ -198,8 +198,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                     !sameStormConfirmed -> "請先確認兩組資料屬於同一個颱風，才比較路徑距離。"
                     officialStormIds.size != 1 -> "目前無法唯一辨識官方颱風；不顯示可能誤導的比較。"
                     modelDifferences.isEmpty() -> "兩組預測時刻沒有對齊；不產生推測數值。"
-                    else -> "相同預報時刻的最新路徑位置差距：約 ${modelDifferences.last().distanceKm} 公里；"
-                        + "共 ${modelDifferences.size} 個可比對時刻。"
+                    else -> "相同預報時刻的最新路徑位置差距：約 ${modelDifferences.last().distanceKm} 公里；共 ${modelDifferences.size} 個可比對時刻。"
                 }
                 Text(comparisonText,color=Color(0xFFE0F5FD),fontSize=14.sp)
                 Text("只顯示中心座標差距，不代表哪一個模式一定較準。",
