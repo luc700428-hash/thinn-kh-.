@@ -17,11 +17,8 @@ object CwaOfficialGateway {
 
     suspend fun read(context:Context,dataset:String):JSONObject {
         require(dataset in datasets) { "不支援的中央氣象署資料集" }
-        if(dataset=="W-C0034-005") {
-            try { return readProxy(context,dataset) }
-            catch(cancel:kotlinx.coroutines.CancellationException) { throw cancel }
-            catch(_:Exception) { return readPublicTyphoon() }
-        }
+        // Always use our authenticated gateway. CWA requires a valid member API key;
+        // a sample/embedded key in a public APK is not a reliable or safe fallback.
         return readProxy(context,dataset)
     }
     private suspend fun readProxy(context:Context,dataset:String):JSONObject {
@@ -44,41 +41,39 @@ object CwaOfficialGateway {
             "官方資料來源驗證失敗"
         }
         val raw=data["payload"] as? String ?: error("官方資料內容不存在")
-        return JSONObject(raw)
+        val json=JSONObject(raw)
+        // The W-C0034-005 FILE API returns cwaopendata.Dataset.TropicalCyclones;
+        // the rest of the app expects records.TropicalCyclones. Normalize *only*
+        // verified official payloads and never manufacture a storm, fix or warning.
+        if(dataset=="W-C0034-005") {
+            if(json.optJSONObject("records")?.optJSONObject("TropicalCyclones") != null) return json
+            val envelope=json.optJSONObject("cwaopendata")
+                ?: error("中央氣象署熱帶氣旋回應缺少 cwaopendata")
+            val issued=io.atmos.weather.typhoon.VerifiedTrackPlanner.parseTime(envelope.optString("Sent"))
+                ?: error("中央氣象署熱帶氣旋資料缺少有效發布時間")
+            val age=java.time.Instant.now().epochSecond-issued.epochSecond
+            check(age in -600L..(36L*3600L)) { "中央氣象署熱帶氣旋資料過期" }
+            val datasetNode=envelope.optJSONObject("Dataset") ?: envelope.optJSONObject("dataset")
+                ?: error("中央氣象署熱帶氣旋資料結構不符")
+            val cyclones=datasetNode.optJSONObject("TropicalCyclones")
+                ?: error("中央氣象署熱帶氣旋欄位不存在")
+            return JSONObject().put("records",JSONObject().put("TropicalCyclones",cyclones))
+        }
+        return json
     }
-    /** Public trial endpoint for CWA typhoon tracks only. */
-    private suspend fun readPublicTyphoon():JSONObject = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        val url="https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-005?Authorization=rdec-key-123-45678-011121314&format=JSON"
-        val c=java.net.URL(url).openConnection() as javax.net.ssl.HttpsURLConnection
-        c.connectTimeout=10_000
-        c.readTimeout=15_000
-        c.instanceFollowRedirects=true
-        c.setRequestProperty("Accept","application/json")
-        try {
-            check(c.responseCode==200) { "中央氣象署公開資料 HTTP ${c.responseCode}" }
-            val limit=1_500_000
-            check(c.contentLengthLong<0 || c.contentLengthLong<=limit) { "颱風資料過大" }
-            val buffer=java.io.ByteArrayOutputStream()
-            c.inputStream.use { input ->
-                val bytes=ByteArray(8192)
-                while(true) {
-                    val n=input.read(bytes)
-                    if(n<0) break
-                    check(buffer.size()+n<=limit) { "颱風資料過大" }
-                    buffer.write(bytes,0,n)
-                }
-            }
-            val envelope=JSONObject(buffer.toString("UTF-8")).optJSONObject("cwaopendata")
-                ?: error("中央氣象署回應格式錯誤")
-            val sent=io.atmos.weather.typhoon.VerifiedTrackPlanner.parseTime(envelope.optString("Sent"))
-                ?: error("中央氣象署資料缺少發布時間")
-            val age=java.time.Instant.now().epochSecond-sent.epochSecond
-            check(age in -600L..(36L*3600L)) { "中央氣象署資料已過期" }
-            val dataset=envelope.optJSONObject("Dataset") ?: envelope.optJSONObject("dataset")
-                ?: error("中央氣象署資料集不存在")
-            val group=dataset.optJSONObject("TropicalCyclones")
-                ?: error("中央氣象署熱帶氣旋資料不存在")
-            JSONObject().put("records",JSONObject().put("TropicalCyclones",group))
-        } finally { c.disconnect() }
+    /** User-facing operational diagnosis. Never show CWA key, Firebase credentials or stack traces. */
+    fun describeFailure(error: Exception): String = when {
+        !SeismicPushRegistration.configured() -> "官方資料代理尚未設定；需要檢查 Firebase 專案設定。"
+        error is com.google.firebase.functions.FirebaseFunctionsException -> when(error.code) {
+            com.google.firebase.functions.FirebaseFunctionsException.Code.NOT_FOUND ->
+                "官方資料代理服務尚未部署，請檢查 readOfficialCwa 與 Functions 區域。"
+            com.google.firebase.functions.FirebaseFunctionsException.Code.UNAUTHENTICATED ->
+                "官方資料登入驗證失敗，請檢查 Firebase 驗證服務。"
+            com.google.firebase.functions.FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
+                "官方資料查詢額度不足，請稍後重試。"
+            else -> "官方資料服務暫時無法使用，請稍後重試。"
+        }
+        error is java.io.IOException -> "網路連線失敗，請確認網路後重試。"
+        else -> "官方資料格式或服務異常，請稍後重試。"
     }
 }

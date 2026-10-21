@@ -19,7 +19,13 @@ function datasetRule(dataset) {
 function officialUrl(dataset,key) {
   datasetRule(dataset);
   if (typeof key !== 'string' || !/^CWA-[A-Za-z0-9-]{18,90}$/.test(key)) throw new Error('CWA server key unavailable');
-  const url = new URL(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/${dataset}`);
+  // CWA's W-C0034-005 Tropical Cyclone product is a FILE API dataset.
+  // Using the REST datastore path for this product can return unavailable/invalid data.
+  // Other allowlisted datasets retain the established REST route.
+  const path = dataset === 'W-C0034-005'
+    ? `/fileapi/v1/opendataapi/${dataset}`
+    : `/api/v1/rest/datastore/${dataset}`;
+  const url = new URL(`https://opendata.cwa.gov.tw${path}`);
   url.searchParams.set('Authorization', key);
   url.searchParams.set('format', 'JSON');
   if (dataset.startsWith('E-')) url.searchParams.set('limit','15');
