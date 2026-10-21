@@ -6,9 +6,16 @@ JAVA=ROOT/'app/src/main/java/io/atmos/weather'
 class R11UITests(unittest.TestCase):
     def test_both_periods_visible_and_centered(self):
         s=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
-        self.assertIn('val otherSide=if(value==0) 1 else -1',s)
-        self.assertIn('cells[1].placeRelative(0,center+otherSide*rowHeight+offsetPx.roundToInt())',s)
-        self.assertNotIn('if(offsetPx!=0f) cells[1]',s)
+        # V25 design: AM always above PM, and dragging up selects PM.
+        self.assertIn('V25AlarmMeridiem.fromDrag(', s)
+        self.assertIn('val targetY=if(value==V25AlarmMeridiem.AM) 0.dp else 55.dp', s)
+        self.assertIn('.offset(y=selectedY)', s)
+        self.assertIn('Text("上午"', s)
+        self.assertIn('Text("下午"', s)
+        self.assertLess(s.index('Text("上午"'), s.index('Text("下午"'))
+        self.assertNotIn('val otherSide=if(value==0) 1 else -1', s)
+        core=(JAVA/'alarm/V25AlarmMeridiem.kt').read_text()
+        self.assertIn('if (totalDragPx < 0f) PM else AM', core)
     def test_official_only_track_and_taiwan_filter(self):
         s=(JAVA/'typhoon/OfficialStormTimeline.kt').read_text()
         for token in ('OfficialTyphoonTrack.extract','verifiedForecastSegments','isMovingTowardTaiwan','closest <= 900.0','closest < first-75.0'):

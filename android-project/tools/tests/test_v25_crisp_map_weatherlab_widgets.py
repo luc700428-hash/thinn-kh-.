@@ -29,7 +29,10 @@ class CrispMapGoogleWidgets(unittest.TestCase):
         w=(B/'widgets/AtmosWidgets.kt').read_text()
         self.assertIn('lightPhase:Int=0',a)
         self.assertIn('RadialGradient(mx,my',a)
-        self.assertIn('moodText',w)
+        # V25's weather companion is derived from real widget weather state.
+        self.assertIn('V25WidgetMood.forWeather(',w)
+        self.assertIn('WText("${mood.eyebrow} · ${mood.message}"',w)
+        self.assertIn('val mood=remember(condition,scene.nightLight,rain)',w)
         self.assertIn('val lightPhase=((System.currentTimeMillis()',w)
     def test_retains_signing_and_release_gate(self):
         root=Path(__file__).resolve().parents[2]
