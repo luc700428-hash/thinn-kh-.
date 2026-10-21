@@ -53,6 +53,8 @@ object OfficialStormTimeline {
     }
 
     fun parse(json: JSONObject): List<StormTimeline> {
+        // CWA W-C0034-005 REST/XML shapes are decoded from each typed fix, never cross-borrow metadata.
+        CwaCycloneForecast.timelines(json)?.let { return it }
         val trackPoints = OfficialTyphoonTrack.extract(json)
         val segments = VerifiedTrackPlanner.verifiedForecastSegments(trackPoints.map {
             DatedTyphoonPosition(it.stormId, it.latitude, it.longitude,

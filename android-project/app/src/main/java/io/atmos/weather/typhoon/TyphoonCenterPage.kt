@@ -100,7 +100,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
         loading=true; status="查詢官方資料中…"
         scope.launch {
             probabilityLoading=true
-            try { officialProbability=CwaWindProbability.read() }
+            try { officialProbability=CwaWindProbability.read(context) }
             catch (cancel:CancellationException) { throw cancel }
             catch (_:Exception) { officialProbability=null }
             finally { probabilityLoading=false }
@@ -111,7 +111,11 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                 val points=OfficialTyphoonTrack.extract(data)
                 fixes=points
                 timelines=OfficialStormTimeline.parse(data)
-                status=if(points.isEmpty()) "目前沒有可顯示的官方路徑" else ""
+                status=when {
+                    points.isEmpty() -> "目前沒有可顯示的官方路徑；也可能目前沒有活動熱帶氣旋"
+                    timelines.isEmpty() -> "已取得官方位置資料，但缺少可核對的連續預報；不畫推測路徑"
+                    else -> ""
+                }
             } catch (cancel:CancellationException) {throw cancel}
             catch (error:Exception) {
                 val reason=CwaOfficialGateway.describeFailure(error)

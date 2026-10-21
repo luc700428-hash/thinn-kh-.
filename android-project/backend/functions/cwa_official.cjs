@@ -71,4 +71,41 @@ async function requestDataset(dataset,key,{fetchImpl=globalThis.fetch,clock=Date
   try{return await work;}finally{pending.delete(dataset);}
 }
 function clearForTest(){cache.clear();pending.clear();}
-module.exports={DATASETS,datasetRule,officialUrl,requestDataset,clearForTest};
+const MAX_KMZ_BYTES=2_000_000;
+function officialKmzUrl(key) {
+  if (typeof key !== 'string' || !/^CWA-[A-Za-z0-9-]{18,90}$/.test(key)) throw Error('CWA key unavailable');
+  const url=new URL('https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-003');
+  url.searchParams.set('Authorization',key);
+  url.searchParams.set('format','KMZ');
+  return url;
+}
+const kmzCache={at:0,result:null,pending:null};
+async function requestKmz(key,{fetchImpl=globalThis.fetch,clock=Date.now}={}) {
+  const now=clock();
+  if(kmzCache.result && now-kmzCache.at<600_000) return {...kmzCache.result,fromCache:true};
+  if(kmzCache.pending) return kmzCache.pending;
+  const load=(async()=>{
+    const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),12_000);
+    try {
+      const r=await fetchImpl(officialKmzUrl(key),{signal:ctrl.signal,redirect:'follow',
+        headers:{Accept:'application/vnd.google-earth.kmz,application/zip,application/octet-stream'}});
+      if(!r.ok || !r.url?.startsWith('https://')) throw Error('CWA KMZ request failed');
+      if(Number(r.headers?.get?.('content-length'))>MAX_KMZ_BYTES) throw Error('KMZ too large');
+      const reader=r.body?.getReader?.();if(!reader) throw Error('KMZ stream unavailable');
+      const chunks=[];let count=0;
+      while(true){const {done,value}=await reader.read();if(done) break;
+        count+=value.byteLength;if(count>MAX_KMZ_BYTES){ctrl.abort();throw Error('KMZ too large');}
+        chunks.push(Buffer.from(value));}
+      const blob=Buffer.concat(chunks);
+      if(blob.length<4 || blob[0]!==0x50 || blob[1]!==0x4b) throw Error('Invalid KMZ signature');
+      const result={dataset:'W-C0034-003',source:'CWA_OFFICIAL_KMZ',fetchedAtMillis:clock(),
+        payloadBase64:blob.toString('base64'),fromCache:false};
+      kmzCache.at=clock();kmzCache.result=result;return result;
+    } finally {clearTimeout(timer);}
+  })();
+  kmzCache.pending=load;
+  try{return await load;}finally{kmzCache.pending=null;}
+}
+function clearKmzForTest(){kmzCache.at=0;kmzCache.result=null;kmzCache.pending=null;}
+
+module.exports={DATASETS,datasetRule,officialUrl,requestDataset,clearForTest,officialKmzUrl,requestKmz,clearKmzForTest};

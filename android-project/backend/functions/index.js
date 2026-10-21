@@ -10,7 +10,7 @@ admin.initializeApp();
 const store=admin.firestore();
 const secret=defineSecret('ALERT_GATEWAY_HMAC_KEY');
 const cwaSecret=defineSecret('CWA_API_KEY');
-const {datasetRule,requestDataset}=require('./cwa_official.cjs');
+const {datasetRule,requestDataset,requestKmz}=require('./cwa_official.cjs');
 const REGION='asia-east1';
 function tokenKey(token){return crypto.createHash('sha256').update(token).digest('hex');}
 function uid(request){
@@ -94,4 +94,20 @@ exports.readOfficialCwa = onCall({region:REGION,secrets:[cwaSecret],timeoutSecon
     // Deliberately do not forward CWA URLs, access tokens or raw upstream errors.
     throw new HttpsError('unavailable','中央氣象署資料暫時無法取得，請稍後再試');
   }
+});
+
+// CWA W-C0034-003 7-level wind probability KMZ, bounded and authenticated.
+// Requires the SAME Firebase project deployment + CWA_API_KEY secret as readOfficialCwa.
+exports.readOfficialCwaKmz = onCall({region:REGION,secrets:[cwaSecret],timeoutSeconds:35},async request=>{
+  const user=uid(request);
+  const quota=store.collection('cwa-kmz-query-throttle').doc(crypto.createHash('sha256').update(user+'|W-C0034-003').digest('hex'));
+  const now=Date.now();
+  const accepted=await store.runTransaction(async tx=>{
+    const prev=await tx.get(quota);
+    if(prev.exists && now-(Number(prev.data().at)||0)<3_000) return false;
+    tx.set(quota,{at:now,updatedAt:admin.firestore.FieldValue.serverTimestamp()});return true;
+  });
+  if(!accepted) throw new HttpsError('resource-exhausted','官方資料查詢過於頻繁');
+  try {return await requestKmz(cwaSecret.value());}
+  catch {throw new HttpsError('unavailable','官方七級風侵襲機率資料暫時無法取得');}
 });

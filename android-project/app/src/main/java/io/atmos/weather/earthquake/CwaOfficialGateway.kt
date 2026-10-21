@@ -15,6 +15,34 @@ object CwaOfficialGateway {
     private val datasets=setOf("E-A0015-001","E-A0016-001",
         "W-C0034-001","W-C0034-002","W-C0034-003","W-C0034-005")
 
+    /** Authenticated Firebase callable returns bounded, opaque official KMZ bytes. */
+    suspend fun readTyphoonProbabilityKmz(context:Context):ByteArray {
+        check(SeismicPushRegistration.init(context)) { "Firebase 未設定，無法取得官方七級風侵襲機率" }
+        val auth=FirebaseAuth.getInstance()
+        if(auth.currentUser==null) suspendCancellableCoroutine<Unit> { cont ->
+            auth.signInAnonymously().addOnSuccessListener { if(cont.isActive) cont.resume(Unit) }
+                .addOnFailureListener { if(cont.isActive) cont.resumeWithException(it) }
+        }
+        val region=BuildConfig.THINN_PUSH_FUNCTIONS_REGION.ifBlank { "asia-east1" }
+        val raw=suspendCancellableCoroutine<Any?> { cont ->
+            FirebaseFunctions.getInstance(region).getHttpsCallable("readOfficialCwaKmz").call()
+                .addOnSuccessListener { if(cont.isActive) cont.resume(it.data) }
+                .addOnFailureListener { if(cont.isActive) cont.resumeWithException(it) }
+        }
+        val reply=raw as? Map<*,*> ?: error("官方七級風資料代理回覆格式無效")
+        check(reply["dataset"]=="W-C0034-003" && reply["source"]=="CWA_OFFICIAL_KMZ") {
+            "官方七級風資料來源驗證失敗"
+        }
+        val encoded=reply["payloadBase64"] as? String ?: error("官方 KMZ 資料缺漏")
+        check(encoded.length in 1..3_000_000) { "官方 KMZ 資料過大" }
+        val bytes=android.util.Base64.decode(encoded,android.util.Base64.DEFAULT)
+        check(bytes.size in 4..2_000_000 && bytes[0]==0x50.toByte() && bytes[1]==0x4b.toByte()) {
+            "官方 KMZ 檔案格式無效"
+        }
+        return bytes
+    }
+
+
     suspend fun read(context:Context,dataset:String):JSONObject {
         require(dataset in datasets) { "不支援的中央氣象署資料集" }
         // Always use our authenticated gateway. CWA requires a valid member API key;

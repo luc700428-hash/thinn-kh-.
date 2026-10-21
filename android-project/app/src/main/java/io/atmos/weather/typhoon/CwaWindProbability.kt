@@ -7,13 +7,11 @@ import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.net.URL
 import java.util.zip.ZipInputStream
-import javax.net.ssl.HttpsURLConnection
 
 /** CWA W-C0034-003: official 7-BF wind-circle strike-probability KMZ.
  *  No track-derived probabilities, no 0% for missing coverage.
- *  Public *demo* credential is a temporary availability fallback, NOT a production API key.
+ *  Requires deployed authenticated Firebase KMZ proxy and CWA secret; returns unavailable otherwise.
  */
 object CwaWindProbability {
     private const val MAX_DOWNLOAD=6_000_000
@@ -21,9 +19,6 @@ object CwaWindProbability {
     private const val MAX_POLYGONS=1000
     private const val MAX_VERTICES=80_000
     private const val CACHE_MS=20L*60_000L
-    private const val URL_KMZ="https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/"+
-        "W-C0034-003?Authorization=rdec-key-123-45678-011121314&downloadType=WEB&format=KMZ"
-
     data class Coordinate(val lon:Double,val lat:Double)
     data class Region(val label:String,val outer:List<Coordinate>,val holes:List<List<Coordinate>>)
     data class Snapshot(val regions:List<Region>,val fetchedAt:Long,val sourceUpdatedAt:Long?) {
@@ -42,41 +37,29 @@ object CwaWindProbability {
     @Volatile private var cached:Snapshot?=null
     private fun fallback(now:Long,reason:FetchState):Snapshot? {
         val previous=validCache(now)
-        fetchState=if(previous==null) reason else FetchState.CACHED
+        // A cached snapshot older than the usable cache window must never be
+        // presented as a fresh official probability update after network failure.
+        val last=cached
+        fetchState=when {
+            previous!=null -> FetchState.CACHED
+            last!=null && now-last.fetchedAt >= 60L*60_000L -> FetchState.STALE
+            else -> reason
+        }
         return previous
     }
 
-    suspend fun read():Snapshot? = withContext(Dispatchers.IO) {
+    /** Server-authenticated CWA KMZ bytes; no production key is stored in the APK. */
+    suspend fun read(context:android.content.Context):Snapshot? = withContext(Dispatchers.IO) {
         val now=System.currentTimeMillis()
-        if(now-lastAttempt<CACHE_MS) return@withContext cached?.takeIf { now-it.fetchedAt<60L*60_000L }
+        if(now-lastAttempt<CACHE_MS) return@withContext validCache(now)
         lastAttempt=now
-        var conn:HttpsURLConnection?=null
         try {
-            conn=URL(URL_KMZ).openConnection() as HttpsURLConnection
-            conn.connectTimeout=10_000; conn.readTimeout=12_000
-            conn.instanceFollowRedirects=false
-            conn.setRequestProperty("Accept","application/vnd.google-earth.kmz, application/zip, */*")
-            if(conn.responseCode!=200 || conn.contentLengthLong>MAX_DOWNLOAD)
-                return@withContext fallback(now,FetchState.UNAVAILABLE)
-            val buf=ByteArrayOutputStream()
-            conn.inputStream.use { input ->
-                val chunk=ByteArray(8192)
-                while(true) {
-                    val n=input.read(chunk)
-                    if(n<0) break
-                    if(buf.size()+n>MAX_DOWNLOAD) return@withContext fallback(now,FetchState.UNAVAILABLE)
-                    buf.write(chunk,0,n)
-                }
-            }
-            val regions=parseKmz(buf.toByteArray())
+            val bytes=io.atmos.weather.earthquake.CwaOfficialGateway.readTyphoonProbabilityKmz(context)
+            val regions=parseKmz(bytes)
             if(regions.isEmpty()) return@withContext fallback(now,FetchState.NO_USABLE_REGIONS)
-            // A stale Last-Modified timestamp is not a live probability product.
-            val m=conn.lastModified.takeIf { it>0 }
-            if(m!=null && now-m>48L*3600_000L) return@withContext fallback(now,FetchState.STALE)
-            Snapshot(regions,now,m).also { cached=it; fetchState=FetchState.CURRENT }
+            Snapshot(regions,now,null).also { cached=it; fetchState=FetchState.CURRENT }
         } catch (cancel:CancellationException) { throw cancel }
           catch (_:Exception) { fallback(now,FetchState.UNAVAILABLE) }
-        finally { conn?.disconnect() }
     }
 
     private fun validCache(now:Long)=cached?.takeIf { now-it.fetchedAt<60L*60_000L }

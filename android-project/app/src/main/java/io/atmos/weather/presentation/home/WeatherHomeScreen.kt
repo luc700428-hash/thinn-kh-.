@@ -259,7 +259,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         value=null
         if(officialStormActive || verifiedTyphoonWarning!=null) {
             while(true) {
-                val snapshot=io.atmos.weather.typhoon.CwaWindProbability.read()
+                val snapshot=io.atmos.weather.typhoon.CwaWindProbability.read(context)
                 value=snapshot?.at(state.city.coordinate.longitude,state.city.coordinate.latitude)
                 kotlinx.coroutines.delay(20*60_000L)
             }
