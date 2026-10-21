@@ -225,15 +225,30 @@ class ExpTechSeismicService : Service() {
         }
         live.update { it.copy(lastEewAt=time) }
         ExpTechRealtimeParser.parseEew(raw).forEach { quake ->
-            // In particular, Japanese EEW that does not affect Taiwan/islands must not
-            // reach the alert, speech, focus-island or recent-event display pipeline.
+            // Exclude unrelated foreign events from ALL presentation and alert paths.
             if (!TaiwanEewScope.relevant(quake)) return@forEach
+            if (quake.cancelled) {
+                // A verified, timely cancellation removes a matching active incident,
+                // never rings, and cannot clear a newer revision of the same event.
+                val cancellationAge=time-quake.issuedAtMs
+                if (!quake.test && cancellationAge in -15_000L..120_000L) {
+                    live.update { state ->
+                        val active=state.incident
+                        if(active != null && active.id==quake.id && quake.serial>=active.serial)
+                            state.copy(incident=null,
+                                recentIncidents=state.recentIncidents.filterNot { it.id==quake.id })
+                        else state
+                    }
+                }
+                return@forEach
+            }
+            // Old / simulation / replay frames must not enter the *visible* live list.
+            if (!ExpTechRealtimeParser.isFresh(quake,time)) return@forEach
             live.update { state ->
                 state.copy(incident=quake, recentIncidents=(listOf(quake) + state.recentIncidents.filterNot {
                     it.id==quake.id && it.serial==quake.serial
                 }).take(20))
             }
-            if (!ExpTechRealtimeParser.isFresh(quake,time)) return@forEach
             val prefs=getSharedPreferences("thinn_seismic_v15",Context.MODE_PRIVATE)
             val previousId = prefs.getString("last_realtime_eew_id",null)
             // Different earthquakes can interleave. A single global (id, serial)

@@ -19,20 +19,28 @@ class StationDetectionGate {
     private var lastSentMs=Long.MIN_VALUE
     fun observe(readings:List<Reading>,now:Long,enabled:Set<Threshold>):Trigger? {
         if(enabled.isEmpty()) { streak=0;lastThreshold=null; return null }
-        // Use the highest enabled scenario rather than generating five duplicate alerts.
-        val best=readings.asSequence().filter { it.stationId.isNotBlank() }
-            .flatMap { station ->
-                sequenceOf(
-                    Triple(Threshold.GAL_STRONG,station.pgaGal,200.0),
-                    Triple(Threshold.DETECT_STRONG,station.intensity,4.0),
-                    Triple(Threshold.GAL_MEDIUM,station.pgaGal,8.0),
-                    Triple(Threshold.DETECT_MEDIUM,station.intensity,2.0),
-                    Triple(Threshold.DETECT_WEAK,station.intensity,1.0))
-                    .filter { (threshold,value,min) -> threshold in enabled && value!=null && value.isFinite() && value>=min }
-                    .map { (threshold,value,_) -> Trigger(threshold,station.stationId,value!!) }
-            }.firstOrNull()
+        // Rank across ALL stations, not by upstream JSON iteration order. This is
+        // an opt-in THIRD-PARTY station reminder, never an official earthquake warning.
+        val priority=listOf(
+            Triple(Threshold.GAL_STRONG,200.0,true),
+            Triple(Threshold.DETECT_STRONG,4.0,false),
+            Triple(Threshold.GAL_MEDIUM,8.0,true),
+            Triple(Threshold.DETECT_MEDIUM,2.0,false),
+            Triple(Threshold.DETECT_WEAK,1.0,false))
+        val best=priority.firstNotNullOfOrNull { (threshold,minimum,usesGal) ->
+            if(threshold !in enabled) null
+            else readings.asSequence().filter { it.stationId.isNotBlank() }
+                .mapNotNull { station ->
+                    val value=if(usesGal) station.pgaGal else station.intensity
+                    if(value!=null && value.isFinite() && value>=minimum)
+                        Trigger(threshold,station.stationId,value)
+                    else null
+                }.sortedWith(compareByDescending<Trigger> { it.value }.thenBy { it.stationId })
+                .firstOrNull()
+        }
         if(best==null) { streak=0;lastThreshold=null;return null }
-        if(best.stationId==lastStation && best.threshold==lastThreshold && now-lastSampleMs in 0..12_000L) streak++
+        // The same timestamp or a clock rollback cannot count as another frame.
+        if(best.stationId==lastStation && best.threshold==lastThreshold && now-lastSampleMs in 1..12_000L) streak++
         else streak=1
         lastStation=best.stationId;lastThreshold=best.threshold;lastSampleMs=now
         if(streak<3 || (lastSentMs!=Long.MIN_VALUE && now-lastSentMs<120_000L)) return null
