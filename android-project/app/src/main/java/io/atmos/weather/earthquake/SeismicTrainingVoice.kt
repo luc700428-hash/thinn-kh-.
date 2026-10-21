@@ -25,10 +25,7 @@ class SeismicTrainingVoice(context: Context, incident: EewIncident, place:Seismi
                 if(!active.get()) { tts?.shutdown() }
                 else if(status==TextToSpeech.SUCCESS && tts!=null) {
                     engine=tts
-                    val available=tts.isLanguageAvailable(Locale.TAIWAN)
-                    if(available>=TextToSpeech.LANG_AVAILABLE) tts.language=Locale.TAIWAN
-                    else tts.language=Locale.CHINESE
-                    tts.setSpeechRate(.97f)
+                    io.atmos.weather.voice.V25TaiwanVoice.configure(tts)
                     tts.setAudioAttributes(AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())

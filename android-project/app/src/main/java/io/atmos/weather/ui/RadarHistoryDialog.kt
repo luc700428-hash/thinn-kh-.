@@ -51,6 +51,9 @@ fun RadarHistoryDialog(onClose: () -> Unit) {
             GlassTextButton(onClick=onClose,modifier=Modifier.fillMaxWidth()) {
                 Text("關閉歷史雷達｜衛星來源未開通", color=Color.White)
             }
+            GlassTextButton(onClick={web.reload()},modifier=Modifier.fillMaxWidth()) {
+                Text("重新載入最新雷達圖",color=Color.White)
+            }
             AndroidView(factory={web},modifier=Modifier.fillMaxWidth().weight(1f))
         }
     }

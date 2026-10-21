@@ -598,20 +598,16 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
                 Spacer(Modifier.height(6.dp))
                 if (snapshot != null) {
-                    CenteredTemperature(snapshot.temperatureC.roundToInt(), appearance)
-                    Column(Modifier.fillMaxWidth().padding(horizontal=9.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(Brush.verticalGradient(listOf(
-                            Color.White.copy(alpha=.17f),Color.White.copy(alpha=.07f))))
-                        .border(1.dp,White.copy(alpha=.28f),RoundedCornerShape(28.dp))
-                        .padding(horizontal=18.dp,vertical=15.dp),
-                        horizontalAlignment=Alignment.CenterHorizontally,
-                        verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                        Text(if(heavyRain && !stormy) "強降雨" else snapshot.condition.label(),
-                            color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
-                        Text("最高 ${snapshot.maxTempC?.roundToInt()?.let { "$it°" } ?: "—"}    最低 ${snapshot.minTempC?.roundToInt()?.let { "$it°" } ?: "—"}    體感 ${snapshot.feelsLikeC?.roundToInt()?.let { "$it°" } ?: "—"}",
-                            color=TextSoft,fontSize=15.sp,textAlign=TextAlign.Center)
-                    }
+                    io.atmos.weather.next.V25HomeHero(
+                        temperature=snapshot.temperatureC.roundToInt(),
+                        condition=snapshot.condition.name,
+                        conditionLabel=if(heavyRain && !stormy) "強降雨" else snapshot.condition.label(),
+                        high=snapshot.maxTempC?.roundToInt(),
+                        low=snapshot.minTempC?.roundToInt(),
+                        feelsLike=snapshot.feelsLikeC?.roundToInt(),
+                        isNight=!snapshot.isDay,
+                        rainProbability=snapshot.nextHourRainProbabilityPct
+                    )
                 } else if(state.loading) {
                     Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=White,modifier=Modifier.align(Alignment.CenterHorizontally))
                 } else {

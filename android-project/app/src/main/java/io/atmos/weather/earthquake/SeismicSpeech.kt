@@ -58,9 +58,7 @@ object SeismicSpeech {
                     starting=false
                     val prepared=pendingEngine
                     if(status==TextToSpeech.SUCCESS && prepared!=null) {
-                        val available=prepared.isLanguageAvailable(Locale.TAIWAN)
-                        prepared.language=if(available>=TextToSpeech.LANG_AVAILABLE) Locale.TAIWAN else Locale.CHINESE
-                        prepared.setSpeechRate(.97f)
+                        io.atmos.weather.voice.V25TaiwanVoice.configure(prepared)
                         prepared.setAudioAttributes(AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())

@@ -88,13 +88,9 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
         WeatherArtRenderer.widgetBitmap(scene,condition,variant,glassOpacity=opacity,edgeLight=edge,
             lightPhase=lightPhase)
     }
-    val moodText = when {
-        condition==WeatherCondition.THUNDERSTORM -> "⚡ 雷雨來了，我陪你留意天氣"
-        condition in setOf(WeatherCondition.RAIN,WeatherCondition.FREEZING_RAIN) -> "☔ 帶把傘，我幫你看著雨勢"
-        condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET) -> "❄ 今天是雪白的天氣"
-        scene.nightLight>.4f -> "☾ 夜深了，天氣仍在守候"
-        condition==WeatherCondition.CLEAR -> "☀ 陽光剛好，出門走走吧"
-        else -> "✦ 今天的天空也有故事"
+    val mood=remember(condition,scene.nightLight,rain) {
+        V25WidgetMood.forWeather(condition.name,scene.nightLight>.4f,
+            rain.removeSuffix("%").toIntOrNull() ?: -1)
     }
     val widgetTypography = WidgetTypography(fontScale,fontWeight)
     val white=Color.White
@@ -144,7 +140,7 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
             }
             if(viewSize.height>170.dp && wide) {
                 Spacer(GlanceModifier.height(5.dp))
-                WText(moodText,soft,11)
+                WText("${mood.eyebrow} · ${mood.message}",soft,14)
             }
             if(viewSize.height>136.dp && wide){
                 Spacer(GlanceModifier.height(6.dp))

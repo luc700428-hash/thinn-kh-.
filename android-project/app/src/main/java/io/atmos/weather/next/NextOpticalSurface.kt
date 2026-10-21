@@ -4,6 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.*
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -28,6 +32,16 @@ fun NextOpticalSurface(
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(cornerRadiusDp.dp)
+    val ctx=LocalContext.current
+    val reducedMotion=ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
+        .getBoolean("reduce_motion",false)
+    val opticalPhase=if(reducedMotion || reduceTransparency) 0.5f else {
+        val transition=rememberInfiniteTransition(label="v25-control-light")
+        val t by transition.animateFloat(initialValue=.36f,targetValue=.79f,
+            animationSpec=infiniteRepeatable(tween(5200),RepeatMode.Reverse),
+            label="v25-control-glimmer")
+        t
+    }
     val x = NextMotionTokens.clampedTouchX(touchX)
     val background = if (reduceTransparency) {
         Brush.verticalGradient(listOf(Color(0xFF263E51), Color(0xFF183044)))
@@ -44,7 +58,7 @@ fun NextOpticalSurface(
             drawRoundRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = if (pressed) .31f else .12f),
+                        Color.White.copy(alpha = if (pressed) .31f else .08f + opticalPhase*.07f),
                         Color(0xFF9FDFF7).copy(alpha = if (pressed) .11f else .03f),
                         Color.Transparent
                     ), center = light, radius = radius

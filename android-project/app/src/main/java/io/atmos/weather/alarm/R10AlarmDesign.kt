@@ -117,86 +117,52 @@ private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp
  */
 @Composable
 private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
-    val stepPx=with(LocalDensity.current) { 41.dp.toPx() }
-    val scope=rememberCoroutineScope()
-    val feedback=LocalHapticFeedback.current
+    val haptic=LocalHapticFeedback.current
+    val density=LocalDensity.current
+    val threshold=with(density) { 12.dp.toPx() }
+    val latestValue by rememberUpdatedState(value)
+    val latestUpdate by rememberUpdatedState(onValue)
+    var totalDrag by remember { mutableFloatStateOf(0f) }
     val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
-    val currentValue by rememberUpdatedState(value)
-    val updateValue by rememberUpdatedState(onValue)
-    var offsetPx by remember { mutableFloatStateOf(0f) }
-    var animation by remember { mutableStateOf<Job?>(null) }
-    // The inactive option remains visible at a stable detent even after release.
-    // AM is always above the selected PM, and PM below the selected AM.
-    val otherSide=if(value==0) 1 else -1
-    Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
-        .pointerInput(stepPx,reduceMotion) {
-            var dragged=false
-            var travel=0f
+    val targetY=if(value==V25AlarmMeridiem.AM) 0.dp else 55.dp
+    val selectedY by animateDpAsState(
+        targetValue=targetY,
+        animationSpec=if(reduceMotion) tween(durationMillis=1) else spring(
+            dampingRatio=0.86f,stiffness=420f),label="v25-am-pm-wheel")
+    val shape=RoundedCornerShape(22.dp)
+    Box(modifier.height(213.dp).clip(shape)
+        .pointerInput(threshold) {
             detectVerticalDragGestures(
-                onDragStart={
-                    animation?.cancel()
-                    // A fresh gesture starts at the selected, centered label.
-                    offsetPx=0f
-                    dragged=false
-                    travel=0f
-                },
-                onVerticalDrag={ change,dy ->
-                    change.consume()
-                    if(dy!=0f) {
-                        dragged=true
-                        travel+=dy
-                        offsetPx=travel.coerceIn(-stepPx*.98f,stepPx*.98f)
-                    }
-                },
+                onDragStart={totalDrag=0f},
+                onVerticalDrag={change,dy -> change.consume(); totalDrag+=dy},
                 onDragEnd={
-                    // Drag detection itself already checks system touch slop. There is
-                    // NO second distance or velocity threshold to accidentally reject PM.
-                    if(dragged) {
-                        val direction=if(travel>=0f) 1 else -1
-                        offsetPx=0f
-                        updateValue(1-currentValue)
-                        feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    // Labels never exchange places. Direction selects the specific row.
+                    val next=V25AlarmMeridiem.fromDrag(latestValue,totalDrag,threshold)
+                    if(next!=latestValue) {
+                        latestUpdate(next)
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     }
-                    val visualStart=offsetPx
-                    animation=scope.launch {
-                        if(!reduceMotion) {
-                            Animatable(visualStart).animateTo(0f,tween(durationMillis=145)) {
-                                offsetPx=this.value
-                            }
-                        }
-                        offsetPx=0f
-                    }
+                    totalDrag=0f
                 },
-                onDragCancel={
-                    animation=scope.launch {
-                        val visualStart=offsetPx
-                        if(!reduceMotion) {
-                            Animatable(visualStart).animateTo(0f,tween(durationMillis=110)) {
-                                offsetPx=this.value
-                            }
-                        }
-                        offsetPx=0f
-                    }
-                }
+                onDragCancel={totalDrag=0f}
             )
         },contentAlignment=Alignment.Center) {
-        Layout(content={
-            Box(Modifier.fillMaxWidth().height(41.dp),contentAlignment=Alignment.Center) {
-                Text(if(value==0) "上午" else "下午",color=Color.White,fontSize=30.sp,
-                    fontWeight=FontWeight.Light,maxLines=1)
-            }
-            Box(Modifier.fillMaxWidth().height(41.dp),contentAlignment=Alignment.Center) {
-                Text(if(value==0) "下午" else "上午",color=Color.White.copy(alpha=.60f),
-                    fontSize=23.sp,fontWeight=FontWeight.Light,maxLines=1)
-            }
-        },modifier=Modifier.fillMaxSize()) {measurables,constraints ->
-            val rowHeight=41.dp.roundToPx()
-            val cells=measurables.map {it.measure(Constraints.fixed(constraints.maxWidth,rowHeight))}
-            layout(constraints.maxWidth,constraints.maxHeight) {
-                val center=(constraints.maxHeight-rowHeight)/2
-                cells[0].placeRelative(0,center+offsetPx.roundToInt())
-                cells[1].placeRelative(0,center+otherSide*rowHeight+offsetPx.roundToInt())
+        Box(Modifier.fillMaxWidth().height(102.dp)) {
+            Box(Modifier.fillMaxWidth().height(47.dp).offset(y=selectedY)
+                .clip(RoundedCornerShape(17.dp))
+                .background(Color.White.copy(alpha=.16f))
+                .border(1.dp,Color.White.copy(alpha=.36f),RoundedCornerShape(17.dp)))
+            Column(Modifier.fillMaxWidth()) {
+                Box(Modifier.fillMaxWidth().height(47.dp),contentAlignment=Alignment.Center) {
+                    Text("上午",color=Color.White.copy(alpha=if(value==0) 1f else .55f),
+                        fontSize=if(value==0) 28.sp else 23.sp,fontWeight=FontWeight.Light)
+                }
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.fillMaxWidth().height(47.dp),contentAlignment=Alignment.Center) {
+                    Text("下午",color=Color.White.copy(alpha=if(value==1) 1f else .55f),
+                        fontSize=if(value==1) 28.sp else 23.sp,fontWeight=FontWeight.Light)
+                }
             }
         }
     }

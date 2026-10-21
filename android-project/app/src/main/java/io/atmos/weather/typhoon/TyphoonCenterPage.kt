@@ -58,6 +58,18 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
     var probabilityLoading by remember { mutableStateOf(false) }
     var googlePath by remember { mutableStateOf<List<WeatherLabLocalCsv.Position>>(emptyList()) }
     var googleMessage by remember { mutableStateOf("尚未匯入 Google Weather Lab 路徑") }
+    var sameStormConfirmed by remember { mutableStateOf(false) }
+    val officialStormIds = remember(fixes) {
+        fixes.filter { it.kind == TyphoonFix.Kind.FORECAST }
+            .map { it.stormId }.filter { it.isNotBlank() }.distinct()
+    }
+    val modelDifferences = remember(fixes, googlePath, sameStormConfirmed) {
+        if (!sameStormConfirmed || officialStormIds.size != 1) emptyList()
+        else V25StormComparison.compare(
+            fixes.filter { it.kind == TyphoonFix.Kind.FORECAST && it.stormId == officialStormIds[0] }
+                .map { V25StormComparison.Position(it.longitude,it.latitude,it.timestamp) },
+            googlePath.map { V25StormComparison.Position(it.longitude,it.latitude,it.time) })
+    }
     val weatherLabPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if(uri != null) scope.launch {
             try {
@@ -68,8 +80,15 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                         bytes.toString(Charsets.UTF_8)
                     } ?: error("無法讀取 CSV")
                 }
-                googlePath=WeatherLabLocalCsv.parse(csv)
-                googleMessage="已匯入 ${googlePath.size} 個 Google AI 預測座標（僅本機比較）"
+                val parsed=WeatherLabLocalCsv.parse(csv)
+                googlePath=parsed
+                sameStormConfirmed=false
+                // Store only in this app's private files; never upload research data.
+                withContext(Dispatchers.IO) {
+                    runCatching { context.openFileOutput("weatherlab_last.csv",android.content.Context.MODE_PRIVATE)
+                        .use { it.write(csv.toByteArray(Charsets.UTF_8)) } }
+                }
+                googleMessage="已匯入 ${googlePath.size} 個 AI 預測座標（本機資料，非即時更新）"
             } catch(_:Exception) {
                 googlePath=emptyList()
                 googleMessage="無法讀取路徑，請確認是 Weather Lab 匯出的 CSV"
@@ -98,7 +117,19 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
             finally {loading=false}
         }
     }
-    LaunchedEffect(Unit){refresh()}
+    LaunchedEffect(Unit){
+        val cached=withContext(Dispatchers.IO) {
+            runCatching { context.openFileInput("weatherlab_last.csv")
+                .bufferedReader().use { it.readText() } }.getOrNull()
+        }
+        if (!cached.isNullOrBlank() && cached.length <= 1_000_000) {
+            runCatching { WeatherLabLocalCsv.parse(cached) }.onSuccess {
+                googlePath=it
+                googleMessage="上次匯入的 AI 預測資料（非即時資料）"
+            }
+        }
+        refresh()
+    }
     Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
         .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
         .padding(horizontal=20.dp,vertical=20.dp)) {
@@ -153,6 +184,34 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                 }
             }
             Text(googleMessage,color=Color(0xFFCEE2F2),fontSize=14.sp)
+            if (googlePath.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth().clickable { sameStormConfirmed=!sameStormConfirmed }
+                    .padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Icon(if(sameStormConfirmed) Icons.Rounded.CheckBox
+                        else Icons.Rounded.CheckBoxOutlineBlank,
+                        "確認匯入資料所屬颱風",tint=Color(0xFFA6E4FA))
+                    Spacer(Modifier.width(8.dp))
+                    Text("確認 CSV 與目前官方颱風是同一個颱風",color=Color.White,
+                        fontSize=14.sp,modifier=Modifier.weight(1f))
+                }
+                val comparisonText=when {
+                    !sameStormConfirmed -> "請先確認兩組資料屬於同一個颱風，才比較路徑距離。"
+                    officialStormIds.size != 1 -> "目前無法唯一辨識官方颱風；不顯示可能誤導的比較。"
+                    modelDifferences.isEmpty() -> "兩組預測時刻沒有對齊；不產生推測數值。"
+                    else -> "相同預報時刻的最新路徑位置差距：約 ${modelDifferences.last().distanceKm} 公里；"
+                        + "共 ${modelDifferences.size} 個可比對時刻。"
+                }
+                Text(comparisonText,color=Color(0xFFE0F5FD),fontSize=14.sp)
+                Text("只顯示中心座標差距，不代表哪一個模式一定較準。",
+                    color=Color(0xFFCEE2F2),fontSize=14.sp)
+                Text("移除本機 Weather Lab 路徑資料",color=Color(0xFF9DE1FA),
+                    fontSize=14.sp,modifier=Modifier.clickable {
+                        googlePath=emptyList()
+                        sameStormConfirmed=false
+                        context.deleteFile("weatherlab_last.csv")
+                        googleMessage="尚未匯入 Google Weather Lab 路徑"
+                    }.padding(vertical=8.dp))
+            }
         }
         if(timelines.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
