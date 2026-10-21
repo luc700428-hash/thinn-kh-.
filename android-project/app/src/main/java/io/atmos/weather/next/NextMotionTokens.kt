@@ -25,5 +25,5 @@ object NextMotionTokens {
         dampingRatio = GENTLE_DAMPING,
         stiffness = GENTLE_STIFFNESS
     )
-    fun clampedTouchX(x: Float): Float = x.coerceIn(0f, 1f)
+    fun clampedTouchX(x: Float): Float = if (x.isFinite()) x.coerceIn(0f, 1f) else .5f
 }

@@ -2,12 +2,21 @@ package io.atmos.weather.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import io.atmos.weather.next.NextMotionTokens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
@@ -44,35 +53,72 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
     contentColor:Color=Color.White,content:@Composable ColumnScope.()->Unit) {
     val scope=rememberCoroutineScope()
     val context=LocalContext.current
+    val haptic=LocalHapticFeedback.current
     val reduceMotion=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
-    var offsetPx by remember { mutableFloatStateOf(750f) }
+    val density=LocalDensity.current
+    var sheetHeightPx by remember { mutableFloatStateOf(with(density) { 780.dp.toPx() }) }
+    var offsetPx by remember { mutableFloatStateOf(sheetHeightPx) }
+    var touching by remember { mutableStateOf(false) }
+    var closing by remember { mutableStateOf(false) }
     val animatedY by animateFloatAsState(offsetPx,
-        animationSpec=tween(if(reduceMotion)0 else 240),label="底部面板進退場")
+        animationSpec=if(reduceMotion || touching) snap() else NextMotionTokens.gentleSpring(),
+        label="底部面板全開半開回彈")
     LaunchedEffect(Unit) { offsetPx=0f }
     fun dismissAnimated() {
-        scope.launch { offsetPx=900f; delay(if(reduceMotion)0 else 240);onDismissRequest() }
+        if (closing) return
+        closing = true
+        scope.launch {
+            offsetPx=GlassSheetMotionPolicy.offset(GlassSheetMotionPolicy.Anchor.CLOSED,sheetHeightPx)
+            delay(if(reduceMotion)0 else 320)
+            onDismissRequest()
+        }
     }
     Dialog(onDismissRequest={dismissAnimated()},properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Box(Modifier.fillMaxSize(),contentAlignment=Alignment.BottomCenter) {
             Column(Modifier.fillMaxWidth().heightIn(max=780.dp)
+                .onSizeChanged { sheetHeightPx=it.height.toFloat().coerceAtLeast(1f) }
                 .offset { IntOffset(0,animatedY.toInt()) }
                 .clip(RoundedCornerShape(topStart=28.dp,topEnd=28.dp))
                 .background(ThinnOpticalMaterial.raised)
                 .border(1.dp,glassBorder,RoundedCornerShape(topStart=28.dp,topEnd=28.dp))
                 .thinnSpecularEdge(28.dp)
                 .navigationBarsPadding()) {
-                var dragged by remember { mutableFloatStateOf(0f) }
                 Box(Modifier.fillMaxWidth().height(36.dp)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(onVerticalDrag={change,amount->
-                            dragged=(dragged+amount).coerceIn(0f,750f)
-                            offsetPx=dragged
-                            change.consume()
-                        },onDragEnd={
-                            if(dragged>100f) dismissAnimated() else offsetPx=0f
-                            dragged=0f
-                        },onDragCancel={offsetPx=0f;dragged=0f})
+                    .pointerInput(sheetHeightPx) {
+                        detectVerticalDragGestures(
+                            onDragStart={ touching=true },
+                            onVerticalDrag={change,amount->
+                                offsetPx=GlassSheetMotionPolicy.boundedDrag(offsetPx+amount,sheetHeightPx)
+                                change.consume()
+                            },onDragEnd={
+                                touching=false
+                                val destination=GlassSheetMotionPolicy.release(offsetPx,sheetHeightPx)
+                                if(destination==GlassSheetMotionPolicy.Anchor.CLOSED) dismissAnimated()
+                                else {
+                                    offsetPx=GlassSheetMotionPolicy.offset(destination,sheetHeightPx)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            },onDragCancel={
+                                touching=false
+                                offsetPx=GlassSheetMotionPolicy.offset(
+                                    GlassSheetMotionPolicy.cancel(offsetPx,sheetHeightPx),sheetHeightPx)
+                            })
+                    }
+                    .semantics {
+                        contentDescription="底部面板，可上下拖曳調整高度"
+                        customActions=listOf(
+                            CustomAccessibilityAction("展開整個面板") {
+                                if(!closing) offsetPx=0f
+                                true
+                            },
+                            CustomAccessibilityAction("半展開面板") {
+                                if(!closing) offsetPx=GlassSheetMotionPolicy.offset(
+                                    GlassSheetMotionPolicy.Anchor.HALF,sheetHeightPx)
+                                true
+                            },
+                            CustomAccessibilityAction("關閉面板") { dismissAnimated();true }
+                        )
                     },contentAlignment=Alignment.Center) {
                     Box(Modifier.size(width=42.dp,height=5.dp).clip(RoundedCornerShape(50))
                         .background(Color.White.copy(alpha=.64f)))

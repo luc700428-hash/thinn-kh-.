@@ -1,6 +1,7 @@
 package io.atmos.weather.next
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -123,9 +124,16 @@ fun NextReorderableToolDock(
                         label = "next-dock-scale"
                     )
                     val selected = action.id == selectedId
+                    val slidingX by animateFloatAsState(
+                        targetValue = if (activeDrag) localX else 0f,
+                        animationSpec = if (activeDrag || reduceMotion) snap()
+                            else NextMotionTokens.gentleSpring(),
+                        label = "next-dock-release-spring"
+                    )
                     Column(
                         modifier = Modifier.width(65.dp).height(63.dp)
-                            .graphicsLayer(scaleX = scale, scaleY = scale, translationX = if (reduceMotion) 0f else localX)
+                            .graphicsLayer(scaleX = scale, scaleY = scale,
+                                translationX = if (reduceMotion) 0f else slidingX)
                             .background(if (selected) Color(0x623C7C9D) else Color.Transparent, RoundedCornerShape(22.dp))
                             .pointerInput(action.id, itemWidthPx) {
                                 detectDragGesturesAfterLongPress(
