@@ -4,12 +4,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 JAVA = ROOT / 'app/src/main/java/io/atmos/weather'
 class SourceContractTests(unittest.TestCase):
-    def test_3d_landmark_models_retained_but_2d_art_removed(self):
-        assets=ROOT/'app/src/main/assets/landmarks'
-        for n in range(22):
-            self.assertTrue((assets/f'tw_{n:02}.glb').is_file())
-        self.assertFalse((assets/'previews').exists())
-        self.assertFalse((assets/'illustrations').exists())
+    def test_3d_landmark_models_removed_by_user_request(self):
+        self.assertFalse((ROOT/'app/src/main/assets/landmarks').exists())
+        self.assertFalse((JAVA/'visual/FilamentLandmark.kt').exists())
     def test_public_ota_not_github_api(self):
         ota=(JAVA/'update/AppUpdater.kt').read_text()
         self.assertIn('releases/latest/download/ota.json',ota)

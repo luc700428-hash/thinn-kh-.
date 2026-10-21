@@ -586,7 +586,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         .padding(horizontal=12.dp, vertical=8.dp),color=White,fontSize=15.sp,textAlign=TextAlign.Center)
                 }
                 Spacer(Modifier.height(28.dp))
-                // Weather, real place name and landmark form ONE immersive hero.
+                // Weather and real place name form ONE immersive hero.
                 Row(Modifier.fillMaxWidth().clickable { locationOpen=true },
                     horizontalArrangement=Arrangement.Center, verticalAlignment=Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Place,null,tint=White.copy(alpha=.87f),modifier=Modifier.size(17.dp))
@@ -1002,7 +1002,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Text("恢復預設外觀",color=White)
                 }
                 Spacer(Modifier.height(9.dp))
-                Text("桌面與背景更新最快約每 15 分鐘排程一次，實際可能受系統省電措施延遲；Widget 會同步最近一次天氣和地標快照。",color=TextSoft,fontSize=14.sp)
+                Text("桌面與背景更新最快約每 15 分鐘排程一次，實際可能受系統省電措施延遲；Widget 會同步最近一次天氣快照。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(20.dp))
                 Text("空氣品質",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.height(5.dp))
@@ -1765,13 +1765,6 @@ private fun WeatherCondition.label() = when(this){
     WeatherCondition.HAIL -> "冰雹";WeatherCondition.SLEET -> "雨夾雪";WeatherCondition.FREEZING_RAIN -> "凍雨"
     WeatherCondition.RAIN -> "正在下雨";WeatherCondition.SNOW -> "正在下雪"
     WeatherCondition.THUNDERSTORM -> "雷雨";WeatherCondition.UNKNOWN -> "天氣資訊更新中"
-}
-private fun LandmarkId.label()=when(this){
-    LandmarkId.TAIPEI_101 -> "臺北 101 · 微縮城市"
-    LandmarkId.TOKYO_SKYTREE -> "東京晴空塔 · 微縮城市"
-    LandmarkId.EIFFEL_TOWER -> "艾菲爾鐵塔 · 微縮城市"
-    LandmarkId.WEATHER_COTTAGE -> "微縮氣象小屋"
-    LandmarkId.TAIWAN_COUNTY -> "縣市微縮景觀"
 }
 
 

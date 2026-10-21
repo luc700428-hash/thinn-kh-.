@@ -19,10 +19,8 @@ class V23QualityRegressionTests(unittest.TestCase):
         self.assertIn('speed>140.0',src)
         page = (ROOT / 'typhoon' / 'TyphoonCenterPage.kt').read_text()
         self.assertIn('VerifiedTrackPlanner.verifiedForecastSegments',page)
-    def test_native_model_pauses_in_background(self):
-        src = (ROOT / 'visual' / 'FilamentLandmark.kt').read_text()
-        self.assertIn('Lifecycle.Event.ON_STOP -> holder.pause()',src)
-        self.assertIn('Lifecycle.Event.ON_START -> holder.resume()',src)
+    def test_3d_model_renderer_not_bundled(self):
+        self.assertFalse((ROOT / 'visual' / 'FilamentLandmark.kt').exists())
     def test_cwa_credential_is_only_server_side(self):
         src = (ROOT / 'earthquake' / 'CwaOfficialGateway.kt').read_text()
         self.assertNotIn('CWA-'+'5B5332',src)

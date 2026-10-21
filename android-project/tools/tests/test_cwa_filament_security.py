@@ -29,17 +29,13 @@ class CwaFilamentIntegration(unittest.TestCase):
         s=(JAVA/'earthquake/ExpTechSeismicService.kt').read_text()
         self.assertIn('/api/v2/eq/eew',s)
         self.assertIn('/api/v1/trem/sse',s)
-    def test_glb_uses_true_renderer_not_png_only(self):
+    def test_3d_landmark_engine_removed_without_changing_cwa(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        render=(JAVA/'visual/FilamentLandmark.kt').read_text()
         build=(ROOT/'app/build.gradle.kts').read_text()
-        # True 3D engine stays available in source but is never invoked on the
-        # home screen until vendor-specific native SIGSEGV is fixed and tested.
-        self.assertNotIn('FilamentLandmark(',home)
-        self.assertNotIn('LandmarkGalleryPage(',home)
-        self.assertIn('viewer.loadModelGlb',render)
-        self.assertIn('Utils.init()',render)
-        self.assertIn('filament-utils-android',build)
+        self.assertFalse((JAVA/'visual/FilamentLandmark.kt').exists())
+        self.assertFalse((ROOT/'app/src/main/assets/landmarks').exists())
+        self.assertIn('ThinnAtmosphereFocus(',home)
+        self.assertNotIn('filament-utils-android',build)
     def test_typhoon_dataset_uses_only_actual_issued_coordinates(self):
         ui=(JAVA/'typhoon/TyphoonCenterPage.kt').read_text()
         parser=(JAVA/'typhoon/OfficialTyphoonTrack.kt').read_text()

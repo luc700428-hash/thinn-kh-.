@@ -18,7 +18,6 @@ object WidgetSnapshotStore {
             .putInt("widget_air",weather.usAqi ?: -1)
             .putInt("widget_visibility",weather.visibilityM?.div(1000)?.toInt() ?: -1)
             .putBoolean("widget_day",weather.isDay)
-            .putString("widget_landmark",scene.landmark.name)
             .putString("widget_county",scene.county)
             .putString("widget_locality",scene.locality)
             .putInt("widget_weather_code",weather.weatherCode ?: -1)

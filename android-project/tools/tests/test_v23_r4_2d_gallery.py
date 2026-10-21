@@ -1,34 +1,21 @@
-"""User requested removal of all 2D landmark gallery images and entry points."""
-import json,re,unittest
+"""V25: both legacy 2D gallery and 3D landmark catalog have been opted out."""
 from pathlib import Path
+import unittest
 ROOT=Path(__file__).resolve().parents[2]
-ASSETS=ROOT/'app/src/main/assets'
 JAVA=ROOT/'app/src/main/java/io/atmos/weather'
-LAND=ASSETS/'landmarks/catalog_v2.json'
-class No2DLandmarkGallery(unittest.TestCase):
- @classmethod
- def setUpClass(cls): cls.places=json.loads(LAND.read_text())['landmarks']
- def test_location_data_still_available(self):
-  self.assertEqual(len(self.places),132)
-  self.assertEqual(sum(x['country']=='TW' for x in self.places),124)
-  self.assertEqual(sum(x['country']=='INTL' for x in self.places),8)
- def test_no_2d_gallery_assets(self):
-  for folder in ('illustrations','previews','individual/previews'):
-   self.assertFalse((ASSETS/'landmarks'/folder).exists())
-  self.assertTrue(all(not p.get('illustration') for p in self.places))
- def test_gallery_removed_from_ui(self):
-  src=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-  for obsolete in ('landmarkGalleryOpen','LandmarkGalleryPage(','LandmarkCanvas(','2D 地標'):
-   self.assertNotIn(obsolete,src)
+ASSETS=ROOT/'app/src/main/assets'
+class NoLandmarkGallery(unittest.TestCase):
+ def test_models_and_gallery_absent(self):
+  self.assertFalse((ASSETS/'landmarks').exists())
+  self.assertFalse((JAVA/'visual/FilamentLandmark.kt').exists())
+  self.assertFalse((JAVA/'domain/visual/LandmarkRegistry.kt').exists())
   self.assertFalse((JAVA/'presentation/home/LandmarkGalleryPage.kt').exists())
-  self.assertIn('ThinnAtmosphereFocus(',src)
- def test_3d_assets_preserved(self):
-  self.assertTrue((ASSETS/'landmarks/individual/chiayi_fountain.glb').exists())
- def test_aerosol_evidence_bound(self):
-  src=(JAVA/'domain/model/WeatherAdviceEngine.kt').read_text()
-  self.assertNotIn('"空氣中氣膠／沙塵偏多"',src)
-  self.assertIn('氣膠光學厚度',src)
+ def test_app_keeps_real_weather_and_location(self):
+  self.assertTrue((JAVA/'ui/ThinnAtmosphereFocus.kt').exists())
+  self.assertTrue((JAVA/'domain/visual/TaiwanLandmarks.kt').exists())
+  self.assertIn('ThinnAtmosphereFocus(', (JAVA/'presentation/home/WeatherHomeScreen.kt').read_text())
  def test_no_client_cwa_secrets(self):
+  import re
   for p in JAVA.rglob('*.kt'):
    self.assertIsNone(re.search(r'CWA-[A-F0-9]{8}-[A-F0-9]{4}-',p.read_text()),str(p))
 if __name__=='__main__':unittest.main()

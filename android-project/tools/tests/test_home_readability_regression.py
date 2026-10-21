@@ -41,18 +41,11 @@ class HomeReadabilityTests(unittest.TestCase):
         self.assertNotIn('LandmarkCanvas(',home)
         self.assertIn('snapshot.windKmh',light)
         self.assertIn('snapshot.humidityPct',light)
-    def test_chiayi_county_now_has_separate_place_models(self):
-        c=json.loads((ASSETS/'catalog_v2.json').read_text())
-        expected=['阿里山森林鐵道','北回歸線太陽館','故宮南院','奮起湖車站','中央噴水圓環']
-        for title in expected:
-            matches=[p for p in c['landmarks'] if p['name']==title]
-            self.assertEqual(len(matches),1)
-            place=matches[0]
-            self.assertEqual(place['geometry_status'],'original_prototype')
-            for key in ['model']:
-                asset=ASSETS.parent/place[key]
-                self.assertGreater(asset.stat().st_size,1000,place['name'])
-            self.assertEqual((ASSETS.parent/place['model']).read_bytes()[:4],b'glTF')
+    def test_chiayi_uses_location_data_without_3d_landmarks(self):
+        self.assertFalse((ASSETS/'landmarks').exists())
+        mapper=(JAVA/'domain/visual/WeatherSceneMapper.kt').read_text()
+        self.assertIn('TaiwanLandmarks.countyFor(',mapper)
+        self.assertNotIn('LandmarkId',mapper)
     def test_weather_forecast_title_and_glass_contrast(self):
         forecast=(JAVA/'presentation/home/InteractiveForecast.kt').read_text()
         self.assertIn('Text("24 小時預報",fontSize=21.sp',forecast)
@@ -62,6 +55,6 @@ class HomeReadabilityTests(unittest.TestCase):
     def test_release_notes_reflect_real_limited_progress(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()
         self.assertIn('穿搭」長文',notes)
-        self.assertIn('獨立 GLB 原型',notes)
+        self.assertIn('已移除 3D 地標',notes)
         self.assertIn('實機',notes)
 if __name__=='__main__': unittest.main()

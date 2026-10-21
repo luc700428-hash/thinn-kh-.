@@ -34,7 +34,6 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import io.atmos.weather.MainActivity
 import io.atmos.weather.domain.model.WeatherCondition
-import io.atmos.weather.domain.visual.LandmarkId
 import io.atmos.weather.domain.visual.WeatherScene
 import io.atmos.weather.location.LocationLabels
 import io.atmos.weather.visual.WeatherArtRenderer
@@ -52,12 +51,11 @@ open class AtmosWidget(private val variant: Int):GlanceAppWidget() {
         val temp=if(stamp==0L) "--°" else "${prefs.getInt("widget_temp",0)}°"
         val rain=prefs.getInt("widget_rain",-1).let{if(it<0) "--" else "$it%"}
         val cond=runCatching{ WeatherCondition.valueOf(prefs.getString("widget_condition","UNKNOWN") ?: "UNKNOWN") }.getOrDefault(WeatherCondition.UNKNOWN)
-        val landmark=runCatching {LandmarkId.valueOf(prefs.getString("widget_landmark","WEATHER_COTTAGE") ?: "WEATHER_COTTAGE")}.getOrDefault(LandmarkId.WEATHER_COTTAGE)
         val chanceText = if(cond in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)) {
             val snowChance=prefs.getInt("widget_snow",-1)
             if (snowChance>=0) "$snowChance%" else "—"
         } else rain
-        val scene=WeatherScene(landmark,
+        val scene=WeatherScene(
             wetness=if(cond in setOf(WeatherCondition.RAIN, WeatherCondition.THUNDERSTORM,WeatherCondition.FREEZING_RAIN,WeatherCondition.HAIL)) .8f else 0f,
             snowAccumulation=if(cond in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)) .8f else 0f,
             nightLight=if(prefs.getBoolean("widget_day",true)) 0f else 1f,
@@ -97,7 +95,7 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
     val soft=Color(0xFFE3F1F9)
     androidx.compose.runtime.CompositionLocalProvider(LocalWidgetTypography provides widgetTypography) {
     Box(GlanceModifier.fillMaxSize().clickable(actionStartActivity(Intent(context,MainActivity::class.java)))) {
-        Image(provider=ImageProvider(bitmap),contentDescription="${scene.landmark.label()} ${condition.label()}",
+        Image(provider=ImageProvider(bitmap),contentDescription="${city} ${condition.label()}",
             contentScale=ContentScale.FillBounds,modifier=GlanceModifier.fillMaxSize())
         Column(GlanceModifier.fillMaxSize().padding(if(wide) 15.dp else 10.dp)) {
             when(family){
@@ -144,7 +142,7 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
             }
             if(viewSize.height>136.dp && wide){
                 Spacer(GlanceModifier.height(6.dp))
-                WText("${scene.landmark.label()}  ·  ${if(stamp>0) "更新 ${Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))}" else "待同步"}",soft,10)
+                WText("${condition.label()}  ·  ${if(stamp>0) "更新 ${Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))}" else "待同步"}",soft,10)
             }
         }
     }
@@ -167,8 +165,4 @@ private fun WeatherCondition.label()=when(this){
     WeatherCondition.FREEZING_RAIN->"凍雨";WeatherCondition.SLEET->"雨夾雪";WeatherCondition.HAIL->"冰雹";
     WeatherCondition.RAIN->"降雨";WeatherCondition.SNOW->"下雪";
     WeatherCondition.THUNDERSTORM->"雷雨";else->"天氣更新中"
-}
-private fun LandmarkId.label()=when(this){
-    LandmarkId.TAIPEI_101->"臺北 101";LandmarkId.TOKYO_SKYTREE->"東京晴空塔";
-    LandmarkId.EIFFEL_TOWER->"艾菲爾鐵塔";LandmarkId.TAIWAN_COUNTY->"縣市微縮景觀";LandmarkId.WEATHER_COTTAGE->"微縮氣象小屋"
 }

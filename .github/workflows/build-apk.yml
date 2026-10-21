@@ -65,28 +65,24 @@ jobs:
           test -s "$project/app/src/main/java/io/atmos/weather/task/TaskCenterPage.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/task/TaskReminderScheduler.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/earthquake/SeismicPrimaryTab.kt"
-          test -s "$project/app/src/main/assets/landmarks/catalog_v2.json"
-          test -s "$project/app/src/main/java/io/atmos/weather/domain/visual/LandmarkRegistry.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/presentation/home/HomeWeatherBriefing.kt"
-          for model in taipei101 kaohsiung85 dreammall tamkang_bridge music_center miyahara chihkan xiaoliuqiu_flower lanyu_bay guishan_island hsinchu_gate dongyin_lighthouse alishan_railway tropic_cancer_solar npm_south fenqihu_station chiayi_fountain; do
-            test -s "$project/app/src/main/assets/landmarks/individual/$model.glb"
-          done
+          # Explicit opt-out from all 3D landmark models; GIS / real maps remain untouched.
+          test ! -e "$project/app/src/main/assets/landmarks"
+          test ! -e "$project/app/src/main/java/io/atmos/weather/visual/FilamentLandmark.kt"
+          test ! -e "$project/app/src/main/java/io/atmos/weather/domain/visual/LandmarkRegistry.kt"
+          ! grep -q 'filament-utils-android' "$project/app/build.gradle.kts"
           test -s "$project/app/src/main/java/io/atmos/weather/widgets/AtmosWidgets.kt"
           test -s "$project/app/src/main/java/io/atmos/weather/ui/RadarHistoryDialog.kt"
           grep -Fq 'releases/latest/download/ota.json' "$project/app/src/main/java/io/atmos/weather/update/AppUpdater.kt"
           test -s "$project/backend/functions/index.js"
           test -s "$project/backend/functions/cwa_official.cjs"
           test -s "$project/app/src/main/java/io/atmos/weather/earthquake/CwaOfficialGateway.kt"
-          test -s "$project/app/src/main/java/io/atmos/weather/visual/FilamentLandmark.kt"
           test ! -e "$project/app/src/main/java/io/atmos/weather/earthquake/BundledCwaKey.kt" || {
             echo '::error::Remove old hard-coded CWA credentials from tracked Android source'; exit 1;
           }
           if grep -R -q -E 'CWA-[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}' "$project/app/src/main/java"; then
             echo '::error::Potential hard-coded CWA authorization key in source'; exit 1;
           fi
-          for n in $(seq -w 0 21); do
-            test -s "$project/app/src/main/assets/landmarks/tw_${n}.glb"
-          done
           grep -Fq 'targetSdk = 36' "$project/app/build.gradle.kts"
           echo "Building tracked source commit: $GITHUB_SHA"
       - name: Inject source provenance into the app package
@@ -99,8 +95,6 @@ jobs:
           sources=[
             'app/src/main/java/io/atmos/weather/presentation/home/WeatherHomeScreen.kt',
             'app/src/main/java/io/atmos/weather/update/AppUpdatePage.kt',
-            'app/src/main/java/io/atmos/weather/domain/visual/LandmarkRegistry.kt',
-            'app/src/main/assets/landmarks/catalog_v2.json',
           ]
           # Hash all app sources and resources, not just the Git commit hash.
           # A version-only commit must not masquerade as an app-feature update.
