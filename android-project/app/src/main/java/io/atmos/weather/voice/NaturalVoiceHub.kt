@@ -83,9 +83,10 @@ object NaturalVoiceHub {
         val now=System.currentTimeMillis()
         synchronized(lock) {
             seen.entries.removeAll { now-it.value>120_000L }
+            // Rejected during earthquake priority hold is NOT a played announcement.
+            if(now<earthquakeHoldUntil) return false
             if(seen.containsKey(req.dedupeKey)) return false
             seen[req.dedupeKey]=now
-            if(now<earthquakeHoldUntil) return false
             if(currentPriority!=null && NaturalVoicePriority.preempts(req.priority.rank,currentPriority!!.rank)) {
                 running?.cancel();running=null
                 player?.runCatching { stop();release() };player=null

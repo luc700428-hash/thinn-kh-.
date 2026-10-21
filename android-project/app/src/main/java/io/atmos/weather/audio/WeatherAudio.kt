@@ -105,7 +105,8 @@ fun WeatherAudio(condition:WeatherCondition?,enabled:Boolean,volume:Float,
         condition in setOf(WeatherCondition.RAIN, WeatherCondition.HAIL) -> R.raw.light_rain
         condition in setOf(WeatherCondition.SNOW, WeatherCondition.SLEET, WeatherCondition.FREEZING_RAIN,
             WeatherCondition.DUST, WeatherCondition.DUST_STORM) -> R.raw.snow_wind
-        else -> R.raw.sunny_breeze
+        condition == WeatherCondition.CLEAR || condition == WeatherCondition.PARTLY_CLOUDY -> R.raw.sunny_breeze
+        else -> null // Unknown/overcast/fog must never be assigned a fake sunny soundtrack.
     }
     DisposableEffect(mixer,owner) {
         val listener=LifecycleEventObserver { _, event ->
@@ -120,7 +121,7 @@ fun WeatherAudio(condition:WeatherCondition?,enabled:Boolean,volume:Float,
         onDispose { owner.lifecycle.removeObserver(listener);mixer.close() }
     }
     LaunchedEffect(mixer,resource,enabled,volume) {
-        mixer.configure(resource,enabled && condition!=null,volume)
+        mixer.configure(resource ?: 0,enabled && resource!=null,volume)
     }
     LaunchedEffect(mixer,thunderCue) {
         if (thunderCue>0 && condition==WeatherCondition.THUNDERSTORM && enabled) {

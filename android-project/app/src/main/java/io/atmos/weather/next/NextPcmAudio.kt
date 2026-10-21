@@ -83,12 +83,19 @@ internal class NextLoopTrack private constructor(private val track: AudioTrack) 
             }
         }
     }
-    val isPlaying get() = track.playState == AudioTrack.PLAYSTATE_PLAYING
-    fun start(volume: Float) { track.setVolume(volume.coerceIn(0f,1f)); track.play() }
-    fun volume(value: Float) { track.setVolume(value.coerceIn(0f,1f)) }
-    fun pause() { if(isPlaying) track.pause() }
-    fun resume() { if(!isPlaying) track.play() }
-    fun close() { runCatching {track.pause()};runCatching {track.flush()}; track.release() }
+    private var released = false
+    val isPlaying get() = !released && track.playState == AudioTrack.PLAYSTATE_PLAYING
+    fun start(volume: Float) { if(!released) {track.setVolume(volume.coerceIn(0f,1f)); track.play()} }
+    fun volume(value: Float) { if(!released) track.setVolume(value.coerceIn(0f,1f)) }
+    fun pause() { if(!released && isPlaying) track.pause() }
+    fun resume() { if(!released && !isPlaying) track.play() }
+    fun close() {
+        if(released) return
+        released=true
+        runCatching {track.pause()}
+        runCatching {track.flush()}
+        runCatching {track.release()}
+    }
 }
 
 /** Lifecycle bound weather ambience with equal-power crossfades; never runs in the background. */
@@ -96,46 +103,68 @@ internal class NextAmbienceController(private val context:Context) {
     private val lock = Mutex()
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var track: NextLoopTrack? = null
+    // A new track exists before the equal-power crossfade finishes; stop BOTH on background.
+    private var transitioning: NextLoopTrack? = null
     private var scene: WeatherScene? = null
     private var enabled = false
     private var active = false
+    private var disposed = false
     private var level = .15f
     private var thunder:MediaPlayer?=null
+    private fun audible():Boolean = !disposed && NextAudioLifecyclePolicy.canPlay(
+        active,enabled,audio.ringerMode == AudioManager.RINGER_MODE_NORMAL)
 
     fun foreground(on:Boolean) {
+        if(disposed) return
         active=on
-        if(!on || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) track?.pause()
-        else if(enabled) track?.resume()
+        if(!audible()) {
+            track?.pause()
+            transitioning?.pause()
+        } else {
+            // A track created while backgrounded was muted to zero; restore audible gain.
+            if(transitioning==null) track?.volume(level)
+            track?.resume()
+            transitioning?.resume()
+        }
     }
     suspend fun configure(next:WeatherScene?, on:Boolean, volume:Float) = lock.withLock {
+        if(disposed) return@withLock
         enabled=on
         level=volume.coerceIn(0f,.55f)
-        if(!on || next == null) {track?.pause();return@withLock}
+        if(!on || next == null) {track?.pause();transitioning?.pause();return@withLock}
         if(scene == next && track != null) {
-            track?.volume(level)
+            track?.volume(if(audible()) level else 0f)
             foreground(active)
             return@withLock
         }
         val incoming=NextLoopTrack.open(context,WeatherScenes.ambienceAsset(next),AudioAttributes.USAGE_MEDIA)
             ?: return@withLock
         val old=track
-        val playing=active && audio.ringerMode == AudioManager.RINGER_MODE_NORMAL
-        if(playing) incoming.start(0f)
+        transitioning=incoming
+        if(audible()) incoming.start(0f)
         try {
-            // 1.12 seconds; cos/sin are equal-power instead of linear loudness dipping.
+            // Re-check lifecycle and ringer mode on EVERY frame, not just on transition start.
             repeat(28) { i ->
                 val p=(i+1)/28f
-                val to=if(playing) level else 0f
+                val to=if(audible()) level else 0f
                 incoming.volume((to*sin(p*Math.PI/2).toFloat()).coerceIn(0f,1f))
                 old?.volume((to*cos(p*Math.PI/2).toFloat()).coerceIn(0f,1f))
+                if(to<=0f) {incoming.pause();old?.pause()}
+                else {incoming.resume();old?.resume()}
                 delay(40)
             }
         } finally {
             old?.close()
-            track=incoming
-            scene=next
-            incoming.volume(if(playing)level else 0f)
-            if(!playing) incoming.pause()
+            transitioning=null
+            if(disposed) {
+                incoming.close()
+                track=null
+            } else {
+                track=incoming
+                scene=next
+                if(audible()) {incoming.volume(level);incoming.resume()}
+                else {incoming.volume(0f);incoming.pause()}
+            }
         }
     }
     fun thunderCue() {
@@ -147,7 +176,12 @@ internal class NextAmbienceController(private val context:Context) {
             start()
         }
     }
-    fun close() { track?.close();track=null; runCatching {thunder?.release()};thunder=null }
+    fun close() {
+        disposed=true
+        transitioning?.close();transitioning=null
+        track?.close();track=null
+        runCatching {thunder?.release()};thunder=null
+    }
 }
 
 @Composable
