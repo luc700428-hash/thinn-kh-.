@@ -113,7 +113,11 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
                 timelines=OfficialStormTimeline.parse(data)
                 status=if(points.isEmpty()) "目前沒有可顯示的官方路徑" else ""
             } catch (cancel:CancellationException) {throw cancel}
-            catch (_:Exception) {status="目前無法更新官方路徑，請稍後重新整理"}
+            catch (_:Exception) {
+                status=if(fixes.isNotEmpty())
+                    "無法連接官方颱風資料；保留上次取得的路徑，非即時資訊，也不代表現在仍有警報。"
+                else "目前無法更新官方路徑，請稍後重新整理"
+            }
             finally {loading=false}
         }
     }
