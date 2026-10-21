@@ -51,13 +51,21 @@ fun WeatherAlarmPage(onClose:()->Unit) {
     }
     val notifications=remember(ctx) {ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager}
     fun update(value:List<WeatherAlarm>) {
-        val before=alarms.map { it.id }.toSet()
-        val after=value.map { it.id }.toSet()
-        (before-after).forEach { WeatherAlarmScheduler.cancel(ctx,it) }
-        alarms=value.sortedWith(compareBy({it.hour},{it.minute}))
+        // The receiver may have disabled a one-shot alarm while this page was open.
+        // Preserve those changes unless the user explicitly edited that alarm.
+        val stored=WeatherAlarmStore.load(ctx)
+        val corrected=WeatherAlarmMutation.preserveBackgroundChanges(stored,alarms,value)
+        val currentById=corrected.associateBy { it.id }
+        val changedIds=WeatherAlarmMutation.changedIds(stored,corrected)
+        alarms=corrected.sortedWith(compareBy({it.hour},{it.minute}))
         WeatherAlarmStore.save(ctx,alarms)
-        alarms.forEach { if(it.enabled) WeatherAlarmScheduler.schedule(ctx,it)
-            else WeatherAlarmScheduler.cancel(ctx,it.id) }
+        // Rescheduling an unrelated alarm used to cancel a pending snooze.
+        // Touch ONLY the alarm that was added, edited, toggled or removed.
+        changedIds.forEach { id ->
+            val new=currentById[id]
+            if(new?.enabled==true) WeatherAlarmScheduler.schedule(ctx,new)
+            else WeatherAlarmScheduler.cancel(ctx,id)
+        }
     }
     BackHandler(enabled=showEditor) { showEditor=false }
     Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)

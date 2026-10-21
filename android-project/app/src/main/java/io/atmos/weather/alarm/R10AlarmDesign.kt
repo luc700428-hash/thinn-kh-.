@@ -294,7 +294,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     textAlign=TextAlign.Center,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                 Text("儲存",color=amber,fontSize=17.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.clickable {
                     val id=initial?.id?:((System.currentTimeMillis()%1000000).toInt()+1)
-                    onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,true,voice,snooze,uri))
+                    onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,initial?.enabled ?: true,voice,snooze,uri))
                 })
             }
             Box(Modifier.fillMaxWidth().padding(horizontal=32.dp).height(235.dp),contentAlignment=Alignment.Center) {
@@ -302,9 +302,9 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
                     // A dedicated AM/PM wheel handles both swipe directions reliably.
                     MeridiemWheel(if(hour<12) 0 else 1,
-                        {part -> hour=(hour%12)+part*12},Modifier.weight(1.15f))
+                        {part -> hour=V25AlarmMeridiem.hour24(hour%12,part)},Modifier.weight(1.15f))
                     Wheel(hour%12,12,{if(it==0)"12" else "$it"},
-                        {v->hour=(hour/12)*12+v},Modifier.weight(.85f))
+                        {v->hour=V25AlarmMeridiem.hour24(v,if(hour<12) V25AlarmMeridiem.AM else V25AlarmMeridiem.PM)},Modifier.weight(.85f))
                     Wheel(minute,60,{"%02d".format(Locale.TAIWAN,it)},
                         {minute=it},Modifier.weight(.85f))
                 }
