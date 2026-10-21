@@ -10,9 +10,8 @@ def source(path): return (BASE/path).read_text(encoding='utf-8')
 class R3FiveUserReports(unittest.TestCase):
     def test_typhoon_home_hidden_when_inactive(self):
         s=source('presentation/home/WeatherHomeScreen.kt')
-        self.assertIn('if (officialStormActive || verifiedTyphoonWarning!=null)',s)
-        self.assertIn('approaching != null',s)
-        self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',s)
+        self.assertIn('if (typhoonNotices.isNotEmpty() || officialStormActive)',s)
+        self.assertIn('TyphoonVisibility.hasActiveStorm(',s)
         self.assertIn('delay(20*60_000L)',s)
 
     def test_typhoon_stale_positions_not_active(self):

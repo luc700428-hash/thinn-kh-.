@@ -2,294 +2,128 @@ package io.atmos.weather.alarm
 
 import android.app.NotificationManager
 import android.content.Context
-import android.media.AudioManager
-import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
-import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** Independently drawn clock-inspired alarm UI. Not an iOS system screen.
- * The actual ringtone, alarm stream volume and speech stay in WeatherAlarmAudioService.
- * The full-screen activity only handles display and the user's stop/snooze actions.
+/** iOS-inspired fullscreen alarm presentation, drawn by Compose Foundation.
+ * Android/HyperOS controls the actual lockscreen availability and vibration hardware.
+ * The ringtone and weather briefing belong to WeatherAlarmAudioService, not this view.
  */
-class WeatherAlarmRingActivity : ComponentActivity() {
-    private var alarmId = -1
-
-    override fun onCreate(savedInstanceState: Bundle?) {
+class WeatherAlarmRingActivity:ComponentActivity() {
+    private var alarmId=-1
+    override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
-        // Physical volume keys must adjust the OS alarm stream, never media volume.
-        setVolumeControlStream(AudioManager.STREAM_ALARM)
-        if (Build.VERSION.SDK_INT >= 27) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
-        window.statusBarColor = android.graphics.Color.BLACK
-        window.navigationBarColor = android.graphics.Color.BLACK
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        // The reference screen is intentionally immersive, with only the gesture bar visible.
-        WindowCompat.getInsetsController(window, window.decorView)
-            .hide(WindowInsetsCompat.Type.statusBars())
-
-        alarmId = intent.getIntExtra("alarm_id", -1)
-        val info = WeatherAlarmStore.load(this).firstOrNull { it.id == alarmId }
-        if (info == null) { finish(); return }
-        val displayHour = if (DateFormat.is24HourFormat(this)) info.hour
-            else (info.hour % 12).let { if (it == 0) 12 else it }
-        val timeText = String.format(Locale.TAIWAN, "%02d:%02d", displayHour, info.minute)
-        val reduceMotion = getSharedPreferences("thinn_settings", Context.MODE_PRIVATE)
-            .getBoolean("reduce_motion", false)
-
+        if(android.os.Build.VERSION.SDK_INT>=27) {setShowWhenLocked(true);setTurnScreenOn(true)}
+        alarmId=intent.getIntExtra("alarm_id",-1)
+        val info=WeatherAlarmStore.load(this).firstOrNull {it.id==alarmId}
+        if(info==null){finish();return}
+        window.statusBarColor=android.graphics.Color.BLACK
+        window.navigationBarColor=android.graphics.Color.BLACK
         setContent {
-            AlarmFullScreen(
-                timeText = timeText,
-                allowSnooze = info.snooze,
-                reduceMotion = reduceMotion,
-                onSnooze = { close(true) },
-                onStop = { close(false) }
-            )
-        }
-    }
-
-    private fun close(snooze: Boolean) {
-        val action = if (snooze) WeatherAlarmAudioService.ACTION_SNOOZE
-            else WeatherAlarmAudioService.ACTION_STOP
-        runCatching {
-            startService(android.content.Intent(this, WeatherAlarmAudioService::class.java)
-                .setAction(action).putExtra("alarm_id", alarmId))
-        }
-        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            .cancel(740000 + alarmId)
-        finish()
-    }
-
-    // Back should not accidentally dismiss a ringing alarm. The slider, accessible
-    // action and notification STOP action remain explicit ways to silence it.
-    @Deprecated("Use visible controls")
-    override fun onBackPressed() { /* Intentionally do nothing while ringing. */ }
-}
-
-@Composable
-private fun AlarmFullScreen(
-    timeText: String,
-    allowSnooze: Boolean,
-    reduceMotion: Boolean,
-    onSnooze: () -> Unit,
-    onStop: () -> Unit
-) {
-    val haptics = LocalHapticFeedback.current
-    BoxWithConstraints(
-        Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()
-    ) {
-        val compact = maxHeight < 620.dp
-        val titleTop = maxHeight * (if (compact) .12f else .20f)
-        val controlsBottom = maxHeight * (if (compact) .045f else .085f)
-        val buttonHeight = if (compact) 66.dp else 78.dp
-        val trackHeight = if (compact) 68.dp else 78.dp
-
-        // Pure-black background and uncluttered clock face, matching the reference hierarchy.
-        Column(
-            Modifier.align(Alignment.TopCenter).offset(y = titleTop),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                AlarmOutlineIcon()
-                androidx.compose.material3.Text("鬧鐘", fontSize = 21.sp,
-                    color = Color(0xFF99999F), fontWeight = FontWeight.Medium)
-            }
-            Spacer(Modifier.height(22.dp))
-            androidx.compose.material3.Text(
-                timeText,
-                fontSize = 88.sp,
-                letterSpacing = (-3).sp,
-                color = Color.White,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .padding(horizontal = 28.dp).padding(bottom = controlsBottom),
-            verticalArrangement = Arrangement.spacedBy(22.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (allowSnooze) {
-                val presses = remember { MutableInteractionSource() }
-                val pressed by presses.collectIsPressedAsState()
-                val scale by animateFloatAsState(
-                    targetValue = if (pressed) .966f else 1f,
-                    animationSpec = if (reduceMotion) snap() else tween(105),
-                    label = "snooze press"
-                )
-                Box(
-                    Modifier.fillMaxWidth().height(buttonHeight)
-                        .graphicsLayer { scaleX = scale; scaleY = scale }
-                        .clip(RoundedCornerShape(44.dp))
-                        .background(Brush.verticalGradient(listOf(
-                            Color(0xFFFFA338), Color(0xFFFF922A), Color(0xFFFF9731))))
-                        .border(.7.dp, Color(0xFFFFC876).copy(alpha = .62f), RoundedCornerShape(44.dp))
-                        .clickable(interactionSource = presses, indication = null) {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onSnooze()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.Text("稍後提醒", color = Color.White,
-                        fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+            val haptic=LocalHapticFeedback.current
+            Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()
+                .padding(horizontal=30.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                Spacer(Modifier.weight(.40f))
+                Column(horizontalAlignment=Alignment.CenterHorizontally) {
+                    Text("◴  鬧鐘",fontSize=21.sp,color=Color(0xFFAEB1B8))
+                    Spacer(Modifier.height(10.dp))
+                    Text(String.format(Locale.TAIWAN,"%02d:%02d",info.hour,info.minute),
+                        fontSize=93.sp,color=Color.White,fontWeight=FontWeight.SemiBold,
+                        letterSpacing=(-3).sp,maxLines=1)
                 }
-            }
-
-            var trackWidth by remember { mutableIntStateOf(0) }
-            val density = LocalDensity.current
-            val insetPx = with(density) { 5.dp.toPx() }
-            val thumbPx = with(density) { (trackHeight - 10.dp).toPx() }
-            val maxDrag = (trackWidth - thumbPx - insetPx * 2f).coerceAtLeast(1f)
-            var dragPx by remember { mutableFloatStateOf(0f) }
-            var fingerDown by remember { mutableStateOf(false) }
-            var thresholdReached by remember { mutableStateOf(false) }
-            // Finger movement is unfiltered; the spring runs only when an incomplete drag is released.
-            val offset by animateFloatAsState(
-                targetValue = dragPx,
-                animationSpec = if (fingerDown || reduceMotion) snap()
-                    else spring(dampingRatio = .82f, stiffness = 580f),
-                label = "stop thumb return"
-            )
-            val progress = (dragPx / maxDrag).coerceIn(0f, 1f)
-            Box(
-                Modifier.fillMaxWidth().height(trackHeight)
-                    .onSizeChanged { trackWidth = it.width }
-                    .clip(RoundedCornerShape(48.dp))
-                    .background(Color(0xFF1F1F20))
-                    .border(.7.dp, Color.White.copy(alpha = .075f), RoundedCornerShape(48.dp))
-                    .semantics {
-                        // Accessibility stop alternative without a visually separate Android-style button.
-                        onClick(label = "無法滑動？輕觸這裡停止鬧鐘") {
-                            onStop(); true
+                Spacer(Modifier.weight(1.0f))
+                Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                    if(info.snooze) {
+                        Box(Modifier.fillMaxWidth().height(86.dp).clip(RoundedCornerShape(48.dp))
+                            .background(Color(0xFFFF962E))
+                            .border(1.dp,Color(0xFFFFC57E),RoundedCornerShape(48.dp))
+                            .clickable {haptic.performHapticFeedback(HapticFeedbackType.LongPress);close(true)},
+                            contentAlignment=Alignment.Center) {
+                            Text("稍後提醒",fontSize=25.sp,color=Color.White,fontWeight=FontWeight.SemiBold)
                         }
                     }
-                    .pointerInput(maxDrag) {
-                        detectHorizontalDragGestures(
-                            onDragStart = {
-                                fingerDown = true
-                                thresholdReached = false
-                            },
-                            onHorizontalDrag = { change, amount ->
-                                change.consume()
-                                dragPx = (dragPx + amount).coerceIn(0f, maxDrag)
-                                if (!thresholdReached && dragPx >= maxDrag * .80f) {
-                                    thresholdReached = true
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                }
-                            },
-                            onDragEnd = {
-                                fingerDown = false
-                                if (dragPx >= maxDrag * .80f) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onStop()
-                                } else dragPx = 0f
-                            },
-                            onDragCancel = {
-                                fingerDown = false
-                                dragPx = 0f
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.material3.Text(
-                    "滑動來停止",
-                    fontSize = 20.sp,
-                    color = Color(0xFFA2A2A7),
-                    modifier = Modifier.padding(start = 53.dp)
-                        .graphicsLayer { alpha = (1f - progress * .78f).coerceIn(0f, 1f) },
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
-                Box(
-                    Modifier.align(Alignment.CenterStart).padding(5.dp)
-                        .offset { IntOffset(offset.roundToInt(), 0) }
-                        .size(trackHeight - 10.dp)
-                        .clip(CircleShape)
-                        .background(Brush.verticalGradient(listOf(
-                            Color(0xFF333438), Color(0xFF242528))))
-                        .border(.8.dp, Color.White.copy(alpha = .24f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.Text("■", fontSize = 23.sp, color = Color.White)
+                    // The control follows the finger and springs back unless released near the end.
+                    var width by remember { mutableIntStateOf(0) }
+                    var drag by remember { mutableFloatStateOf(0f) }
+                    var thresholdReached by remember { mutableStateOf(false) }
+                    val density=LocalDensity.current
+                    val max=(width-with(density){78.dp.toPx()}).coerceAtLeast(1f)
+                    val offset by animateFloatAsState(drag,animationSpec=spring(dampingRatio=.73f,stiffness=360f),label="slide to stop")
+                    Box(Modifier.fillMaxWidth().height(85.dp)
+                        .onSizeChanged {width=it.width}
+                        .clip(RoundedCornerShape(45.dp))
+                        .background(Color(0xFF1C1C1E))
+                        .border(1.dp,Color.White.copy(alpha=.13f),RoundedCornerShape(45.dp))
+                        .pointerInput(max) {
+                            detectHorizontalDragGestures(
+                                onHorizontalDrag={change,delta->
+                                    change.consume()
+                                    drag=(drag+delta).coerceIn(0f,max)
+                                    if(drag>=max*.76f && !thresholdReached){
+                                        thresholdReached=true
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    } else if(drag<max*.7f) thresholdReached=false
+                                },
+                                onDragEnd={if(drag>=max*.76f)close(false) else drag=0f},
+                                onDragCancel={drag=0f}
+                            )
+                        }.semantics {contentDescription="滑動停止鬧鐘，向右拖曳"},contentAlignment=Alignment.Center) {
+                        Text("滑動來停止",color=Color(0xFF8E8E93),fontSize=21.sp,
+                            modifier=Modifier.padding(start=64.dp))
+                        Box(Modifier.align(Alignment.CenterStart).padding(5.dp)
+                            .offset {IntOffset(offset.roundToInt(),0)}
+                            .size(75.dp).clip(CircleShape)
+                            .background(Brush.radialGradient(listOf(Color(0xFF555153),Color(0xFF222224))))
+                            .border(1.dp,Color(0xFFFFB463).copy(alpha=.65f),CircleShape),contentAlignment=Alignment.Center) {
+                            Box(Modifier.size(23.dp).background(Color.White,RoundedCornerShape(5.dp)))
+                        }
+                    }
                 }
+                Spacer(Modifier.height(24.dp))
+                Text("無法滑動？點此停止鬧鐘",color=Color(0xFFA6A6AB),fontSize=14.sp,
+                    modifier=Modifier.clickable {close(false)}.padding(16.dp),textAlign=TextAlign.Center)
+                Spacer(Modifier.height(36.dp))
             }
         }
     }
-}
-
-@Composable
-private fun AlarmOutlineIcon() {
-    Canvas(Modifier.size(23.dp)) {
-        val tint = Color(0xFF9B9BA0)
-        val u = size.minDimension
-        drawCircle(tint, radius = u * .33f,
-            center = Offset(u * .50f, u * .52f),
-            style = Stroke(width = u * .075f))
-        drawLine(tint, Offset(u * .50f, u * .52f), Offset(u * .50f, u * .31f),
-            strokeWidth = u * .075f, cap = StrokeCap.Round)
-        drawLine(tint, Offset(u * .50f, u * .52f), Offset(u * .66f, u * .61f),
-            strokeWidth = u * .075f, cap = StrokeCap.Round)
-        drawArc(tint, 192f, 90f, false,
-            topLeft = Offset(u * .01f, u * .00f),
-            size = Size(u * .50f, u * .40f),
-            style = Stroke(width = u * .085f, cap = StrokeCap.Round))
-        drawArc(tint, 259f, 90f, false,
-            topLeft = Offset(u * .49f, u * .00f),
-            size = Size(u * .50f, u * .40f),
-            style = Stroke(width = u * .085f, cap = StrokeCap.Round))
-        drawLine(tint, Offset(u * .31f, u * .81f), Offset(u * .23f, u * .96f),
-            strokeWidth = u * .075f, cap = StrokeCap.Round)
-        drawLine(tint, Offset(u * .69f, u * .81f), Offset(u * .77f, u * .96f),
-            strokeWidth = u * .075f, cap = StrokeCap.Round)
+    private fun close(snooze:Boolean) {
+        val action=if(snooze) WeatherAlarmAudioService.ACTION_SNOOZE else WeatherAlarmAudioService.ACTION_STOP
+        runCatching {startService(android.content.Intent(this,WeatherAlarmAudioService::class.java)
+            .setAction(action).putExtra("alarm_id",alarmId))}
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(740000+alarmId)
+        finish()
     }
+    @Deprecated("Use the on-screen stop action")
+    override fun onBackPressed(){close(false)}
 }

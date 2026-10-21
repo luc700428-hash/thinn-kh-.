@@ -16,8 +16,6 @@ object OfficialTyphoonTrack {
         if(!obj.has(key)) null else obj.optString(key).toDoubleOrNull()
     }
     fun extract(json:JSONObject,max:Int=240):List<TyphoonFix> {
-        // W-C0034-005 uses CoordinateLatitude/Longitude and InitialTime + ForecastHour.
-        CwaCycloneForecast.parse(json,max)?.let { return it }
         val results=mutableListOf<TyphoonFix>()
         fun visit(node:Any?,depth:Int,trail:String,inheritedStorm:String="") {
             if(depth>18 || results.size>=max) return

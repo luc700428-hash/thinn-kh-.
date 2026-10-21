@@ -53,15 +53,15 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     val pressed by interaction.collectIsPressedAsState()
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered=true }
-    val pressScale by animateFloatAsState(if(pressed && !reduce) .962f else 1f,
-        animationSpec=if(reduce) tween(0) else spring(dampingRatio=.76f,stiffness=430f),label="玻璃按鈕按壓")
+    val pressScale by animateFloatAsState(if(pressed && !reduce) .94f else 1f,
+        animationSpec=if(reduce) tween(0) else spring(dampingRatio=.67f,stiffness=650f),label="玻璃按鈕按壓")
     val appear by animateFloatAsState(if(entered) 1f else .94f,
         animationSpec=tween(if(reduce) 0 else 170),label="玻璃按鈕入場")
     val fill=if(colors!=null) {
         val chosen=if(enabled) colors.containerColor else colors.disabledContainerColor
         listOf(chosen,chosen)
-    } else if(outlined) listOf(Color.White.copy(alpha=.24f),Color.White.copy(alpha=.105f),Color.White.copy(alpha=.17f))
-        else listOf(Color(0xFFE5F7FF),Color(0xFFAFDDF6),Color(0xFF659FC7))
+    } else if(outlined) listOf(Color.White.copy(alpha=.32f),Color.White.copy(alpha=.10f),Color.White.copy(alpha=.16f))
+        else listOf(Color(0xFFE2EEF6),Color(0xFFC7DEE9),Color(0xFF8DB7CB))
     Row(modifier.defaultMinSize(minHeight=48.dp)
         .graphicsLayer { scaleX=pressScale*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear else appear*.45f }
         .clip(corner)

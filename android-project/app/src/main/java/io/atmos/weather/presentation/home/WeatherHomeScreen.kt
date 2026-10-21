@@ -240,65 +240,18 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val fromUpdateNotification = remember { (context as? android.app.Activity)?.intent?.getBooleanExtra("open_update_center",false) == true }
     var updatePageOpen by remember { mutableStateOf(fromUpdateNotification) }
     var typhoonPageOpen by remember { mutableStateOf(false) }
-    var naturalVoiceOpen by remember { mutableStateOf(false) }
     var officialStormActive by remember { mutableStateOf(false) }
-    var typhoonPrimaryUnavailable by remember { mutableStateOf(false) }
-    var typhoonBackupUnavailable by remember { mutableStateOf(false) }
-    var gdacsCyclones by remember { mutableStateOf<List<io.atmos.weather.typhoon.GdacsCyclone>>(emptyList()) }
-    var verifiedTyphoonWarning by remember { mutableStateOf(io.atmos.weather.typhoon.TyphoonWarningStore.current(context)) }
-    LaunchedEffect(context) {
-        io.atmos.weather.alerts.CwaAlertWorker.checkNow(context)
-        while(true) {
-            verifiedTyphoonWarning=io.atmos.weather.typhoon.TyphoonWarningStore.current(context)
-            delay(30_000L)
-        }
-    }
-    // Official seven-BF wind-circle probabilities: only a real KML polygon may yield a value.
-    val homeWindProbability by androidx.compose.runtime.produceState<String?>(
-        initialValue=null,officialStormActive,verifiedTyphoonWarning,state.city.coordinate) {
-        value=null
-        if(officialStormActive || verifiedTyphoonWarning!=null) {
-            while(true) {
-                val snapshot=io.atmos.weather.typhoon.CwaWindProbability.read()
-                value=snapshot?.at(state.city.coordinate.longitude,state.city.coordinate.latitude)
-                kotlinx.coroutines.delay(20*60_000L)
-            }
-        }
-    }
-    var approachingStorm by remember { mutableStateOf<io.atmos.weather.typhoon.StormTimeline?>(null) }
     // Query official storm positions only while the weather tab is visible. When unavailable
     // fail closed (no invented typhoon); locally issued official warnings still show.
     LaunchedEffect(mainPager.currentPage) {
         if(mainPager.currentPage==0) {
             while(true) {
                 officialStormActive = try {
-                    val data=io.atmos.weather.earthquake.CwaOfficialGateway.read(context,"W-C0034-005")
-                    typhoonPrimaryUnavailable=false
-                    val tracks=io.atmos.weather.typhoon.OfficialStormTimeline.parse(data)
-                    val approaching=tracks.firstOrNull {
-                        io.atmos.weather.typhoon.TaiwanStormRelevance.isMovingTowardTaiwan(it)
-                    }
-                    approachingStorm=approaching
-                    // Forecast updates change the card only; details open on an explicit tap.
-                    // Only a CWA forecast trajectory that is heading toward Taiwan activates the tile.
-                    // Only a CWA forecast trajectory that is heading toward Taiwan activates the tile.
-                    approaching != null
+                    val data=io.atmos.weather.earthquake.CwaOfficialGateway.read(context,"W-C0034-002")
+                    io.atmos.weather.typhoon.TyphoonVisibility.hasActiveStorm(
+                        io.atmos.weather.typhoon.OfficialTyphoonTrack.extract(data))
                 } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
-                  catch (_:Exception) {
-                      typhoonPrimaryUnavailable=true
-                      approachingStorm=null
-                      false
-                  }
-                // Second, independent public feed. Failure is not equivalent to no storm.
-                try {
-                    gdacsCyclones=io.atmos.weather.typhoon.GdacsCycloneFeed.read()
-                    typhoonBackupUnavailable=false
-                } catch (cancel:kotlinx.coroutines.CancellationException) { throw cancel }
-                  catch (_:Exception) {
-                    typhoonBackupUnavailable=true
-                    gdacsCyclones=emptyList()
-                }
-                // 20-minute foreground poll; official issue cadence is independent.
+                  catch (_:Exception) { false }
                 delay(20*60_000L)
             }
         }
@@ -309,10 +262,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
     BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
         pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen ||
-        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || naturalVoiceOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen ||
         mainPager.currentPage != 0) {
         when {
-            naturalVoiceOpen -> naturalVoiceOpen=false
             weatherAlarmOpen -> weatherAlarmOpen=false
             typhoonPageOpen -> typhoonPageOpen=false
             earthquakePageOpen -> earthquakePageOpen=false
@@ -521,7 +473,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // the background, independently of whether weather data loads.
                     Column(Modifier.fillMaxSize().zIndex(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=124.dp)) {
+                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=22.dp,bottom=124.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically,
                     horizontalArrangement=Arrangement.SpaceBetween) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
@@ -530,7 +482,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text("thinn-khì",color=White,fontFamily=appearance.family,fontWeight=FontWeight(appearance.fontWeight.roundToInt()),fontSize=(21f*appearance.fontScale).coerceIn(20f,29f).sp,letterSpacing=.4.sp)
-                            Text("現在的天氣",color=TextSoft,fontSize=14.sp)
+                            Text("即時天氣 · 每一刻都有溫度",color=TextSoft,fontSize=14.sp)
                         }
                     }
                     Row {
@@ -602,10 +554,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         temperature=snapshot.temperatureC.roundToInt(),
                         condition=snapshot.condition.name,
                         conditionLabel=if(heavyRain && !stormy) "強降雨" else snapshot.condition.label(),
-                        high=snapshot.maxTempC?.roundToInt(),
-                        low=snapshot.minTempC?.roundToInt(),
-                        feelsLike=snapshot.feelsLikeC?.roundToInt(),
-                        isNight=!snapshot.isDay,
+                        high=snapshot.maxTempC?.roundToInt(),low=snapshot.minTempC?.roundToInt(),
+                        feelsLike=snapshot.feelsLikeC?.roundToInt(),isNight=!snapshot.isDay,
                         rainProbability=snapshot.nextHourRainProbabilityPct
                     )
                 } else if(state.loading) {
@@ -613,98 +563,27 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 } else {
                     Text("尚無天氣資料，請檢查網路連線",color=White,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
                 }
-                // Show official sea/land warnings on the red banner, and only Taiwan-bound
-                // forecast tracks on the separate tile. Never make the tile permanent.
-                verifiedTyphoonWarning?.let { official ->
-                    Column(Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xFF6D1F32),Color(0xFF2B253B))))
-                        .border(1.dp,Color(0xFFFF9E9C).copy(alpha=.65f),RoundedCornerShape(24.dp))
-                        .clickable { typhoonPageOpen=true }
-                        .padding(17.dp)) {
-                        val land=official.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND
-                        Text(if(land) "中央氣象署 · 陸上颱風警報" else "中央氣象署 · 海上颱風警報",
-                            fontSize=20.sp,fontWeight=FontWeight.Bold,color=White)
-                        Spacer(Modifier.height(5.dp))
-                        Text("官方發布：${official.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei"))}",
-                            fontSize=14.sp,color=White.copy(alpha=.83f))
-                        Spacer(Modifier.height(9.dp))
-                        val regions=if(land)official.landCounties else official.seaAreas
-                        Text(if(land)"陸上警戒縣市" else "海上警戒海域",fontSize=15.sp,color=White)
-                        Spacer(Modifier.height(6.dp))
-                        if(regions.isEmpty()) {
-                            Text("官方公告未提供可核對的警戒區域清單；請開啟官方警報地圖。",
-                                color=White.copy(alpha=.9f),fontSize=14.sp)
-                        } else {
-                            // Red verified-region BLOCKS, not fabricated county polygons.
-                            regions.chunked(3).forEach { group ->
-                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                    group.forEach { area ->
-                                        Box(Modifier.padding(vertical=3.dp)
-                                            .background(Color(0xFFC0393E),RoundedCornerShape(10.dp))
-                                            .padding(horizontal=8.dp,vertical=7.dp)) {
-                                            Text(area,color=White,fontSize=14.sp)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Text("點選查看颱風動向 · 正式警戒範圍以氣象署為準 ↗",
-                            color=Color(0xFFFFD8D6),fontSize=14.sp)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
+                // Do not show a permanent typhoon promotion when the official feed has no
+                // current dated storm and there is no active local official notice.
                 val typhoonNotices = state.cwaWarnings.filter {
                     it.title.contains("颱風") || it.summary.contains("颱風警報")
                 }
-                if (officialStormActive || verifiedTyphoonWarning!=null) {
-                    Spacer(Modifier.height(20.dp))
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF17405D),Color(0xFF1F5675))))
-                        .border(1.dp, Color(0xFF94D7EE).copy(alpha=.56f), RoundedCornerShape(22.dp))
+                if (typhoonNotices.isNotEmpty() || officialStormActive) {
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                        .background(White.copy(alpha=.11f))
+                        .border(1.dp, White.copy(alpha=.22f), RoundedCornerShape(20.dp))
                         .clickable { typhoonPageOpen = true }
-                        .padding(horizontal=17.dp, vertical=18.dp), verticalAlignment=Alignment.CenterVertically) {
+                        .padding(horizontal=16.dp, vertical=13.dp), verticalAlignment=Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Cyclone, contentDescription=null,
                             tint=Color(0xFFFFC47D),modifier=Modifier.size(25.dp))
                         Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                            Text("颱風動向與官方路徑",fontSize=18.sp,
-                                fontWeight=FontWeight.Bold,color=White)
-                            approachingStorm?.let { storm ->
-                                Text("${storm.name} · ${storm.typhoonNumber.ifBlank { "颱風" }}號",
-                                    color=White,fontSize=16.sp,fontWeight=FontWeight.Medium)
-                                val current=storm.fixes.firstOrNull()
-                                Text(current?.officialDirection?.let { "移動方向 ${io.atmos.weather.typhoon.TyphoonDirection.zh(it) ?: "待確認"} · 預報接近台澎金馬" }
-                                    ?: "中央氣象署預報：接近台澎金馬",
-                                    color=TextSoft,fontSize=14.sp,maxLines=2)
-                            }
-                            if (verifiedTyphoonWarning!=null)
-                                Text("已發布正式颱風警報 · 點選查看",color=Color(0xFFFFD8B9),fontSize=14.sp)
-                            else Text("尚非正式海上／陸上颱風警報",color=Color(0xFFBDE4F6),fontSize=14.sp)
-                            Text("七級風暴風圈通過機率 · ${io.atmos.weather.location.LocationLabels.microcity(state.city.name)}：${homeWindProbability ?: "暫無官方機率"}",
-                                color=Color(0xFFFFDEA7),fontSize=14.sp,maxLines=2)
-
+                        Column(Modifier.weight(1f)) {
+                            Text("颱風動向與官方路徑", fontSize=17.sp,
+                                fontWeight=FontWeight.SemiBold, color=White)
+                            Text(if(typhoonNotices.isNotEmpty()) "${typhoonNotices.size} 則官方颱風公告 · 查看影響"
+                                else "氣象署有有效期內的颱風資料 · 查看路徑",fontSize=14.sp,color=TextSoft)
                         }
                         Icon(Icons.Rounded.ChevronRight,contentDescription="查看颱風動向",tint=TextSoft)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                } else {
-                    // NEXT_INTEGRATED_TYPOON_NEUTRAL_ENTRY: ordinary navigation, not an emergency alert.
-                    Spacer(Modifier.height(12.dp))
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF183C57),Color(0xFF214860))))
-                        .border(1.dp,Color(0xFFB1E3F5).copy(alpha=.35f),RoundedCornerShape(22.dp))
-                        .clickable { typhoonPageOpen = true }
-                        .padding(horizontal=17.dp,vertical=15.dp),
-                        verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Cyclone,null,tint=Color(0xFF9ED8F1),modifier=Modifier.size(24.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                            Text("颱風資訊",fontSize=18.sp,fontWeight=FontWeight.SemiBold,color=White)
-                            Text("目前未顯示臺灣相關有效颱風警報 · 點選查看官方資料",
-                                fontSize=14.sp,color=TextSoft,maxLines=2)
-                        }
-                        Icon(Icons.Rounded.ChevronRight,"開啟颱風資訊",tint=TextSoft)
                     }
                     Spacer(Modifier.height(12.dp))
                 }
@@ -744,50 +623,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // 依本次需求，首頁不再顯示中央氣象署 RSS 特報摘要區塊，
                 // 避免出現「中央氣象署特報 1 則所在地相關公告」與
                 // 「資料來源：官方 RSS 最新公告……」等額外說明文字。
-
-                // Active CWA county hazards are independent of the Taiwan-bound typhoon tile.
-                state.officialHazards.forEach { hazard ->
-                    Column(Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF763941),Color(0xFF4C2B45))))
-                        .border(1.dp,Color(0xFFFFBCAC).copy(alpha=.72f),RoundedCornerShape(20.dp))
-                        .clickable { uriHandler.openUri(io.atmos.weather.alerts.CwaCountyHazardFeed.OFFICIAL_URL) }
-                        .padding(16.dp)) {
-                        Text("中央氣象署 · ${hazard.title}",color=White,
-                            fontSize=18.sp,fontWeight=FontWeight.Bold)
-                        Spacer(Modifier.height(6.dp))
-                        val end = hazard.expiresAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
-                        Text("${hazard.county} · 有效至 ${end.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))}",
-                            color=White.copy(alpha=.9f),fontSize=14.sp)
-                        Text("查看警戒區域與防護建議 ↗",
-                            color=Color(0xFFFFD5D0),fontSize=14.sp)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
-                // RSS is a recent official notice, not a proven still-active CAP warning.
-                val recentCwaNotices=state.cwaWarnings.filter { notice ->
-                    val age=java.time.Instant.now().epochSecond-notice.issuedAt.epochSecond
-                    age in 0L..(24L*3600L) &&
-                        notice.link.startsWith("https://www.cwa.gov.tw/") &&
-                        !state.officialHazards.any { notice.title.contains(it.phenomenon) } &&
-                        listOf("解除","取消","測試","演練","颱風").none { notice.title.contains(it) }
-                }.take(2)
-                recentCwaNotices.forEach { notice ->
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xB2A43B47),Color(0xB16A2B3C))))
-                        .border(1.dp,Color(0xFFFFB4AE).copy(alpha=.64f),RoundedCornerShape(22.dp))
-                        .clickable { uriHandler.openUri(notice.link) }.padding(17.dp)) {
-                        Text("中央氣象署 · ${notice.title}",color=White,
-                            fontSize=18.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
-                        Spacer(Modifier.height(7.dp))
-                        Text(notice.summary.ifBlank { "查看公告內容與受影響地區" }.take(98),
-                            color=White.copy(alpha=.94f),fontSize=14.sp,maxLines=3)
-                        Spacer(Modifier.height(7.dp))
-                        Text("${notice.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} 發布 · 查看詳情 ↗",
-                            color=Color(0xFFFFDBD7),fontSize=14.sp)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
 
                 if (snapshot != null) {
                     // Weather always takes precedence over decor: show real six-hour facts
@@ -884,8 +719,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onPushSettings = { pushSettingsOpen = true },
                 onUpdateCenter = { updatePageOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
-                onTyphoons = { typhoonPageOpen = true },
-                onNaturalVoice = { naturalVoiceOpen=true })
+                onTyphoons = { typhoonPageOpen = true })
             } // when(page)
             } // HorizontalPager
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
@@ -1004,9 +838,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(9.dp))
                 Text("桌面與背景更新最快約每 15 分鐘排程一次，實際可能受系統省電措施延遲；Widget 會同步最近一次天氣和地標快照。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(20.dp))
-                Text("空氣品質",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                Text("空氣品質資料來源",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.height(5.dp))
-                Text("顯示所在地的空氣品質資訊。",color=TextSoft,fontSize=14.sp)
+                Text("使用 Open-Meteo 空氣品質 API，依所在地自動提供 PM2.5、PM10；能見度由 Open-Meteo 天氣預報取得。無需使用者註冊或輸入金鑰。這些是模型資料，非台灣環境部測站 AQI。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(20.dp))
                 HorizontalDivider(color=White.copy(alpha=.13f))
                 Spacer(Modifier.height(18.dp))
@@ -1148,16 +982,12 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
             }
         }
-        if (naturalVoiceOpen) io.atmos.weather.voice.NaturalVoiceSettingsPage(onClose={naturalVoiceOpen=false})
         if (diagnosticsOpen) SettingsDiagnosticsPage(onClose={diagnosticsOpen=false})
         if (briefingOpen) WeatherBriefingSettingsPage(onClose={briefingOpen=false})
         if (tasksOpen) io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})
         if (weatherAlarmOpen) io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})
         if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
-            warnings=state.cwaWarnings,onClose={typhoonPageOpen=false},
-            initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable,
-            currentLat=state.city.coordinate.latitude,currentLon=state.city.coordinate.longitude,
-            currentName=state.city.name)
+            warnings=state.cwaWarnings,onClose={typhoonPageOpen=false})
         if (updatePageOpen) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }
@@ -1179,10 +1009,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
 @Composable
 private fun HeaderButton(image: androidx.compose.ui.graphics.vector.ImageVector, description: String, click: ()->Unit) {
     val feedback=LocalHapticEngine.current
-    Box(Modifier.size(48.dp).clip(CircleShape)
-        .background(io.atmos.weather.ui.ThinnOpticalMaterial.raised)
-        .border(1.dp,White.copy(alpha=.42f),CircleShape)
-        .clickable { feedback?.play(HapticEngine.Event.TAP);click() }, contentAlignment=Alignment.Center) {
+    Box(Modifier.size(48.dp).clip(CircleShape).background(Color(0xB81A3751))
+        .border(1.dp,White.copy(alpha=.16f),CircleShape).clickable { feedback?.play(HapticEngine.Event.TAP);click() }, contentAlignment=Alignment.Center) {
         Icon(image,contentDescription=description,tint=White,modifier=Modifier.size(19.dp))
     }
 }
@@ -1251,7 +1079,7 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
         } else Modifier)
         .clip(shape)
         .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
-        .border(1.dp,Color.White.copy(alpha=.27f),shape)
+        .border(1.dp,Color.White.copy(alpha=.19f),shape)
     ) {
         // Specular sheen follows the direction of a drag; it is not a false claim of live wallpaper blur.
         Canvas(Modifier.matchParentSize()) {
@@ -1273,8 +1101,8 @@ private fun MetricCard(title: String, value: String, subtitle: String,
                        modifier: Modifier=Modifier, onClick:()->Unit) {
     val appearance=LocalAppearance.current
     Column(modifier.clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
-        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
-        .border(1.dp,White.copy(alpha=.19f+appearance.edgeLight*.26f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
+        .background(White.copy(alpha=.04f+appearance.glassOpacity*.19f))
+        .border(1.dp,White.copy(alpha=.09f+appearance.edgeLight*.36f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .clickable(onClick=onClick).padding(17.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Icon(symbol,contentDescription=null,tint=TextSoft,modifier=Modifier.size(16.dp))
@@ -1295,14 +1123,6 @@ private fun LocationSheet(selected: WeatherCity, saved: List<WeatherCity>, resul
     onRemove:(String)->Unit,onClose:()->Unit) {
     var query by remember { mutableStateOf("") }
     var submittedQuery by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(query) {
-        val cleaned=query.trim()
-        if(cleaned.length>=2) {
-            kotlinx.coroutines.delay(380L)
-            submittedQuery=cleaned
-            onQuery(cleaned)
-        }
-    }
     ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF102A44),contentColor=White) {
         Column(Modifier.fillMaxWidth().padding(horizontal=22.dp).padding(bottom=28.dp)) {
             Text("地點與城市",fontSize=23.sp,fontWeight=FontWeight.Bold,color=White)
@@ -1478,7 +1298,6 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
     }
     // Single time-based scene: no abrupt restarting of particle clocks when the source changes.
     WeatherSurfaceOverlay(weatherSurface, windKmh.toFloat(), Modifier.fillMaxSize())
-    // NEXT secondary layer. Existing sky, brand, forecast layout and pager remain unchanged.
     NextWeatherBackdrop(WeatherScenes.classify(condition,weatherCode,visibilityM),phase,night)
     if (condition in setOf(WeatherCondition.RAIN, WeatherCondition.THUNDERSTORM, WeatherCondition.HAIL, WeatherCondition.FREEZING_RAIN)) {
         ContinuousRain(heavyRain || condition == WeatherCondition.THUNDERSTORM, Modifier.fillMaxSize())
@@ -1640,17 +1459,6 @@ private fun SkyParticles(condition: WeatherCondition, phase:Float, heavyRain:Boo
 @Composable
 private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->Unit) {
     val ctx=LocalContext.current
-    var localWarning by remember { mutableStateOf(io.atmos.weather.typhoon.TyphoonWarningStore.current(ctx)) }
-    LaunchedEffect(ctx) {
-        while(true) {
-            localWarning=io.atmos.weather.typhoon.TyphoonWarningStore.current(ctx)
-            delay(30_000L)
-        }
-    }
-    val ownCounty=io.atmos.weather.typhoon.TyphoonWarningStore.county(
-        ctx.getSharedPreferences("atmos_settings",android.content.Context.MODE_PRIVATE)
-            .getString("city_name","").orEmpty())
-    val landHere=localWarning?.localLandWarning(ownCounty)==true
     val preferences=remember(ctx){LifestylePreferenceStore.load(ctx)}
     val mode=remember(ctx){OutingMode.entries.firstOrNull {
         it.name==ctx.getSharedPreferences("thinn_lifestyle_ai",0).getString("mode","DAILY")
@@ -1669,27 +1477,11 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
             Text("今天出門",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
         }
         Spacer(Modifier.height(17.dp))
-        Text(when {
-            landHere -> "${localWarning?.name ?: "颱風"} · 所在地已列入陸上颱風警報"
-            localWarning?.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND -> "中央氣象署已發布陸上颱風警報"
-            localWarning!=null -> "中央氣象署已發布海上颱風警報"
-            stale -> "天氣資料待更新"
-            else -> critical?.heading ?: plan.headline
-        },color=White,fontSize=23.sp,lineHeight=32.sp,fontWeight=FontWeight.SemiBold,maxLines=4)
+        Text(if(stale) "天氣資料待更新" else (critical?.heading ?: plan.headline),
+            color=White,fontSize=23.sp,lineHeight=32.sp,fontWeight=FontWeight.SemiBold,maxLines=3)
         Spacer(Modifier.height(5.dp))
-        Text(when {
-            landHere -> "今日受颱風影響，${ownCounty}已列入陸上警戒。請盡量避免非必要外出，關好門窗、固定陽台物品並做好防颱準備；如須出門，請留意強風、豪雨與道路安全。"
-            localWarning?.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND ->
-                "部分縣市已列入陸上警戒，但尚無足夠官方區域資料可確認您的所在地是否列入。出門前請查閱中央氣象署及地方政府最新公告。"
-            localWarning!=null -> "已發布海上颱風警報。避免海邊、港口與海上活動，持續關注氣象署是否升級陸警。"
-            stale -> "目前顯示舊資料，請重新整理後再確認外出安排。"
-            else -> critical?.detail ?: plan.reminder
-        },color=Color(0xFFF0F6FB),fontSize=16.sp,lineHeight=24.sp,maxLines=7)
-        if(localWarning!=null) {
-            Spacer(Modifier.height(6.dp))
-            Text("依中央氣象署已核對公告產生的規則式安全提醒；非 AI 推測警戒範圍。",
-                color=Color(0xFFFFDECE),fontSize=14.sp)
-        }
+        Text(if(stale) "目前顯示舊資料，請重新整理後再確認外出安排。" else (critical?.detail ?: plan.reminder),
+            color=Color(0xFFF0F6FB),fontSize=16.sp,lineHeight=24.sp,maxLines=3)
         Spacer(Modifier.height(18.dp))
         Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha=.14f)))
         Spacer(Modifier.height(17.dp))

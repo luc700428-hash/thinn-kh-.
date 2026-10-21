@@ -36,7 +36,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import io.atmos.weather.notifications.XiaomiFocusBridge
 import java.util.Locale
 
 /** Real ringing is owned by a service rather than a notification Activity.
@@ -81,25 +80,14 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                 .setContentTitle(alarm.title.ifBlank { "天氣鬧鐘" })
                 .setContentText(String.format(Locale.TAIWAN,"%02d:%02d · 輕觸開啟響鈴畫面",alarm.hour,alarm.minute))
                 .setContentIntent(openIntent(ctx,alarm.id))
-                // On an unlocked, authorized HyperOS 3 device prefer the official island;
-                // locked/unavailable devices retain the untouched full-screen alarm UI.
+                .setFullScreenIntent(openIntent(ctx,alarm.id),true)
                 .setOngoing(true).setAutoCancel(false)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel,"停止",controlIntent(ctx,alarm.id,ACTION_STOP))
             if(alarm.snooze) b.addAction(android.R.drawable.ic_popup_reminder,"10 分鐘後",controlIntent(ctx,alarm.id,ACTION_SNOOZE))
-            val islandPreferred = XiaomiFocusBridge.shouldUseAlarmIsland(ctx)
-            if (!islandPreferred) b.setFullScreenIntent(openIntent(ctx,alarm.id),true)
-            var note = b.build()
-            if (islandPreferred) {
-                val text = String.format(Locale.TAIWAN,"%02d:%02d 鬧鐘響鈴中",alarm.hour,alarm.minute)
-                // If Xiaomi rejects the island (including a higher-priority EEW),
-                // the same ringing service and standard heads-up notification remain.
-                XiaomiFocusBridge.decorate(ctx,note,"鬧鐘",text,
-                    XiaomiFocusBridge.Kind.ALARM_RINGING,BASE_NOTIFICATION_ID+alarm.id)
-            }
-            return note
+            return b.build()
         }
 
         /** Safe fallback if Android blocks foreground-service launch. Does NOT claim sound is active. */
@@ -114,7 +102,6 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     private var nextPlayer:NextWeatherAlarmPlayer?=null
     private var vibrator:Vibrator?=null
     private var tts:TextToSpeech?=null
-    private var samsungTtsSelected=false
     private val uiHandler=Handler(Looper.getMainLooper())
     private val speechScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private var speechJob:Job?=null
@@ -132,7 +119,6 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                         .cancel(BASE_NOTIFICATION_ID+id)
                     stopAudio()
                     currentId=-1
-                    XiaomiFocusBridge.finish(BASE_NOTIFICATION_ID+id)
                     stopSelf()
                 } else if(id>=0) {
                     (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
@@ -171,8 +157,6 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             else runCatching { alarm.ringtoneUri?.let(android.net.Uri::parse) }.getOrNull()
         val default=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        // Only the first two bundled themes get the weather-aware sound engine.
-        // If assets/cache are unavailable the existing MediaPlayer tone still works.
         nextPlayer=NextWeatherAlarmPlayer.start(this,alarm.ringtoneUri,WeatherAlarmSpeechCache.load(this))
         if(nextPlayer==null) for(uri in listOfNotNull(selected,default).distinct()) {
             val next=runCatching {
@@ -192,52 +176,36 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             vibrator=if(Build.VERSION.SDK_INT>=31)
                 (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
                 else (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            val timings=longArrayOf(0,65,135,90,360,130,410)
-            val amplitudes=intArrayOf(0,90,0,160,0,120,0)
-            vibrator?.vibrate(VibrationEffect.createWaveform(timings,amplitudes,0))
+            // Softer stepped alarm pulses, not an attempt to reproduce Apple's Taptic Engine.
+            vibrator?.vibrate(VibrationEffect.createWaveform(
+                longArrayOf(0,70,110,55,400,85,125,60,780),
+                intArrayOf(0,155,0,100,0,145,0,90,0),0))
         }
-        if(alarm.weatherVoice) {
-            // An unavailable Samsung engine never silently becomes Google TTS.
-            if (!SamsungTtsSelector.canStart(this)) {
-                SamsungTtsSelector.record(this,"選定的播報引擎尚未安裝；鬧鐘鈴聲正常播放")
-            } else {
-                val chosen=SamsungTtsSelector.intended(this)
-                samsungTtsSelected=chosen!=null && chosen.startsWith("com.samsung.",true)
-                tts=if(chosen!=null) TextToSpeech(this,this,chosen)
-                    else TextToSpeech(this,this) // explicitly/system-default on non-Samsung
-            }
-        }
-    }
-
-    private fun setAlarmVolume(v:Float) {
-        runCatching {player?.setVolume(v,v)}
-        runCatching {nextPlayer?.setMasterVolume(v)}
-    }
-
-    private fun ttsUnavailable(message:String) {
-        Log.w("thinn-alarm",message)
-        SamsungTtsSelector.record(this,message)
-        runCatching { tts?.shutdown() }
-        tts=null // ringtone and vibration MUST continue.
+        if(alarm.weatherVoice) tts=TextToSpeech(this,this)
     }
 
     override fun onInit(status:Int) {
-        if(currentId < 0) return
-        if(status != TextToSpeech.SUCCESS) {
-            ttsUnavailable("指定的語音引擎無法啟動；沒有自動切換 Google")
-            return
-        }
+        if(status != TextToSpeech.SUCCESS || currentId < 0) return
         val engine=tts ?: return
-        // Public Android TextToSpeech has no current-engine accessor. Only the
-        // requested package and successfully selected offline voice can be reported.
-        val intended=SamsungTtsSelector.intended(this)
-        val requestedLabel=if(intended==null) "系統預設引擎" else "指定引擎：$intended"
-        val voiceName=SamsungTtsSelector.prepare(engine)
-        if(voiceName==null) {
-            ttsUnavailable("$requestedLabel 沒有可用的離線繁體中文聲線；App 未主動切換 Google")
+        val availability=runCatching {engine.setLanguage(Locale.TAIWAN)}.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
+        if(availability < TextToSpeech.LANG_AVAILABLE) {
+            Log.w("thinn-alarm","Traditional Chinese TTS is unavailable; preserving ringtone")
             return
         }
-        SamsungTtsSelector.record(this,"$requestedLabel；聲線：$voiceName（系統未提供實際引擎識別）")
+        // The user has not opted into sending private alarm/weather text to a
+        // cloud TTS provider. Require an explicitly verified offline zh-TW voice.
+        val best=runCatching {
+            engine.voices.orEmpty().filter { voice ->
+                voice.locale.language == Locale.CHINESE.language &&
+                    voice.locale.country.equals("TW",ignoreCase=true) &&
+                    !voice.isNetworkConnectionRequired
+            }.maxWithOrNull(compareBy<android.speech.tts.Voice> { it.quality }
+                .thenByDescending { it.latency })
+        }.getOrNull()
+        if (best==null || engine.setVoice(best)!=TextToSpeech.SUCCESS) {
+            Log.w("thinn-alarm","No verified offline zh-TW voice installed; ringtone keeps playing")
+            return
+        }
         engine.setSpeechRate(0.94f)
         engine.setPitch(1.0f)
         engine.setAudioAttributes(AudioAttributes.Builder()
@@ -265,28 +233,17 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             if(currentId!=id) return@launch
             val reading=updated ?: WeatherAlarmSpeechCache.load(this@WeatherAlarmAudioService)
             val message=WeatherAlarmNarration.build(ZonedDateTime.now(),reading)
-            // Keep ringtone audible at system alarm volume during cloud generation.
-            val cloudAccepted=io.atmos.weather.voice.NaturalVoiceHub.offer(
-                this@WeatherAlarmAudioService,
-                io.atmos.weather.voice.NaturalVoiceHub.Request(
-                    message,io.atmos.weather.voice.NaturalVoiceHub.Priority.DAILY,
-                    "alarm-weather:$id:${System.currentTimeMillis()/60_000L}",
-                    alarmAudio=true,
-                    onFinished={ if(currentId==id) setAlarmVolume(1f) },
-                    onFailure={ if(currentId==id) {
-                        setAlarmVolume(.18f)
-                        val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
-                        if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)
-                    } }
-                ))
-            if(!cloudAccepted) {
-                setAlarmVolume(.18f)
-                val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
-                if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)
-            }
+            setAlarmVolume(.18f)
+            val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
+            if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)
             // OEM TTS can omit onDone. Never leave the ringing sound quiet indefinitely.
             uiHandler.postDelayed({ if(currentId==id) setAlarmVolume(1f) },120_000L)
         }
+    }
+
+    private fun setAlarmVolume(v:Float) {
+        runCatching { player?.setVolume(v,v) }
+        runCatching { nextPlayer?.setMasterVolume(v) }
     }
 
     private suspend fun refreshAlarmWeather(): AlarmWeatherReading? {
@@ -307,7 +264,6 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun stopAudio() {
-        io.atmos.weather.voice.NaturalVoiceHub.stopAlarm()
         speechJob?.cancel();speechJob=null
         runCatching {nextPlayer?.close()};nextPlayer=null
         runCatching {player?.stop();player?.release()};player=null

@@ -39,8 +39,7 @@ object WeatherAlarmSpeechCache {
         ctx.getSharedPreferences(PREF,Context.MODE_PRIVATE).edit()
             .putString(KEY,payload.toString())
             .putInt("next_weather_code",w.weatherCode ?: -1)
-            .putLong("next_weather_code_fetched",w.fetchedAt.toEpochMilli())
-            .apply()
+            .putLong("next_weather_code_fetched",w.fetchedAt.toEpochMilli()).apply()
     }
 
     fun load(ctx:Context):AlarmWeatherReading? = runCatching {

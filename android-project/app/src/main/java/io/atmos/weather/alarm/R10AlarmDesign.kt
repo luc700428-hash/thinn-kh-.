@@ -2,35 +2,32 @@ package io.atmos.weather.alarm
 
 import android.content.Context
 import android.media.MediaPlayer
-import android.media.AudioAttributes
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.geometry.Offset
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
-import kotlin.math.abs
 import android.net.Uri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.collect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.atmos.weather.R
@@ -62,14 +60,14 @@ private val weekdays=listOf("一","二","三","四","五","六","日")
 
 object R10AlarmTones {
     const val prefix="thinn://alarm/"
-    data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color)
+    data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color,val artwork:Int)
     val choices=listOf(
-        Choice("dawn","晨光序曲","14 種天氣的清新鋼琴與自然音",Color(0xFFEF7AB0),Color(0xFF9D428F)),
-        Choice("rain","天氣絮語","14 種天氣的舒緩和聲與環境白噪音",Color(0xFF90EFF3),Color(0xFF258FC1)),
-        Choice("wood","木息 Forest","林間木琴 · 自然柔和",Color(0xFF74D1B9),Color(0xFF286E69)),
-        Choice("water","水漣 Spring","山泉水滴 · 透明鐘音",Color(0xFF99C1F4),Color(0xFF516BBB)),
-        Choice("fire","曜火 Dawn","溫暖漸進 · 日出能量",Color(0xFFFFB877),Color(0xFFD16B68)),
-        Choice("metal","金石 Bellglass","清透和弦 · 明確醒腦",Color(0xFFC9B4F8),Color(0xFF6C5AA8))
+        Choice("dawn","晨光序曲","14 種天氣的清新鋼琴與自然音",Color(0xFFEF7AB0),Color(0xFF9D428F),R.drawable.alarm_art_dawn),
+        Choice("rain","天氣絮語","14 種天氣的和聲與環境白噪音",Color(0xFF90EFF3),Color(0xFF258FC1),R.drawable.alarm_art_rain),
+        Choice("wood","木息 Forest","樹影、木琴與鳥鳴意象",Color(0xFF74D1B9),Color(0xFF286E69),R.drawable.alarm_art_wood),
+        Choice("water","水漣 Spring","泉水、水晶與清透鐘音",Color(0xFF99C1F4),Color(0xFF516BBB),R.drawable.alarm_art_water),
+        Choice("fire","曜火 Dawn","暖光、晨曦與和緩脈動",Color(0xFFFFB877),Color(0xFFD16B68),R.drawable.alarm_art_fire),
+        Choice("metal","金石 Bellglass","玻璃、水晶與金屬共鳴",Color(0xFFC9B4F8),Color(0xFF6C5AA8),R.drawable.alarm_art_metal)
     )
     fun isBuiltIn(uri:String?):Boolean=uri?.startsWith(prefix)==true && choices.any { prefix+it.id==uri }
     fun resource(uri:String?, weather:AlarmWeatherReading?, nowMs:Long):Int? {
@@ -78,15 +76,14 @@ object R10AlarmTones {
         val reliable=weather?.takeIf {
             it.fetchedEpochMs > 0 && nowMs-it.fetchedEpochMs in 0L..WeatherAlarmNarration.MAX_WEATHER_AGE_MS
         }
-        val rainy=reliable?.condition in setOf("RAIN","THUNDERSTORM","HAIL","SLEET","FREEZING_RAIN","SNOW","DRIZZLE","HEAVY_RAIN")
-        val clear=reliable?.condition in setOf("CLEAR","MOSTLY_CLEAR","PARTLY_CLOUDY","SUNNY","FAIR")
+        val rainy=reliable?.condition in setOf("RAIN","THUNDERSTORM","HAIL","SLEET","FREEZING_RAIN","SNOW")
         return when(id) {
-            "dawn" -> if(rainy) R.raw.thinn_alarm_dawn_rain else if(clear) R.raw.thinn_alarm_dawn_clear else R.raw.thinn_alarm_dawn
-            "rain" -> if(rainy) R.raw.thinn_alarm_rain_rain else if(clear) R.raw.thinn_alarm_rain_clear else R.raw.thinn_alarm_rain
-            "wood" -> if(rainy) R.raw.thinn_alarm_wood_rain else if(clear) R.raw.thinn_alarm_wood_clear else R.raw.thinn_alarm_wood
-            "water" -> if(rainy) R.raw.thinn_alarm_water_rain else if(clear) R.raw.thinn_alarm_water_clear else R.raw.thinn_alarm_water
-            "fire" -> if(rainy) R.raw.thinn_alarm_fire_rain else if(clear) R.raw.thinn_alarm_fire_clear else R.raw.thinn_alarm_fire
-            "metal" -> if(rainy) R.raw.thinn_alarm_metal_rain else if(clear) R.raw.thinn_alarm_metal_clear else R.raw.thinn_alarm_metal
+            "dawn" -> if(rainy) R.raw.thinn_alarm_dawn_rain else R.raw.thinn_alarm_dawn
+            "rain" -> if(rainy) R.raw.thinn_alarm_rain else R.raw.thinn_alarm_rain_clear
+            "wood" -> if(rainy) R.raw.thinn_alarm_wood_rain else R.raw.thinn_alarm_wood
+            "water" -> if(rainy) R.raw.thinn_alarm_water_rain else R.raw.thinn_alarm_water
+            "fire" -> if(rainy) R.raw.thinn_alarm_fire_rain else R.raw.thinn_alarm_fire
+            "metal" -> if(rainy) R.raw.thinn_alarm_metal_rain else R.raw.thinn_alarm_metal
             else -> null
         }
     }
@@ -94,8 +91,13 @@ object R10AlarmTones {
 
 @Composable
 fun R10Switch(checked:Boolean,onCheckedChange:(Boolean)->Unit) {
-    // One consistent optically highlighted switch and hardware-calibrated haptic feedback.
-    io.atmos.weather.ui.GlassSwitch(checked=checked,onCheckedChange=onCheckedChange)
+    val x by animateDpAsState(if(checked) 24.dp else 2.dp, animationSpec=spring(),label="switch thumb")
+    val haptic=LocalHapticFeedback.current
+    Box(Modifier.size(width=54.dp,height=32.dp).clip(CircleShape)
+        .background(if(checked) Color(0xFF35CF65) else Color(0xFF565861))
+        .clickable {haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove);onCheckedChange(!checked)},contentAlignment=Alignment.CenterStart) {
+        Box(Modifier.offset(x=x).size(28.dp).background(Color.White,CircleShape))
+    }
 }
 
 @Composable
@@ -111,10 +113,44 @@ private fun GlassSetting(label:String, detail:String?=null,click:(()->Unit)?=nul
 @Composable
 private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp).background(Color.White.copy(alpha=.13f)))}
 
-/** Two-state meridiem control with deterministic gestures, no fling and a short
- * visual settlement. Every completed vertical drag changes AM <-> PM exactly once,
- * whether the gesture was slow or fast. State is saved BEFORE animation begins.
+/** Flinging LazyColumn wheel. Pixel-continuous drag, velocity decay and centered snap
+ * are provided by Compose Foundation (not the old one-value-per-drag stepping).
+ * The virtualized repeating sequence avoids abrupt wraparound at 12/59.
  */
+@Composable
+private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
+    val middle = 100 * count
+    val state=rememberLazyListState(initialFirstVisibleItemIndex=middle+value-2)
+    val snap=rememberSnapFlingBehavior(lazyListState=state)
+    val haptic=LocalHapticFeedback.current
+    val latestValue by rememberUpdatedState(value)
+    // Follow the item physically nearest the central highlight, not finger delta thresholds.
+    LaunchedEffect(state,count) {
+        snapshotFlow {
+            val info=state.layoutInfo
+            val midpoint=(info.viewportStartOffset+info.viewportEndOffset)/2
+            info.visibleItemsInfo.minByOrNull {kotlin.math.abs(it.offset+it.size/2-midpoint)}?.index
+        }.distinctUntilChanged().collect { item ->
+            if(item!=null) {
+                val next=(item % count + count)%count
+                if(next!=latestValue){onValue(next);haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)}
+            }
+        }
+    }
+    LazyColumn(state=state,flingBehavior=snap,modifier=modifier.height(220.dp),
+        contentPadding=PaddingValues(vertical=88.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+        items(count*250) { item ->
+            val selected=(item % count + count)%count
+            val picked=selected==value
+            Box(Modifier.fillMaxWidth().height(44.dp),contentAlignment=Alignment.Center) {
+                Text(display(selected),color=if(picked) Color.White else Color.White.copy(alpha=.33f),
+                    fontSize=if(picked) 31.sp else 23.sp,fontWeight=FontWeight.Light,
+                    textAlign=TextAlign.Center)
+            }
+        }
+    }
+}
+
 @Composable
 private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
     val haptic=LocalHapticFeedback.current
@@ -168,113 +204,9 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
     }
 }
 
-@Composable
-private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
-    val density=LocalDensity.current
-    val stepPx=with(density) { 41.dp.toPx() }
-    val scope=rememberCoroutineScope()
-    val haptics=LocalHapticFeedback.current
-    val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
-    var offsetPx by remember { mutableFloatStateOf(0f) }
-    var movingJob by remember { mutableStateOf<Job?>(null) }
-    val liveValue by rememberUpdatedState(value)
-    val liveUpdate by rememberUpdatedState(onValue)
-    val shifted= (offsetPx/stepPx).roundToInt()
-    val fraction=offsetPx-shifted*stepPx
-    val selectedDetent=((value-shifted)%count+count)%count
-    var lastFeedbackValue by remember { mutableIntStateOf(selectedDetent) }
-    LaunchedEffect(selectedDetent) {
-        if(selectedDetent!=lastFeedbackValue) {
-            // One tactile request per visible time unit (subject to Android hardware settings).
-            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            lastFeedbackValue=selectedDetent
-        }
-    }
-    Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
-        .pointerInput(count,stepPx,reduceMotion) {
-            var tracker=VelocityTracker()
-            detectVerticalDragGestures(
-                onDragStart={ position ->
-                    movingJob?.cancel()
-                    tracker=VelocityTracker()
-                    // Initial contact is recorded by the first real drag event.
-                },
-                onVerticalDrag={ change, distance ->
-                    change.consume()
-                    tracker.addPosition(change.uptimeMillis,change.position)
-                    offsetPx=(offsetPx+distance).coerceIn(-stepPx*160f,stepPx*160f)
-                },
-                onDragEnd={
-                    val speed=tracker.calculateVelocity().y.coerceIn(-2400f,2400f)
-                    // Keep a small fling prediction, but NEVER run a long decay + spring.
-                    // The value is committed synchronously, before Save could be pressed.
-                    val coastPx=if(reduceMotion) 0f
-                        else (speed*.065f).coerceIn(-stepPx*2f,stepPx*2f)
-                    val nearest=((offsetPx+coastPx)/stepPx).roundToInt().coerceIn(-160,160)
-                    offsetPx-=nearest*stepPx
-                    if(nearest!=0) {
-                        liveUpdate(((liveValue-nearest)%count+count)%count)
-                    }
-                    val visualStart=offsetPx
-                    movingJob=scope.launch {
-                        if(!reduceMotion) {
-                            Animatable(visualStart).animateTo(0f,tween(durationMillis=140)) {
-                                offsetPx=this.value
-                            }
-                        }
-                        offsetPx=0f
-                    }
-                },onDragCancel={
-                    movingJob=scope.launch {
-                        val snap=(offsetPx/stepPx).roundToInt()
-                        if(snap!=0) liveUpdate(((liveValue-snap)%count+count)%count)
-                        offsetPx=0f
-                    }
-                }
-            )
-        },contentAlignment=Alignment.Center) {
-        // Place the actual selected value at the middle of the 213dp viewport.
-        // A constrained Column previously clipped its 7 rows and shifted the selected
-        // white digits one row below the grey highlight, saving the WRONG alarm time.
-        Layout(content = {
-            for (row in -3..3) {
-                val distance=abs(row-fraction/stepPx)
-                val item=((value+row-shifted)%count+count)%count
-                Box(Modifier.fillMaxWidth().height(41.dp).clickable {
-                    movingJob?.cancel()
-                    liveUpdate(item)
-                    offsetPx=0f
-                },contentAlignment=Alignment.Center) {
-                    if(count!=2 || row==0 || row==1) Text(display(item),textAlign=TextAlign.Center,
-                        color=Color.White.copy(alpha=when {
-                            distance<.6f -> 1f
-                            distance<1.6f -> .58f
-                            distance<2.6f -> .26f
-                            else -> .06f
-                        }),fontSize=if(distance<.6f) 30.sp else 23.sp,fontWeight=FontWeight.Light,
-                        maxLines=1)
-                }
-            }
-        }, modifier=Modifier.fillMaxSize()) { measurables, constraints ->
-            val rowHeight = 41.dp.roundToPx()
-            val cells = measurables.map { it.measure(Constraints.fixed(constraints.maxWidth,rowHeight)) }
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                val center = (constraints.maxHeight-rowHeight)/2
-                cells.forEachIndexed { index, placeable ->
-                    placeable.placeRelative(0, center+(index-3)*rowHeight+fraction.roundToInt())
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm)->Unit,onSave:(WeatherAlarm)->Unit) {
-    val ctx=LocalContext.current
-    var ttsOptions by remember { mutableStateOf(false) }
-    var ttsLabel by remember { mutableStateOf(SamsungTtsSelector.label(ctx)) }
-    var ttsPreview by remember { mutableStateOf(SamsungTtsSelector.lastStatus(ctx)) }
     val now=remember { LocalTime.now().plusMinutes(5) }
     var hour by remember(initial) { mutableIntStateOf(initial?.hour?:now.hour) }
     var minute by remember(initial) { mutableIntStateOf(initial?.minute?:now.minute) }
@@ -300,9 +232,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
             Box(Modifier.fillMaxWidth().padding(horizontal=32.dp).height(235.dp),contentAlignment=Alignment.Center) {
                 Box(Modifier.fillMaxWidth().height(45.dp).background(Color(0xFF303137),RoundedCornerShape(12.dp)))
                 Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-                    // A dedicated AM/PM wheel handles both swipe directions reliably.
-                    MeridiemWheel(if(hour<12) 0 else 1,
-                        {part -> hour=(hour%12)+part*12},Modifier.weight(1.15f))
+                    MeridiemWheel(if(hour>=12) 1 else 0,{meridiem->hour=V25AlarmMeridiem.hour24(hour%12,meridiem)},Modifier.weight(1.1f))
                     Wheel(hour%12,12,{if(it==0)"12" else "$it"},
                         {v->hour=(hour/12)*12+v},Modifier.weight(.85f))
                     Wheel(minute,60,{"%02d".format(Locale.TAIWAN,it)},
@@ -320,12 +250,6 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {
                     GlassSetting("智慧天氣語音",trailing={R10Switch(voice){voice=it}})
-                    if(voice) {
-                        Line()
-                        GlassSetting("播報聲線／引擎",detail=ttsLabel+"  ›",click={ttsOptions=true})
-                        Text("上次語音狀態："+SamsungTtsSelector.lastStatus(ctx),
-                            color=secondary,fontSize=14.sp,modifier=Modifier.padding(14.dp))
-                    }
                 }
                 if(initial!=null) {
                     Spacer(Modifier.height(10.dp))
@@ -334,33 +258,6 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                             .clickable {onDelete(initial)}.padding(17.dp))
                 }
             }
-        }
-    }
-    if(ttsOptions) Dialog(onDismissRequest={ttsOptions=false}) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .background(night).padding(20.dp).verticalScroll(rememberScrollState())) {
-            Text("鬧鐘播報引擎",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Color.White)
-            Spacer(Modifier.height(8.dp))
-            Text("每支手機分開設定。Samsung TTS 需要手機已安裝繁中離線聲線；Bixby 非公開 TTS。",
-                fontSize=14.sp,color=secondary)
-            SamsungTtsSelector.choices(ctx).forEach { item ->
-                Text((if(SamsungTtsSelector.selected(ctx)==item.id)"●  " else "○  ")+item.title,
-                    color=Color.White,fontSize=15.sp,
-                    modifier=Modifier.fillMaxWidth().clickable {
-                        SamsungTtsSelector.setSelected(ctx,item.id)
-                        ttsLabel=SamsungTtsSelector.label(ctx)
-                        ttsPreview="已選擇，請按試聽"
-                    }.padding(vertical=12.dp))
-            }
-            Text("試聽所選引擎",fontSize=16.sp,color=amber,modifier=Modifier
-                .fillMaxWidth().clickable {
-                    ttsPreview="正在試聽…"
-                    SamsungTtsSelector.preview(ctx) { result -> ttsPreview=result }
-                }.padding(vertical=14.dp))
-            Text(ttsPreview,color=secondary,fontSize=14.sp)
-            Spacer(Modifier.height(8.dp))
-            Text("完成",fontSize=16.sp,color=amber,modifier=Modifier.align(Alignment.End)
-                .clickable {ttsOptions=false}.padding(12.dp))
         }
     }
     if(choosing) R10RingtonePicker(selected=uri,onChoose={uri=it;choosing=false},onClose={choosing=false})
@@ -390,40 +287,20 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     }
 }
 
-/** Preview through Android's ALARM volume stream, not the media-volume stream. */
-private fun prepareAlarmPreview(context:Context,uri:Uri):MediaPlayer? {
-    val player=MediaPlayer()
-    return try {
-        player.setAudioAttributes(AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-        player.setDataSource(context,uri)
-        player.prepare()
-        player
-    } catch(_ : Exception) {
-        player.release()
-        null
-    }
-}
-
 @Composable
 private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:()->Unit) {
     val ctx=androidx.compose.ui.platform.LocalContext.current
     var active by remember { mutableStateOf(selected?:R10AlarmTones.prefix+"dawn") }
     var preview by remember { mutableStateOf<MediaPlayer?>(null) }
-    DisposableEffect(Unit) {onDispose {preview?.release()}}
-    val localAudioPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
-        if(picked!=null) {
-            val access=Intent.FLAG_GRANT_READ_URI_PERMISSION
-            runCatching { ctx.contentResolver.takePersistableUriPermission(picked,access) }
-            preview?.release(); preview=null
-            active=picked.toString()
-            preview=runCatching { prepareAlarmPreview(ctx,picked)?.apply {
-                setOnCompletionListener {player->player.release();if(preview===player)preview=null}
-                start()
-            } }.getOrNull()
+    val openAudio=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { chosen ->
+        if(chosen!=null) {
+            runCatching {ctx.contentResolver.takePersistableUriPermission(chosen,Intent.FLAG_GRANT_READ_URI_PERMISSION)}
+            preview?.release();preview=null
+            active=chosen.toString()
+            onChoose(active)
         }
     }
+    DisposableEffect(Unit) {onDispose {preview?.release()}}
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Column(Modifier.fillMaxSize().background(night).statusBarsPadding().navigationBarsPadding().padding(horizontal=20.dp)) {
             Row(Modifier.fillMaxWidth().height(68.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -432,107 +309,53 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                 Text("完成",color=amber,fontSize=17.sp,modifier=Modifier.clickable {preview?.release();preview=null;onChoose(active)})
             }
             Text("專屬自然系鈴聲",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text("點選卡片選取並試聽。六款都會依有效天氣資料調整聲景；沒有新資料時播放中性版本。",
+            Text("原創音色 · 隨有效天氣資訊變換編曲，點按卡片即可試聽。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 R10AlarmTones.choices.chunked(2).forEach {row ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         row.forEach {choice->
                             val chosen=active==R10AlarmTones.prefix+choice.id
-                            Column(Modifier.weight(1f).height(176.dp).clip(RoundedCornerShape(22.dp))
-                                .background(Brush.linearGradient(listOf(choice.upper,choice.lower)))
-                                .border(if(chosen) 2.dp else 1.dp,if(chosen) Color.White else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
+                            Box(Modifier.weight(1f).height(206.dp).clip(RoundedCornerShape(22.dp))
+                                .border(if(chosen) 2.dp else 1.dp,if(chosen) Color.White else Color.White.copy(alpha=.20f),RoundedCornerShape(22.dp))
                                 .clickable {
                                     active=R10AlarmTones.prefix+choice.id
-                                    preview?.release()
+                                    preview?.release();preview=null
                                     val res=R10AlarmTones.resource(active,WeatherAlarmSpeechCache.load(ctx),System.currentTimeMillis())
-                                    preview=if(res!=null) runCatching {prepareAlarmPreview(ctx,Uri.parse("android.resource://${ctx.packageName}/$res"))?.apply {
+                                    preview=if(res!=null) runCatching {MediaPlayer.create(ctx,res)?.apply {
                                         setOnCompletionListener {p->p.release();if(preview===p)preview=null}
                                         start()
                                     }}.getOrNull() else null
-                                }.padding(14.dp),verticalArrangement=Arrangement.SpaceBetween) {
-                                Box(Modifier.fillMaxWidth().height(88.dp)) {
-                                    ToneArtwork(choice.id,Modifier.fillMaxSize())
-                                    Text(if(chosen) "✓ 已選擇" else "▶ 試聽",color=Color.White,fontSize=14.sp,
-                                        modifier=Modifier.align(Alignment.TopStart)
-                                            .background(Color.Black.copy(alpha=.23f),RoundedCornerShape(14.dp))
-                                            .padding(horizontal=8.dp,vertical=4.dp))
-                                }
-                                Column {
-                                    Text(choice.label,color=Color.White,fontSize=18.sp,fontWeight=FontWeight.Bold)
-                                    Text(choice.description,color=Color.White.copy(alpha=.93f),fontSize=14.sp,lineHeight=17.sp)
+                                }) {
+                                Image(painterResource(choice.artwork),null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+                                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.08f),Color.Transparent,Color.Black.copy(alpha=.72f)))))
+                                Column(Modifier.fillMaxSize().padding(14.dp),verticalArrangement=Arrangement.SpaceBetween) {
+                                    Text(if(chosen)"✓ 已選擇" else "♪ 試聽",color=Color.White,fontSize=14.sp)
+                                    Column {
+                                        Text(choice.label,color=Color.White,fontSize=19.sp,fontWeight=FontWeight.Bold)
+                                        Text(choice.description,color=Color.White.copy(alpha=.93f),fontSize=14.sp,lineHeight=17.sp)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                    .background(Color.White.copy(alpha=.13f))
-                    .border(1.dp,Color.White.copy(alpha=.30f),RoundedCornerShape(22.dp))
-                    .clickable { localAudioPicker.launch(arrayOf("audio/*")) }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha=.1f)).border(1.dp,Color.White.copy(alpha=.16f),RoundedCornerShape(20.dp))
+                    .clickable {openAudio.launch(arrayOf("audio/*"))}
                     .padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Text("♫",color=Color.White,fontSize=29.sp,modifier=Modifier.padding(end=16.dp))
+                    Text("▣",color=Color(0xFF9BDDFB),fontSize=24.sp)
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("選擇本地音樂",color=Color.White,fontSize=18.sp,fontWeight=FontWeight.SemiBold)
-                        Text("從手機資料夾或其他檔案提供者選取音訊",color=secondary,fontSize=14.sp)
+                        Text("從手機選擇音樂",fontSize=17.sp,color=Color.White)
+                        Text("音樂資料夾、下載或雲端檔案",fontSize=14.sp,color=secondary)
                     }
-                    Text(if(active.startsWith("content://")) "✓" else "›",color=amber,fontSize=24.sp)
+                    Text("›",fontSize=26.sp,color=secondary)
                 }
-            }
-        }
-    }
-}
-
-/** Six decorative, original vector mini-scenes drawn in Compose, no bundled Apple/Xiaomi art. */
-@Composable
-private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
-    androidx.compose.foundation.Canvas(modifier) {
-        val c=Offset(size.width*.54f,size.height*.50f)
-        val r=size.minDimension*.30f
-        when(id) {
-            "dawn","fire" -> {
-                drawCircle(Color(0xFFFFF0AE).copy(alpha=.24f),r*1.28f,c)
-                drawCircle(Color(0xFFFFF5C8).copy(alpha=.95f),r*.74f,c)
-                for(i in 0..9){
-                    val a=i*2*Math.PI/10
-                    val cs=kotlin.math.cos(a).toFloat();val sn=kotlin.math.sin(a).toFloat()
-                    drawLine(Color.White.copy(alpha=.64f),c+Offset(cs*r,sn*r),
-                        c+Offset(cs*r*1.17f,sn*r*1.17f),2.dp.toPx())
-                }
-            }
-            "rain","water" -> {
-                for(i in 0..6){
-                    val x=size.width*(.15f+.11f*i)
-                    val y=size.height*(.25f+.08f*(i%3))
-                    drawLine(Color(0xFFD9FCFF).copy(alpha=.74f),Offset(x,y),
-                        Offset(x-8.dp.toPx(),y+22.dp.toPx()),2.2.dp.toPx())
-                }
-                drawCircle(Color(0xFFE2FAFF).copy(alpha=.24f),r,c)
-                drawCircle(Color.White.copy(alpha=.68f),r*.24f,c)
-            }
-            "wood" -> {
-                val leaf=Path().apply {
-                    moveTo(c.x-r,c.y+r*.4f)
-                    quadraticTo(c.x-r,c.y-r*1.5f,c.x+r,c.y-r)
-                    quadraticTo(c.x+r*1.2f,c.y+r*.65f,c.x-r,c.y+r*.4f)
-                    close()
-                }
-                drawPath(leaf,Color(0xFFE2FFBD).copy(alpha=.82f))
-                drawLine(Color(0xFF35744D),c+Offset(-r*.9f,r*.4f),c+Offset(r*.9f,-r*.8f),2.dp.toPx())
-            }
-            else -> {
-                val crystal=Path().apply {
-                    moveTo(c.x,c.y-r*1.2f)
-                    lineTo(c.x+r*.74f,c.y-r*.35f)
-                    lineTo(c.x+r*.7f,c.y+r*.65f)
-                    lineTo(c.x,c.y+r*1.2f)
-                    lineTo(c.x-r*.7f,c.y+r*.65f)
-                    lineTo(c.x-r*.74f,c.y-r*.35f)
-                    close()
-                }
-                drawPath(crystal,Color(0xFFE6F9FF).copy(alpha=.75f))
-                drawLine(Color.White.copy(alpha=.8f),c+Offset(0f,-r*1.2f),c+Offset(0f,r*1.2f),1.dp.toPx())
+                if(active.startsWith("content://")) Text("✓ 已選擇本機音樂",color=Color(0xFFA4E8C0),fontSize=14.sp,
+                    modifier=Modifier.padding(10.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
     }

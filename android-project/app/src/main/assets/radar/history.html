@@ -19,23 +19,14 @@ h1{font-size:20px;margin:0}button{min-width:48px;min-height:48px;border:1px soli
  <div id="times"></div>
  <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="radarMode" aria-pressed="true">雷達實況</button><button disabled title="等待合法衛星來源串接">衛星雲圖（尚未接入）</button><button type="button" id="forecastBtn">未來3小時雨量</button></div>
  <section id="forecast" hidden aria-live="polite"><h2 style="font-size:17px">15 分鐘降雨量預報</h2><div id="forecastData">載入中…</div><small>臺灣地區可能由逐時預報插值，非衛星或雷達預測影像。</small></section>
- <small>雷達來源：<a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>（歷史觀測，不代表未來預測）。地形底圖：<a href="https://maps.nlsc.gov.tw" target="_blank" rel="noopener">內政部國土測繪中心</a>（離線時改用 OSM 備援）。資料更新可能有延遲。</small>
+ <small>雷達來源：<a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>（歷史觀測，不代表未來預測）。底圖 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>。資料更新可能有延遲。</small>
 </footer></main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 'use strict';
 const status=document.getElementById('status'),timeline=document.getElementById('timeline'),times=document.getElementById('times');
 const map= L.map('map',{maxZoom:7}).setView([23.75,120.95],7);
-// NLSC terrain contours: same official provider as native typhoon and seismic maps.
-// Web Mercator WMTS tile order is {zoom}/{row}/{column}, i.e. {z}/{y}/{x}.
-const base=L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP5/default/EPSG:3857/{z}/{y}/{x}',
-  {attribution:'底圖 © 內政部國土測繪中心',maxZoom:7}).addTo(map);
-let fallbackShown=false;
-base.on('tileerror',()=>{if(!fallbackShown){
-  fallbackShown=true; map.removeLayer(base);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {attribution:'備援 © OpenStreetMap contributors',maxZoom:7}).addTo(map);
-}});
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:7}).addTo(map);
 let radarLayer=null,metadata=null,lastFetch=0;
 function timestamp(t){return new Date(t*1000).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+'（臺灣時間）';}
 function showFrame(index){

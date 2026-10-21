@@ -52,8 +52,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     // A true incident plays a bounded looping alert tone and one descriptive spoken warning.
     // Historical replay never uses the live alarm tone.
     DisposableEffect(context,eventKey) {
-        if(!replay && !simulation) SeismicContinuousWarning.start(context,incident)
-        onDispose { if(!replay && !simulation) SeismicContinuousWarning.stop() }
+        if(!replay) SeismicContinuousWarning.start(context,incident)
+        onDispose { if(!replay) SeismicContinuousWarning.stop() }
     }
     DisposableEffect(context,eventKey,simulation) {
         if(simulation) SeismicSound.practiceLoop(context)
@@ -65,7 +65,6 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     }
     LaunchedEffect(eventKey) {
         if(!replay && !simulation && SeismicSpeech.enabled(context,"eew_voice_enabled")) {
-            io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
             SeismicSpeech.speak(context,SeismicSpeech.warning(incident,SeismicUserLocation.current(context)))
         }
     }
@@ -98,7 +97,11 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                     Text("規模 ${incident.magnitude?.let { "M${"%.1f".format(Locale.US,it)}" } ?: "來源未提供"}  ·  深度 ${incident.depthKm?.let {"${"%.0f".format(Locale.US,it)} km"} ?: "來源未提供"}",
                         color=Color(0xFFE6F1F9),fontSize=15.sp)
                 }
-                Text(local?.let { "${it}級" } ?: "—",fontSize=23.sp,fontWeight=FontWeight.Bold,color=warningAmber)
+                Column(horizontalAlignment=Alignment.End) {
+                    Text("所在地預估",fontSize=14.sp,color=Color(0xFFC8D8E4))
+                    Text(local?.let { "${it}級" } ?: "資料待確認",fontSize=20.sp,
+                        fontWeight=FontWeight.Bold,color=warningAmber)
+                }
             }
             Spacer(Modifier.height(12.dp))
             Box(Modifier.fillMaxWidth().weight(1f).background(Color(0xFF09243B),RoundedCornerShape(22.dp))

@@ -32,15 +32,11 @@ import java.util.zip.GZIPInputStream
 class ExpTechSeismicService : Service() {
     companion object {
         const val ACTION_STOP = "io.atmos.weather.STOP_EXPTECH_EEW"
-        const val ACTION_START_LIVE = "io.atmos.weather.START_LIVE_MONITOR"
-        const val ACTION_UNPIN_LIVE = "io.atmos.weather.UNPIN_LIVE_MONITOR"
         const val STATUS_CHANNEL = "thinn_seismic_stream_status_v15"
         const val ALERT_CHANNEL = "thinn_seismic_eew_urgent_v15"
         val live = MutableStateFlow(RealtimeDisplay())
-        fun start(ctx: Context, promoteLive: Boolean = false) {
-            val request = Intent(ctx,ExpTechSeismicService::class.java)
-            if (promoteLive) request.action = ACTION_START_LIVE
-            ContextCompat.startForegroundService(ctx,request)
+        fun start(ctx: Context) {
+            ContextCompat.startForegroundService(ctx,Intent(ctx,ExpTechSeismicService::class.java))
         }
         fun stop(ctx: Context) {
             ctx.startService(Intent(ctx,ExpTechSeismicService::class.java).setAction(ACTION_STOP))
@@ -50,24 +46,11 @@ class ExpTechSeismicService : Service() {
     private val activeConnections=CopyOnWriteArrayList<HttpURLConnection>()
     private val hosts=listOf("api.lb-tpe1.exptech.dev","api.lb-khh1.exptech.dev")
     private var begun=false
-    // Only a manual start is eligible for promoted, user-initiated monitoring.
-    // Automatically started monitoring always remains a normal foreground notification.
-    @Volatile private var liveUpdateRequested=false
-    private var lastLiveRefreshAt=0L
     private val stationGate=StationDetectionGate()
     @Volatile private var stationMetadata: Map<String, SeismicStation> = emptyMap()
     override fun onBind(intent: Intent?): IBinder?=null
     override fun onStartCommand(intent: Intent?,flags:Int,startId:Int):Int {
         if (intent?.action==ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
-        if (intent?.action==ACTION_UNPIN_LIVE) {
-            liveUpdateRequested=false
-            if (begun) updateStatusNotification("即時地震監測持續進行；已取消置頂")
-            return START_STICKY
-        }
-        if (intent?.action==ACTION_START_LIVE) {
-            liveUpdateRequested=true
-            if (begun) { updateStatusNotification("即時監測中，可從通知停止或取消置頂") ; return START_STICKY }
-        }
         if (begun) return START_STICKY
         begun=true
         ensureChannels()
@@ -107,32 +90,13 @@ class ExpTechSeismicService : Service() {
         val stopAction=PendingIntent.getService(this,29153,
             Intent(this,ExpTechSeismicService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val unpinAction=PendingIntent.getService(this,29154,
-            Intent(this,ExpTechSeismicService::class.java).setAction(ACTION_UNPIN_LIVE),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val promoted=Build.VERSION.SDK_INT >= 36 && liveUpdateRequested
-        val builder=NotificationCompat.Builder(this,STATUS_CHANNEL)
+        return NotificationCompat.Builder(this,STATUS_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("thinn-khì · 地震即時監測中")
             .setContentText(detail).setContentIntent(openCenter()).setOngoing(true)
-            .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel,"停止監測",stopAction)
-        if (promoted) {
-            builder.setRequestPromotedOngoing(true)
-                .setShortCriticalText("監測中")
-                .addAction(android.R.drawable.ic_menu_close_clear_cancel,"取消置頂",unpinAction)
-                .setDeleteIntent(unpinAction)
-        }
-        return builder.build()
-    }
-    private fun updateStatusNotification(detail:String) {
-        if (!begun) return
-        runCatching {
-            val nm=getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.notify(29150,ongoingNotification(detail))
-        }
+            .build()
     }
     private suspend fun runFeed(type:String,path:String) {
         var attempt=0
@@ -151,14 +115,6 @@ class ExpTechSeismicService : Service() {
     }
     private fun setStatus(type:String,value:String) {
         live.update { if(type=="EEW") it.copy(eewStatus=value) else it.copy(rtsStatus=value) }
-        // Rate-limit the active user session notification: no alert spam.
-        if (liveUpdateRequested) {
-            val now=android.os.SystemClock.elapsedRealtime()
-            if (now-lastLiveRefreshAt>=30_000L) {
-                lastLiveRefreshAt=now
-                updateStatusNotification("${type}：${value.take(48)} · ExpTech 第三方監測")
-            }
-        }
     }
     private fun stream(host:String,path:String,type:String) {
         val connection=(URL("https://$host$path").openConnection() as HttpURLConnection).apply {
@@ -329,7 +285,6 @@ class ExpTechSeismicService : Service() {
         WeatherNotificationDispatcher.post(this,29200,notification,title,detail,XiaomiFocusBridge.Kind.SEISMIC_EEW)
         // A bounded foreground-service event tone; never a perpetual background siren.
         SeismicContinuousWarning.start(this,quake)
-        io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
         if(SeismicSpeech.enabled(this,"eew_voice_enabled")) {
             SeismicSpeech.speak(this,SeismicSpeech.warning(quake,SeismicUserLocation.current(this)))
         }

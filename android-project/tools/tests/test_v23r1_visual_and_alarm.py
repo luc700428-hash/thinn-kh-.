@@ -18,8 +18,8 @@ class VisualAlarmTyphoonV23R1(unittest.TestCase):
         self.assertIn('put("ringtoneUri"',alarm)
         self.assertIn('alarm.ringtoneUri',audio)
         self.assertIn('detectHorizontalDragGestures',ring)
-        self.assertIn('滑動來停止',ring)
-        self.assertIn('無法滑動？輕觸這裡停止鬧鐘',ring)
+        self.assertIn('滑動停止鬧鐘',ring)
+        self.assertIn('無法滑動？點此停止鬧鐘',ring)
     def test_warning_advice_checks_temperature(self):
         advice=(JAVA/'domain/model/WeatherAdviceEngine.kt').read_text()
         self.assertIn('weather.temperatureC <= 6.0',advice)

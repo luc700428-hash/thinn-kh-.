@@ -9,10 +9,9 @@ WORKFLOW=ROOT.parent/'.github/workflows/build-apk.yml'
 class MajorV23Contract(unittest.TestCase):
     def test_workflow_is_new_major_and_tracks_real_code(self):
         w=WORKFLOW.read_text()
-        # V25 replaces V23 as the next major; old release tags remain upgrade inputs.
         self.assertIn('25000000 + GITHUB_RUN_NUMBER',w)
         self.assertIn('25.0.$GITHUB_RUN_NUMBER',w)
-        self.assertIn('^v(22|23|25)',w)
+        self.assertIn('^v(22|23|24|25)',w)
         self.assertNotIn('source_archive=',w)
         self.assertIn(':app:testDebugUnitTest',w)
         self.assertIn('expected-build-source-proof.json',w)
@@ -68,8 +67,7 @@ class MajorV23Contract(unittest.TestCase):
         push=(JAVA/'push/SeismicPushSettingsPage.kt').read_text()
         self.assertNotIn('if (!cityName.startsWith("台灣")',worker)
         self.assertIn('TaiwanLandmarks.counties.any',worker)
-        self.assertIn('FCM 公開專案設定不足，無法訂閱主題',push)
-        self.assertIn('訂閱成功不等於後端已部署',push)
+        self.assertIn('Firebase 尚未配置',push)
     def test_release_notes_disclose_remaining_work(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()
         for term in ['第 23 代','全臺','實機','Firebase','颱風','鬧鐘']:

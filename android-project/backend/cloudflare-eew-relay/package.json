@@ -1,8 +1,0 @@
-{
-  "name":"thinn-khi-free-eew-relay",
-  "version":"1.0.0",
-  "private":true,
-  "type":"module",
-  "scripts":{"test":"node --test test/*.test.mjs"},
-  "devDependencies":{"wrangler":"^4.0.0"}
-}

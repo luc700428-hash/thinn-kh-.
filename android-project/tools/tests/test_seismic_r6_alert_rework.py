@@ -32,8 +32,8 @@ class SeismicR6Tests(unittest.TestCase):
         self.assertIn('ringerMode',service)
         self.assertIn('currentInterruptionFilter',service)
         ui=src('earthquake/SeismicWarningOverlay.kt')
-        self.assertIn('onDispose { if(!replay && !simulation) SeismicContinuousWarning.stop() }',ui)
-        self.assertIn('if(!replay && !simulation) SeismicContinuousWarning.start(context,incident)',ui)
+        self.assertIn('onDispose { if(!replay) SeismicContinuousWarning.stop() }',ui)
+        self.assertIn('if(!replay) SeismicContinuousWarning.start(context,incident)',ui)
     def test_notification_triggers_tone(self):
         self.assertIn('SeismicContinuousWarning.start(this,quake)',src('earthquake/ExpTechSeismicService.kt'))
     def test_earthquake_report_banner_sources(self):
@@ -55,7 +55,7 @@ class SeismicR6Tests(unittest.TestCase):
     def test_replay_is_not_current_quake(self):
         warning=src('earthquake/SeismicWarningOverlay.kt')
         self.assertIn('過去事件回放 · 非即時警報',warning)
-        self.assertIn('if(!replay && !simulation)',warning)
+        self.assertIn('if(!replay)',warning)
     def test_native_eew_title(self):
         self.assertIn('收到地震預警 · 第三方來源',src('earthquake/SeismicLiveMapPage.kt'))
 if __name__=='__main__':unittest.main()

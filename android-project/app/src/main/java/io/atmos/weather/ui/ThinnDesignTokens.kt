@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.sp
 object ThinnDesignTokens {
     val radiusControl = 24.dp
     val radiusRow = 20.dp
-    val radiusCard = 30.dp
-    val radiusSheet = 36.dp
+    val radiusCard = 26.dp
+    val radiusSheet = 32.dp
     val radiusNav = 35.dp
     val touchTarget = 48.dp
     val spacingTiny = 4.dp
@@ -30,7 +30,7 @@ object ThinnDesignTokens {
     val darkBackground = Color(0xFF07172B)
     val lightGlass = Color(0xECFFFFFF)
     val darkGlass = Color(0xDB1C3853)
-    val accent = Color(0xFF9FE3FF)
+    val accent = Color(0xFF8ECFFF)
     val positive = Color(0xFF34C759)
     val caution = Color(0xFFFFC65A)
     val critical = Color(0xFFFF5A52)
@@ -48,9 +48,9 @@ private val thinnScheme = darkColorScheme(
     onPrimary = Color(0xFF061729),
     background = ThinnDesignTokens.darkBackground,
     onBackground = Color.White,
-    surface = Color(0xFF223344),
+    surface = Color(0xFF183A57),
     onSurface = Color.White,
-    surfaceVariant = Color(0xFF31475A),
+    surfaceVariant = Color(0xFF244A66),
     onSurfaceVariant = ThinnDesignTokens.secondaryInkDark,
     secondary = Color(0xFF9FD8FF),
     error = ThinnDesignTokens.critical,

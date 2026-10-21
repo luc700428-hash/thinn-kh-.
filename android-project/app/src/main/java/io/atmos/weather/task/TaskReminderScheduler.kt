@@ -9,8 +9,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import io.atmos.weather.notifications.WeatherNotificationDispatcher
-import io.atmos.weather.notifications.XiaomiFocusBridge
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -69,17 +68,8 @@ class TaskReminderWorker(context:Context,params:WorkerParameters):CoroutineWorke
             .setSmallIcon(android.R.drawable.ic_dialog_info).setContentIntent(pending)
             .setContentTitle(task.title).setContentText(task.note.ifBlank{"你安排的事項已到時間"})
             .setStyle(NotificationCompat.BigTextStyle().bigText(task.note.ifBlank{"你安排的事項已到時間"}))
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
-        // Do not put private note body into the island's public condensed text.
-        WeatherNotificationDispatcher.post(applicationContext,task.id.hashCode(),message,
-            task.title.take(36),"個人事項提醒",XiaomiFocusBridge.Kind.TASK_REMINDER)
-        io.atmos.weather.voice.NaturalVoiceHub.offer(applicationContext,
-            io.atmos.weather.voice.NaturalVoiceHub.Request(
-                (task.title+"。"+task.note).take(220),
-                io.atmos.weather.voice.NaturalVoiceHub.Priority.PERSONAL,
-                "task-reminder:${task.id}:${task.dueMillis()}",
-                privacySensitive=true,cacheable=false))
+        runCatching { NotificationManagerCompat.from(applicationContext).notify(task.id.hashCode(),message) }
         return Result.success()
     }
 }

@@ -19,10 +19,6 @@ android {
             "THINN_BUILD_SHA must be a 40-character commit id or 'local'"
         }
         buildConfigField("String", "THINN_BUILD_SHA", "\"$sourceCommit\"")
-        // Candidate builds receive a separate, opt-in test OTA stream.
-        val otaChannel = providers.gradleProperty("THINN_OTA_CHANNEL").orNull ?: "preview"
-        require(otaChannel == "preview" || otaChannel == "official") { "Invalid OTA channel" }
-        buildConfigField("String", "THINN_OTA_CHANNEL", "\"$otaChannel\"")
         vectorDrawables.useSupportLibrary = true
 
         // BuildConfig values belong to defaultConfig (ApplicationDefaultConfig),
@@ -31,7 +27,7 @@ android {
         listOf(
             "THINN_FIREBASE_APP_ID", "THINN_FIREBASE_API_KEY",
             "THINN_FIREBASE_SENDER_ID", "THINN_FIREBASE_PROJECT_ID",
-            "THINN_PUSH_FUNCTIONS_REGION", "THINN_AZURE_PROXY_URL"
+            "THINN_PUSH_FUNCTIONS_REGION"
         ).forEach { key ->
             val value = providers.gradleProperty(key).orNull.orEmpty()
             val escaped = value.replace("\\", "\\\\")
@@ -61,7 +57,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")

@@ -55,7 +55,7 @@ fun NextOtaStatusCard(
         is NextOtaState.Downloading -> "下載系統更新"
         NextOtaState.Verifying -> "驗證安裝檔"
         NextOtaState.ReadyToInstall -> "已準備安裝"
-        NextOtaState.Installing -> "等待 Android 安裝確認"
+        NextOtaState.Installing -> "系統正在處理安裝"
         NextOtaState.Completed -> "更新完成"
         is NextOtaState.Failed -> "無法完成更新"
     }
@@ -66,16 +66,16 @@ fun NextOtaStatusCard(
         is NextOtaState.Downloading -> "正在下載正式發行檔，請勿關閉程式。"
         NextOtaState.Verifying -> "正在驗證檔案完整性及來源。"
         NextOtaState.ReadyToInstall -> "下載與驗證完成，等待系統安裝確認。"
-        NextOtaState.Installing -> "已交由 Android 系統安裝程式；尚未確認完成升級。"
+        NextOtaState.Installing -> "是否安裝成功，以 Android 系統安裝結果為準。"
         NextOtaState.Completed -> "已確認完成升級。"
         is NextOtaState.Failed -> state.message
     }
     NextOpticalSurface(modifier = modifier.fillMaxWidth(), reduceTransparency = reduceTransparency) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("V25 · 更新狀態", color = Color(0xFFB6DDF4), fontSize = 14.sp,
-                fontWeight = FontWeight.Medium)
-            Text(title, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = Color(0xFFD8EAF7), fontSize = 15.sp, lineHeight = 22.sp)
+            Text("THINN-KHÌ NEXT", color = Color(0xFFB6DDF4), fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold)
+            Text(title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
+            Text(body, color = Color(0xFFD8EAF7), fontSize = 14.sp, lineHeight = 20.sp)
             if (state is NextOtaState.Available) {
                 state.notes.take(20).forEach { note ->
                     Text("• $note", color = Color(0xFFE6F5FC), fontSize = 14.sp)

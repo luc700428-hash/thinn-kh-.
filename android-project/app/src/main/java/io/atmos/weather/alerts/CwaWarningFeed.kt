@@ -20,21 +20,6 @@ object CwaWarningFeed {
     const val OFFICIAL_URL = "https://www.cwa.gov.tw/V8/C/P/Warning/FIFOWS.html"
     private const val RSS_URL = "https://www.cwa.gov.tw/rss/Data/cwa_warning.xml"
 
-    /** All-area official RSS for formal typhoon issuance. Do not county-filter sea warnings. */
-    suspend fun fetchNational(): CwaFetchResult = withContext(Dispatchers.IO) {
-        try {
-            val conn=URL(RSS_URL).openConnection().apply {
-                connectTimeout=9000
-                readTimeout=9000
-                setRequestProperty("User-Agent","thinn-khi-weather/2.0")
-            }
-            val result=conn.getInputStream().use { parse(it) }
-            CwaFetchResult(result,true,"官方 RSS 已查詢；全臺警報需另核對正式發布標題")
-        } catch(e:Exception) {
-            CwaFetchResult(emptyList(),false,"官方 RSS 無法讀取：${e.javaClass.simpleName}")
-        }
-    }
-
     suspend fun forLocation(placeLabel: String, point: GeoPoint? = null): List<CwaWarning> = fetch(placeLabel,point).warnings
 
     suspend fun fetch(placeLabel: String, point: GeoPoint? = null): CwaFetchResult = withContext(Dispatchers.IO) {

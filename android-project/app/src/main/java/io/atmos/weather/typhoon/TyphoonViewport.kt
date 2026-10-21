@@ -18,16 +18,6 @@ data class TyphoonViewport(
             ((heightPx*.5-(y-originYKm)*pxPerKm).toFloat())
     }
 
-    /** Exact geographic bounds of this equal-kilometre viewport, used by the WMS raster. */
-    fun rasterBounds():io.atmos.weather.maps.NlscTerrain.Bounds {
-        val lonCenter=originXKm/(111.2*cosCenter)
-        val latCenter=originYKm/111.2
-        val lonHalf=widthPx/(2.0*pxPerKm*111.2*cosCenter)
-        val latHalf=heightPx/(2.0*pxPerKm*111.2)
-        return io.atmos.weather.maps.NlscTerrain.Bounds(
-            lonCenter-lonHalf,latCenter-latHalf,lonCenter+lonHalf,latCenter+latHalf)
-    }
-
     companion object {
         fun forPoints(points:List<Pair<Double,Double>>,widthPx:Float,heightPx:Float,paddingPx:Float):TyphoonViewport {
             // Keep Taiwan visible if a storm is nearby; otherwise show the verified points only.

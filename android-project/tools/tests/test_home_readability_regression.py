@@ -31,8 +31,7 @@ class HomeReadabilityTests(unittest.TestCase):
         self.assertLess(visible.index('HomeKeyWeatherCard('),visible.index('DailyGuidanceCard('))
         self.assertIn('未來六小時降雨',model)
         self.assertIn('尚無降雨機率資料',model)
-        self.assertIn('美國標準模型推估',model)
-        self.assertIn('非臺灣環境部官方 AQI',model)
+        self.assertIn('非官方 AQI',model)
 
     def test_optical_live_weather_replaces_2d_landmarks(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()

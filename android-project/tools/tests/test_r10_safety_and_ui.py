@@ -23,7 +23,7 @@ class R10SafetyAndVisual(unittest.TestCase):
     def test_wheels_and_audio_cards_not_material(self):
         ui=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
         page=(JAVA/'alarm/WeatherAlarmPage.kt').read_text()
-        for must in ('detectVerticalDragGestures','R10Switch','R10RingtonePicker','remember { mutableStateOf'):
+        for must in ('rememberSnapFlingBehavior','LazyColumn','R10Switch','R10RingtonePicker','remember { mutableStateOf'):
             self.assertIn(must,ui)
         self.assertIn('R10AlarmEditor(initial=editing',page)
         self.assertNotIn('AndroidView(',ui)

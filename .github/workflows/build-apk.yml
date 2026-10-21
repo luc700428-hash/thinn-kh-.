@@ -1,14 +1,9 @@
-name: Build thinn-khì V25 candidate and single verified OTA
+name: Build thinn-khì V25 integrated Android sources (full acceptance required for OTA)
 on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'FULL V25 ONLY: all 22 independently evidenced feature checks required'
-        type: boolean
-        required: true
-        default: false
-      publish_maintenance:
-        description: 'Publish signed STABLE MAINTENANCE OTA for all users (NOT full V25)'
+        description: 'OFFICIAL V25 ONLY after all 22 independent acceptance proofs (default false)'
         type: boolean
         required: true
         default: false
@@ -119,8 +114,6 @@ jobs:
           pathlib.Path('expected-build-source-proof.json').write_text(rendered,encoding='utf-8')
           print('Source audit SHA:',proof['commit_sha'])
           PYPROOF
-      - name: Test Azure Speech Worker request and safety contracts
-        run: node --test android-project/backend/azure-speech-worker/worker.test.js
       - name: Test public OTA manifest generator
         run: python3 -m unittest discover -s android-project/tools/tests -p test_*.py -v
       - name: Restore public-domain rain and thunder recordings BEFORE Kotlin compile
@@ -147,31 +140,16 @@ jobs:
           done
       - name: Node backend policy regression tests
         run: node --test android-project/backend/tests/*.test.cjs
-      - name: NEXT complete feature acceptance gate
+      - name: Block unaccepted official V25 release
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
-        shell: bash
-        run: |
-          python3 android-project/tools/verify_v25_release_evidence.py
-          python3 android-project/tools/verify_next_release_gate.py
-      - name: Validate mutually exclusive official OTA modes
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        env:
-          FULL_V25: ${{ inputs.publish_release == true }}
-          MAINTENANCE: ${{ inputs.publish_maintenance == true }}
-        run: |
-          set -euo pipefail
-          if [[ "$FULL_V25" == 'true' && "$MAINTENANCE" == 'true' ]]; then
-            echo '::error::Choose only one official release mode: full V25 OR stable maintenance.'
-            exit 1
-          fi
+        run: python3 android-project/tools/v25_full_acceptance_gate.py
       - name: Prepare signing mode
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}
           APK_KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
           APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
           APK_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
-          PUBLISH_RELEASE: ${{ inputs.publish_release == true || inputs.publish_maintenance == true }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release == true }}
         shell: bash
         run: |
           set -euo pipefail
@@ -196,7 +174,6 @@ jobs:
           THINN_FIREBASE_SENDER_ID: ${{ vars.THINN_FIREBASE_SENDER_ID }}
           THINN_FIREBASE_PROJECT_ID: ${{ vars.THINN_FIREBASE_PROJECT_ID }}
           THINN_PUSH_FUNCTIONS_REGION: ${{ vars.THINN_PUSH_FUNCTIONS_REGION }}
-          THINN_AZURE_PROXY_URL: ${{ vars.THINN_AZURE_PROXY_URL }}
         run: |
           set -euo pipefail
           project=android-project
@@ -204,13 +181,11 @@ jobs:
              -PTHINN_VERSION_CODE="$((25000000 + GITHUB_RUN_NUMBER))"
              -PTHINN_VERSION_NAME="25.0.$GITHUB_RUN_NUMBER"
              -PTHINN_BUILD_SHA="$GITHUB_SHA"
-             -PTHINN_OTA_CHANNEL="${{ (inputs.publish_release == true || inputs.publish_maintenance == true) && 'official' || 'preview' }}"
              -PTHINN_FIREBASE_APP_ID="${THINN_FIREBASE_APP_ID:-}"
              -PTHINN_FIREBASE_API_KEY="${THINN_FIREBASE_API_KEY:-}"
              -PTHINN_FIREBASE_SENDER_ID="${THINN_FIREBASE_SENDER_ID:-}"
              -PTHINN_FIREBASE_PROJECT_ID="${THINN_FIREBASE_PROJECT_ID:-}"
-             -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}"
-             -PTHINN_AZURE_PROXY_URL="${THINN_AZURE_PROXY_URL:-}")
+             -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}")
           gradle "${args[@]}" :app:testDebugUnitTest 2>&1 | tee build.log
           if [[ "$SIGN_READY" == 'true' ]]; then task=:app:assembleRelease; else task=:app:assembleDebug; fi
           gradle "${args[@]}" "$task" 2>&1 | tee -a build.log
@@ -249,8 +224,7 @@ jobs:
           sha256sum thinn-khi.apk > thinn-khi.apk.sha256
           rm -f "$RUNNER_TEMP/thinn-release.jks"
       - name: Verify OTA upgrade compatibility with the current published APK
-        # Preflight signed candidate builds as well; publishing still needs the NEXT 22 gate.
-        if: env.SIGN_READY == 'true'
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -258,8 +232,8 @@ jobs:
           set -euo pipefail
           repo="$GITHUB_REPOSITORY"
           latest_tag="$(gh release view --repo "$repo" --json tagName --jq '.tagName')"
-          # Upgrade from v22 to v23; future v23 patch releases also allowed.
-          if [[ "$latest_tag" =~ ^v(22|23|25)[.]0[.]([0-9]+)$ ]]; then
+          # Preserve upgrade chain from major versions 22–25; reject non-monotonic patch numbers.
+          if [[ "$latest_tag" =~ ^v(22|23|24|25)[.]0[.]([0-9]+)$ ]]; then
             previous_major="${BASH_REMATCH[1]}"
             previous_patch="${BASH_REMATCH[2]}"
           else
@@ -303,21 +277,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          preview_args=()
-          notes_file=android-project/app/src/main/assets/current_release_notes.md
-          # Maintenance OTA is allowed as a signed *stable patch*, not a declaration
-          # that the complete 22-feature V25 scope has finished acceptance.
-          if [[ "${{ inputs.publish_maintenance == true }}" == 'true' ]]; then
-            notes_file=android-project/tools/stable_maintenance_notes.md
-          fi
-          # Signed build from main becomes a labelled preview, NEVER the official Latest.
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then preview_args+=(--preview); fi
           python3 android-project/tools/create_ota_manifest.py \
             --apk thinn-khi.apk \
-            --notes "$notes_file" \
+            --notes android-project/app/src/main/assets/current_release_notes.md \
             --version "25.0.$GITHUB_RUN_NUMBER" \
             --version-code "$((25000000 + GITHUB_RUN_NUMBER))" \
-            --output ota.json "${preview_args[@]}"
+            --output ota.json
           test -s ota.json
           # Validate JSON and verify the published digest against the built signed APK.
           python3 -m json.tool ota.json >/dev/null
@@ -356,66 +321,8 @@ jobs:
           path: |
             android-project/app/build/outputs/apk/debug/*.apk
             embedded-build-source-proof.json
-      - name: Publish V25 test OTA (pre-release only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.SIGN_READY == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag=v25-preview
-          repo="$GITHUB_REPOSITORY"
-          latest_sha="$(gh api "repos/$repo/commits/main" --jq '.sha')"
-          [[ "$latest_sha" == "$GITHUB_SHA" ]] || {
-            echo "::error::main changed while test OTA was building"; exit 1;
-          }
-          # Make it impossible to turn this preview tag into an official latest release.
-          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
-            is_pre="$(gh release view "$tag" --repo "$repo" --json isPrerelease --jq .isPrerelease)"
-            [[ "$is_pre" == 'true' ]] || {
-              echo '::error::Refuse overwrite: preview tag is not a prerelease'; exit 1;
-            }
-            # Never publish the same app sources under a newer version number.
-            previous="$RUNNER_TEMP/previous-preview"
-            mkdir -p "$previous"
-            gh release download "$tag" --repo "$repo" --dir "$previous"               --pattern embedded-build-source-proof.json --pattern ota.json
-            python3 - "$previous" embedded-build-source-proof.json ota.json <<'PYCHECKPREVIEW'
-          import json,pathlib,sys
-          old=pathlib.Path(sys.argv[1]); fresh=pathlib.Path(sys.argv[2]); new_meta=pathlib.Path(sys.argv[3])
-          before=json.loads((old/'embedded-build-source-proof.json').read_text())
-          after=json.loads(fresh.read_text())
-          old_manifest=json.loads((old/'ota.json').read_text())
-          new_manifest=json.loads(new_meta.read_text())
-          if before.get('app_tree_sha256') == after.get('app_tree_sha256'):
-              pathlib.Path('preview_noop.flag').write_text('Unchanged App sources')
-              print('::notice::Workflow-only commit: existing preview APK retained')
-              raise SystemExit(0)
-          if new_manifest['version_code'] <= old_manifest['version_code']:
-              raise SystemExit('::error::Preview OTA versionCode did not increase')
-          PYCHECKPREVIEW
-            if [[ -f preview_noop.flag ]]; then
-              echo 'App files unchanged: no new preview release, old preview remains intact.'
-              exit 0
-            fi
-            # Upload APK before manifest. Clients verify SHA256 and cannot install a mismatch.
-            for asset in thinn-khi.apk thinn-khi.apk.sha256 embedded-build-source-proof.json ota.json; do
-              gh release upload "$tag" "$asset" --repo "$repo" --clobber
-            done
-            gh release edit "$tag" --repo "$repo" --prerelease --latest=false \
-              --title "thinn-khì V25 TEST — ${GITHUB_RUN_NUMBER}" \
-              --notes "V25 TEST CHANNEL ONLY. Signed candidate, not the complete V25 release. Commit: $GITHUB_SHA"
-          else
-            gh release create "$tag" thinn-khi.apk thinn-khi.apk.sha256 embedded-build-source-proof.json ota.json \
-              --repo "$repo" --target "$GITHUB_SHA" \
-              --title "thinn-khì V25 TEST — ${GITHUB_RUN_NUMBER}" \
-              --notes "V25 TEST CHANNEL ONLY. Signed candidate, not the complete V25 release. Commit: $GITHUB_SHA" \
-              --prerelease --latest=false
-          fi
-          [[ "$(gh release view "$tag" --repo "$repo" --json isPrerelease --jq .isPrerelease)" == 'true' ]]
-          # GitHub's latest release endpoint excludes prereleases; never change stable latest.
-          [[ "$(gh api "repos/$repo/releases/latest" --jq .tag_name)" != "$tag" ]]
       - name: Publish official OTA GitHub Release
-        if: github.event_name == 'workflow_dispatch' && (inputs.publish_release == true || inputs.publish_maintenance == true) && env.SIGN_READY == 'true'
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && env.SIGN_READY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -427,19 +334,6 @@ jobs:
             echo "::error::main advanced since this build ($GITHUB_SHA versus $latest_sha)"; exit 1;
           }
           version="25.0.$GITHUB_RUN_NUMBER"
-          if [[ "${{ inputs.publish_maintenance == true }}" == 'true' ]]; then
-            notes_file=android-project/tools/stable_maintenance_notes.md
-            release_title="thinn-khì $version — 正式維護更新（非完整 V25）"
-          else
-            notes_file=android-project/app/src/main/assets/current_release_notes.md
-            release_title="thinn-khì $version — 完整 V25"
-          fi
-          test -s "$notes_file"
-          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo '::error::Release tag already exists. Refusing duplicate or overwrite.'
-            exit 1
-          fi
           gh release create "v$version" thinn-khi.apk thinn-khi.apk.sha256 ota.json embedded-build-source-proof.json \
-            --target "$GITHUB_SHA" --title "$release_title" \
-            --notes-file "$notes_file" --latest
-          [[ "$(gh release view "v$version" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" == 'false' ]]
+            --target "$GITHUB_SHA" --title "thinn-khì $version" \
+            --notes-file android-project/app/src/main/assets/current_release_notes.md --latest
