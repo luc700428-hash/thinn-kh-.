@@ -69,7 +69,8 @@ fun InteractiveForecast(
     val clock = DateTimeFormatter.ofPattern("HH:mm")
     val hour = readings[selected]
     val local = hour.at.atZone(zone)
-    val temps = readings.map { it.temperatureC ?: Double.NaN }.filter { it.isFinite() }
+    // Gaps remain gaps: never substitute another hour or an invented 20°C for missing readings.
+    val temps = readings.mapNotNull { it.temperatureC?.takeIf { value -> value.isFinite() } }
     val bottom = (temps.minOrNull() ?: 10.0) - 2.0
     val top = (temps.maxOrNull() ?: 30.0) + 2.0
     val range = (top-bottom).coerceAtLeast(4.0)
@@ -99,35 +100,48 @@ fun InteractiveForecast(
                 Box(Modifier.fillMaxWidth().height(127.dp)) {
                     Canvas(Modifier.fillMaxSize()) {
                         val coords = readings.mapIndexed { index, h ->
-                            val temp = (h.temperatureC ?: temps.firstOrNull() ?: 20.0)
-                            Offset(pointHalf + index*widthPx, yDp(temp).dp.toPx())
+                            h.temperatureC?.takeIf { it.isFinite() }?.let { temp ->
+                                Offset(pointHalf + index*widthPx, yDp(temp).dp.toPx())
+                            }
                         }
                         listOf(54f,84f,114f).forEach { dy ->
                             drawLine(Color.White.copy(alpha=.09f),Offset(0f,dy.dp.toPx()),
                                 Offset(size.width,dy.dp.toPx()),1.dp.toPx())
                         }
-                        val path=Path().apply {
-                            moveTo(coords.first().x,coords.first().y)
-                            for (index in 1 until coords.size) {
-                                val a=coords[index-1];val b=coords[index]
-                                val mid=(a.x+b.x)/2f
-                                cubicTo(mid,a.y,mid,b.y,b.x,b.y)
+                        // Draw each contiguous segment separately: a missing hour breaks the curve.
+                        val path=Path()
+                        var previous:Offset?=null
+                        var hasLine=false
+                        for (point in coords) {
+                            if (point==null) {
+                                previous=null
+                            } else if (previous==null) {
+                                path.moveTo(point.x,point.y)
+                                previous=point
+                            } else {
+                                val a=previous
+                                val mid=(a.x+point.x)/2f
+                                path.cubicTo(mid,a.y,mid,point.y,point.x,point.y)
+                                previous=point
+                                hasLine=true
                             }
                         }
-                        drawPath(path,Brush.horizontalGradient(listOf(Color(0xFFFFD38C),Color(0xFFFFAD53))),
+                        if(hasLine) drawPath(path,
+                            Brush.horizontalGradient(listOf(Color(0xFFFFD38C),Color(0xFFFFAD53))),
                             style=Stroke(width=3.dp.toPx(),cap=StrokeCap.Round))
-                        val at=coords[selected]
-                        drawLine(Color.White.copy(alpha=.60f),Offset(at.x,0f),Offset(at.x,size.height),1.1.dp.toPx())
-                        drawCircle(Color(0xFFFFCF85),5.8.dp.toPx(),at)
-                        drawCircle(Color.White,2.8.dp.toPx(),at)
+                        coords[selected]?.let { at ->
+                            drawLine(Color.White.copy(alpha=.60f),Offset(at.x,0f),Offset(at.x,size.height),1.1.dp.toPx())
+                            drawCircle(Color(0xFFFFCF85),5.8.dp.toPx(),at)
+                            drawCircle(Color.White,2.8.dp.toPx(),at)
+                        }
                     }
                     Row(Modifier.fillMaxWidth()) {
                         readings.forEach { reading ->
-                            val value=reading.temperatureC ?: temps.firstOrNull() ?: 20.0
+                            val value=reading.temperatureC?.takeIf { it.isFinite() }
                             Box(Modifier.width(columnWidth).fillMaxHeight()) {
-                                Text("${value.roundToInt()}°",modifier=Modifier
+                                Text(value?.let { "${it.roundToInt()}°" } ?: "—",modifier=Modifier
                                     .align(Alignment.TopCenter)
-                                    .offset(y=(yDp(value)-34f).coerceAtLeast(0f).dp),
+                                    .offset(y=if(value==null) 0.dp else (yDp(value)-34f).coerceAtLeast(0f).dp),
                                     color=Color.White,fontSize=16.sp,fontWeight=FontWeight.Medium,
                                     style=TextStyle(fontFeatureSettings="tnum"))
                             }
@@ -164,6 +178,7 @@ fun InteractiveForecast(
             }
         }
         Spacer(Modifier.height(9.dp))
+        if(temps.isEmpty()) Text("目前缺少有效氣溫預報，曲線未繪製。",color=Color(0xFFFFD6A8),fontSize=14.sp)
         Text("左右滑動預報，曲線游標與上方資訊同步移動 · ${local.format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))} · ${hourlyWeatherName(hour.weatherCode,local.hour)}",
             color=Color.White.copy(alpha=.73f),fontSize=14.sp)
     }

@@ -21,9 +21,8 @@ import androidx.compose.ui.unit.sp
 import io.atmos.weather.domain.model.WeatherSnapshot
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /** Radar observation + 3-hour weather MODEL comparison. Neither is mislabelled as nowcasting. */
 @Composable
@@ -34,7 +33,7 @@ fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
     var radar by remember { mutableStateOf<RadarImage?>(null) }
     var attempted by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
-    LaunchedEffect(supported,lat,lon) {
+    LaunchedEffect(supported,lat,lon,weather.fetchedAt) {
         attempted=false;radar=null
         if(supported) radar=CwaRadarObservation.latest()
         attempted=true
@@ -43,6 +42,10 @@ fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
     val range=weather.hourly.filter { !it.at.isBefore(start.minusSeconds(900)) && it.at.isBefore(start.plus(3,ChronoUnit.HOURS)) }
     val rain=range.mapNotNull { it.precipitationProbabilityPct }.maxOrNull()
     val snow=range.mapNotNull { it.snowfallProbabilityPct }.maxOrNull()
+    val zone=remember(weather.timeZoneId) {
+        runCatching { ZoneId.of(weather.timeZoneId ?: "Asia/Taipei") }.getOrDefault(ZoneId.of("Asia/Taipei"))
+    }
+    val timeFormatter=remember(zone) { DateTimeFormatter.ofPattern("HH:mm").withZone(zone) }
     GlassSurface {
         Text("降雨實況與三小時預報",fontSize=20.sp,color=Color.White,fontWeight=FontWeight.Bold)
         Spacer(Modifier.height(7.dp))
@@ -67,8 +70,17 @@ fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
                 }
             }
             Spacer(Modifier.height(8.dp))
-            val age=(System.currentTimeMillis()-observation.fetchedAt)/60000
-            Text("中央氣象署雷達實際觀測圖 · ${if(age<15)"已取得近期圖資" else "快取 ${age} 分鐘前"}",fontSize=14.sp,color=Color.White)
+            val downloadedMinutes=((System.currentTimeMillis()-observation.fetchedAt).coerceAtLeast(0L))/60000L
+            val modifiedMinutes=observation.modifiedAt?.let { modified ->
+                ((System.currentTimeMillis()-modified).coerceAtLeast(0L))/60000L
+            }
+            // HTTP Last-Modified describes the supplied image file, not measured rainfall time.
+            val radarTimeLabel=when {
+                modifiedMinutes==null -> "中央氣象署雷達圖 · 官方圖檔更新時間未提供（下載於 $downloadedMinutes 分鐘前）"
+                modifiedMinutes<=20L -> "中央氣象署雷達圖 · 圖檔約 $modifiedMinutes 分鐘前更新"
+                else -> "中央氣象署雷達圖 · 圖檔約 $modifiedMinutes 分鐘前更新，非即時圖資"
+            }
+            Text(radarTimeLabel,fontSize=14.sp,color=Color.White)
             Text("藍色標記為選擇的城市位置；雷達回波不等於地面降雨量。",fontSize=14.sp,color=Color(0xFFCDDEEA))
         } else {
             Text(when {
@@ -85,14 +97,15 @@ fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
             fontSize=14.sp,color=Color(0xFFE1EDF7))
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)) {
             range.take(3).forEach { hour ->
-                val time=SimpleDateFormat("HH:mm",Locale.TAIWAN).format(Date(hour.at.toEpochMilli()))
+                val time=timeFormatter.format(hour.at)
                 val probability=hour.precipitationProbabilityPct
                 Column(Modifier.weight(1f)
                     .background(Color.White.copy(alpha=.09f),RoundedCornerShape(18.dp))
                     .padding(vertical=13.dp,horizontal=6.dp),
                     horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally) {
                     Text(time,color=Color.White,fontSize=14.sp)
-                    Text(if((probability ?: 0)>=45) "☁☂" else "☁",fontSize=27.sp,color=Color(0xFFB5EAFF))
+                    Text(if(probability==null) "—" else if(probability>=45) "☁☂" else "☁",
+                        fontSize=27.sp,color=Color(0xFFB5EAFF))
                     Text(probability?.let { "$it%" } ?: "—",color=Color.White,fontSize=17.sp,
                         fontWeight=FontWeight.Bold)
                     Text(hour.temperatureC?.let { "${it.toInt()}°" } ?: "—",

@@ -79,11 +79,7 @@ fun WeatherDial(title:String, value:String, description:String, fraction:Float, 
     }
 }
 
-fun windDirectionLabel(degrees: Int?):String {
-    if (degrees == null) return "風向未提供"
-    val directions=listOf("北","東北","東","東南","南","西南","西","西北")
-    return "${directions[((degrees+22)%360)/45]}風"
-}
+fun windDirectionLabel(degrees: Int?):String = WeatherWindDirection.label(degrees)
 
 /** Six matching cards including pressure and sunrise/sunset. Normal swipes scroll the
  * page; after a long press the tile follows the finger and springs home. The order
