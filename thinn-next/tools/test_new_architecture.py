@@ -8,7 +8,7 @@ class NextFoundationInvariants(unittest.TestCase):
  def test_debug_cannot_override_old_app(self):
   s=(P/'app/build.gradle.kts').read_text()
   self.assertIn('applicationId = "io.atmos.weather"',s)
-  self.assertIn('applicationIdSuffix = ".nextlab"',s)
+  self.assertIn('applicationIdSuffix = ".nextioslab"',s)
   self.assertIn('FOUNDATION_NOT_FOR_RELEASE',s)
   self.assertNotIn('signingConfig = signingConfigs.getByName("debug")',s)
  def test_no_material_ui_dependencies(self):

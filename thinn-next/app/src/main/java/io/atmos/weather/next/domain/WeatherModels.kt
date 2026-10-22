@@ -39,6 +39,9 @@ object KnownCities {
     )
 }
 
+data class HourlyForecast(val hourLabel:String,val temperatureC:Double?,val wmoCode:Int?,val rainChance:Int?)
+data class DailyForecast(val dayLabel:String,val lowC:Double,val highC:Double,val wmoCode:Int?,val rainChance:Int?)
+
 data class WeatherReading(
     val cityId: String,
     val temperatureC: Double,
@@ -49,7 +52,9 @@ data class WeatherReading(
     val wmoCode: Int,
     val observedEpochMs: Long,
     val receivedEpochMs: Long,
-    val source: String = "Open-Meteo"
+    val source: String = "Open-Meteo",
+    val hourly: List<HourlyForecast> = emptyList(),
+    val daily: List<DailyForecast> = emptyList()
 ) {
     val scene: WeatherScene? get() = WmoWeatherCodes.scene(wmoCode)
 }

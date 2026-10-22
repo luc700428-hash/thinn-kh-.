@@ -472,7 +472,7 @@ jobs:
           apk='thinn-next/app/build/outputs/apk/debug/app-debug.apk'
           test -s "$apk"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" > next-debug-badging.txt
-          grep -Fq "name='io.atmos.weather.nextlab'" next-debug-badging.txt || {
+          grep -Fq "name='io.atmos.weather.nextioslab'" next-debug-badging.txt || {
             echo '::error::Lab APK must never reuse the installed app package'; exit 1;
           }
           sha256sum "$apk" > thinn-next-lab-debug.sha256

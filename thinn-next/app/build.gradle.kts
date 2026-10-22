@@ -11,15 +11,15 @@ android {
         applicationId = "io.atmos.weather"
         minSdk = 31
         targetSdk = 36
-        versionCode = 25010000
-        versionName = "25.1.0-next-foundation"
+        versionCode = 25010001
+        versionName = "25.1.1-ios-pages-lab"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "NEXT_BUILD_KIND", "\"FOUNDATION_NOT_FOR_RELEASE\"")
     }
     buildTypes {
         getByName("debug") {
             // Never overwrite an installed thinn-khì app with an unsigned laboratory build.
-            applicationIdSuffix = ".nextlab"
+            applicationIdSuffix = ".nextioslab"
             versionNameSuffix = "-lab"
             isDebuggable = true
         }
