@@ -52,7 +52,7 @@ fun IosSettingsPage(reduceMotion:Boolean,onMotion:(Boolean)->Unit,
             Spacer(Modifier.height(28.dp))
         } else {
             Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()) {
-                Box(Modifier.clickable{detail=""}.padding(vertical=7.dp,end=10.dp)) {IosText("‹  設定",17,color=IosColor.blue)}
+                Box(Modifier.clickable{detail=""}.padding(vertical=7.dp).padding(end=10.dp)) {IosText("‹  設定",17,color=IosColor.blue)}
                 Spacer(Modifier.weight(1f))
             }
             Spacer(Modifier.height(19.dp))
