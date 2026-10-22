@@ -27,6 +27,10 @@ import io.atmos.weather.earthquake.ExpTechSeismicService
 import io.atmos.weather.permission.PermissionGuide
 import io.atmos.weather.update.UpdateCheckWorker
 import io.atmos.weather.BuildConfig
+import io.atmos.weather.AppContainer
+import io.atmos.weather.domain.model.SampleCities
+import io.atmos.weather.domain.repository.WeatherLoadResult
+import io.atmos.weather.typhoon.OfficialTyphoonTrack
 import io.atmos.weather.earthquake.CwaOfficialGateway
 import io.atmos.weather.push.SeismicPushRegistration
 import io.atmos.weather.notifications.XiaomiFocusBridge
@@ -44,6 +48,12 @@ fun SettingsDiagnosticsPage(onClose:()->Unit) {
     val prefs=remember(ctx){ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)}
     var refreshKey by remember { mutableIntStateOf(0) }
     val scope=rememberCoroutineScope()
+    var weatherProbeRunning by remember { mutableStateOf(false) }
+    var weatherProbeOk by remember { mutableStateOf(false) }
+    var weatherProbeStatus by remember { mutableStateOf("尚未測試；僅在使用者點擊後查詢") }
+    var typhoonProbeRunning by remember { mutableStateOf(false) }
+    var typhoonProbeOk by remember { mutableStateOf(false) }
+    var typhoonProbeStatus by remember { mutableStateOf("尚未測試；僅在使用者點擊後查詢") }
     var gatewayRunning by remember { mutableStateOf(false) }
     var gatewaySuccess by remember { mutableStateOf(false) }
     var gatewayStatus by remember { mutableStateOf("尚未測試；請手動執行正式資料代理檢查") }
@@ -125,6 +135,73 @@ fun SettingsDiagnosticsPage(onClose:()->Unit) {
                 Text(if(gatewayRunning) "測試中…" else "測試 CWA 官方資料代理",fontSize=14.sp)
             }
             Text("這項檢查只測單次授權代理和資料結構，不會產生正式地震警報，也不會判定所有氣象資料都即時。",
+                color=Color(0xFFB7D5E7),fontSize=14.sp)
+            Text("逐項測試真實資料來源（不會產生警報）",fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+            HealthStatus("天氣 API · 臺北",weatherProbeStatus,weatherProbeOk)
+            OutlinedButton(onClick={
+                if(!weatherProbeRunning) scope.launch {
+                    weatherProbeRunning=true
+                    weatherProbeOk=false
+                    weatherProbeStatus="正在查詢臺北即時天氣；不讀取你的定位…"
+                    try {
+                        val result=withTimeoutOrNull(22_000L) {
+                            AppContainer.repository(ctx).load(SampleCities.all.first(),true)
+                        }
+                        when(result) {
+                            null -> weatherProbeStatus="天氣查詢逾時；未取得可驗證的網路資料"
+                            is WeatherLoadResult.Failure -> weatherProbeStatus=
+                                "天氣查詢失敗；請檢查網路或資料來源。${result.cause.take(80)}"
+                            is WeatherLoadResult.Success -> {
+                                val state=V25DataProbeRules.classifyWeather(
+                                    result.fromCache,result.stale,
+                                    result.value.fetchedAt.toEpochMilli(),System.currentTimeMillis())
+                                weatherProbeOk=state==V25DataProbeRules.WeatherResult.NETWORK_FRESH
+                                weatherProbeStatus=when(state) {
+                                    V25DataProbeRules.WeatherResult.NETWORK_FRESH ->
+                                        "已取得新鮮網路天氣資料（臺北）；不代表所有城市、警報或背景更新均正常"
+                                    V25DataProbeRules.WeatherResult.CACHED ->
+                                        "僅讀取到快取或過期資料；網路新資料尚未驗證"
+                                    V25DataProbeRules.WeatherResult.INVALID_TIME ->
+                                        "取得資料但更新時間異常；不得標示為即時"
+                                }
+                            }
+                        }
+                    } catch(cancel:CancellationException) { throw cancel }
+                      catch(_:Exception) { weatherProbeStatus="天氣來源或網路異常；未驗證即時資料" }
+                    finally { weatherProbeRunning=false }
+                }
+            },enabled=!weatherProbeRunning) {
+                Text(if(weatherProbeRunning) "天氣測試中…" else "測試臺北天氣網路連線",fontSize=14.sp)
+            }
+            HealthStatus("颱風官方資料 · CWA",typhoonProbeStatus,typhoonProbeOk)
+            OutlinedButton(onClick={
+                if(!typhoonProbeRunning) scope.launch {
+                    typhoonProbeRunning=true
+                    typhoonProbeOk=false
+                    typhoonProbeStatus="正在查詢官方熱帶氣旋資料…"
+                    try {
+                        val response=withTimeoutOrNull(20_000L) {
+                            CwaOfficialGateway.read(ctx,"W-C0034-005")
+                        }
+                        val cyclones=response?.optJSONObject("records")
+                            ?.optJSONObject("TropicalCyclones")
+                        if(response==null) typhoonProbeStatus="颱風官方資料代理逾時"
+                        else if(cyclones==null) typhoonProbeStatus="已收到回覆，但官方颱風資料結構異常"
+                        else {
+                            val points=OfficialTyphoonTrack.extract(response)
+                            typhoonProbeOk=true
+                            typhoonProbeStatus=if(points.isEmpty())
+                                "官方颱風資料回覆正常，目前沒有可核實的路徑座標；不代表服務失敗或一定沒有颱風"
+                                else "官方颱風資料解析成功（${points.size} 個座標）；地圖呈現和警報仍待實機驗證"
+                        }
+                    } catch(cancel:CancellationException) { throw cancel }
+                      catch(error:Exception) { typhoonProbeStatus=CwaOfficialGateway.describeFailure(error) }
+                    finally { typhoonProbeRunning=false }
+                }
+            },enabled=!typhoonProbeRunning) {
+                Text(if(typhoonProbeRunning) "颱風測試中…" else "測試 CWA 颱風官方路徑",fontSize=14.sp)
+            }
+            Text("測試結果只在本次畫面顯示；不會觸發地震推播、颱風警報或正式 OTA。",
                 color=Color(0xFFB7D5E7),fontSize=14.sp)
             Text("智慧天氣定時通知 · ${enabledSlots.size}/5 已啟用",fontSize=16.sp,fontWeight=FontWeight.SemiBold)
             (1..5).forEach { id ->
