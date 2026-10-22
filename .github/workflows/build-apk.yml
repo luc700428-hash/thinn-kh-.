@@ -437,3 +437,51 @@ jobs:
             --target "$GITHUB_SHA" --title "$release_title" \
             --notes-file "$notes_file" --latest
           [[ "$(gh release view "v$version" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" == 'false' ]]
+  next_lab:
+    name: NEXT clean-room Android lab APK (side by side)
+    if: github.event_name == 'workflow_dispatch' && github.ref_name != 'main' && inputs.publish_release != true && inputs.publish_maintenance != true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Android 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: NEXT source and safety regression tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s thinn-next/tools -p 'test_*.py' -v
+      - name: Compile new native Android app and run unit tests
+        run: gradle --no-daemon --console=plain --project-dir thinn-next :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify new APK cannot replace currently installed thinn-khì
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk='thinn-next/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" > next-debug-badging.txt
+          grep -Fq "name='io.atmos.weather.nextlab'" next-debug-badging.txt || {
+            echo '::error::Lab APK must never reuse the installed app package'; exit 1;
+          }
+          sha256sum "$apk" > thinn-next-lab-debug.sha256
+      - name: Attach the separately installable lab APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: thinn-next-lab-apk-${{ github.run_number }}
+          if-no-files-found: error
+          path: |
+            thinn-next/app/build/outputs/apk/debug/app-debug.apk
+            thinn-next-lab-debug.sha256
+            next-debug-badging.txt
