@@ -35,7 +35,8 @@ object TaskReminderScheduler {
         tasks.forEach {task->
             work.cancelUniqueWork(workId(task.id))
             if(!task.completed && task.notify && task.dueMillis()>now) {
-                val input=Data.Builder().putString("id",task.id).putString("title",task.title).build()
+                val input=Data.Builder().putString("id",task.id)
+                    .putLong("due_millis",task.dueMillis()).build()
                 val request=OneTimeWorkRequestBuilder<TaskReminderWorker>()
                     .setInitialDelay(task.dueMillis()-now,TimeUnit.MILLISECONDS)
                     .setInputData(input).addTag("thinn_task_reminder").build()
@@ -52,7 +53,11 @@ class TaskReminderWorker(context:Context,params:WorkerParameters):CoroutineWorke
         val task=TaskStore.load(applicationContext).firstOrNull {it.id==taskId && !it.completed && it.notify}
             ?:return Result.success()
         val now=System.currentTimeMillis()
-        if(task.dueMillis()>now+60_000L)return Result.retry()
+        val scheduledAt=inputData.getLong("due_millis",task.dueMillis())
+        // A job from before the user edited this item cannot notify for the new schedule.
+        if(!TaskReminderPolicy.sameSchedule(task.dueMillis(),scheduledAt)) return Result.success()
+        // WorkManager can run early after clock changes; never notify before the user's due time.
+        if(!TaskReminderPolicy.isDue(task.dueMillis(),now)) return Result.retry()
         if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(
                 applicationContext,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED
         ) return Result.success()
@@ -73,7 +78,7 @@ class TaskReminderWorker(context:Context,params:WorkerParameters):CoroutineWorke
             .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
         // Do not put private note body into the island's public condensed text.
         WeatherNotificationDispatcher.post(applicationContext,task.id.hashCode(),message,
-            task.title.take(36),"個人事項提醒",XiaomiFocusBridge.Kind.TASK_REMINDER)
+            "個人事項提醒","解鎖 App 查看事項內容",XiaomiFocusBridge.Kind.TASK_REMINDER)
         io.atmos.weather.voice.NaturalVoiceHub.offer(applicationContext,
             io.atmos.weather.voice.NaturalVoiceHub.Request(
                 (task.title+"。"+task.note).take(220),

@@ -47,8 +47,9 @@ open class AtmosWidget(private val variant: Int):GlanceAppWidget() {
     override suspend fun provideGlance(context:Context,id:GlanceId) {
         val prefs=context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE)
         val stamp=prefs.getLong("widget_time",0L)
+        val freshness=WidgetFreshness.state(stamp,System.currentTimeMillis())
         val city=LocationLabels.clean(prefs.getString("widget_city","台灣 · 臺北") ?: "台灣 · 臺北")
-        val temp=if(stamp==0L) "--°" else "${prefs.getInt("widget_temp",0)}°"
+        val temp=if(stamp<=0L) "--°" else "${prefs.getInt("widget_temp",0)}°"
         val rain=prefs.getInt("widget_rain",-1).let{if(it<0) "--" else "$it%"}
         val cond=runCatching{ WeatherCondition.valueOf(prefs.getString("widget_condition","UNKNOWN") ?: "UNKNOWN") }.getOrDefault(WeatherCondition.UNKNOWN)
         val chanceText = if(cond in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)) {
@@ -68,13 +69,13 @@ open class AtmosWidget(private val variant: Int):GlanceAppWidget() {
         val fontWeight=visuals.getFloat("v4_fontweight",400f).coerceIn(100f,900f)
         val opacity=visuals.getFloat("v4_opacity",.66f).coerceIn(0f,1f)
         val edge=visuals.getFloat("v4_edge",.65f).coerceIn(0f,1f)
-        provideContent { WeatherWidgetContent(context,variant,city,temp,chanceText,cond,scene,stamp,fontScale,fontWeight,opacity,edge) }
+        provideContent { WeatherWidgetContent(context,variant,city,temp,chanceText,cond,scene,stamp,freshness,fontScale,fontWeight,opacity,edge) }
     }
 }
 
 @Composable
 private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp:String, rain:String,
-    condition:WeatherCondition,scene:WeatherScene, stamp:Long,
+    condition:WeatherCondition,scene:WeatherScene, stamp:Long, freshness:WidgetFreshness.State,
     fontScale:Float,fontWeight:Float,opacity:Float,edge:Float) {
     val family=variant/5
     val palette=variant%5
@@ -98,9 +99,12 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
         Image(provider=ImageProvider(bitmap),contentDescription="${city} ${condition.label()}",
             contentScale=ContentScale.FillBounds,modifier=GlanceModifier.fillMaxSize())
         Column(GlanceModifier.fillMaxSize().padding(if(wide) 15.dp else 10.dp)) {
+            if(freshness != WidgetFreshness.State.RECENT) {
+                WText(WidgetFreshness.detail(freshness),Color(0xFFFFD9A0),10,true)
+            }
             when(family){
                 0 -> {
-                    WText("◈  thinn-khì  /  LIVE",soft,10,true)
+                    WText("◈  thinn-khì  /  ${WidgetFreshness.label(freshness)}",soft,10,true)
                     Spacer(GlanceModifier.height(6.dp))
                     WText(city,white,if(wide) 14 else 11,true)
                     WText(temp,white,if(wide) 40 else 30,true)
@@ -142,7 +146,7 @@ private fun WeatherWidgetContent(context:Context, variant:Int, city:String, temp
             }
             if(viewSize.height>136.dp && wide){
                 Spacer(GlanceModifier.height(6.dp))
-                WText("${condition.label()}  ·  ${if(stamp>0) "更新 ${Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))}" else "待同步"}",soft,10)
+                WText("${condition.label()}  ·  ${if(stamp>0) "下載 ${Instant.ofEpochMilli(stamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))}" else "待同步"}",soft,10)
             }
         }
     }

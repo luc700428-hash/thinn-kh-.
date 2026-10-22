@@ -37,6 +37,8 @@ object WeatherNotificationDispatcher {
             else runCatching {
                 notification.extras.remove("miui.focus.param")
                 notification.extras.remove("miui.focus.pics")
+                notification.extras.remove("miui.focus.actions")
+                XiaomiFocusBridge.finish(id)
                 manager.notify(id, notification)
                 true
             }.getOrDefault(false)
