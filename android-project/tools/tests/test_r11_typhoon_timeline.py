@@ -6,16 +6,18 @@ JAVA=ROOT/'app/src/main/java/io/atmos/weather'
 class R11UITests(unittest.TestCase):
     def test_both_periods_visible_and_centered(self):
         s=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
-        # V25 design: AM always above PM, and dragging up selects PM.
-        self.assertIn('V25AlarmMeridiem.fromDrag(', s)
-        self.assertIn('val targetY=if(value==V25AlarmMeridiem.AM) 0.dp else 55.dp', s)
-        self.assertIn('.offset(y=selectedY)', s)
-        self.assertIn('Text("上午"', s)
-        self.assertIn('Text("下午"', s)
-        self.assertLess(s.index('Text("上午"'), s.index('Text("下午"'))
-        self.assertNotIn('val otherSide=if(value==0) 1 else -1', s)
-        core=(JAVA/'alarm/V25AlarmMeridiem.kt').read_text()
-        self.assertIn('if (totalDragPx < 0f) PM else AM', core)
+        # All time columns share the same scroll physics; AM/PM has two finite rows.
+        self.assertIn('Wheel(value,2,',s)
+        self.assertIn('"上午" else "下午"',s)
+        self.assertIn('IOSWheelSelection.rowValue(',s)
+        self.assertIn('IOSWheelSelection.predictedSteps(',s)
+        self.assertLess(s.index('Wheel(hour%12,12,'),s.index('Wheel(minute,60,'))
+        self.assertLess(s.index('Wheel(minute,60,'),s.index('MeridiemWheel(if(hour<12) 0 else 1'))
+        core=(JAVA/'alarm/IOSWheelSelection.kt').read_text()
+        self.assertIn('index.takeIf{it in 0 until count}',core)
+        self.assertIn('proposed.coerceIn((value-count+1)*stepPx,value*stepPx)',core)
+        conversion=(JAVA/'alarm/V25AlarmMeridiem.kt').read_text()
+        self.assertIn('return hour12 + meridiem * 12',conversion)
     def test_official_only_track_and_taiwan_filter(self):
         s=(JAVA/'typhoon/OfficialStormTimeline.kt').read_text()
         for token in ('OfficialTyphoonTrack.extract','verifiedForecastSegments','isMovingTowardTaiwan','closest <= 900.0','closest < first-75.0'):

@@ -111,61 +111,12 @@ private fun GlassSetting(label:String, detail:String?=null,click:(()->Unit)?=nul
 @Composable
 private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp).background(Color.White.copy(alpha=.13f)))}
 
-/** Two-state meridiem control with deterministic gestures, no fling and a short
- * visual settlement. Every completed vertical drag changes AM <-> PM exactly once,
- * whether the gesture was slow or fast. State is saved BEFORE animation begins.
+/** Same detent/velocity/haptic engine as the adjacent hour and minute wheels.
+ *  Finite two-value selection: AM above PM, no wrapping or phantom duplicate rows.
  */
 @Composable
 private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
-    val haptic=LocalHapticFeedback.current
-    val density=LocalDensity.current
-    val threshold=with(density) { 12.dp.toPx() }
-    val latestValue by rememberUpdatedState(value)
-    val latestUpdate by rememberUpdatedState(onValue)
-    var totalDrag by remember { mutableFloatStateOf(0f) }
-    val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
-    val targetY=if(value==V25AlarmMeridiem.AM) 0.dp else 55.dp
-    val selectedY by animateDpAsState(
-        targetValue=targetY,
-        animationSpec=if(reduceMotion) tween(durationMillis=1) else spring(
-            dampingRatio=0.86f,stiffness=420f),label="v25-am-pm-wheel")
-    val shape=RoundedCornerShape(22.dp)
-    Box(modifier.height(213.dp).clip(shape)
-        .pointerInput(threshold) {
-            detectVerticalDragGestures(
-                onDragStart={totalDrag=0f},
-                onVerticalDrag={change,dy -> change.consume(); totalDrag+=dy},
-                onDragEnd={
-                    // Labels never exchange places. Direction selects the specific row.
-                    val next=V25AlarmMeridiem.fromDrag(latestValue,totalDrag,threshold)
-                    if(next!=latestValue) {
-                        latestUpdate(next)
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
-                    totalDrag=0f
-                },
-                onDragCancel={totalDrag=0f}
-            )
-        },contentAlignment=Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(102.dp)) {
-            Box(Modifier.fillMaxWidth().height(47.dp).offset(y=selectedY)
-                .clip(RoundedCornerShape(17.dp))
-                .background(Color.White.copy(alpha=.16f))
-                .border(1.dp,Color.White.copy(alpha=.36f),RoundedCornerShape(17.dp)))
-            Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().height(47.dp),contentAlignment=Alignment.Center) {
-                    Text("上午",color=Color.White.copy(alpha=if(value==0) 1f else .55f),
-                        fontSize=if(value==0) 28.sp else 23.sp,fontWeight=FontWeight.Light)
-                }
-                Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().height(47.dp),contentAlignment=Alignment.Center) {
-                    Text("下午",color=Color.White.copy(alpha=if(value==1) 1f else .55f),
-                        fontSize=if(value==1) 28.sp else 23.sp,fontWeight=FontWeight.Light)
-                }
-            }
-        }
-    }
+    Wheel(value,2,{ if(it==V25AlarmMeridiem.AM) "上午" else "下午" },onValue,modifier)
 }
 
 @Composable
@@ -182,7 +133,7 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
     val liveUpdate by rememberUpdatedState(onValue)
     val shifted= (offsetPx/stepPx).roundToInt()
     val fraction=offsetPx-shifted*stepPx
-    val selectedDetent=((value-shifted)%count+count)%count
+    val selectedDetent=IOSWheelSelection.afterSteps(value,count,shifted)
     var lastFeedbackValue by remember { mutableIntStateOf(selectedDetent) }
     LaunchedEffect(selectedDetent) {
         if(selectedDetent!=lastFeedbackValue) {
@@ -203,7 +154,7 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                 onVerticalDrag={ change, distance ->
                     change.consume()
                     tracker.addPosition(change.uptimeMillis,change.position)
-                    offsetPx=(offsetPx+distance).coerceIn(-stepPx*160f,stepPx*160f)
+                    offsetPx=IOSWheelSelection.clampOffset(liveValue,count,offsetPx+distance,stepPx)
                 },
                 onDragEnd={
                     val speed=tracker.calculateVelocity().y.coerceIn(-2400f,2400f)
@@ -211,10 +162,10 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                     // The value is committed synchronously, before Save could be pressed.
                     val coastPx=if(reduceMotion) 0f
                         else (speed*.065f).coerceIn(-stepPx*2f,stepPx*2f)
-                    val nearest=((offsetPx+coastPx)/stepPx).roundToInt().coerceIn(-160,160)
+                    val nearest=IOSWheelSelection.predictedSteps(liveValue,count,offsetPx,coastPx,stepPx)
                     offsetPx-=nearest*stepPx
                     if(nearest!=0) {
-                        liveUpdate(((liveValue-nearest)%count+count)%count)
+                        liveUpdate(IOSWheelSelection.afterSteps(liveValue,count,nearest))
                     }
                     val visualStart=offsetPx
                     movingJob=scope.launch {
@@ -227,8 +178,8 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                     }
                 },onDragCancel={
                     movingJob=scope.launch {
-                        val snap=(offsetPx/stepPx).roundToInt()
-                        if(snap!=0) liveUpdate(((liveValue-snap)%count+count)%count)
+                        val snap=IOSWheelSelection.predictedSteps(liveValue,count,offsetPx,0f,stepPx)
+                        if(snap!=0) liveUpdate(IOSWheelSelection.afterSteps(liveValue,count,snap))
                         offsetPx=0f
                     }
                 }
@@ -240,21 +191,23 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
         Layout(content = {
             for (row in -3..3) {
                 val distance=abs(row-fraction/stepPx)
-                val item=((value+row-shifted)%count+count)%count
-                Box(Modifier.fillMaxWidth().height(41.dp).clickable {
-                    movingJob?.cancel()
-                    liveUpdate(item)
-                    offsetPx=0f
-                },contentAlignment=Alignment.Center) {
-                    if(count!=2 || row==0 || row==1) Text(display(item),textAlign=TextAlign.Center,
-                        color=Color.White.copy(alpha=when {
-                            distance<.6f -> 1f
-                            distance<1.6f -> .58f
-                            distance<2.6f -> .26f
-                            else -> .06f
-                        }),fontSize=if(distance<.6f) 30.sp else 23.sp,fontWeight=FontWeight.Light,
-                        maxLines=1)
-                }
+                val item=IOSWheelSelection.rowValue(value,count,row,shifted)
+                if(item!=null) {
+                    Box(Modifier.fillMaxWidth().height(41.dp).clickable {
+                        movingJob?.cancel()
+                        liveUpdate(item)
+                        offsetPx=0f
+                    },contentAlignment=Alignment.Center) {
+                        Text(display(item),textAlign=TextAlign.Center,
+                            color=Color.White.copy(alpha=when {
+                                distance<.6f -> 1f
+                                distance<1.6f -> .58f
+                                distance<2.6f -> .26f
+                                else -> .06f
+                            }),fontSize=if(distance<.6f) 30.sp else 23.sp,fontWeight=FontWeight.Light,
+                            maxLines=1)
+                    }
+                } else Spacer(Modifier.fillMaxWidth().height(41.dp))
             }
         }, modifier=Modifier.fillMaxSize()) { measurables, constraints ->
             val rowHeight = 41.dp.roundToPx()
@@ -300,13 +253,13 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
             Box(Modifier.fillMaxWidth().padding(horizontal=32.dp).height(235.dp),contentAlignment=Alignment.Center) {
                 Box(Modifier.fillMaxWidth().height(45.dp).background(Color(0xFF303137),RoundedCornerShape(12.dp)))
                 Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-                    // A dedicated AM/PM wheel handles both swipe directions reliably.
-                    MeridiemWheel(if(hour<12) 0 else 1,
-                        {part -> hour=V25AlarmMeridiem.hour24(hour%12,part)},Modifier.weight(1.15f))
+                    // Shared iOS-style center detent across hour, minute AND AM/PM.
                     Wheel(hour%12,12,{if(it==0)"12" else "$it"},
-                        {v->hour=V25AlarmMeridiem.hour24(v,if(hour<12) V25AlarmMeridiem.AM else V25AlarmMeridiem.PM)},Modifier.weight(.85f))
+                        {v->hour=V25AlarmMeridiem.hour24(v,if(hour<12) V25AlarmMeridiem.AM else V25AlarmMeridiem.PM)},Modifier.weight(1f))
                     Wheel(minute,60,{"%02d".format(Locale.TAIWAN,it)},
-                        {minute=it},Modifier.weight(.85f))
+                        {minute=it},Modifier.weight(1f))
+                    MeridiemWheel(if(hour<12) 0 else 1,
+                        {part -> hour=V25AlarmMeridiem.hour24(hour%12,part)},Modifier.weight(.95f))
                 }
             }
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {

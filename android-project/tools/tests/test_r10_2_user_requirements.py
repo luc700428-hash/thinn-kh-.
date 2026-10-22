@@ -32,18 +32,18 @@ class R102UserRequirements(unittest.TestCase):
         self.assertIn('VelocityTracker()',s)
         self.assertNotIn('animateDecay(',s)
         self.assertNotIn('exponentialDecay(',s)
-        self.assertIn('V25AlarmMeridiem.fromDrag(',s)
+        self.assertIn('IOSWheelSelection.clampOffset(',s)
         self.assertIn('tween(durationMillis=140)',s)
         self.assertIn('animateTo(',s)
         self.assertNotIn('while(acc>36f)',s)
         self.assertIn('MeridiemWheel(if(hour<12) 0 else 1',s)
-        self.assertIn('Text("上午"',s)
-        self.assertIn('Text("下午"',s)
+        self.assertIn(' "上午" else "下午" ',s)
+        self.assertIn('Wheel(value,2,',s)
         self.assertIn('onDragEnd={',s)
         self.assertNotIn('val expected=offsetPx+velocity*.065f',s)
         self.assertIn('val coastPx=if(reduceMotion) 0f',s)
         self.assertNotIn('updateValue(1-currentValue)',s)
-        self.assertIn('liveUpdate(((liveValue-nearest)%count+count)%count)',s)
+        self.assertIn('liveUpdate(IOSWheelSelection.afterSteps(liveValue,count,nearest))',s)
         self.assertIn('offsetPx-=nearest*stepPx',s)
         self.assertIn('val selectedDetent=',s)
         self.assertIn('LaunchedEffect(selectedDetent)',s)
@@ -51,25 +51,28 @@ class R102UserRequirements(unittest.TestCase):
         self.assertIn('Layout(content = {',s)
         self.assertIn('center+(index-3)*rowHeight+fraction.roundToInt()',s)
         self.assertNotIn('.clickable { hour=(hour+12)%24 }',s)
-    def test_meridiem_fixed_rows_and_synchronous_commit(self):
+    def test_all_three_wheels_share_one_physics_engine(self):
         s=self.read('alarm/R10AlarmDesign.kt')
         meridiem=s.split('private fun MeridiemWheel(',1)[1].split('private fun Wheel(',1)[0]
-        self.assertIn('V25AlarmMeridiem.fromDrag(',meridiem)
-        self.assertIn('latestUpdate(next)',meridiem)
-        self.assertIn('Text("上午"',meridiem)
-        self.assertIn('Text("下午"',meridiem)
-        self.assertLess(meridiem.index('Text("上午"'),meridiem.index('Text("下午"'))
-        self.assertNotIn('updateValue(1-currentValue)',meridiem)
-        self.assertNotIn('VelocityTracker()',meridiem)
-        self.assertIn('animateDpAsState(',meridiem)
-        self.assertIn('reduce_motion',meridiem)
+        wheel=s.split('private fun Wheel(',1)[1].split('fun R10AlarmEditor(',1)[0]
+        self.assertIn('Wheel(value,2,',meridiem)
+        self.assertIn('"上午" else "下午"',meridiem)
+        self.assertNotIn('detectVerticalDragGestures(',meridiem)
+        self.assertNotIn('animateDpAsState(',meridiem)
+        self.assertIn('detectVerticalDragGestures(',wheel)
+        self.assertIn('VelocityTracker()',wheel)
+        self.assertIn('IOSWheelSelection.clampOffset(',wheel)
+        self.assertIn('IOSWheelSelection.rowValue(',wheel)
+        self.assertIn('V25AlarmMeridiem.hour24(hour%12,part)',s)
+        self.assertLess(s.index('Wheel(hour%12,12,'),s.index('Wheel(minute,60,'))
+        self.assertLess(s.index('Wheel(minute,60,'),s.index('MeridiemWheel(if(hour<12) 0 else 1'))
 
     def test_hour_minute_snap_does_not_wait_for_fling(self):
         s=self.read('alarm/R10AlarmDesign.kt')
         wheel=s.split('private fun Wheel(',1)[1].split('fun R10AlarmEditor(',1)[0]
         self.assertIn('coerceIn(-stepPx*2f,stepPx*2f)',wheel)
         self.assertIn('tween(durationMillis=140)',wheel)
-        self.assertLess(wheel.index('liveUpdate(((liveValue-nearest)%count+count)%count)'),
+        self.assertLess(wheel.index('liveUpdate(IOSWheelSelection.afterSteps(liveValue,count,nearest))'),
                         wheel.index('movingJob=scope.launch {',wheel.index('onDragEnd={')))
 
     def test_air_quality_short_labels_are_honest(self):

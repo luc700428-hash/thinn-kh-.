@@ -12,9 +12,9 @@ class UnifiedWiringTests(unittest.TestCase):
         self.assertIn('reduce_transparency',hero)
     def test_fixed_am_pm_and_no_blind_toggle(self):
         a=(SRC/'alarm/R10AlarmDesign.kt').read_text()
-        self.assertIn('V25AlarmMeridiem.fromDrag(',a)
-        self.assertIn('Text("上午"',a)
-        self.assertIn('Text("下午"',a)
+        self.assertIn('IOSWheelSelection.clampOffset(',a)
+        self.assertIn(' "上午" else "下午" ',a)
+        self.assertIn('Wheel(value,2,',a)
         self.assertNotIn('updateValue(1-currentValue)',a)
     def test_global_glimmer_obeys_accessibility(self):
         src=(SRC/'next/NextOpticalSurface.kt').read_text()
