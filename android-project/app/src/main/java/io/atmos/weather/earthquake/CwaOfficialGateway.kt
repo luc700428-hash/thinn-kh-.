@@ -6,6 +6,7 @@ import com.google.firebase.functions.FirebaseFunctions
 import io.atmos.weather.BuildConfig
 import io.atmos.weather.push.SeismicPushRegistration
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -16,7 +17,12 @@ object CwaOfficialGateway {
         "W-C0034-001","W-C0034-002","W-C0034-003","W-C0034-005")
 
     /** Authenticated Firebase callable returns bounded, opaque official KMZ bytes. */
-    suspend fun readTyphoonProbabilityKmz(context:Context):ByteArray {
+    // Bound both Firebase sign-in and the KMZ callable. Parent cancellation still propagates.
+    suspend fun readTyphoonProbabilityKmz(context:Context):ByteArray =
+        withTimeoutOrNull(18_000L) { readTyphoonProbabilityKmzUnbounded(context) }
+            ?: throw java.net.SocketTimeoutException("官方 KMZ 代理查詢逾時")
+
+    private suspend fun readTyphoonProbabilityKmzUnbounded(context:Context):ByteArray {
         check(SeismicPushRegistration.init(context)) { "Firebase 未設定，無法取得官方七級風侵襲機率" }
         val auth=FirebaseAuth.getInstance()
         if(auth.currentUser==null) suspendCancellableCoroutine<Unit> { cont ->
@@ -47,7 +53,10 @@ object CwaOfficialGateway {
         require(dataset in datasets) { "不支援的中央氣象署資料集" }
         // Always use our authenticated gateway. CWA requires a valid member API key;
         // a sample/embedded key in a public APK is not a reliable or safe fallback.
-        return readProxy(context,dataset)
+        // withTimeoutOrNull converts only *this* timeout into null, without swallowing
+        // a cancellation from the parent screen/navigation coroutine.
+        return withTimeoutOrNull(18_000L) { readProxy(context,dataset) }
+            ?: throw java.net.SocketTimeoutException("CWA 官方資料代理查詢逾時")
     }
     private suspend fun readProxy(context:Context,dataset:String):JSONObject {
         check(SeismicPushRegistration.init(context)) { "尚未設定 Firebase 後端，無法使用官方 API 代理" }
@@ -101,6 +110,8 @@ object CwaOfficialGateway {
                 "官方資料查詢額度不足，請稍後重試。"
             else -> "官方資料服務暫時無法使用，請稍後重試。"
         }
+        error is java.net.SocketTimeoutException ->
+            "官方資料代理連線逾時；請確認網路與 Firebase Functions 部署是否正常。"
         error is java.io.IOException -> "網路連線失敗，請確認網路後重試。"
         else -> "官方資料格式或服務異常，請稍後重試。"
     }
