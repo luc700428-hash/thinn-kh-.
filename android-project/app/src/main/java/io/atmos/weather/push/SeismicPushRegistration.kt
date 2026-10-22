@@ -5,6 +5,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import io.atmos.weather.BuildConfig
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Spark-compatible, user-opt-in FCM topic transport.
@@ -14,6 +15,8 @@ import io.atmos.weather.BuildConfig
 object SeismicPushRegistration {
     private const val PREF = "thinn_push_preferences_v22"
     private const val TOPIC = "thinn_eew_tw_v1"
+    private const val REQUESTED = "requested_enabled"
+    private val intentGeneration = AtomicLong(0L)
 
     fun optedIn(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean("enabled", false)
@@ -39,32 +42,62 @@ object SeismicPushRegistration {
         return true
     }
 
+    /**
+     * The last explicit user choice wins even when Firebase tasks return out of order.
+     * This protects LOCAL consent; it cannot certify server topic state or EEW delivery.
+     */
     fun setEnabled(ctx: Context, enabled: Boolean, onResult: (String) -> Unit) {
+        val pref = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val request = intentGeneration.incrementAndGet()
         if (enabled && !init(ctx)) {
+            pref.edit().putBoolean("enabled", false).putBoolean(REQUESTED, false).apply()
             onResult("FCM 專案設定不足，尚未訂閱")
             return
         }
-        // Never route the FCM registration token to a public endpoint.
-        val pref = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        // Do not keep the local notification gate open during a pending change.
+        pref.edit().putBoolean(REQUESTED, enabled).putBoolean("enabled", false).apply()
+        if (!enabled && !configured()) {
+            onResult("已在本機停用；FCM 未設定，無法確認遠端取消訂閱")
+            return
+        }
+        val messaging = FirebaseMessaging.getInstance()
+        fun current() = PushOptInGate.accepts(request, intentGeneration.get(), enabled,
+            pref.getBoolean(REQUESTED, false))
+        // A stale Firebase completion may have changed the remote topic after the
+        // latest command. Reconcile once, without treating reconciliation as proof
+        // that a backend publisher exists or an emergency notice will arrive.
+        fun reconcile() {
+            if (pref.getBoolean(REQUESTED, false)) {
+                messaging.subscribeToTopic(TOPIC).addOnSuccessListener {
+                    if (pref.getBoolean(REQUESTED, false)) {
+                        pref.edit().putBoolean("enabled", true).apply()
+                    } else messaging.unsubscribeFromTopic(TOPIC)
+                }
+            } else messaging.unsubscribeFromTopic(TOPIC)
+        }
         if (enabled) {
-            FirebaseMessaging.getInstance().subscribeToTopic(TOPIC)
+            messaging.subscribeToTopic(TOPIC)
                 .addOnSuccessListener {
-                    pref.edit().putBoolean("enabled", true).apply()
-                    onResult("已訂閱台灣與離島地震通知主題；後端來源尚須獨立驗證")
+                    if (current()) {
+                        pref.edit().putBoolean("enabled", true).apply()
+                        onResult("已訂閱台灣與離島地震通知主題；後端來源尚須獨立驗證")
+                    } else if (!pref.getBoolean(REQUESTED, false)) reconcile()
                 }
                 .addOnFailureListener {
-                    // Fail closed on initial subscription failure. The remote service is
-                    // not marked as operational merely because the toggle was pressed.
-                    pref.edit().putBoolean("enabled", false).apply()
-                    onResult("FCM 主題訂閱失敗：${it.message.orEmpty()}")
+                    if (current()) {
+                        pref.edit().putBoolean("enabled", false).putBoolean(REQUESTED, false).apply()
+                        onResult("FCM 主題訂閱失敗：${it.message.orEmpty()}")
+                    }
                 }
         } else {
-            pref.edit().putBoolean("enabled", false).apply()
-            FirebaseMessaging.getInstance().unsubscribeFromTopic(TOPIC)
-                .addOnSuccessListener { onResult("已停用台灣與離島地震主題通知") }
+            messaging.unsubscribeFromTopic(TOPIC)
+                .addOnSuccessListener {
+                    if (current()) onResult("已停用台灣與離島地震主題通知")
+                    else if (pref.getBoolean(REQUESTED, false)) reconcile()
+                }
                 .addOnFailureListener {
-                    // Incoming messages are also blocked locally by optedIn().
-                    onResult("本機已停用；雲端取消訂閱待重試：${it.message.orEmpty()}")
+                    if (current()) onResult("本機已停用；雲端取消訂閱待重試：${it.message.orEmpty()}")
+                    else if (pref.getBoolean(REQUESTED, false)) reconcile()
                 }
         }
     }
@@ -76,7 +109,10 @@ object SeismicPushRegistration {
         if (!optedIn(ctx)) return
         if (!init(ctx)) { onResult("FCM 設定不完整"); return }
         FirebaseMessaging.getInstance().subscribeToTopic(TOPIC)
-            .addOnSuccessListener { onResult("FCM 主題訂閱維持中") }
+            .addOnSuccessListener {
+                if (optedIn(ctx)) onResult("FCM 主題訂閱維持中")
+                else FirebaseMessaging.getInstance().unsubscribeFromTopic(TOPIC)
+            }
             .addOnFailureListener { onResult("FCM 重新訂閱失敗：${it.message.orEmpty()}") }
     }
 

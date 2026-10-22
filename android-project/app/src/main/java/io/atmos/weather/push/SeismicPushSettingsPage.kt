@@ -41,10 +41,13 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
                 "免費 FCM 主題傳輸；可能因省電、離線或網路而延遲",
                 enabled
             ) { target ->
-                if (!SeismicPushRegistration.configured()) {
+                if (target && !SeismicPushRegistration.configured()) {
                     status = "FCM 公開專案設定不足，無法訂閱主題"
                     return@GlassToggle
                 }
+                // Reflect the user's latest choice immediately so a pending
+                // subscribe can be cancelled before its callback returns.
+                enabled = target
                 status = if (target) "正在訂閱主題…" else "正在取消訂閱…"
                 SeismicPushRegistration.setEnabled(ctx, target) { result ->
                     status = result
@@ -56,6 +59,8 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
                     color = Color(0xFFFFD38C), fontSize = 15.sp)
             }
             Text(status, color = Color.White.copy(alpha = .9f), fontSize = 15.sp)
+            Text("即使已停用，遠端取消訂閱可能稍後完成；本機立即停止顯示這類 FCM 通知。",
+                color = Color.White.copy(alpha = .78f), fontSize = 14.sp)
             Spacer(Modifier.height(10.dp))
             Text("訂閱成功不等於後端已部署，也不代表取得合法即時預警來源。啟用前應完成 Cloudflare Worker、FCM 發送及實機驗證。",
                 color = Color.White.copy(alpha = .75f), fontSize = 14.sp)
