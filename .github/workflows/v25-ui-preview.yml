@@ -1,0 +1,59 @@
+name: V25 UI preview compile (NO OTA)
+on:
+  push:
+    branches:
+      - 'refactor/v25-*'
+permissions:
+  contents: read
+jobs:
+  android-ui-preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Verify shared time selection source contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('android-project/app/src/main/java/io/atmos/weather')
+          alarm=(root/'alarm/R10AlarmDesign.kt').read_text()
+          dial=(root/'ui/GlassClockDial.kt').read_text()
+          assert 'fun AppleAlarmTimeSelector(' in alarm
+          assert 'AppleAlarmTimeSelector(hour=hour,minute=minute,' in alarm
+          assert 'io.atmos.weather.alarm.AppleAlarmTimeSelector(' in dial
+          assert 'V25AlarmMeridiem.fromDrag' in alarm
+          assert 'const val springDamping' in (root/'ui/AppleMotion.kt').read_text()
+          PY
+      - name: Prepare public weather audio for Android resources
+        run: |
+          set -euo pipefail
+          python3 android-project/tools/prepare_real_weather_audio.py
+      - name: Kotlin and Android debug build (never signed or published)
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --console=plain --project-dir android-project \
+            -PTHINN_OTA_CHANNEL=preview -PTHINN_BUILD_SHA="$GITHUB_SHA" \
+            :app:testDebugUnitTest :app:assembleDebug 2>&1 | tee preview-build.log
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v25-ios-ui-preview-errors
+          path: preview-build.log
+          if-no-files-found: ignore
+      - name: Upload test APK (NOT OTA)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V25-IOS-UI-DEBUG-TEST-NOT-OTA
+          path: android-project/app/build/outputs/apk/debug/app-debug.apk

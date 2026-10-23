@@ -1,4 +1,5 @@
 package io.atmos.weather.lifestyle
+import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -115,7 +116,7 @@ fun LifestyleAiSettingsPage(onClose: () -> Unit) {
     var umbrellaThreshold by remember { mutableFloatStateOf(originalPreferences.umbrellaThresholdPct.toFloat()) }
     Column(Modifier.fillMaxSize()
         .background(Brush.verticalGradient(listOf(Color(0xFF08192F), Color(0xFF235678))))
-        .verticalScroll(rememberScrollState()).padding(start=20.dp, end=20.dp, top=54.dp, bottom=145.dp)) {
+        .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp, end=20.dp, top=54.dp, bottom=145.dp)) {
         Text("智慧生活 · 開源 AI", color=textColor, fontWeight=FontWeight.Bold, fontSize=25.sp)
         Spacer(Modifier.height(7.dp))
         Text("上衣、褲子、鞋子、雨具由本機可解釋規則即時計算。AI 僅補充生活化建議。",

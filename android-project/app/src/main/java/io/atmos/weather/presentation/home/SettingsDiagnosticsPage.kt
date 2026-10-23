@@ -1,4 +1,5 @@
 package io.atmos.weather.presentation.home
+import io.atmos.weather.ui.appleBouncingScroll
 
 import io.atmos.weather.ui.GlassModalBottomSheet as ModalBottomSheet
 import io.atmos.weather.ui.GlassOutlinedButton as OutlinedButton
@@ -56,7 +57,7 @@ fun SettingsDiagnosticsPage(onClose:()->Unit) {
         }
     }
     ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF102C49),contentColor=Color.White) {
-        Column(Modifier.fillMaxWidth().heightIn(max=720.dp).verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxWidth().heightIn(max=720.dp).appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=20.dp).padding(bottom=30.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text("設定健康檢查",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("讀取系統實際授權與背景工作狀態。顯示 ENQUEUED 只代表已排程，不保證準時通知。",

@@ -1,4 +1,5 @@
 package io.atmos.weather.briefing
+import io.atmos.weather.ui.appleBouncingScroll
 
 import io.atmos.weather.ui.GlassModalBottomSheet as ModalBottomSheet
 import io.atmos.weather.ui.GlassButton as Button
@@ -50,7 +51,7 @@ fun WeatherBriefingSettingsPage(onClose:()->Unit) {
     var editing by remember { mutableStateOf<WeatherBriefingSlot?>(null) }
     fun change(next:List<WeatherBriefingSlot>) { WeatherBriefingStore.save(context,next);slots=next }
     ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF102D49),contentColor=ink) {
-        Column(Modifier.fillMaxWidth().heightIn(max=750.dp).verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxWidth().heightIn(max=750.dp).appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=22.dp).padding(bottom=36.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Icon(Icons.Rounded.NotificationsActive,null,tint=azure,modifier=Modifier.size(28.dp))
@@ -103,7 +104,7 @@ fun WeatherBriefingSettingsPage(onClose:()->Unit) {
                 Modifier.fillMaxWidth(.94f).widthIn(max=420.dp).heightIn(max=750.dp)
                     .background(Color(0xFF173653), RoundedCornerShape(28.dp))
                     .border(1.dp,Color.White.copy(alpha=.17f),RoundedCornerShape(28.dp))
-                    .verticalScroll(rememberScrollState()).padding(16.dp),
+                    .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(16.dp),
                 horizontalAlignment=Alignment.CenterHorizontally,
                 verticalArrangement=Arrangement.spacedBy(12.dp)
             ) {

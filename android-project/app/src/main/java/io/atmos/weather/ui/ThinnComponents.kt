@@ -40,8 +40,8 @@ fun ThinnSection(label:String, modifier:Modifier=Modifier, content:@Composable C
     Column(modifier.fillMaxWidth()) {
         Text(label,fontSize=14.sp,fontWeight=FontWeight.Medium,color=dim,
             modifier=Modifier.padding(start=15.dp,bottom=9.dp,top=14.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp))
-            .background(bg).border(1.dp,Color.White.copy(alpha=.16f),RoundedCornerShape(23.dp)),content=content)
+        AppleGlassCard(modifier=Modifier.fillMaxWidth(),radius=ThinnDesignTokens.radiusCard,
+            contentPadding=PaddingValues(0.dp),content=content)
     }
 }
 

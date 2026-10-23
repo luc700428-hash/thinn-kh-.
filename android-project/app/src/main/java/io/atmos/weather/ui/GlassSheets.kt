@@ -91,9 +91,9 @@ fun GlassAlertDialog(onDismissRequest:()->Unit,confirmButton:@Composable ()->Uni
         .getBoolean("reduce_motion",false)
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown=true }
-    val opacity by animateFloatAsState(if(shown)1f else 0f,animationSpec=tween(if(reduceMotion)0 else 180),label="對話框進場")
+    val opacity by animateFloatAsState(if(shown)1f else 0f,animationSpec=tween(if(reduceMotion)0 else 180,easing=AppleMotion.fluid),label="對話框進場")
     val scale by animateFloatAsState(if(shown)1f else .88f,
-        animationSpec=tween(if(reduceMotion)0 else 190),label="對話框縮放")
+        animationSpec=tween(if(reduceMotion)0 else 190,easing=AppleMotion.fluid),label="對話框縮放")
     Dialog(onDismissRequest=onDismissRequest) {
         Column(Modifier.fillMaxWidth()
             .graphicsLayer { scaleX=scale;scaleY=scale;alpha=opacity }
@@ -149,7 +149,7 @@ fun GlassDropdownMenu(expanded:Boolean,onDismissRequest:()->Unit,
             .clip(RoundedCornerShape(22.dp))
             .background(ThinnOpticalMaterial.surface)
             .border(1.dp,glassBorder,RoundedCornerShape(22.dp))
-            .verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(7.dp),content=content)
+            .appleBouncingScroll().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(7.dp),content=content)
     }
 }
 

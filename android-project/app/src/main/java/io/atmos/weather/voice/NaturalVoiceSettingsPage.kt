@@ -1,4 +1,5 @@
 package io.atmos.weather.voice
+import io.atmos.weather.ui.appleBouncingScroll
 
 import android.content.Context
 import androidx.compose.foundation.*
@@ -36,7 +37,7 @@ fun NaturalVoiceSettingsPage(onClose:()->Unit) {
     Column(Modifier.fillMaxSize()
         .background(Brush.verticalGradient(listOf(Color(0xFF091422),Color(0xFF183B5C))))
         .statusBarsPadding().navigationBarsPadding()
-        .verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=18.dp)) {
+        .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=18.dp)) {
         BasicText("‹ 返回",modifier=Modifier.clickable { onClose() }.padding(8.dp),
             style=TextStyle(color=Color(0xFF97DCFF),fontSize=17.sp))
         Spacer(Modifier.height(12.dp))
