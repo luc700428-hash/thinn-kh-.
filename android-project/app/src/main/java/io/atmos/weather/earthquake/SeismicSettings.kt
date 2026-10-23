@@ -1,4 +1,5 @@
 package io.atmos.weather.earthquake
+import io.atmos.weather.ui.appleBouncingScroll
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassDropdownMenu as DropdownMenu
@@ -166,7 +167,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
+            Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
                 when(tab) {
                     0 -> {
                         SectionName("監測服務")

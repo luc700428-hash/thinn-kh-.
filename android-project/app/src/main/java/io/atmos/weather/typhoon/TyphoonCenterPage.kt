@@ -1,4 +1,5 @@
 package io.atmos.weather.typhoon
+import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -131,7 +132,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
         refresh()
     }
     Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState())
         .padding(horizontal=20.dp,vertical=20.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).background(Color.White.copy(alpha=.12f),RoundedCornerShape(24.dp))

@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
         // Lock-screen activation is governed by OS notification policy. Do not
         // enable wake from an exported Activity intent extra that another app can forge.
         window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.rgb(15, 26, 45)
+        window.navigationBarColor = android.graphics.Color.BLACK
         // Choose the fastest available mode as a preference only. Android may lower it
         // for thermal limits, battery, accessibility or app compatibility.
         @Suppress("DEPRECATION")
@@ -109,6 +109,8 @@ class MainActivity : ComponentActivity() {
                     notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
+            // Presentation tree only. Does not change WeatherViewModel or app state.
+            io.atmos.weather.ui.ThinnAppTheme {
             if (!introComplete) FirstRunGuide(onContinue={
                 consent.edit().putBoolean("v8_intro_completed",true).apply()
                 introComplete = true
@@ -120,6 +122,7 @@ class MainActivity : ComponentActivity() {
                     locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION))
                 }
             })
+            } // ThinnAppTheme
         }
     }
     override fun onResume() {

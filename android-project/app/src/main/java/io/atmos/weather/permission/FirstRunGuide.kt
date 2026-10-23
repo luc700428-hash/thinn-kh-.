@@ -1,4 +1,5 @@
 package io.atmos.weather.permission
+import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -43,7 +44,7 @@ fun FirstRunGuide(onContinue:()->Unit) {
     ThinnAppTheme {
         Column(Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFF0B1A2C),Color(0xFF1D435F),Color(0xFF2A6484))))
-            .verticalScroll(rememberScrollState()).padding(horizontal=25.dp,vertical=36.dp),
+            .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=25.dp,vertical=36.dp),
             horizontalAlignment=Alignment.CenterHorizontally) {
             Spacer(Modifier.height(35.dp))
             // The logo is embedded in the atmospheric background, not a separate solid tile.

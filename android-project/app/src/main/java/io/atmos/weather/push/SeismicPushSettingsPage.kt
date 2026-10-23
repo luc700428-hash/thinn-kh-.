@@ -1,4 +1,5 @@
 package io.atmos.weather.push
+import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -26,7 +27,7 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
     Column(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFF091B30), Color(0xFF235477))))
-            .verticalScroll(rememberScrollState()).padding(22.dp)
+            .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(22.dp)
     ) {
         Spacer(Modifier.height(24.dp))
         Text("台灣地震通知", fontSize = 28.sp, color = Color.White)

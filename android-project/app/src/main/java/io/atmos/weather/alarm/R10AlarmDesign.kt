@@ -129,7 +129,8 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
     val selectedY by animateDpAsState(
         targetValue=targetY,
         animationSpec=if(reduceMotion) tween(durationMillis=1) else spring(
-            dampingRatio=0.86f,stiffness=420f),label="v25-am-pm-wheel")
+            dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
+            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="v25-am-pm-wheel")
     val shape=RoundedCornerShape(22.dp)
     Box(modifier.height(213.dp).clip(shape)
         .pointerInput(threshold) {
@@ -219,7 +220,9 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                     val visualStart=offsetPx
                     movingJob=scope.launch {
                         if(!reduceMotion) {
-                            Animatable(visualStart).animateTo(0f,tween(durationMillis=140)) {
+                            Animatable(visualStart).animateTo(0f,spring(
+                                dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
+                                stiffness=io.atmos.weather.ui.AppleMotion.springStiffness)) {
                                 offsetPx=this.value
                             }
                         }
@@ -269,6 +272,34 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
     }
 }
 
+/**
+ * Single time-selection renderer for alarm, reminders, and scheduled briefing.
+ * All callers own their own hour/minute state and business callbacks.
+ * AM is permanently above PM; time values are committed on drag release BEFORE save.
+ */
+@Composable
+fun AppleAlarmTimeSelector(
+    hour:Int, minute:Int, onHour:(Int)->Unit, onMinute:(Int)->Unit,
+    modifier:Modifier=Modifier
+) {
+    val safeHour=hour.coerceIn(0,23)
+    val safeMinute=minute.coerceIn(0,59)
+    Box(modifier.fillMaxWidth().height(235.dp),contentAlignment=Alignment.Center) {
+        Box(Modifier.fillMaxWidth().height(45.dp)
+            .background(Color(0xFF303137),RoundedCornerShape(12.dp)))
+        Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),
+            horizontalArrangement=Arrangement.spacedBy(4.dp),
+            verticalAlignment=Alignment.CenterVertically) {
+            MeridiemWheel(if(safeHour<12) 0 else 1,
+                {part -> onHour((safeHour%12)+part*12)},Modifier.weight(1.15f))
+            Wheel(safeHour%12,12,{if(it==0)"12" else "$it"},
+                {v->onHour((safeHour/12)*12+v)},Modifier.weight(.85f))
+            Wheel(safeMinute,60,{"%02d".format(Locale.TAIWAN,it)},
+                {onMinute(it)},Modifier.weight(.85f))
+        }
+    }
+}
+
 @Composable
 fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm)->Unit,onSave:(WeatherAlarm)->Unit) {
     val ctx=LocalContext.current
@@ -297,18 +328,9 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,true,voice,snooze,uri))
                 })
             }
-            Box(Modifier.fillMaxWidth().padding(horizontal=32.dp).height(235.dp),contentAlignment=Alignment.Center) {
-                Box(Modifier.fillMaxWidth().height(45.dp).background(Color(0xFF303137),RoundedCornerShape(12.dp)))
-                Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-                    // A dedicated AM/PM wheel handles both swipe directions reliably.
-                    MeridiemWheel(if(hour<12) 0 else 1,
-                        {part -> hour=(hour%12)+part*12},Modifier.weight(1.15f))
-                    Wheel(hour%12,12,{if(it==0)"12" else "$it"},
-                        {v->hour=(hour/12)*12+v},Modifier.weight(.85f))
-                    Wheel(minute,60,{"%02d".format(Locale.TAIWAN,it)},
-                        {minute=it},Modifier.weight(.85f))
-                }
-            }
+            AppleAlarmTimeSelector(hour=hour,minute=minute,
+                onHour={hour=it},onMinute={minute=it},
+                modifier=Modifier.padding(horizontal=32.dp))
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
                 Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {

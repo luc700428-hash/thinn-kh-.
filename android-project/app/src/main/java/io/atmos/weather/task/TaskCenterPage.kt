@@ -1,4 +1,5 @@
 package io.atmos.weather.task
+import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,7 +44,7 @@ fun TaskCenterPage(onClose:()->Unit) {
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Column(Modifier.fillMaxSize()
             .background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
-            .verticalScroll(rememberScrollState())
+            .appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=20.dp,vertical=32.dp)) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 GlassIconButton(onClick=onClose) {Icon(Icons.Rounded.ArrowBack,"返回",tint=Color.White)}
@@ -128,7 +129,7 @@ private fun TaskEditor(existing:ThinnTask?,onDismiss:()->Unit,onSave:(ThinnTask)
             .clip(RoundedCornerShape(28.dp))
             .background(Brush.verticalGradient(listOf(Color(0xFF36516D),Color(0xFF12283E))))
             .border(1.dp,Color.White.copy(alpha=.24f),RoundedCornerShape(28.dp))
-            .verticalScroll(rememberScrollState()).padding(19.dp),
+            .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(19.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text(if(existing==null)"新增事項" else "編輯事項",color=Color.White,
                 fontSize=22.sp,fontWeight=FontWeight.Bold)

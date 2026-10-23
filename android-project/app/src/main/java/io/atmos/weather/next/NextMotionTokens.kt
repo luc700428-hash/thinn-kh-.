@@ -10,12 +10,12 @@ import androidx.compose.animation.core.spring
  * Interactive drags always use direct pointer positions; springs take over on release.
  */
 object NextMotionTokens {
-    const val PRESS_SCALE = 0.965f
+    const val PRESS_SCALE = 0.94f
     const val ELEVATED_DRAG_SCALE = 1.055f
-    const val SNAP_STIFFNESS = 550f
-    const val SNAP_DAMPING = 0.82f
-    const val GENTLE_STIFFNESS = 240f
-    const val GENTLE_DAMPING = 0.86f
+    const val SNAP_STIFFNESS = 190f
+    const val SNAP_DAMPING = 0.72f
+    const val GENTLE_STIFFNESS = 190f
+    const val GENTLE_DAMPING = 0.72f
 
     fun fastSpring(): SpringSpec<Float> = spring(
         dampingRatio = SNAP_DAMPING,

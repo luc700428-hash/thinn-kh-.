@@ -48,7 +48,7 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
         .getBoolean("reduce_motion",false)
     var offsetPx by remember { mutableFloatStateOf(750f) }
     val animatedY by animateFloatAsState(offsetPx,
-        animationSpec=tween(if(reduceMotion)0 else 240),label="底部面板進退場")
+        animationSpec=tween(if(reduceMotion)0 else 240,easing=AppleMotion.fluid),label="底部面板進退場")
     LaunchedEffect(Unit) { offsetPx=0f }
     fun dismissAnimated() {
         scope.launch { offsetPx=900f; delay(if(reduceMotion)0 else 240);onDismissRequest() }
@@ -91,18 +91,17 @@ fun GlassAlertDialog(onDismissRequest:()->Unit,confirmButton:@Composable ()->Uni
         .getBoolean("reduce_motion",false)
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown=true }
-    val opacity by animateFloatAsState(if(shown)1f else 0f,animationSpec=tween(if(reduceMotion)0 else 180),label="對話框進場")
+    val opacity by animateFloatAsState(if(shown)1f else 0f,animationSpec=tween(if(reduceMotion)0 else 180,easing=AppleMotion.fluid),label="對話框進場")
     val scale by animateFloatAsState(if(shown)1f else .88f,
-        animationSpec=tween(if(reduceMotion)0 else 190),label="對話框縮放")
+        animationSpec=tween(if(reduceMotion)0 else 190,easing=AppleMotion.fluid),label="對話框縮放")
     Dialog(onDismissRequest=onDismissRequest) {
-        Column(Modifier.fillMaxWidth()
-            .graphicsLayer { scaleX=scale;scaleY=scale;alpha=opacity }
-            .clip(RoundedCornerShape(29.dp))
-            .background(ThinnOpticalMaterial.raised)
-            .border(1.dp,glassBorder,RoundedCornerShape(29.dp)).thinnSpecularEdge(29.dp).padding(22.dp),
-            verticalArrangement=Arrangement.spacedBy(14.dp)) {
-            title?.invoke();text?.invoke()
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {confirmButton()}
+        Box(Modifier.fillMaxWidth()
+            .graphicsLayer { scaleX=scale;scaleY=scale;alpha=opacity }) {
+            AppleGlassCard(modifier=Modifier.fillMaxWidth(), radius=16.dp,
+                contentPadding=PaddingValues(22.dp)) {
+                title?.invoke();text?.invoke()
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {confirmButton()}
+            }
         }
     }
 }
@@ -149,7 +148,7 @@ fun GlassDropdownMenu(expanded:Boolean,onDismissRequest:()->Unit,
             .clip(RoundedCornerShape(22.dp))
             .background(ThinnOpticalMaterial.surface)
             .border(1.dp,glassBorder,RoundedCornerShape(22.dp))
-            .verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(7.dp),content=content)
+            .appleBouncingScroll().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(7.dp),content=content)
     }
 }
 

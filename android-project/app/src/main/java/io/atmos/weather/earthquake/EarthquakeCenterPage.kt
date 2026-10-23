@@ -1,4 +1,5 @@
 package io.atmos.weather.earthquake
+import io.atmos.weather.ui.appleBouncingScroll
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassButton as Button
@@ -106,7 +107,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
     } else Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Box(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)) {
             Box(Modifier.fillMaxWidth().height(300.dp).background(Brush.radialGradient(listOf(cyan.copy(alpha=.15f),Color.Transparent))))
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=22.dp,vertical=28.dp)) {
+            Column(Modifier.fillMaxSize().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=22.dp,vertical=28.dp)) {
                 Spacer(Modifier.height(14.dp))
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     IconButton(onClick={haptics?.play(HapticEngine.Event.TAP);onClose()}) {Icon(Icons.Rounded.ArrowBack,"返回",tint=white)}

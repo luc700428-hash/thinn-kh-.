@@ -53,17 +53,17 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     val pressed by interaction.collectIsPressedAsState()
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered=true }
-    val pressScale by animateFloatAsState(if(pressed && !reduce) .962f else 1f,
-        animationSpec=if(reduce) tween(0) else spring(dampingRatio=.76f,stiffness=430f),label="玻璃按鈕按壓")
+    val pressScale by animateFloatAsState(if(pressed && !reduce) AppleMotion.pressedScale else 1f,
+        animationSpec=if(reduce) tween(0) else if(pressed) tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),label="玻璃按鈕按壓")
     val appear by animateFloatAsState(if(entered) 1f else .94f,
-        animationSpec=tween(if(reduce) 0 else 170),label="玻璃按鈕入場")
+        animationSpec=tween(if(reduce) 0 else 170,easing=AppleMotion.fluid),label="玻璃按鈕入場")
     val fill=if(colors!=null) {
         val chosen=if(enabled) colors.containerColor else colors.disabledContainerColor
         listOf(chosen,chosen)
     } else if(outlined) listOf(Color.White.copy(alpha=.24f),Color.White.copy(alpha=.105f),Color.White.copy(alpha=.17f))
         else listOf(Color(0xFFE5F7FF),Color(0xFFAFDDF6),Color(0xFF659FC7))
     Row(modifier.defaultMinSize(minHeight=48.dp)
-        .graphicsLayer { scaleX=pressScale*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear else appear*.45f }
+        .graphicsLayer { scaleX=pressScale*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear*(if(pressed && !reduce) AppleMotion.pressedAlpha else 1f) else appear*.45f }
         .clip(corner)
         .background(Brush.linearGradient(fill))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
@@ -106,10 +106,10 @@ fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
     val pressed by interaction.collectIsPressedAsState()
     val context=LocalContext.current
     val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
-    val scale by animateFloatAsState(if(pressed && !reduce).96f else 1f,
-        animationSpec=tween(if(reduce)0 else 140),label="玻璃圖示按鈕回饋")
+    val scale by animateFloatAsState(if(pressed && !reduce)AppleMotion.pressedScale else 1f,
+        animationSpec=if(reduce)tween(0) else if(pressed)tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),label="玻璃圖示按鈕回饋")
     Box(modifier.defaultMinSize(48.dp,48.dp)
-        .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(enabled) 1f else .45f }
+        .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else if(pressed && !reduce) AppleMotion.pressedAlpha else 1f }
         .clip(CircleShape)
         .background(ThinnOpticalMaterial.subtlePill)
         .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)

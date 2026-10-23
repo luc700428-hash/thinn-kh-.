@@ -48,11 +48,8 @@ fun GlassSurface(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->
     val context=LocalContext.current
     val prefs=remember(context){context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     val opaque=prefs.getBoolean("reduce_transparency",false)
-    Column(modifier.clip(RoundedCornerShape(ThinnDesignTokens.radiusCard))
-        .background(if(opaque) ThinnOpticalMaterial.opaque
-            else ThinnOpticalMaterial.surface)
-        .border(1.dp,Color.White.copy(alpha=.17f),RoundedCornerShape(ThinnDesignTokens.radiusCard))
-        .padding(18.dp),content=content)
+AppleGlassCard(modifier=modifier,radius=ThinnDesignTokens.radiusCard,
+        contentPadding=PaddingValues(18.dp),content=content)
 }
 
 @Composable
@@ -62,10 +59,10 @@ fun GlassAction(title:String,subtitle:String="",modifier:Modifier=Modifier,onCli
     val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
     val interaction=remember {MutableInteractionSource()}
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if(pressed&&!reduce).985f else 1f,
-        animationSpec=tween(if(reduce)0 else 120),label="選項回饋")
+    val scale by animateFloatAsState(if(pressed&&!reduce)AppleMotion.pressedScale else 1f,
+        animationSpec=if(reduce)tween(0) else if(pressed)tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),label="選項回饋")
     Row(modifier.fillMaxWidth().heightIn(min=56.dp)
-        .graphicsLayer{scaleX=scale;scaleY=scale}
+        .graphicsLayer{scaleX=scale;scaleY=scale;alpha=if(pressed&&!reduce)AppleMotion.pressedAlpha else 1f}
         .clip(RoundedCornerShape(ThinnDesignTokens.radiusRow))
         .clickable(interactionSource=interaction,indication=null) {
             feedback?.play(HapticEngine.Event.TAP);onClick()
@@ -155,7 +152,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
     onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
     Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=118.dp)) {
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=118.dp)) {
         Text("工具",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("常用功能與你的生活事項",color=soft,fontSize=15.sp)
         Spacer(Modifier.height(17.dp))
@@ -193,7 +190,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     var reduceMotion by remember {mutableStateOf(prefs.getBoolean("reduce_motion",false))}
     var reduceTransparency by remember {mutableStateOf(prefs.getBoolean("reduce_transparency",false))}
     Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=124.dp)) {
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=124.dp)) {
         Text("設定",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("所有選項皆使用統一的導覽、觸感與視覺語言",fontSize=15.sp,color=soft)
         Spacer(Modifier.height(16.dp))

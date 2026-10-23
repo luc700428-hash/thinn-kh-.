@@ -31,18 +31,12 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun GlassClockDial(hour:Int,minute:Int,onHour:(Int)->Unit,onMinute:(Int)->Unit) {
-    Column(horizontalAlignment=Alignment.CenterHorizontally) {
-        Text("設定時間 · 24 小時制",fontSize=15.sp,color=ThinnDesignTokens.secondaryInkDark)
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,
-            verticalAlignment=Alignment.CenterVertically) {
-            ThinnNumberWheel("小時",hour.coerceIn(0,23),0,23,{onHour(it)},Modifier.weight(1f))
-            Text(":",color=Color.White,fontSize=28.sp,fontWeight=FontWeight.Bold)
-            ThinnNumberWheel("分鐘",minute.coerceIn(0,59),0,59,{onMinute(it)},Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(4.dp))
-        Text("上下滑動數字，或點選箭頭精確調整",fontSize=14.sp,color=ThinnDesignTokens.secondaryInkDark)
-    }
+    // Shared instance of the exact alarm AM/PM + hour + minute visual/physics.
+    // Retain existing 24-hour state callbacks for tasks and weather briefings.
+    io.atmos.weather.alarm.AppleAlarmTimeSelector(
+        hour=hour.coerceIn(0,23), minute=minute.coerceIn(0,59),
+        onHour=onHour, onMinute=onMinute
+    )
 }
 
 @Composable

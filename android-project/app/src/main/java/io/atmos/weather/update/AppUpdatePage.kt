@@ -1,4 +1,5 @@
 package io.atmos.weather.update
+import io.atmos.weather.ui.appleBouncingScroll
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassButton as Button
@@ -160,7 +161,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                 Brush.radialGradient(listOf(UpdateBlue.copy(alpha=light*.5f), Color.Transparent))
             ))
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
+                .appleBouncingScroll().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp, vertical=18.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     IconButton(onClick={ haptic?.play(HapticEngine.Event.TAP); onClose() }) {

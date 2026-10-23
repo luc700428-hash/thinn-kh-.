@@ -1,4 +1,5 @@
 package io.atmos.weather.alarm
+import io.atmos.weather.ui.appleBouncingScroll
 
 import android.Manifest
 import android.content.Context
@@ -61,7 +62,7 @@ fun WeatherAlarmPage(onClose:()->Unit) {
     }
     BackHandler(enabled=showEditor) { showEditor=false }
     Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState())
         .padding(horizontal=20.dp,vertical=20.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=onClose) { Icon(Icons.Rounded.ArrowBack,"返回工具",tint=ink) }
