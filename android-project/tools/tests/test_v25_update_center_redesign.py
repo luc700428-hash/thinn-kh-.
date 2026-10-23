@@ -3,25 +3,22 @@ from pathlib import Path
 import unittest
 BASE=Path(__file__).resolve().parents[2]/'app/src/main/java/io/atmos/weather'
 class V25UpdateCenter(unittest.TestCase):
-    def test_new_center_has_real_version_and_readable_hierarchy(self):
+    def test_update_layout_is_light_and_uses_verified_release_metadata(self):
         src=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
-        for expected in ('V${BuildConfig.VERSION_NAME.substringBefore',
-                         '此版本已安裝在你的手機', '這次更新帶來什麼',
-                         'ThinnOpticalMaterial.surface', '系統更新'):
+        for expected in ('軟體更新', '自動檢查更新', 'Beta 版更新項目',
+                         'pending?.version ?: BuildConfig.VERSION_NAME',
+                         'Color(0xFFF5F6FA)', 'UpdatePanel(glow=light)',
+                         'UpdateReleaseNotes(pendingDelta.ifBlank',
+                         '尚未確認完成安裝'):
             self.assertIn(expected,src)
-        self.assertNotIn('程式來源：',src)
         self.assertNotIn('更新來源：GitHub Releases',src)
-        # Authentic provenance remains available behind an opt-in details row.
-        self.assertIn('BuildConfig.THINN_BUILD_SHA.take(10)',src)
-        self.assertIn('var showBuildDetails by remember { mutableStateOf(false) }',src)
-        self.assertIn('if(showBuildDetails)',src)
-        self.assertIn('Modifier.clickable',src)
-    def test_integrated_state_is_real_and_never_fakes_install_success(self):
+    def test_true_download_and_cancel_with_no_fake_overnight_install(self):
         src=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
         for expected in ('AppUpdater.findUpdate(context)',
                          'AppUpdater.downloadAndInstall(context,release)',
-                         'installerPrompted', 'NextOtaStatusCard(',
-                         'downloadJob?.cancel()'):
+                         'installerPrompted', 'downloadJob?.cancel()',
+                         'UpdateCheckWorker.schedule(context)',
+                         'pending?.let {downloadOfficial(it)}'):
             self.assertIn(expected,src)
         self.assertNotIn('NextOtaState.Completed -> "已確認完成升級。"',src)
     def test_status_card_no_longer_uses_next_brand(self):

@@ -49,9 +49,9 @@ class IOSUIContractTests(unittest.TestCase):
         # Do not require the removed legacy ThinnProgressLine control.
         self.assertIn('downloaded=soFar',source)
         self.assertIn('totalBytes=total',source)
-        self.assertIn('NextOtaState.Downloading(',source)
-        self.assertIn('downloaded.toFloat()/it',source)
-        self.assertIn('NextOtaStatusCard(',source)
+        self.assertIn('val percent=((downloaded.toFloat()/total)*100)',source)
+        self.assertIn('pending?.let {downloadOfficial(it)}',source)
+        self.assertIn('尚未確認完成安裝',source)
         next_card=self.source('next/NextOtaPresentation.kt')
         self.assertIn('state.progress.coerceIn(0f, 1f)',next_card)
         self.assertIn('ProgressBarRangeInfo(p, 0f..1f)',next_card)

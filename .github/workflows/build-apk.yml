@@ -3,12 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'FULL V25 ONLY: all 22 independently evidenced feature checks required'
+        description: '發布完整 V25（需驗收通過）'
         type: boolean
         required: true
         default: false
       publish_maintenance:
-        description: 'Publish signed STABLE MAINTENANCE OTA for all users (NOT full V25)'
+        description: '發布穩定維護更新（非完整 V25）'
         type: boolean
         required: true
         default: false

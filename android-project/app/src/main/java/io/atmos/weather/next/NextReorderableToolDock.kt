@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -81,6 +83,11 @@ fun NextReorderableToolDock(
     val hidden = sorted.drop(visible.size)
     val latestOnOrderChanged by rememberUpdatedState(onOrderChanged)
     val latestOnSelected by rememberUpdatedState(onSelected)
+    val latestSelectedId by rememberUpdatedState(selectedId)
+    val latestVisible by rememberUpdatedState(visible)
+    var scrubPreviewId by remember { mutableStateOf<String?>(null) }
+    var scrubStartX by remember { mutableFloatStateOf(0f) }
+    val scrubMinimumPx = with(LocalDensity.current) { 14.dp.toPx() }
     val haptics = LocalHapticFeedback.current
     val itemWidthPx = with(LocalDensity.current) { 66.dp.toPx() }
     var draggingId by remember { mutableStateOf<String?>(null) }
@@ -99,12 +106,41 @@ fun NextReorderableToolDock(
     }
 
     val lightIndex=visible.indexOfFirst {it.id == draggingId}.takeIf {it >= 0}
-        ?: visible.indexOfFirst {it.id == selectedId}.coerceAtLeast(0)
+        ?: visible.indexOfFirst {it.id == (scrubPreviewId ?: selectedId) }.coerceAtLeast(0)
     val lightX=if(visible.isEmpty()) .5f else (lightIndex+.5f)/visible.size
     NextOpticalSurface(modifier = modifier, touchX = lightX,
         pressed = draggingId != null, reduceTransparency = reduceTransparency) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 5.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 5.dp)
+                .pointerInput(actionIds) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { start ->
+                            scrubStartX = start.x
+                            scrubPreviewId = null
+                        },
+                        onHorizontalDrag = { change, _ ->
+                            // Child long-press drag has priority for reordering.
+                            if (draggingId == null) {
+                                val items = latestVisible
+                                val next = IosDockSwipePolicy.target(
+                                    scrubStartX, change.position.x,
+                                    size.width.toFloat(), items.size, scrubMinimumPx)
+                                val target = next?.let { items.getOrNull(it)?.id }
+                                if (target != null && target != scrubPreviewId) {
+                                    scrubPreviewId = target
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            }
+                        },
+                        onDragEnd = {
+                            if (draggingId == null) scrubPreviewId?.let { target ->
+                                if (target != latestSelectedId) latestOnSelected(target)
+                            }
+                            scrubPreviewId = null
+                        },
+                        onDragCancel = { scrubPreviewId = null }
+                    )
+                },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -123,7 +159,7 @@ fun NextReorderableToolDock(
                         animationSpec = NextMotionTokens.fastSpring(),
                         label = "next-dock-scale"
                     )
-                    val selected = action.id == selectedId
+                    val selected = action.id == (scrubPreviewId ?: selectedId)
                     val slidingX by animateFloatAsState(
                         targetValue = if (activeDrag) localX else 0f,
                         animationSpec = if (activeDrag || reduceMotion) snap()
@@ -131,10 +167,19 @@ fun NextReorderableToolDock(
                         label = "next-dock-release-spring"
                     )
                     Column(
-                        modifier = Modifier.width(65.dp).height(63.dp)
+                        modifier = Modifier.weight(1f).height(63.dp)
                             .graphicsLayer(scaleX = scale, scaleY = scale,
                                 translationX = if (reduceMotion) 0f else slidingX)
-                            .background(if (selected) Color(0x623C7C9D) else Color.Transparent, RoundedCornerShape(22.dp))
+                            .background(
+                                if (selected) androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    listOf(Color(0xA84EBAFF),Color(0xA117649D),Color(0x8C0A426A)))
+                                else androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    listOf(Color.Transparent,Color.Transparent)),
+                                RoundedCornerShape(22.dp))
+                            .border(
+                                if (selected) 1.dp else 0.dp,
+                                if (selected) Color(0xBEE2F9FF) else Color.Transparent,
+                                RoundedCornerShape(22.dp))
                             .pointerInput(action.id, itemWidthPx) {
                                 detectDragGesturesAfterLongPress(
                                     onDragStart = {

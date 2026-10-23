@@ -658,7 +658,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     it.title.contains("颱風") || it.summary.contains("颱風警報")
                 }
                 if (officialStormActive || verifiedTyphoonWarning!=null) {
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
                         .background(Brush.horizontalGradient(listOf(Color(0xFF17405D),Color(0xFF1F5675))))
                         .border(1.dp, Color(0xFF94D7EE).copy(alpha=.56f), RoundedCornerShape(22.dp))
@@ -712,7 +712,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // red home card. Never describe third-party data as CWA-issued.
                 recentEarthquake?.let { report ->
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(21.dp))
-                        .background(Color(0xFF923439).copy(alpha=.86f))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF7C2540),Color(0xFF431E32))))
                         .border(1.dp,Color(0xFFFFB6B2).copy(alpha=.7f),RoundedCornerShape(21.dp))
                         .padding(15.dp)) {
                         Row(verticalAlignment=Alignment.CenterVertically) {
@@ -749,7 +749,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 state.officialHazards.forEach { hazard ->
                     Column(Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF763941),Color(0xFF4C2B45))))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF7C2540),Color(0xFF431E32))))
                         .border(1.dp,Color(0xFFFFBCAC).copy(alpha=.72f),RoundedCornerShape(20.dp))
                         .clickable { uriHandler.openUri(io.atmos.weather.alerts.CwaCountyHazardFeed.OFFICIAL_URL) }
                         .padding(16.dp)) {
@@ -774,7 +774,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }.take(2)
                 recentCwaNotices.forEach { notice ->
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xB2A43B47),Color(0xB16A2B3C))))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF7C2540),Color(0xFF431E32))))
                         .border(1.dp,Color(0xFFFFB4AE).copy(alpha=.64f),RoundedCornerShape(22.dp))
                         .clickable { uriHandler.openUri(notice.link) }.padding(17.dp)) {
                         Text("中央氣象署 · ${notice.title}",color=White,
@@ -885,7 +885,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onUpdateCenter = { updatePageOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
                 onTyphoons = { typhoonPageOpen = true },
-                onNaturalVoice = { naturalVoiceOpen=true })
+                onNaturalVoice = { naturalVoiceOpen=true },
+                onWeather = { showMainTab(0) },
+                onTasks = { tasksOpen=true },
+                onBriefings = { briefingOpen=true },
+                onTools = { showMainTab(2) })
             } // when(page)
             } // HorizontalPager
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
@@ -1165,8 +1169,25 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             EarthquakeCenterPage(onClose={earthquakePageOpen=false})
         }
         AppGlassNavigation(
-            selected = mainPager.currentPage,
-            onSelect = { settingsOpen=false; showMainTab(it) },
+            selected = when {
+                typhoonPageOpen -> 2
+                weatherAlarmOpen -> 3
+                mainPager.currentPage == 3 -> 4
+                mainPager.currentPage == 2 -> 4
+                else -> mainPager.currentPage
+            },
+            onSelect = { tab ->
+                settingsOpen=false
+                if(tab != 2) typhoonPageOpen=false
+                if(tab != 3) weatherAlarmOpen=false
+                when(tab) {
+                    0 -> showMainTab(0)
+                    1 -> showMainTab(1)
+                    2 -> typhoonPageOpen=true
+                    3 -> weatherAlarmOpen=true
+                    4 -> showMainTab(3)
+                }
+            },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 8.dp))
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },

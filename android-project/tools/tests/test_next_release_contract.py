@@ -65,9 +65,12 @@ class NextIntegrationReleaseContract(unittest.TestCase):
     def test_ota_shows_actual_download_state_without_fake_success(self):
         page=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
         card=(BASE/'next/NextOtaPresentation.kt').read_text(encoding='utf-8')
-        for item in ('NextOtaStatusCard(', 'AppUpdater.downloadAndInstall(',
+        for item in ('AppUpdater.downloadAndInstall(',
                      'downloadJob?.cancel()','installerPrompted',
-                     'onDownload={pending?.let {downloadOfficial(it)}}'):
+                     'pending?.let {downloadOfficial(it)}',
+                     'if(pending==null) check()',
+                     'UpdateCheckWorker.schedule(context)',
+                     '尚未確認完成安裝'):
             self.assertIn(item,page)
         self.assertIn('尚未確認完成升級',card)
         self.assertNotIn('NextOtaState.Completed -> "已確認完成升級。"',page)

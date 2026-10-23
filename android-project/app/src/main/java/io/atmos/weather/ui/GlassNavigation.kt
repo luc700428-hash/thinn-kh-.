@@ -116,11 +116,12 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
     val context=LocalContext.current
     val feedback=LocalHapticEngine.current
     val prefs=remember(context) {context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
-    val canonical=listOf("weather","quake","tools","settings")
+    val canonical=listOf("weather","quake","typhoon","alarm","settings")
     val tabs=listOf(
         io.atmos.weather.next.NextToolAction("weather","天氣",Icons.Rounded.WbSunny),
         io.atmos.weather.next.NextToolAction("quake","地震",Icons.Rounded.Waves),
-        io.atmos.weather.next.NextToolAction("tools","工具",Icons.Rounded.GridView),
+        io.atmos.weather.next.NextToolAction("typhoon","颱風",Icons.Rounded.Cyclone),
+        io.atmos.weather.next.NextToolAction("alarm","鬧鐘",Icons.Rounded.Alarm),
         io.atmos.weather.next.NextToolAction("settings","設定",Icons.Rounded.Settings)
     )
     fun normalized(saved:List<String>):List<String> =
@@ -144,7 +145,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
             toolOrder=valid
             prefs.edit().putString("next_navigation_order",valid.joinToString(",")).apply()
         },
-        maxVisible=4,
+        maxVisible=5,
         reduceMotion=prefs.getBoolean("reduce_motion",false),
         reduceTransparency=prefs.getBoolean("reduce_transparency",false),
         modifier=modifier.fillMaxWidth().padding(horizontal=18.dp).height(74.dp)
@@ -183,59 +184,128 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
     }
 }
 
+/** iOS-inspired grouped preference controls, built with original Android Compose primitives. */
+@Composable
+private fun IosSettingsGroup(title:String, content:@Composable ColumnScope.()->Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(title,color=soft,fontSize=14.sp,modifier=Modifier.padding(start=13.dp,bottom=9.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(21.dp))
+            .background(ThinnOpticalMaterial.surface)
+            .border(1.dp,Color.White.copy(alpha=.15f),RoundedCornerShape(21.dp)),content=content)
+    }
+}
+
+@Composable
+private fun IosSettingsRow(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,
+    tint:Color,detail:String="",onClick:()->Unit) {
+    val haptic=LocalHapticEngine.current
+    Row(Modifier.fillMaxWidth().heightIn(min=61.dp)
+        .clickable { haptic?.play(HapticEngine.Event.TAP);onClick() }
+        .padding(horizontal=17.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
+        Box(Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)).background(tint),
+            contentAlignment=Alignment.Center) {
+            Icon(icon,contentDescription=null,tint=Color.White,modifier=Modifier.size(21.dp))
+        }
+        Spacer(Modifier.width(13.dp))
+        Text(label,color=Color.White,fontSize=17.sp,modifier=Modifier.weight(1f))
+        if(detail.isNotBlank()) {
+            Text(detail,color=soft,fontSize=14.sp)
+            Spacer(Modifier.width(7.dp))
+        }
+        Icon(Icons.Rounded.ChevronRight,contentDescription="開啟$label",
+            tint=soft,modifier=Modifier.size(20.dp))
+    }
+}
+
 @Composable
 fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppearance)->Unit,
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
     onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
-    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={}) {
+    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={},
+    onWeather:()->Unit={},onTasks:()->Unit={},onBriefings:()->Unit={},onTools:()->Unit={}) {
     val ctx=LocalContext.current
     val prefs=remember(ctx){ctx.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     var reduceMotion by remember {mutableStateOf(prefs.getBoolean("reduce_motion",false))}
     var reduceTransparency by remember {mutableStateOf(prefs.getBoolean("reduce_transparency",false))}
+    var showAppearance by remember {mutableStateOf(false)}
+    var showAbout by remember {mutableStateOf(false)}
     Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=124.dp)) {
-        Text("設定",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
-        Text("所有選項皆使用統一的導覽、觸感與視覺語言",fontSize=15.sp,color=soft)
-        Spacer(Modifier.height(16.dp))
-        ThinnSection("外觀與易讀性") {
-            GlassToggle("降低透明度","加強文字與材質的對比",reduceTransparency) {
-                reduceTransparency=it;prefs.edit().putBoolean("reduce_transparency",it).apply()
+        .statusBarsPadding().navigationBarsPadding()
+        .verticalScroll(rememberScrollState())
+        .padding(start=17.dp,end=17.dp,top=22.dp,bottom=124.dp)) {
+        Text("設定",color=Color.White,fontSize=34.sp,fontWeight=FontWeight.Bold)
+        Spacer(Modifier.height(26.dp))
+        IosSettingsGroup("APP 設定") {
+            IosSettingsRow("天氣",Icons.Rounded.WbCloudy,Color(0xFF1689EE),onClick=onWeather)
+            GlassDivider()
+            IosSettingsRow("鬧鐘與聲音",Icons.Rounded.Alarm,Color(0xFFFFA112),onClick=onWeatherAlarms)
+            GlassDivider()
+            IosSettingsRow("通知與即時動態",Icons.Rounded.NotificationsActive,Color(0xFF6656CF),onClick=onPushSettings)
+        }
+        Spacer(Modifier.height(24.dp))
+        IosSettingsGroup("顯示與觸覺") {
+            IosSettingsRow("外觀與動態",Icons.Rounded.Tune,Color(0xFF8E8E93),
+                detail=if(showAppearance) "收起" else "設定",onClick={showAppearance=!showAppearance})
+            if(showAppearance) {
+                GlassDivider()
+                GlassToggle("降低透明度","提高文字對比",reduceTransparency) {
+                    reduceTransparency=it;prefs.edit().putBoolean("reduce_transparency",it).apply()
+                }
+                GlassDivider()
+                GlassToggle("減少動態效果","依偏好減少動態",reduceMotion) {
+                    reduceMotion=it;prefs.edit().putBoolean("reduce_motion",it).apply()
+                }
+                GlassTrackingSlider("玻璃透明感",appearance.glassOpacity) {onAppearance(appearance.copy(glassOpacity=it))}
+                GlassTrackingSlider("玻璃霧化",appearance.glassFrost) {onAppearance(appearance.copy(glassFrost=it))}
+                GlassTrackingSlider("邊緣光效",appearance.edgeLight) {onAppearance(appearance.copy(edgeLight=it))}
+                GlassTrackingSlider("流動速度",appearance.liquidMotion) {onAppearance(appearance.copy(liquidMotion=it))}
             }
             GlassDivider()
-            GlassToggle("減少動態效果","簡化轉場、放大及移動動畫",reduceMotion) {
-                reduceMotion=it;prefs.edit().putBoolean("reduce_motion",it).apply()
-            }
-            GlassDivider()
-            GlassTrackingSlider("玻璃透明感",appearance.glassOpacity) {onAppearance(appearance.copy(glassOpacity=it))}
-            GlassTrackingSlider("玻璃霧化",appearance.glassFrost) {onAppearance(appearance.copy(glassFrost=it))}
-            GlassTrackingSlider("邊緣光效",appearance.edgeLight) {onAppearance(appearance.copy(edgeLight=it))}
-            GlassTrackingSlider("流動速度",appearance.liquidMotion) {onAppearance(appearance.copy(liquidMotion=it))}
+            IosSettingsRow("觸覺回饋",Icons.Rounded.Vibration,Color(0xFFFF375F),onClick=onAdvanced)
         }
-        Spacer(Modifier.height(8.dp))
-        ThinnSection("個人偏好") {
-            ThinnRow("智慧穿搭與開源 AI","穿搭、雨具與個人化選擇",Icons.Rounded.Checkroom,onClick=onLifestyle)
+        Spacer(Modifier.height(24.dp))
+        IosSettingsGroup("隱私與資訊") {
+            IosSettingsRow("資料來源與隱私",Icons.Rounded.Shield,Color(0xFF32ADE6),onClick=onDiagnostics)
             GlassDivider()
-            ThinnRow("自然語音","曉臻／曉雨、語速、試聽與本機備援",Icons.Rounded.RecordVoiceOver,onClick=onNaturalVoice)
-            GlassDivider()
-            ThinnRow("進階視覺、環境音與觸感","主觸覺強度、音效、實境演示",Icons.Rounded.Tune,onClick=onAdvanced)
+            IosSettingsRow("關於 thinn-khì",Icons.Rounded.Info,Color(0xFF8E8E93),onClick={showAbout=true})
         }
-        Spacer(Modifier.height(8.dp))
-        ThinnSection("安全與警報") {
-            ThinnRow("地震速報與推播安全","警報權限、測站及來源狀態",Icons.Rounded.Shield,onClick=onPushSettings)
+        Spacer(Modifier.height(24.dp))
+        IosSettingsGroup("更多工具") {
+            IosSettingsRow("我的事項",Icons.Rounded.Checklist,Color(0xFF3CAC8C),onClick=onTasks)
             GlassDivider()
-            ThinnRow("颱風與官方特報","颱風警報、官方最新路徑",Icons.Rounded.Cyclone,onClick=onTyphoons)
+            IosSettingsRow("天氣定時通知",Icons.Rounded.Notifications,Color(0xFF487AD7),onClick=onBriefings)
             GlassDivider()
-            ThinnRow("天氣鬧鐘","時間、重複與起床語音",Icons.Rounded.Alarm,onClick=onWeatherAlarms)
+            IosSettingsRow("自然語音",Icons.Rounded.RecordVoiceOver,Color(0xFFA15DD0),onClick=onNaturalVoice)
+            GlassDivider()
+            IosSettingsRow("颱風資訊",Icons.Rounded.Cyclone,Color(0xFF329CCE),onClick=onTyphoons)
+            GlassDivider()
+            IosSettingsRow("更多功能",Icons.Rounded.Apps,Color(0xFF64758E),onClick=onTools)
         }
-        Spacer(Modifier.height(8.dp))
-        ThinnSection("系統與版本") {
-            GlassToggle("自動檢查更新","由系統安排背景檢查時間",automaticUpdates,onUpdates)
+        Spacer(Modifier.height(24.dp))
+        IosSettingsGroup("系統與更新") {
+            GlassToggle("自動檢查更新","僅檢查，不會擅自安裝",automaticUpdates,onUpdates)
             GlassDivider()
-            ThinnRow("系統更新中心","查看版本、更新內容與下載進度",Icons.Rounded.SystemUpdate,onClick=onUpdateCenter)
+            IosSettingsRow("軟體更新",Icons.Rounded.SystemUpdate,Color(0xFF1689EE),onClick=onUpdateCenter)
             GlassDivider()
-            ThinnRow("權限與健康檢查","背景、省電、定位及通知診斷",Icons.Rounded.FactCheck,onClick=onDiagnostics)
+            IosSettingsRow("權限與健康檢查",Icons.Rounded.FactCheck,Color(0xFF8E8E93),onClick=onDiagnostics)
         }
-        Spacer(Modifier.height(18.dp))
-        Text("thinn-khì · 跨平台獨立實作的玻璃視覺語言",color=soft,fontSize=14.sp)
+        Spacer(Modifier.height(24.dp))
+        Text("thinn-khì · 原生 Android · iOS 風格設計",color=soft,fontSize=14.sp,
+            modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+    }
+    if(showAbout) androidx.compose.ui.window.Dialog(onDismissRequest={showAbout=false}) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+            .background(ThinnOpticalMaterial.opaque).padding(20.dp)) {
+            Text("關於 thinn-khì",color=Color.White,fontSize=23.sp,fontWeight=FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+            Text("版本：${io.atmos.weather.BuildConfig.VERSION_NAME}",color=soft,fontSize=16.sp)
+            Text("Android 套件：io.atmos.weather",color=soft,fontSize=14.sp)
+            Spacer(Modifier.height(12.dp))
+            Text("原生 Android 應用程式，以 Apple 的公開互動與介面設計原則為參考。",
+                color=Color.White,fontSize=14.sp)
+            Spacer(Modifier.height(18.dp))
+            Text("完成",color=Color(0xFF76C9FF),fontSize=17.sp,
+                modifier=Modifier.align(Alignment.End).clickable {showAbout=false}.padding(8.dp))
+        }
     }
 }

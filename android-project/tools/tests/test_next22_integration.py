@@ -28,7 +28,9 @@ class NextIntegratedSafety(unittest.TestCase):
     def test_rss_readability_and_no_technical_copy(self):
         s=HOME.read_text(encoding='utf-8')
         self.assertIn('notice.summary.ifBlank',s)
-        self.assertIn('Color(0xB2A43B47)',s)
+        # The old RSS red is intentionally gone. Check the unified live alert palette.
+        self.assertGreaterEqual(s.count('Color(0xFF7C2540),Color(0xFF431E32)'),3)
+        self.assertNotIn('Color(0xB2A43B47)',s)
         self.assertNotIn('近 24 小時官方 RSS 公告；是否仍有效請核對官方資訊',s)
         self.assertIn('LaunchedEffect(query)',s)
 
