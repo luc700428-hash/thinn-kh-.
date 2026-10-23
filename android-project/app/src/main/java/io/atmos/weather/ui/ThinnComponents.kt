@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,9 +51,11 @@ fun ThinnSection(label:String, modifier:Modifier=Modifier, content:@Composable C
 fun ThinnRow(title:String,subtitle:String="",icon:ImageVector?=null,destructive:Boolean=false,
     trailing:(@Composable ()->Unit)?=null,onClick:(()->Unit)?=null) {
     val haptic=LocalHapticEngine.current
+    val interaction=remember { MutableInteractionSource() }
     val textColor=if(destructive) ThinnDesignTokens.critical else Color.White
     Row(Modifier.fillMaxWidth().heightIn(min=58.dp)
-        .then(if(onClick!=null) Modifier.clickable(role=Role.Button) {
+        .then(if(onClick!=null) Modifier.clickable(
+            interactionSource=interaction,indication=null,role=Role.Button) {
             haptic?.play(HapticEngine.Event.TAP)
             onClick()
         } else Modifier)
@@ -80,7 +84,7 @@ fun ThinnProgressLine(progress:Float?,label:String,modifier:Modifier=Modifier) {
     val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
     val bounded=progress?.coerceIn(0f,1f)
-    val smooth by animateFloatAsState(bounded ?: 0f,animationSpec=tween(if(reduce)0 else 190),label="真實進度")
+    val smooth by animateFloatAsState(bounded ?: 0f,animationSpec=tween(if(reduce)0 else 190,easing=AppleMotion.fluid),label="真實進度")
     Column(modifier,verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text(label,color=Color.White,fontSize=15.sp)
         if (bounded == null) {

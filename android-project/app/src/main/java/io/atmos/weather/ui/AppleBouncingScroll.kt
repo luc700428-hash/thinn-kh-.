@@ -11,7 +11,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -22,7 +24,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 
 /**
  * Optional rubber-band vertical scroll foundation.
@@ -32,10 +33,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun Modifier.appleBouncingScroll(maxPull: Dp = 64.dp): Modifier {
     val reduced = rememberAppleReduceMotion()
-    val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val pullLimit = with(density) { maxPull.toPx() }
-    val overshoot = remember { Animatable(0f) }
+    var overshoot by remember { mutableFloatStateOf(0f) }
     val connection = remember(reduced, pullLimit) {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -44,10 +44,9 @@ fun Modifier.appleBouncingScroll(maxPull: Dp = 64.dp): Modifier {
                 source: NestedScrollSource
             ): Offset {
                 if (!reduced && source == NestedScrollSource.UserInput && available.y != 0f) {
-                    scope.launch {
-                        overshoot.snapTo((overshoot.value + available.y * .28f)
-                            .coerceIn(-pullLimit, pullLimit))
-                    }
+                    // Synchronous pointer response; avoids racing per-frame launches.
+                    overshoot = (overshoot + available.y * .28f)
+                        .coerceIn(-pullLimit, pullLimit)
                 }
                 // Never consume the event: child scroll state and pager receive original deltas.
                 return Offset.Zero
@@ -56,15 +55,17 @@ fun Modifier.appleBouncingScroll(maxPull: Dp = 64.dp): Modifier {
                 consumed: Velocity,
                 available: Velocity
             ): Velocity {
-                overshoot.animateTo(0f, spring(
+                // The release spring is visual-only: never consume the fling.
+                Animatable(overshoot).animateTo(0f, spring(
                     dampingRatio = AppleMotion.springDamping,
-                    stiffness = AppleMotion.springStiffness))
+                    stiffness = AppleMotion.springStiffness)) { overshoot = value }
+                overshoot = 0f
                 return Velocity.Zero
             }
         }
     }
     return this.nestedScroll(connection).graphicsLayer {
-        translationY = if (reduced) 0f else overshoot.value
+        translationY = if (reduced) 0f else overshoot
     }
 }
 

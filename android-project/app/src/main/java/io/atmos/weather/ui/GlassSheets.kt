@@ -48,7 +48,7 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
         .getBoolean("reduce_motion",false)
     var offsetPx by remember { mutableFloatStateOf(750f) }
     val animatedY by animateFloatAsState(offsetPx,
-        animationSpec=tween(if(reduceMotion)0 else 240),label="底部面板進退場")
+        animationSpec=tween(if(reduceMotion)0 else 240,easing=AppleMotion.fluid),label="底部面板進退場")
     LaunchedEffect(Unit) { offsetPx=0f }
     fun dismissAnimated() {
         scope.launch { offsetPx=900f; delay(if(reduceMotion)0 else 240);onDismissRequest() }
@@ -95,14 +95,13 @@ fun GlassAlertDialog(onDismissRequest:()->Unit,confirmButton:@Composable ()->Uni
     val scale by animateFloatAsState(if(shown)1f else .88f,
         animationSpec=tween(if(reduceMotion)0 else 190,easing=AppleMotion.fluid),label="對話框縮放")
     Dialog(onDismissRequest=onDismissRequest) {
-        Column(Modifier.fillMaxWidth()
-            .graphicsLayer { scaleX=scale;scaleY=scale;alpha=opacity }
-            .clip(RoundedCornerShape(29.dp))
-            .background(ThinnOpticalMaterial.raised)
-            .border(1.dp,glassBorder,RoundedCornerShape(29.dp)).thinnSpecularEdge(29.dp).padding(22.dp),
-            verticalArrangement=Arrangement.spacedBy(14.dp)) {
-            title?.invoke();text?.invoke()
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {confirmButton()}
+        Box(Modifier.fillMaxWidth()
+            .graphicsLayer { scaleX=scale;scaleY=scale;alpha=opacity }) {
+            AppleGlassCard(modifier=Modifier.fillMaxWidth(), radius=16.dp,
+                contentPadding=PaddingValues(22.dp)) {
+                title?.invoke();text?.invoke()
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {confirmButton()}
+            }
         }
     }
 }
