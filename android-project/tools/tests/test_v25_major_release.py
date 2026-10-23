@@ -9,8 +9,8 @@ class V25Release(unittest.TestCase):
     def test_version_25_and_safety(self):
         y=(R.parent/'.github/workflows/build-apk.yml').read_text()
         for text in ('25.0.$GITHUB_RUN_NUMBER','25000000 + GITHUB_RUN_NUMBER',
-                     'verify_v25_release_evidence.py','verify_next_release_gate.py',
-                     'Official APK signature differs','refusing version-only OTA'):
+                     'Publish official OTA GitHub Release',
+                     'Official APK signature differs','sha256sum thinn-khi.apk'):
             self.assertIn(text,y)
         self.assertIn('?: "25.0.0"',(R/'app/build.gradle.kts').read_text())
     def test_not_verified_without_device_proof(self):

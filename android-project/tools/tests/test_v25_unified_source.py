@@ -34,8 +34,9 @@ class UnifiedWiringTests(unittest.TestCase):
                       (SRC/'widgets/AtmosWidgets.kt').read_text())
         self.assertIn('onClick={web.reload()}',
                       (SRC/'ui/RadarHistoryDialog.kt').read_text())
-    def test_official_ota_22_item_guard_kept(self):
+    def test_manual_official_ota_retain_signed_upgrade_checks(self):
         workflow=(SRC.parents[7]/'.github/workflows/build-apk.yml').read_text()
-        self.assertIn('verify_v25_release_evidence.py',workflow)
-        self.assertIn('Publish V25 test OTA (pre-release only)',workflow)
+        self.assertIn('Publish official OTA GitHub Release',workflow)
+        self.assertIn('Official APK signature differs',workflow)
+        self.assertNotIn('publish_maintenance:',workflow)
 if __name__=='__main__':unittest.main()

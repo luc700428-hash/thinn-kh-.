@@ -21,13 +21,11 @@ class PreviewOtaRegression(unittest.TestCase):
         self.assertIn('OTA APK 來源不受信任', updater)
         self.assertIn('MessageDigest.getInstance("SHA-256")', updater)
         self.assertIn('currentCerts != updateCerts', updater)
-    def test_signed_preview_and_stable_release_are_separate(self):
+    def test_manual_release_is_official_only(self):
         workflow=WORKFLOW.read_text(encoding='utf-8')
-        self.assertIn("if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.SIGN_READY == 'true'", workflow)
-        self.assertIn('--prerelease --latest=false', workflow)
-        self.assertIn('verify_v25_release_evidence.py', workflow)
-        self.assertIn('verify_next_release_gate.py', workflow)
-        self.assertIn('inputs.publish_release == true', workflow)
+        self.assertIn("if: github.event_name == 'workflow_dispatch' && env.SIGN_READY == 'true'", workflow)
+        self.assertNotIn('Publish V25 test OTA (pre-release only)', workflow)
+        self.assertNotIn('inputs.publish_release == true', workflow)
         self.assertIn('gh release create "v$version"', workflow)
         self.assertIn('--latest', workflow)
         self.assertIn('cmp expected-build-source-proof.json embedded-build-source-proof.json', workflow)

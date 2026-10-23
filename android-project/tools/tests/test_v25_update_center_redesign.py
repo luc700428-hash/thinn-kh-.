@@ -36,6 +36,6 @@ class V25UpdateCenter(unittest.TestCase):
         self.assertEqual(len(g['requirements']),22)
         self.assertFalse(g['verified_full_release'])
         w=(root.parent/'.github/workflows/build-apk.yml').read_text()
-        self.assertIn('verify_v25_release_evidence.py',w)
-        self.assertIn('verify_next_release_gate.py',w)
+        self.assertIn('Publish official OTA GitHub Release',w)
+        self.assertIn('Official APK signature differs',w)
 if __name__=='__main__':unittest.main()

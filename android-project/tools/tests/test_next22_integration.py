@@ -32,7 +32,7 @@ class NextIntegratedSafety(unittest.TestCase):
         self.assertNotIn('近 24 小時官方 RSS 公告；是否仍有效請核對官方資訊',s)
         self.assertIn('LaunchedEffect(query)',s)
 
-    def test_full_release_gate_is_not_bypassed(self):
+    def test_manual_official_ota_does_not_falsely_verify_22_items(self):
         g=json.loads(GATE.read_text(encoding='utf-8'))
         self.assertEqual(len(g['requirements']),22)
         # Manifest is the authority. This test never writes or promotes status.
@@ -41,8 +41,9 @@ class NextIntegratedSafety(unittest.TestCase):
         self.assertIn("x.get('status')!='verified'",tool)
         self.assertIn('verified_full_release',tool)
         workflow=(ROOT.parent/'.github/workflows/build-apk.yml').read_text(encoding='utf-8')
-        self.assertIn('NEXT complete feature acceptance gate',workflow)
-        self.assertIn('verify_next_release_gate.py',workflow)
+        self.assertNotIn('NEXT complete feature acceptance gate',workflow)
+        self.assertNotIn('verify_next_release_gate.py',workflow)
+        self.assertIn('Publish official OTA GitHub Release',workflow)
         self.assertIn("github.event_name == 'workflow_dispatch'",workflow)
         self.assertIn("if: env.SIGN_READY == 'true'",workflow.split(
             'Verify OTA upgrade compatibility with the current published APK',1)[1].split(
