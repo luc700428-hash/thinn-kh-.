@@ -189,7 +189,7 @@ fun AppleDepthSheetHost(
                 Column {
                     Box(Modifier.fillMaxWidth().height(40.dp)
                         .pointerInput(open) {
-                            androidx.compose.foundation.gestures.detectVerticalDragGestures(
+                            detectVerticalDragGestures(
                                 onVerticalDrag={change,dy->
                                     dismissDrag=(dismissDrag+dy).coerceIn(0f,heightPx)
                                     change.consume()
