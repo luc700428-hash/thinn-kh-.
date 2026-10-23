@@ -218,7 +218,7 @@ jobs:
           sha256sum thinn-khi.apk > thinn-khi.apk.sha256
           rm -f "$RUNNER_TEMP/thinn-release.jks"
       - name: Verify OTA upgrade compatibility with the current published APK
-        # Preflight signed candidate builds as well; publishing still needs the NEXT 22 gate.
+        # Verify APK upgrade compatibility before publishing the official release.
         if: env.SIGN_READY == 'true'
         shell: bash
         env:
@@ -318,7 +318,7 @@ jobs:
           }
           version="25.0.$GITHUB_RUN_NUMBER"
           notes_file=android-project/tools/stable_maintenance_notes.md
-          release_title="thinn-khì $version — 正式 OTA 更新
+          release_title="thinn-khì $version — 正式 OTA 更新"
           test -s "$notes_file"
           if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo '::error::Release tag already exists. Refusing duplicate or overwrite.'
