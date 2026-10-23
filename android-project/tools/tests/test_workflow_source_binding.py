@@ -20,7 +20,9 @@ class RealSourceOtaTests(unittest.TestCase):
         self.assertIn('build_source_proof.json', workflow)
         self.assertIn('app_tree_sha256', workflow)
         self.assertIn('cmp expected-build-source-proof.json embedded-build-source-proof.json', workflow)
-        self.assertIn('refusing version-only OTA', workflow)
+        self.assertIn('gh release create "v$version"', workflow)
+        self.assertIn('Refusing duplicate or overwrite.', workflow)
+        self.assertIn('release_title="thinn-khì $version — 正式 OTA 更新"', workflow)
 
     def test_update_page_displays_real_build_identity(self):
         gradle = (PROJECT / 'app/build.gradle.kts').read_text(encoding='utf-8')
