@@ -166,7 +166,7 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
     val low=valueRange.start
     val span=(valueRange.endInclusive-low).takeIf { it>0f } ?: 1f
     val fraction=((value-low)/span).coerceIn(0f,1f)
-    val smooth by animateFloatAsState(fraction,animationSpec=tween(if(reduce) 0 else 115),label="膠囊滑桿進度")
+    val smooth by animateFloatAsState(fraction,animationSpec=tween(if(reduce) 0 else 115,easing=AppleMotion.fluid),label="膠囊滑桿進度")
     BoxWithConstraints(modifier.fillMaxWidth().heightIn(min=48.dp)
         .then(if(enabled) Modifier
             .pointerInput(low,span) {

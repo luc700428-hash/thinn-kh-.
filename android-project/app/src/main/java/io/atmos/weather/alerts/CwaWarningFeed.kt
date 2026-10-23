@@ -29,7 +29,8 @@ object CwaWarningFeed {
                 setRequestProperty("User-Agent","thinn-khi-weather/2.0")
             }
             val result=conn.getInputStream().use { parse(it) }
-            CwaFetchResult(result,true,"官方 RSS 已查詢；全臺警報需另核對正式發布標題")
+            CwaFetchResult(result.distinctBy { it.title to it.issuedAt },true,
+                "官方 RSS 已查詢；此為全國近期公告，不能直接當作有效 CAP 警報")
         } catch(e:Exception) {
             CwaFetchResult(emptyList(),false,"官方 RSS 無法讀取：${e.javaClass.simpleName}")
         }
@@ -58,7 +59,7 @@ object CwaWarningFeed {
                     haystack.contains("全臺") || haystack.contains("台灣各地")) &&
                     warning.issuedAt.isAfter(now.minusSeconds(24 * 3600)) &&
                     warning.issuedAt.isBefore(now.plusSeconds(600))
-            }.take(5)
+            }.distinctBy { it.title to it.issuedAt }
             CwaFetchResult(matched, true, "官方 RSS 已查詢；依 $county 比對 ${warnings.size} 筆近期公告（非完整有效警報清單）")
         } catch (e: Exception) {
             CwaFetchResult(emptyList(), false, "目前無法讀取官方 RSS：${e.javaClass.simpleName}")

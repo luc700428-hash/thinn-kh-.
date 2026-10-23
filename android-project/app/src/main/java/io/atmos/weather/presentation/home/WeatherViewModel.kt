@@ -57,7 +57,9 @@ data class WeatherUiState(
     val officialHazards: List<CwaCountyHazard> = emptyList(),
     val officialHazardsStatus: String = "尚未檢查縣市警特報",
     val cwaWarnings: List<CwaWarning> = emptyList(),
-    val cwaCheckStatus: String = "尚未查詢中央氣象署特報"
+    val cwaCheckStatus: String = "尚未查詢中央氣象署特報",
+    val cwaNationalNotices: List<CwaWarning> = emptyList(),
+    val cwaNationalStatus: String = "尚未查詢全國官方公告"
 )
 class WeatherViewModel(
     private val repository: WeatherDataRepository,
@@ -182,16 +184,21 @@ class WeatherViewModel(
         if (!io.atmos.weather.location.LocationLabels.probablyTaiwan(city.coordinate) &&
             !city.name.startsWith("台灣") && !city.name.startsWith("臺灣")) {
             mutableState.update { it.copy(cwaWarnings = emptyList(), officialHazards=emptyList(),
+                cwaNationalNotices=emptyList(),cwaNationalStatus="非臺灣定位",
                 officialHazardsStatus="非台灣定位", cwaCheckStatus = "非台灣定位，無本地中央氣象署特報") }
             return
         }
         warningJob = viewModelScope.launch {
             val official=CwaCountyHazardFeed.fetch(city.name,city.coordinate)
             val result=CwaWarningFeed.fetch(city.name,city.coordinate)
+            // Separate nationally published RSS notices from *verified active* county hazards.
+            // These are notices only, not CAP-level alerts or proof of local applicability.
+            val national=CwaWarningFeed.fetchNational()
             if (mutableState.value.city.id == city.id && mutableState.value.city.coordinate == city.coordinate) {
                 mutableState.update { it.copy(
                     officialHazards=official.hazards, officialHazardsStatus=official.detail,
-                    cwaWarnings=result.warnings, cwaCheckStatus=result.detail) }
+                    cwaWarnings=result.warnings, cwaCheckStatus=result.detail,
+                    cwaNationalNotices=national.warnings,cwaNationalStatus=national.detail) }
             }
         }
     }

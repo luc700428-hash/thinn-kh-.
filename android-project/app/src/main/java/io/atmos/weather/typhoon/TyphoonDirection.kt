@@ -23,6 +23,21 @@ object TyphoonDirection {
             "WESTSOUTHWEST" to "西南西", "SOUTHSOUTHWEST" to "南南西"
         )
         full[code]?.let { return it }
-        return raw.takeIf { it.all { ch -> ch.code > 127 } }
+        // Source wording may include "Moving northwestward at 12 km/h".
+        // Translate only a direction explicitly present in the official field;
+        // do not infer heading from the geometry or weather model.
+        val normalized = code.removePrefix("MOVING").removePrefix("HEADING")
+            .removePrefix("TOWARDS").removePrefix("TOWARD")
+        val directionPart = normalized.substringBefore("AT")
+            .removeSuffix("WARDS").removeSuffix("WARD")
+        points[directionPart]?.let { return it }
+        full[directionPart]?.let { return it }
+        // Handle an official 16-point code with a trailing speed ("NW12KMH").
+        val withSpeed = Regex("^(NNE|ENE|ESE|SSE|SSW|WSW|WNW|NNW|NE|SE|SW|NW|N|E|S|W)[0-9]+(?:KMH|KPH|KT|KNOTS)?$")
+        withSpeed.matchEntire(directionPart)?.groupValues?.getOrNull(1)?.let { key ->
+            points[key]?.let { return it }
+        }
+        // Never display unrecognized English strings in a Chinese UI.
+        return raw.takeIf { it.isNotBlank() && it.all { ch -> ch.code > 127 || ch.isWhitespace() } }
     }
 }

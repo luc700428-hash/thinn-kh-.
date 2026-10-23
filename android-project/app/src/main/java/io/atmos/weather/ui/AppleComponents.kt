@@ -137,14 +137,17 @@ fun AppleIntelligenceGlow(
     content: @Composable BoxScope.() -> Unit
 ) {
     val reduceMotion = rememberAppleReduceMotion()
-    val transition = rememberInfiniteTransition(label = "Apple glow")
-    val angle by transition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(AppleMotion.glowDurationMillis,
-            easing = AppleMotion.fluid)),
-        label = "Gradient cycle"
-    )
-    val actualAngle = if (reduceMotion) 0f else angle
+    // Create no running infinite animation when disabled or in Reduce Motion.
+    val actualAngle = if (enabled && !reduceMotion) {
+        val transition = rememberInfiniteTransition(label = "Apple glow")
+        val angle by transition.animateFloat(
+            initialValue = 0f, targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(AppleMotion.glowDurationMillis,
+                easing = AppleMotion.fluid)),
+            label = "Gradient cycle"
+        )
+        angle
+    } else 0f
     Box(modifier.drawBehind {
         if (enabled) {
             val r = Math.toRadians(actualAngle.toDouble())

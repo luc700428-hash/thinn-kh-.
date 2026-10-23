@@ -99,10 +99,10 @@ fun GlassTrackingSlider(title:String,value:Float,change:(Float)->Unit) {
 
 private data class NavTab(val label:String,val icon:androidx.compose.ui.graphics.vector.ImageVector)
 private val navTabs=listOf(
-    NavTab("天氣",Icons.Rounded.WbSunny),
-    NavTab("地震",Icons.Rounded.Waves),
-    NavTab("工具",Icons.Rounded.GridView),
-    NavTab("設定",Icons.Rounded.Settings)
+    NavTab("天氣",AppleGlyphs.Sun),
+    NavTab("地震",AppleGlyphs.Quake),
+    NavTab("工具",AppleGlyphs.Grid),
+    NavTab("設定",AppleGlyphs.Settings)
 )
 
 @Composable
@@ -115,10 +115,10 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
     val prefs=remember(context) {context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     val canonical=listOf("weather","quake","tools","settings")
     val tabs=listOf(
-        io.atmos.weather.next.NextToolAction("weather","天氣",Icons.Rounded.WbSunny),
-        io.atmos.weather.next.NextToolAction("quake","地震",Icons.Rounded.Waves),
-        io.atmos.weather.next.NextToolAction("tools","工具",Icons.Rounded.GridView),
-        io.atmos.weather.next.NextToolAction("settings","設定",Icons.Rounded.Settings)
+        io.atmos.weather.next.NextToolAction("weather","天氣",AppleGlyphs.Sun),
+        io.atmos.weather.next.NextToolAction("quake","地震",AppleGlyphs.Quake),
+        io.atmos.weather.next.NextToolAction("tools","工具",AppleGlyphs.Grid),
+        io.atmos.weather.next.NextToolAction("settings","設定",AppleGlyphs.Settings)
     )
     fun normalized(saved:List<String>):List<String> =
         saved.filter { it in canonical }.distinct() + canonical.filter { it !in saved }
@@ -152,7 +152,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
     onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
     Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=118.dp)) {
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=164.dp)) {
         Text("工具",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("常用功能與你的生活事項",color=soft,fontSize=15.sp)
         Spacer(Modifier.height(17.dp))
@@ -190,7 +190,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     var reduceMotion by remember {mutableStateOf(prefs.getBoolean("reduce_motion",false))}
     var reduceTransparency by remember {mutableStateOf(prefs.getBoolean("reduce_transparency",false))}
     Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=124.dp)) {
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=164.dp)) {
         Text("設定",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("所有選項皆使用統一的導覽、觸感與視覺語言",fontSize=15.sp,color=soft)
         Spacer(Modifier.height(16.dp))

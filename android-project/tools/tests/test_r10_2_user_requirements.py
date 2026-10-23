@@ -33,10 +33,16 @@ class R102UserRequirements(unittest.TestCase):
         self.assertNotIn('animateDecay(',s)
         self.assertNotIn('exponentialDecay(',s)
         self.assertIn('V25AlarmMeridiem.fromDrag(',s)
-        self.assertIn('tween(durationMillis=140)',s)
+        # New shared iOS-style wheel settles with a bounded spring, not a fixed 140ms tween.
+        self.assertIn('Animatable(visualStart).animateTo(0f,spring(',s)
+        self.assertIn('stiffness=io.atmos.weather.ui.AppleMotion.springStiffness',s)
         self.assertIn('animateTo(',s)
         self.assertNotIn('while(acc>36f)',s)
-        self.assertIn('MeridiemWheel(if(hour<12) 0 else 1',s)
+        # The alarm editor and the other time settings share one renderer.
+        self.assertIn('AppleAlarmTimeSelector(hour=hour,minute=minute,',s)
+        self.assertIn('MeridiemWheel(if(safeHour<12) 0 else 1',s)
+        self.assertIn('io.atmos.weather.alarm.AppleAlarmTimeSelector(',
+                      self.read('ui/GlassClockDial.kt'))
         self.assertIn('Text("上午"',s)
         self.assertIn('Text("下午"',s)
         self.assertIn('onDragEnd={',s)
@@ -68,7 +74,9 @@ class R102UserRequirements(unittest.TestCase):
         s=self.read('alarm/R10AlarmDesign.kt')
         wheel=s.split('private fun Wheel(',1)[1].split('fun R10AlarmEditor(',1)[0]
         self.assertIn('coerceIn(-stepPx*2f,stepPx*2f)',wheel)
-        self.assertIn('tween(durationMillis=140)',wheel)
+        # The value still commits synchronously before visual spring settlement.
+        self.assertIn('Animatable(visualStart).animateTo(0f,spring(',wheel)
+        self.assertIn('dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping',wheel)
         self.assertLess(wheel.index('liveUpdate(((liveValue-nearest)%count+count)%count)'),
                         wheel.index('movingJob=scope.launch {',wheel.index('onDragEnd={')))
 
@@ -104,6 +112,13 @@ class R102UserRequirements(unittest.TestCase):
     def test_shared_button_haptics(self):
         s=self.read('ui/GlassControls.kt')
         self.assertIn('HapticEngine.Event.TAP',s)
-        self.assertIn('spring(dampingRatio=.76f,stiffness=430f)',s)
+        # Shared buttons now follow approved UI motion tokens and remain ripple-free.
+        self.assertIn('spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness)',s)
+        self.assertIn('indication=null',s)
+        motion=self.read('ui/AppleMotion.kt')
+        self.assertIn('const val springDamping: Float = 0.72f',motion)
+        self.assertIn('const val springStiffness: Float = 190f',motion)
+        self.assertIn('const val pressedScale: Float = 0.94f',motion)
+        self.assertIn('const val pressedAlpha: Float = 0.70f',motion)
 
 if __name__=='__main__':unittest.main()

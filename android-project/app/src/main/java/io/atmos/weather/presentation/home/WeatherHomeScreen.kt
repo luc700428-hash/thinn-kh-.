@@ -193,6 +193,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val previewScope = rememberCoroutineScope()
     val settingsPrefs = remember { context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE) }
     var automaticUpdateNotices by remember { mutableStateOf(settingsPrefs.getBoolean("check_updates_automatically",true)) }
+    // Presentation-only state; does not change what CWA sends or warning schedules.
+    var showAllCwaNotices by remember { mutableStateOf(false) }
     // Refresh official RSS while the app stays foregrounded. Background updates
     // remain limited by WorkManager scheduling and Android battery policy.
     val alertLifecycleOwner=LocalLifecycleOwner.current
@@ -498,7 +500,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             // Avoid a large offscreen blur layer during scrolling: gradient already supplies depth.
             HorizontalPager(
                 state = mainPager,
-                modifier = Modifier.fillMaxSize(),
+                // Reserve a real 120dp viewport for the persistent dock.
+                // A floating overlay must not cover important typhoon/CWA text.
+                modifier = Modifier.fillMaxSize().padding(bottom=120.dp),
                 beyondViewportPageCount = 0,
                 userScrollEnabled = !locationOpen && !settingsOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen
             ) { page ->
@@ -616,6 +620,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // Show official sea/land warnings on the red banner, and only Taiwan-bound
                 // forecast tracks on the separate tile. Never make the tile permanent.
                 verifiedTyphoonWarning?.let { official ->
+                    // Independent cards must never touch; maintain clear visual hierarchy.
+                    Spacer(Modifier.height(18.dp))
                     Column(Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(24.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xFF6D1F32),Color(0xFF2B253B))))
@@ -626,7 +632,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Text(if(land) "中央氣象署 · 陸上颱風警報" else "中央氣象署 · 海上颱風警報",
                             fontSize=20.sp,fontWeight=FontWeight.Bold,color=White)
                         Spacer(Modifier.height(5.dp))
-                        Text("官方發布：${official.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei"))}",
+                        val issuedLocal = official.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
+                            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"))
+                        Text("官方發布：$issuedLocal（臺灣時間）",
                             fontSize=14.sp,color=White.copy(alpha=.83f))
                         Spacer(Modifier.height(9.dp))
                         val regions=if(land)official.landCounties else official.seaAreas
@@ -765,20 +773,35 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                 }
                 // RSS is a recent official notice, not a proven still-active CAP warning.
-                val recentCwaNotices=state.cwaWarnings.filter { notice ->
-                    val age=java.time.Instant.now().epochSecond-notice.issuedAt.epochSecond
-                    age in 0L..(24L*3600L) &&
-                        notice.link.startsWith("https://www.cwa.gov.tw/") &&
-                        !state.officialHazards.any { notice.title.contains(it.phenomenon) } &&
-                        listOf("解除","取消","測試","演練","颱風").none { notice.title.contains(it) }
-                }.take(2)
-                recentCwaNotices.forEach { notice ->
+                // County hazards above are confirmed active. RSS items below are
+                // *recent official announcements*, not verified active CAP alerts.
+                val recentCwaNotices=(state.cwaWarnings + state.cwaNationalNotices)
+                    .distinctBy { it.title to it.issuedAt }
+                    .filter { notice ->
+                        val age=java.time.Instant.now().epochSecond-notice.issuedAt.epochSecond
+                        age in 0L..(48L*3600L) &&
+                            notice.link.startsWith("https://www.cwa.gov.tw/") &&
+                            listOf("解除","取消","測試","演練").none { notice.title.contains(it) }
+                    }.sortedByDescending { it.issuedAt }
+                if(recentCwaNotices.isNotEmpty()) {
+                    Text("中央氣象署 · 近期警特報與災防相關公告",
+                        color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold,
+                        modifier=Modifier.padding(top=12.dp,bottom=6.dp))
+                    Text("例如長浪、巨浪、高溫等，僅在官方 RSS 實際刊載時顯示；公告不等於所在地生效。",
+                        color=TextSoft,fontSize=14.sp,
+                        modifier=Modifier.padding(bottom=12.dp))
+                }
+                val visibleCwaNotices=if(showAllCwaNotices) recentCwaNotices else recentCwaNotices.take(3)
+                visibleCwaNotices.forEach { notice ->
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xB2A43B47),Color(0xB16A2B3C))))
                         .border(1.dp,Color(0xFFFFB4AE).copy(alpha=.64f),RoundedCornerShape(22.dp))
                         .clickable { uriHandler.openUri(notice.link) }.padding(17.dp)) {
                         Text("中央氣象署 · ${notice.title}",color=White,
                             fontSize=18.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
+                        Text(if(state.cwaWarnings.contains(notice)) "所在地相關近期公告"
+                             else "全國近期公告 · 不代表所在地生效",
+                             color=Color(0xFFFFE0BF),fontSize=14.sp)
                         Spacer(Modifier.height(7.dp))
                         Text(notice.summary.ifBlank { "查看公告內容與受影響地區" }.take(98),
                             color=White.copy(alpha=.94f),fontSize=14.sp,maxLines=3)
@@ -789,6 +812,21 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                 }
 
+                if(recentCwaNotices.size > 3) {
+                    TextButton(onClick={showAllCwaNotices=!showAllCwaNotices}) {
+                        Text(if(showAllCwaNotices) "收合官方公告" else "查看全部 ${recentCwaNotices.size} 則官方公告",
+                            color=White)
+                    }
+                }
+                if(state.officialHazards.isEmpty() && state.officialHazardsStatus.contains("無法驗證")) {
+                    Text("縣市有效警特報目前無法驗證；請以中央氣象署公告為準。",
+                        color=Color(0xFFFFE4BD),fontSize=14.sp,
+                        modifier=Modifier.padding(vertical=8.dp))
+                }
+                if(state.cwaNationalStatus.contains("無法讀取") || state.cwaNationalStatus.contains("無法")) {
+                    Text("全國官方公告來源暫時無法連線，不代表沒有警報。",
+                        color=Color(0xFFFFE4BD),fontSize=14.sp)
+                }
                 if (snapshot != null) {
                     // Weather always takes precedence over decor: show real six-hour facts
                     // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.

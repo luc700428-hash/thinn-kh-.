@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
         // Lock-screen activation is governed by OS notification policy. Do not
         // enable wake from an exported Activity intent extra that another app can forge.
         window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.rgb(15, 26, 45)
+        window.navigationBarColor = android.graphics.Color.BLACK
         // Choose the fastest available mode as a preference only. Android may lower it
         // for thermal limits, battery, accessibility or app compatibility.
         @Suppress("DEPRECATION")
@@ -70,6 +70,8 @@ class MainActivity : ComponentActivity() {
             this,io.atmos.weather.task.TaskStore.load(this)) }
         CwaAlertWorker.checkNow(this)
         setContent {
+            // UI only: keeps all existing VM, state and permission launchers unchanged.
+            io.atmos.weather.ui.ThinnAppTheme {
             val vm: WeatherViewModel = viewModel(factory=WeatherViewModel.Factory(AppContainer.repository(applicationContext), applicationContext))
             // Queue runtime requests sequentially. Two simultaneous launchers may cause
             // the second system dialog to be dropped on some OEM Android variants.
@@ -120,6 +122,7 @@ class MainActivity : ComponentActivity() {
                     locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION))
                 }
             })
+            } // ThinnAppTheme wraps every root screen, without changing any events.
         }
     }
     override fun onResume() {

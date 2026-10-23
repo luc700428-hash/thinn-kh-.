@@ -93,7 +93,7 @@ object CwaCountyHazardFeed {
                 phenomenon.contains(it) || significance.contains(it)
             }) return@mapNotNull null
             CwaCountyHazard(phenomenon+significance,phenomenon,countyName,sent,end)
-        }.distinctBy { it.title to it.county }.take(8)
+        }.distinctBy { it.title to it.county }
     }
 
     suspend fun fetch(place: String, point: GeoPoint?): CwaCountyHazardsResult = withContext(Dispatchers.IO) {

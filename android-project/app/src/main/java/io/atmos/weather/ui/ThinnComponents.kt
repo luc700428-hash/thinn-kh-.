@@ -80,7 +80,7 @@ fun ThinnProgressLine(progress:Float?,label:String,modifier:Modifier=Modifier) {
     val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
     val bounded=progress?.coerceIn(0f,1f)
-    val smooth by animateFloatAsState(bounded ?: 0f,animationSpec=tween(if(reduce)0 else 190),label="真實進度")
+    val smooth by animateFloatAsState(bounded ?: 0f,animationSpec=tween(if(reduce)0 else 190,easing=AppleMotion.fluid),label="真實進度")
     Column(modifier,verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text(label,color=Color.White,fontSize=15.sp)
         if (bounded == null) {
