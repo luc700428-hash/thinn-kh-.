@@ -71,11 +71,11 @@ private val thinnLightScheme = lightColorScheme(
 )
 
 private val thinnTypography = Typography(
-    displaySmall = TextStyle(fontSize=36.sp, lineHeight=42.sp, fontWeight=FontWeight.Bold),
+    displaySmall = TextStyle(fontSize=34.sp, lineHeight=42.sp, letterSpacing=(-.8).sp, fontWeight=FontWeight.Bold),
     headlineMedium = TextStyle(fontSize=29.sp, lineHeight=38.sp, fontWeight=FontWeight.Bold),
-    titleLarge = TextStyle(fontSize=22.sp, lineHeight=29.sp, fontWeight=FontWeight.SemiBold),
+    titleLarge = TextStyle(fontSize=22.sp, lineHeight=29.sp, letterSpacing=(-.4).sp, fontWeight=FontWeight.SemiBold),
     titleMedium = TextStyle(fontSize=18.sp, lineHeight=27.sp, fontWeight=FontWeight.SemiBold),
-    bodyLarge = TextStyle(fontSize=18.sp, lineHeight=28.sp),
+    bodyLarge = TextStyle(fontSize=17.sp, lineHeight=26.sp, letterSpacing=(-.2).sp),
     bodyMedium = TextStyle(fontSize=16.sp, lineHeight=24.sp),
     bodySmall = TextStyle(fontSize=16.sp, lineHeight=24.sp),
     labelLarge = TextStyle(fontSize=16.sp, lineHeight=24.sp, fontWeight=FontWeight.SemiBold),

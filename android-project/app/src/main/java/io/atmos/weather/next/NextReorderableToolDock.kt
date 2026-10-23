@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.atmos.weather.ui.AppleLiquidDockPaint
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -83,6 +84,7 @@ fun NextReorderableToolDock(
     val haptics = LocalHapticFeedback.current
     val itemWidthPx = with(LocalDensity.current) { 66.dp.toPx() }
     var draggingId by remember { mutableStateOf<String?>(null) }
+    var dockDragOffsetPx by remember { mutableFloatStateOf(0f) }
     var showOverflow by remember { mutableStateOf(false) }
 
     fun move(id: String, delta: Int): Boolean {
@@ -102,6 +104,10 @@ fun NextReorderableToolDock(
     val lightX=if(visible.isEmpty()) .5f else (lightIndex+.5f)/visible.size
     NextOpticalSurface(modifier = modifier, touchX = lightX,
         pressed = draggingId != null, reduceTransparency = reduceTransparency) {
+        Box(Modifier.fillMaxWidth()) {
+            AppleLiquidDockPaint(selectedIndex=lightIndex,tabCount=visible.size.coerceAtLeast(1),
+                dragging=draggingId != null,dragOffsetPx=dockDragOffsetPx,
+                reduceMotion=reduceMotion)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -124,7 +130,7 @@ fun NextReorderableToolDock(
                     )
                     val selected = action.id == selectedId
                     Column(
-                        modifier = Modifier.width(65.dp).height(63.dp)
+                        modifier = Modifier.width(65.dp).height(58.dp)
                             .graphicsLayer(scaleX = scale, scaleY = scale, translationX = if (reduceMotion) 0f else localX)
                             .background(if (selected) Color(0x623C7C9D) else Color.Transparent, RoundedCornerShape(22.dp))
                             .pointerInput(action.id, itemWidthPx) {
@@ -137,6 +143,7 @@ fun NextReorderableToolDock(
                                     onDrag = { change, delta ->
                                         change.consume()
                                         localX += delta.x
+                                        dockDragOffsetPx=localX
                                         if (localX >= itemWidthPx && move(action.id, 1)) {
                                             localX -= itemWidthPx
                                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -145,8 +152,8 @@ fun NextReorderableToolDock(
                                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         }
                                     },
-                                    onDragEnd = { draggingId = null; localX = 0f },
-                                    onDragCancel = { draggingId = null; localX = 0f }
+                                    onDragEnd = { draggingId = null; localX = 0f; dockDragOffsetPx=0f },
+                                    onDragCancel = { draggingId = null; localX = 0f; dockDragOffsetPx=0f }
                                 )
                             }
                             .semantics {
@@ -175,7 +182,7 @@ fun NextReorderableToolDock(
             if (hidden.isNotEmpty()) {
                 Box {
                     Column(
-                        Modifier.width(65.dp).height(63.dp).clickable { showOverflow = !showOverflow }
+                        Modifier.width(65.dp).height(58.dp).clickable { showOverflow = !showOverflow }
                             .padding(vertical = 7.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(5.dp)
@@ -216,5 +223,6 @@ fun NextReorderableToolDock(
                 }
             }
         }
+        } // AppleLiquidDockPaint Box wrapper
     }
 }

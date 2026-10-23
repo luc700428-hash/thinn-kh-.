@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import io.atmos.weather.ui.AppleNavSymbols
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -99,10 +100,10 @@ fun GlassTrackingSlider(title:String,value:Float,change:(Float)->Unit) {
 
 private data class NavTab(val label:String,val icon:androidx.compose.ui.graphics.vector.ImageVector)
 private val navTabs=listOf(
-    NavTab("天氣",Icons.Rounded.WbSunny),
-    NavTab("地震",Icons.Rounded.Waves),
-    NavTab("工具",Icons.Rounded.GridView),
-    NavTab("設定",Icons.Rounded.Settings)
+    NavTab("天氣",AppleNavSymbols.weather),
+    NavTab("地震",AppleNavSymbols.quake),
+    NavTab("工具",AppleNavSymbols.tools),
+    NavTab("設定",AppleNavSymbols.settings)
 )
 
 @Composable
@@ -115,10 +116,10 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
     val prefs=remember(context) {context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
     val canonical=listOf("weather","quake","tools","settings")
     val tabs=listOf(
-        io.atmos.weather.next.NextToolAction("weather","天氣",Icons.Rounded.WbSunny),
-        io.atmos.weather.next.NextToolAction("quake","地震",Icons.Rounded.Waves),
-        io.atmos.weather.next.NextToolAction("tools","工具",Icons.Rounded.GridView),
-        io.atmos.weather.next.NextToolAction("settings","設定",Icons.Rounded.Settings)
+        io.atmos.weather.next.NextToolAction("weather","天氣",AppleNavSymbols.weather),
+        io.atmos.weather.next.NextToolAction("quake","地震",AppleNavSymbols.quake),
+        io.atmos.weather.next.NextToolAction("tools","工具",AppleNavSymbols.tools),
+        io.atmos.weather.next.NextToolAction("settings","設定",AppleNavSymbols.settings)
     )
     fun normalized(saved:List<String>):List<String> =
         saved.filter { it in canonical }.distinct() + canonical.filter { it !in saved }
@@ -144,7 +145,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         maxVisible=4,
         reduceMotion=prefs.getBoolean("reduce_motion",false),
         reduceTransparency=prefs.getBoolean("reduce_transparency",false),
-        modifier=modifier.fillMaxWidth().padding(horizontal=18.dp).height(74.dp)
+        modifier=modifier.fillMaxWidth().padding(horizontal=20.dp).height(68.dp)
     )
 }
 
@@ -152,7 +153,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
     onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
     Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=118.dp)) {
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=166.dp)) {
         Text("工具",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("常用功能與你的生活事項",color=soft,fontSize=15.sp)
         Spacer(Modifier.height(17.dp))

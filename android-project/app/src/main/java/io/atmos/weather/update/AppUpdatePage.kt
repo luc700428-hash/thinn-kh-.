@@ -6,7 +6,8 @@ import io.atmos.weather.ui.GlassButton as Button
 import io.atmos.weather.ui.GlassOutlinedButton as OutlinedButton
 import io.atmos.weather.ui.GlassIconButton as IconButton
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+import io.atmos.weather.ui.AppleMotion
+import io.atmos.weather.ui.AppleGlassCard
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -143,7 +144,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
         val animated by glow.animateFloat(
             initialValue = .12f,targetValue = .28f,
             animationSpec = infiniteRepeatable(
-                animation = tween((3800 - appearance.liquidMotion.coerceIn(0f, 1f) * 2600).toInt(), easing = FastOutSlowInEasing),
+                animation = tween((3800 - appearance.liquidMotion.coerceIn(0f, 1f) * 2600).toInt(), easing = AppleMotion.fluid),
                 repeatMode = RepeatMode.Reverse
             ), label = "edge")
         animated
@@ -273,12 +274,8 @@ private fun UpdatePanel(glow: Float, content: @Composable ColumnScope.() -> Unit
     val context=LocalContext.current
     val opaque=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
         .getBoolean("reduce_transparency",false)
-    val shape=RoundedCornerShape(30.dp)
-    Column(Modifier.fillMaxWidth().clip(shape)
-        .background(if(opaque) io.atmos.weather.ui.ThinnOpticalMaterial.opaque
-            else io.atmos.weather.ui.ThinnOpticalMaterial.surface)
-        .border(1.dp,Color.White.copy(alpha=.20f),shape)
-        .padding(20.dp),content=content)
+    AppleGlassCard(modifier=Modifier.fillMaxWidth(),radius=24.dp,
+        contentPadding=PaddingValues(20.dp),content=content)
 }
 
 /** Format the exact bundled/GitHub Release markdown consistently with thinn-khì glass UI. */

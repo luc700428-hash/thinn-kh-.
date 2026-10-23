@@ -143,7 +143,7 @@ fun AppleIntelligenceGlow(
         val transition = rememberInfiniteTransition(label = "Apple glow")
         val angle by transition.animateFloat(
             initialValue = 0f, targetValue = 360f,
-            animationSpec = infiniteRepeatable(tween(AppleMotion.glowDurationMillis,
+            animationSpec = infiniteRepeatable(tween(3200,
                 easing = AppleMotion.fluid)),
             label = "Gradient cycle"
         )

@@ -521,7 +521,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // the background, independently of whether weather data loads.
                     Column(Modifier.fillMaxSize().zIndex(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=124.dp)) {
+                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=176.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically,
                     horizontalArrangement=Arrangement.SpaceBetween) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
@@ -616,6 +616,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // Show official sea/land warnings on the red banner, and only Taiwan-bound
                 // forecast tracks on the separate tile. Never make the tile permanent.
                 verifiedTyphoonWarning?.let { official ->
+                    // Keep real warning visibly separated from the weather hero.
+                    Spacer(Modifier.height(18.dp))
                     Column(Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(24.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xFF6D1F32),Color(0xFF2B253B))))
@@ -1167,7 +1169,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         AppGlassNavigation(
             selected = mainPager.currentPage,
             onSelect = { settingsOpen=false; showMainTab(it) },
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 8.dp))
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp))
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
             title={Text(info.first)},text={Text(info.second)}) }

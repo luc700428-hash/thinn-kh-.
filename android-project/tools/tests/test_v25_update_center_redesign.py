@@ -7,7 +7,7 @@ class V25UpdateCenter(unittest.TestCase):
         src=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
         for expected in ('V${BuildConfig.VERSION_NAME.substringBefore',
                          '此版本已安裝在你的手機', '這次更新帶來什麼',
-                         'ThinnOpticalMaterial.surface', '系統更新'):
+                         'AppleGlassCard(', '系統更新'):
             self.assertIn(expected,src)
         self.assertNotIn('程式來源：',src)
         self.assertNotIn('更新來源：GitHub Releases',src)

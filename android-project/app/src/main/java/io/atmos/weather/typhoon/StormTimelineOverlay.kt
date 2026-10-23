@@ -201,7 +201,7 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                         StormValue("最大瞬間陣風",chosen.gustMs?.let {"${it.roundToInt()} 公尺/秒"} ?: "尚未提供",Modifier.weight(1f))
                         StormValue("七級風平均暴風半徑",chosen.radius7Km?.let {"${it.roundToInt()} 公里"} ?: "尚未提供",Modifier.weight(1f))
                     }
-                    StormValue("行進方向",chosen.officialDirection ?: "官方資料未提供此時刻移向")
+                    StormValue("行進方向",TyphoonDirection.zh(chosen.officialDirection) ?: "官方資料未提供此時刻移向")
                 }
                 StormText("每 20 分鐘檢查資料；官方預報依發布時間更新。預報路徑有不確定性，警報以中央氣象署為準。",13,muted)
                 Spacer(Modifier.height(8.dp))

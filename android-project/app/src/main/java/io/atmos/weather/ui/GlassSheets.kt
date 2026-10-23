@@ -48,7 +48,7 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
         .getBoolean("reduce_motion",false)
     var offsetPx by remember { mutableFloatStateOf(750f) }
     val animatedY by animateFloatAsState(offsetPx,
-        animationSpec=tween(if(reduceMotion)0 else 240,easing=AppleMotion.fluid),label="底部面板進退場")
+        animationSpec=tween(if(reduceMotion)0 else 320,easing=AppleMotion.fluid),label="底部面板進退場")
     LaunchedEffect(Unit) { offsetPx=0f }
     fun dismissAnimated() {
         scope.launch { offsetPx=900f; delay(if(reduceMotion)0 else 240);onDismissRequest() }
