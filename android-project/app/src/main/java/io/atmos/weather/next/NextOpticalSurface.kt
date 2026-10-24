@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
@@ -32,6 +33,7 @@ fun NextOpticalSurface(
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(cornerRadiusDp.dp)
+    val lightTheme=MaterialTheme.colorScheme.background.red > .5f
     val ctx=LocalContext.current
     val reducedMotion=ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
@@ -45,8 +47,11 @@ fun NextOpticalSurface(
     val x = NextMotionTokens.clampedTouchX(touchX)
     val background = if (reduceTransparency) {
         Brush.verticalGradient(listOf(Color(0xFF263E51), Color(0xFF183044)))
+    } else if(lightTheme) {
+        // Pale cool-tinted glass; no heavy dark blue fill on the white Settings page.
+        Brush.verticalGradient(listOf(Color(0xEAF9FCFF), Color(0xD6E8F1F9), Color(0xD2E5EEF8)))
     } else {
-        Brush.verticalGradient(listOf(Color(0xC19EBED2), Color(0x9C506E86), Color(0xC22B4258)))
+        Brush.verticalGradient(listOf(Color(0xBD879AAB), Color(0xA0445462), Color(0xBE29333D)))
     }
     Box(modifier.clip(shape).background(background).drawWithContent {
         val w = size.width
@@ -58,7 +63,7 @@ fun NextOpticalSurface(
             drawRoundRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = if (pressed) .31f else .08f + opticalPhase*.07f),
+                        Color.White.copy(alpha = if (pressed) .39f else .13f + opticalPhase*.08f),
                         Color(0xFF9FDFF7).copy(alpha = if (pressed) .11f else .03f),
                         Color.Transparent
                     ), center = light, radius = radius
@@ -70,9 +75,9 @@ fun NextOpticalSurface(
         drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = if (pressed) .84f else .48f),
-                    Color.White.copy(alpha = .07f),
-                    Color(0xFFBCEBFF).copy(alpha = .34f)
+                    Color.White.copy(alpha = if (pressed) .91f else .73f),
+                    Color.White.copy(alpha = .13f),
+                    Color(0xFFBCEBFF).copy(alpha = if(lightTheme) .56f else .24f)
                 ), start = Offset(0f, 0f), end = Offset(w, h)
             ),
             style = Stroke(width = 1.1.dp.toPx()),

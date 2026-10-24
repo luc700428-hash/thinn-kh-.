@@ -189,24 +189,20 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
     onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
     onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={}) {
-    val ctx = LocalContext.current
-    val prefs = remember(ctx) { ctx.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE) }
+    val context=LocalContext.current
+    val prefs=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE) }
     var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion",false)) }
     var reduceTransparency by remember { mutableStateOf(prefs.getBoolean("reduce_transparency",false)) }
     var appearanceOpen by remember { mutableStateOf(false) }
-
-    if (appearanceOpen) {
-        // Drill-down replaces the existing page, keeping the outer tab and all owners unchanged.
+    if(appearanceOpen) {
         IOS27AppearancePage(onBack={appearanceOpen=false},advancedSettings={
-            ThinnSection("顯示、動態與無障礙") {
-                GlassToggle("降低透明度","加強文字與材質的對比",reduceTransparency) {
-                    reduceTransparency=it
-                    prefs.edit().putBoolean("reduce_transparency",it).apply()
+            ThinnSection("進階外觀與動態") {
+                GlassToggle("降低透明度","加強文字對比",reduceTransparency) {
+                    reduceTransparency=it; prefs.edit().putBoolean("reduce_transparency",it).apply()
                 }
                 GlassDivider()
-                GlassToggle("減少動態效果","簡化轉場、放大及移動動畫",reduceMotion) {
-                    reduceMotion=it
-                    prefs.edit().putBoolean("reduce_motion",it).apply()
+                GlassToggle("減少動態效果","簡化轉場和位移",reduceMotion) {
+                    reduceMotion=it; prefs.edit().putBoolean("reduce_motion",it).apply()
                 }
                 GlassDivider()
                 GlassTrackingSlider("玻璃透明感",appearance.glassOpacity) { onAppearance(appearance.copy(glassOpacity=it)) }
@@ -217,48 +213,47 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         })
         return
     }
-
-    // Reserve physical space *outside* the scrolling viewport so the floating Dock
-    // cannot obscure settings controls. The Dock itself remains fixed in the parent.
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-        .statusBarsPadding().navigationBarsPadding().padding(bottom=104.dp)
+    val palette=MaterialTheme.colorScheme
+    // Fixed Dock occupies its own overlay; scroll content reserves its real viewport area.
+    Column(Modifier.fillMaxSize().background(palette.background)
+        .statusBarsPadding().navigationBarsPadding().padding(bottom=106.dp)
         .appleBouncingScroll().verticalScroll(rememberScrollState())
-        .padding(start=16.dp,end=16.dp,top=18.dp,bottom=22.dp)) {
-        Text("設定",color=ink,style=MaterialTheme.typography.displaySmall)
-        Text("依照功能分類的設定與偏好",fontSize=15.sp,color=soft)
-        Spacer(Modifier.height(18.dp))
-
-        ThinnSection("外觀與易讀性") {
-            ThinnRow("外觀","淺色、深色、自動與顯示細節",Icons.Rounded.Palette,onClick={appearanceOpen=true})
+        .padding(horizontal=16.dp)) {
+        Box(Modifier.fillMaxWidth().height(70.dp),contentAlignment=Alignment.Center) {
+            Text("設定",fontSize=22.sp,fontWeight=FontWeight.SemiBold,color=palette.onBackground)
+        }
+        Spacer(Modifier.height(12.dp))
+        IOSV25SettingsGroup {
+            IOSV25SettingsCell("外觀","主題、天氣背景與介面風格",Icons.Rounded.Palette,
+                Color(0xFF457DFF),onClick={appearanceOpen=true})
+            IOSV25SettingsCell("自然語音","天氣語音播報與語音角色",Icons.Rounded.RecordVoiceOver,
+                Color(0xFF8658E8),onClick=onNaturalVoice)
+            IOSV25SettingsCell("地震速報與推播安全","地震速報、危險示警與推播設定",Icons.Rounded.Shield,
+                Color(0xFFFF7657),onClick=onPushSettings)
+            IOSV25SettingsCell("颱風與官方特報","颱風警報、豪雨與政府訊息",Icons.Rounded.Cyclone,
+                Color(0xFFF24B62),last=true,onClick=onTyphoons)
         }
         Spacer(Modifier.height(20.dp))
-
-        ThinnSection("個人偏好") {
-            ThinnRow("智慧穿搭與開源 AI","穿搭、雨具與個人化選擇",Icons.Rounded.Checkroom,onClick=onLifestyle)
-            GlassDivider()
-            ThinnRow("自然語音","曉臻／曉雨、語速、試聽與本機備援",Icons.Rounded.RecordVoiceOver,onClick=onNaturalVoice)
-            GlassDivider()
-            ThinnRow("進階視覺、環境音與觸感","主觸覺強度、音效、實境演示",Icons.Rounded.Tune,onClick=onAdvanced)
+        IOSV25SettingsGroup {
+            IOSV25SettingsCell("天氣鬧鐘","每日天氣摘要與起床提醒",Icons.Rounded.Alarm,
+                Color(0xFF36B4FA),onClick=onWeatherAlarms)
+            IOSV25SettingsCell("系統更新中心","版本資訊與更新功能",Icons.Rounded.SystemUpdate,
+                Color(0xFF34C759),onClick=onUpdateCenter)
+            IOSV25SettingsCell("權限與健康檢查","定位、通知與背景運作狀態",Icons.Rounded.FactCheck,
+                Color(0xFF218DFA),onClick=onDiagnostics)
+            IOSV25SettingsCell("進階視覺、環境音與觸感","動畫效果、環境音效與觸覺回饋",Icons.Rounded.Tune,
+                Color(0xFF7560E8),last=true,onClick=onAdvanced)
         }
         Spacer(Modifier.height(20.dp))
-
-        ThinnSection("安全與警報") {
-            ThinnRow("地震速報與推播安全","警報權限、測站及來源狀態",Icons.Rounded.Shield,onClick=onPushSettings)
-            GlassDivider()
-            ThinnRow("颱風與官方特報","颱風警報、官方最新路徑",Icons.Rounded.Cyclone,onClick=onTyphoons)
-            GlassDivider()
-            ThinnRow("天氣鬧鐘","時間、重複與起床語音",Icons.Rounded.Alarm,onClick=onWeatherAlarms)
+        IOSV25SettingsGroup {
+            IOSV25SettingsCell("智慧穿搭與開源 AI","穿搭、雨具與個人化選擇",Icons.Rounded.Checkroom,
+                Color(0xFF80889A),onClick=onLifestyle)
+            IOSV25SettingsCell("自動檢查更新","目前："+if(automaticUpdates)"開啟" else "關閉",
+                Icons.Rounded.SystemUpdate,Color(0xFF34C759),last=true,
+                onClick={onUpdates(!automaticUpdates)})
         }
-        Spacer(Modifier.height(20.dp))
-
-        ThinnSection("系統與版本") {
-            GlassToggle("自動檢查更新","由系統安排背景檢查時間",automaticUpdates,onUpdates)
-            GlassDivider()
-            ThinnRow("系統更新中心","查看版本、更新內容與下載進度",Icons.Rounded.SystemUpdate,onClick=onUpdateCenter)
-            GlassDivider()
-            ThinnRow("權限與健康檢查","背景、省電、定位及通知診斷",Icons.Rounded.FactCheck,onClick=onDiagnostics)
-        }
-        Spacer(Modifier.height(18.dp))
-        Text("thinn-khì · 原生 Android 實作的 iOS 風格介面",color=soft,fontSize=14.sp)
+        Spacer(Modifier.height(25.dp))
+        Text("thinn-khì V25",color=palette.onSurfaceVariant,fontSize=14.sp,
+            modifier=Modifier.fillMaxWidth().padding(bottom=16.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
     }
 }

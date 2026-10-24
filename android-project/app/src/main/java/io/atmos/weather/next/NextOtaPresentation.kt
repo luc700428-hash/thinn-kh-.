@@ -19,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +59,7 @@ sealed interface NextOtaState {
     data class Failed(val message: String) : NextOtaState
 }
 
-private val soft = Color(0xFFE4ECF4)
+private val soft:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 private val fluidColors = listOf(Color(0xFF0A84FF),Color(0xFFBF5AF2),Color(0xFF5AC8FA))
 
 @Composable
@@ -100,7 +101,7 @@ private fun AppleLiquidProgress(progress:Float,reduceMotion:Boolean) {
     Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
             Text("正在準備更新項目⋯",color=soft,fontSize=14.sp)
-            Text("${(bounded*100).toInt()}%",color=Color.White,fontSize=15.sp,
+            Text("${(bounded*100).toInt()}%",color=MaterialTheme.colorScheme.onSurface,fontSize=15.sp,
                 style=TextStyle(fontFeatureSettings="tnum"))
         }
         Canvas(Modifier.fillMaxWidth().height(10.dp)
@@ -158,7 +159,7 @@ fun NextOtaStatusCard(
             AppleUpdateCore(checking,available,reduced)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                Text(title,fontSize=20.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
+                Text(title,fontSize=20.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                 val subtitle=when(state){
                     NextOtaState.Idle->"檢查官方正式版本"
                     NextOtaState.Checking->"正在安全比對 GitHub Release"
@@ -180,7 +181,7 @@ fun NextOtaStatusCard(
             Column(Modifier.fillMaxWidth().padding(top=16.dp)
                 .animateContentSize(animationSpec=tween(320,easing=AppleMotion.fluid)),
                 verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("更新內容",fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
+                Text("更新內容",fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                 notes.take(if(expanded)40 else 4).forEach { entry ->
                     Text("• $entry",fontSize=14.sp,color=soft,lineHeight=21.sp)
                 }

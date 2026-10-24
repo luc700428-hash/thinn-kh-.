@@ -343,7 +343,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 modifier=Modifier.padding(horizontal=32.dp))
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
                 Spacer(Modifier.height(22.dp))
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(group)) {
                     GlassSetting("重複",detail=if(repeat.isEmpty())"不重複" else "每週 ${repeat.sorted().joinToString("") { weekdays[it-1] }}  ›",click={repeats=true})
                     Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=8.dp),
                         horizontalArrangement=Arrangement.SpaceEvenly) {
@@ -357,12 +357,14 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                             }
                         }
                     }
-                    Line()
+                }
+                Spacer(Modifier.height(20.dp))
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(group)) {
                     GlassSetting("標籤",detail=label+"  ›",click={editingLabel=true});Line()
-                    GlassSetting("提示聲",detail=(R10AlarmTones.choices.firstOrNull {R10AlarmTones.prefix+it.id==uri}?.label?:"系統鈴聲")+"  ›",click={choosing=true});Line()
-                    GlassSetting("稍後提醒",trailing={R10Switch(snooze){snooze=it}})
+                    GlassSetting("鈴聲",detail=(R10AlarmTones.choices.firstOrNull {R10AlarmTones.prefix+it.id==uri}?.label?:"系統鈴聲")+"  ›",click={choosing=true});Line()
+                    GlassSetting("延遲響鬧",trailing={R10Switch(snooze){snooze=it}})
                     Line()
-                    GlassSetting("延遲響鬧時長",detail="9 分鐘（目前固定）")
+                    GlassSetting("延遲響鬧時長",detail="9 分鐘")
                 }
                 Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {

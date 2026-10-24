@@ -137,7 +137,7 @@ private fun AlarmFullScreen(
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 AlarmOutlineIcon()
-                androidx.compose.material3.Text("鬧鐘", fontSize = 21.sp,
+                androidx.compose.material3.Text("鬧鐘", fontSize = 18.sp,
                     color = Color(0xFF99999F), fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.height(22.dp))
@@ -146,7 +146,7 @@ private fun AlarmFullScreen(
                 fontSize = 88.sp,
                 letterSpacing = (-3).sp,
                 color = Color.White,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 textAlign = TextAlign.Center
             )

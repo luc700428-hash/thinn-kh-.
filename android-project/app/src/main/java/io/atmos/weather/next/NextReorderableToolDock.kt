@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -93,6 +94,9 @@ fun NextReorderableToolDock(
     var scrubbing by remember { mutableStateOf(false) }
     var scrubX by remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
+    val lightTheme=MaterialTheme.colorScheme.background.red > .5f
+    val activeInk=if(lightTheme) Color(0xFF007AFF) else Color.White
+    val inactiveInk=if(lightTheme) Color(0xFF677388) else Color(0xFFE2EAF2)
     val dockInsetPx = with(density) { 6.dp.toPx() }
     val currentIndex = visible.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)
     val slotPx = ((dockWidthPx.toFloat() - 2f*dockInsetPx) / visible.size.coerceAtLeast(1)).coerceAtLeast(1f)
@@ -208,9 +212,9 @@ fun NextReorderableToolDock(
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Image(action.icon, null, modifier = Modifier.size(22.dp),
-                            colorFilter = ColorFilter.tint(if (selected) Color.White else Color(0xFFD1E4F2)))
+                            colorFilter = ColorFilter.tint(if (selected) activeInk else inactiveInk))
                         Text(action.label, fontSize = 14.sp,
-                            color = if (selected) Color.White else Color(0xFFCDDFEB), maxLines = 1)
+                            color = if (selected) activeInk else inactiveInk, maxLines = 1)
                     }
                 }
             }

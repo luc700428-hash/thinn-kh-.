@@ -5,6 +5,7 @@ import android.graphics.Paint as AndroidPaint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +41,7 @@ fun BoxScope.AppleLiquidDockPaint(
     modifier: Modifier = Modifier
 ) {
     if (tabCount < 1) return
+    val isLight=MaterialTheme.colorScheme.background.red > .5f
     var originIndex by remember { mutableIntStateOf(selectedIndex) }
     val slide by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
@@ -114,8 +116,10 @@ fun BoxScope.AppleLiquidDockPaint(
             }
         }
         drawPath(contour,
-            brush = Brush.verticalGradient(listOf(Color(0xB9A2CBDD), Color(0x90437799), Color(0xB9356680))),
-            alpha = if (dragging) .93f else .79f)
+            brush = Brush.verticalGradient(if(isLight) listOf(
+                Color(0xF5FFFFFF), Color(0xCCBFE7FF), Color(0xDAE8F6FF)) else listOf(
+                Color(0xE0CFE9FC), Color(0xC24B819F), Color(0xDB2F6D95))),
+            alpha = if (dragging) .98f else .90f)
         drawPath(contour,
             brush = Brush.sweepGradient(listOf(Color.White.copy(alpha=.85f),
                 Color(0xFF5AC8FA).copy(alpha=.6f),Color.White.copy(alpha=.14f),

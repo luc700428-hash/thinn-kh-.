@@ -49,9 +49,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
 
-private val UpdateText = Color.White
-private val UpdateSoft = Color.White.copy(alpha = .76f)
-private val UpdateBlue = Color(0xFF8EDFFF)
+private val UpdateText = Color(0xFF101114)
+private val UpdateSoft = Color(0xFF777982)
+private val UpdateBlue = Color(0xFF007AFF)
 private val UpdateCardFill = Color(0xFF88A7C5).copy(alpha = .22f)
 private val UpdateCardBorder = Color.White.copy(alpha = .28f)
 
@@ -157,27 +157,22 @@ fun AppUpdatePage(onClose: () -> Unit) {
     val prefs=remember(context) {context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE)}
     var automatic by remember {mutableStateOf(prefs.getBoolean("check_updates_automatically",true))}
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
-            Color(0xFF07111E), Color(0xFF14283A), Color(0xFF0C1C2A)
-        )))) {
+        Box(Modifier.fillMaxSize().background(Color(0xFFF2F2F7))) {
             // Ambient light stays behind content rather than obscuring update text.
             Box(Modifier.fillMaxWidth().height(290.dp).background(
-                Brush.radialGradient(listOf(UpdateBlue.copy(alpha=light*.5f), Color.Transparent))
+                Brush.radialGradient(listOf(UpdateBlue.copy(alpha=light*.08f),Color.Transparent))
             ))
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
                 .appleBouncingScroll().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp, vertical=18.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    IconButton(onClick={ haptic?.play(HapticEngine.Event.TAP); onClose() }) {
-                        Icon(Icons.Rounded.ArrowBack,"返回",tint=UpdateText)
+                    io.atmos.weather.ui.IOS27RoundControl("‹",onClick={
+                        haptic?.play(HapticEngine.Event.TAP);onClose()
+                    },fill=Color.White,foreground=UpdateText)
+                    Box(Modifier.weight(1f),contentAlignment=Alignment.Center) {
+                        Text("軟體更新",color=UpdateText,fontSize=21.sp,fontWeight=FontWeight.SemiBold)
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("thinn-khì",color=UpdateSoft,fontSize=14.sp)
-                        Text("系統更新",color=UpdateText,fontSize=28.sp,fontWeight=FontWeight.SemiBold)
-                    }
-                    Icon(Icons.Rounded.VerifiedUser,"安全更新",tint=UpdateBlue,
-                        modifier=Modifier.size(24.dp))
+                    Spacer(Modifier.width(42.dp))
                 }
                 Spacer(Modifier.height(16.dp))
                 UpdatePanel(glow=light) {
@@ -188,7 +183,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                             io.atmos.weather.update.UpdateCheckWorker.schedule(context)
                         })
                     Spacer(Modifier.height(12.dp))
-                    Text("版本通道："+if(BuildConfig.THINN_OTA_CHANNEL=="preview") "測試版" else "正式版",
+                    Text("更新通道："+(if(BuildConfig.THINN_OTA_CHANNEL=="preview") "測試版" else "正式版"),
                         color=UpdateSoft,fontSize=15.sp)
                 }
                 Spacer(Modifier.height(20.dp))
@@ -247,6 +242,9 @@ fun AppUpdatePage(onClose: () -> Unit) {
                             .take(12).map {it.drop(2)}.toList())
                     else -> NextOtaState.Idle
                 }
+                MaterialTheme(colorScheme=lightColorScheme(
+                    background=Color(0xFFF2F2F7), surface=Color.White,
+                    onSurface=Color(0xFF1C1C1E),onSurfaceVariant=Color(0xFF777982))) {
                 NextOtaStatusCard(
                     state=otaState,
                     onCheck={check()},
@@ -255,6 +253,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     reduceTransparency=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
                         .getBoolean("reduce_transparency",false)
                 )
+                }
                 if(installerPrompted || (!checking && pending==null && lastError==null &&
                     status != "版本與更新中心已開啟")) {
                     Spacer(Modifier.height(12.dp))
@@ -275,7 +274,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                         modifier=Modifier.fillMaxWidth()) { Text("取消下載") }
                 }
                 Spacer(Modifier.height(22.dp))
-                Text("安裝前會進行安全驗證，並由手機確認更新。",
+                Text("系統更新安裝前會進行安全驗證，並由手機確認更新。",
                     color=UpdateSoft.copy(alpha=.88f),fontSize=14.sp,lineHeight=20.sp)
                 Spacer(Modifier.height(15.dp))
             }
@@ -290,7 +289,9 @@ private fun UpdatePanel(glow: Float, content: @Composable ColumnScope.() -> Unit
     val opaque=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
         .getBoolean("reduce_transparency",false)
     AppleGlassCard(modifier=Modifier.fillMaxWidth(),radius=24.dp,
-        contentPadding=PaddingValues(20.dp),content=content)
+        contentPadding=PaddingValues(0.dp)) {
+        Column(Modifier.fillMaxWidth().background(Color.White).padding(20.dp),content=content)
+    }
 }
 
 /** Format the exact bundled/GitHub Release markdown consistently with thinn-khì glass UI. */
