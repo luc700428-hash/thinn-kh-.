@@ -2,6 +2,9 @@ package io.atmos.weather.ui
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -94,7 +97,23 @@ fun ThinnAppTheme(content:@Composable ()->Unit) {
     // Theme tokens never rewrite weather-data-driven sky colors or domain state.
     // Existing feature screens still hardcode white foreground; keep dark until
     // all light-screen text/colors pass contrast and device regression tests.
-    MaterialTheme(colorScheme=thinnScheme,
+    val context=androidx.compose.ui.platform.LocalContext.current
+    IOS27AppearanceMode.initialize(context)
+    val requested=IOS27AppearanceMode.value
+    val dark=when(requested) {
+        "light" -> false
+        "auto" -> isSystemInDarkTheme()
+        else -> true
+    }
+    val target=if(dark) thinnScheme else thinnLightScheme
+    val bg by animateColorAsState(target.background,tween(300),label="theme-background")
+    val surface by animateColorAsState(target.surface,tween(300),label="theme-surface")
+    val secondary by animateColorAsState(target.surfaceVariant,tween(300),label="theme-secondary")
+    val ink by animateColorAsState(target.onSurface,tween(300),label="theme-ink")
+    val accent by animateColorAsState(target.primary,tween(300),label="theme-accent")
+    val colors=target.copy(background=bg,surface=surface,surfaceVariant=secondary,
+        onSurface=ink,primary=accent)
+    MaterialTheme(colorScheme=colors,
         typography=thinnTypography, shapes=thinnShapes) {
         // Compose Foundation >=1.8: remove Android stretch/glow globally.
         // Add our own rubber-band effect ONLY to appropriate scroll surfaces.

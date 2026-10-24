@@ -54,7 +54,7 @@ import java.time.LocalTime
 import java.util.Locale
 
 /** Independently authored Compose Foundation controls, not Material picker or switch widgets. */
-private val night=Color(0xFF101114)
+private val night=Color(0xFF141416)
 private val group=Color(0xFF2B2C31)
 private val secondary=Color(0xFFB9BAC4)
 private val amber=Color(0xFFFFB32B)
@@ -317,16 +317,26 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     var choosing by remember { mutableStateOf(false) }
     var repeats by remember { mutableStateOf(false) }
     var editingLabel by remember { mutableStateOf(false) }
+    var sheetShown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { sheetShown=true }
+    val sheetOffset by animateDpAsState(if(sheetShown) 0.dp else 650.dp,
+        animationSpec=spring(dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
+            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="ios27-alarm-sheet-entry")
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
-        Column(Modifier.fillMaxSize().background(night).statusBarsPadding().navigationBarsPadding()) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.46f)),
+            contentAlignment=Alignment.BottomCenter) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.96f).offset(y=sheetOffset)
+            .clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
+            .background(night).navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().height(66.dp).padding(horizontal=20.dp),verticalAlignment=Alignment.CenterVertically) {
-                Text("取消",color=amber,fontSize=17.sp,modifier=Modifier.clickable(onClick=onClose))
-                Text(if(initial==null)"加入鬧鐘" else "編輯鬧鐘",color=Color.White,fontSize=18.sp,
+                io.atmos.weather.ui.IOS27RoundControl("×",onClick=onClose,
+                    fill=Color(0xFF2C2C2E),foreground=Color.White)
+                Text(if(initial==null)"新增鬧鐘" else "編輯鬧鐘",color=Color.White,fontSize=18.sp,
                     textAlign=TextAlign.Center,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
-                Text("儲存",color=amber,fontSize=17.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.clickable {
+                io.atmos.weather.ui.IOS27RoundControl("✓",onClick={
                     val id=initial?.id?:((System.currentTimeMillis()%1000000).toInt()+1)
                     onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,true,voice,snooze,uri))
-                })
+                },fill=Color(0xFFFF9F0A),foreground=Color.White)
             }
             AppleAlarmTimeSelector(hour=hour,minute=minute,
                 onHour={hour=it},onMinute={minute=it},
@@ -334,10 +344,25 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
                 Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {
-                    GlassSetting("重複",detail=if(repeat.isEmpty())"永不" else "每週 ${repeat.sorted().joinToString("") { weekdays[it-1] }}  ›",click={repeats=true});Line()
+                    GlassSetting("重複",detail=if(repeat.isEmpty())"不重複" else "每週 ${repeat.sorted().joinToString("") { weekdays[it-1] }}  ›",click={repeats=true})
+                    Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=8.dp),
+                        horizontalArrangement=Arrangement.SpaceEvenly) {
+                        listOf(7,1,2,3,4,5,6).forEach { day ->
+                            val active=day in repeat
+                            Box(Modifier.size(38.dp).clip(CircleShape)
+                                .background(if(active) Color(0xFFFF9F0A) else Color(0xFF2C2C2E))
+                                .clickable { repeat=if(active) repeat-day else repeat+day },
+                                contentAlignment=Alignment.Center) {
+                                Text(weekdays[day-1],color=Color.White,fontSize=15.sp)
+                            }
+                        }
+                    }
+                    Line()
                     GlassSetting("標籤",detail=label+"  ›",click={editingLabel=true});Line()
                     GlassSetting("提示聲",detail=(R10AlarmTones.choices.firstOrNull {R10AlarmTones.prefix+it.id==uri}?.label?:"系統鈴聲")+"  ›",click={choosing=true});Line()
                     GlassSetting("稍後提醒",trailing={R10Switch(snooze){snooze=it}})
+                    Line()
+                    GlassSetting("延遲響鬧時長",detail="9 分鐘（目前固定）")
                 }
                 Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {
@@ -356,6 +381,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                             .clickable {onDelete(initial)}.padding(17.dp))
                 }
             }
+        }
         }
     }
     if(ttsOptions) Dialog(onDismissRequest={ttsOptions=false}) {

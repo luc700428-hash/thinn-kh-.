@@ -126,8 +126,8 @@ private fun AlarmFullScreen(
         val compact = maxHeight < 620.dp
         val titleTop = maxHeight * (if (compact) .12f else .20f)
         val controlsBottom = maxHeight * (if (compact) .045f else .085f)
-        val buttonHeight = if (compact) 66.dp else 78.dp
-        val trackHeight = if (compact) 68.dp else 78.dp
+        val buttonHeight = 68.dp
+        val trackHeight = 68.dp
 
         // Pure-black background and uncluttered clock face, matching the reference hierarchy.
         Column(
@@ -196,7 +196,7 @@ private fun AlarmFullScreen(
             val offset by animateFloatAsState(
                 targetValue = dragPx,
                 animationSpec = if (fingerDown || reduceMotion) snap()
-                    else spring(dampingRatio = .82f, stiffness = 580f),
+                    else spring(dampingRatio = .68f, stiffness = 280f),
                 label = "stop thumb return"
             )
             val progress = (dragPx / maxDrag).coerceIn(0f, 1f)
@@ -221,14 +221,14 @@ private fun AlarmFullScreen(
                             onHorizontalDrag = { change, amount ->
                                 change.consume()
                                 dragPx = (dragPx + amount).coerceIn(0f, maxDrag)
-                                if (!thresholdReached && dragPx >= maxDrag * .80f) {
+                                if (!thresholdReached && dragPx >= maxDrag * .75f) {
                                     thresholdReached = true
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 }
                             },
                             onDragEnd = {
                                 fingerDown = false
-                                if (dragPx >= maxDrag * .80f) {
+                                if (dragPx >= maxDrag * .75f) {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                     onStop()
                                 } else dragPx = 0f

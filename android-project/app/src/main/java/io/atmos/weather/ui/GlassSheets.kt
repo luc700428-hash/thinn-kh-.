@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -133,7 +134,8 @@ fun GlassOutlinedTextField(value:String,onValueChange:(String)->Unit,
 
 @Composable
 fun GlassDivider(modifier:Modifier=Modifier,color:Color=Color.White.copy(alpha=.19f)) {
-    Box(modifier.fillMaxWidth().height(1.dp).background(color))
+    Box(modifier.padding(start=56.dp).fillMaxWidth().height(.5.dp).background(
+        if(MaterialTheme.colorScheme.background.red > .5f) MaterialTheme.colorScheme.outline.copy(alpha=.28f) else color))
 }
 
 @Composable

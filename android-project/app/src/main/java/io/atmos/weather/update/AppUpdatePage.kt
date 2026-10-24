@@ -8,6 +8,7 @@ import io.atmos.weather.ui.GlassIconButton as IconButton
 import androidx.compose.animation.AnimatedVisibility
 import io.atmos.weather.ui.AppleMotion
 import io.atmos.weather.ui.AppleGlassCard
+import io.atmos.weather.ui.ApplePullDownMenu
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -153,6 +154,8 @@ fun AppUpdatePage(onClose: () -> Unit) {
     // V25 presents a content-first update center: calm surfaces, lightweight controls.
     // OTA state and package validation remain owned by AppUpdater above.
     var showBuildDetails by remember { mutableStateOf(false) }
+    val prefs=remember(context) {context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE)}
+    var automatic by remember {mutableStateOf(prefs.getBoolean("check_updates_automatically",true))}
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
             Color(0xFF07111E), Color(0xFF14283A), Color(0xFF0C1C2A)
@@ -176,7 +179,19 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     Icon(Icons.Rounded.VerifiedUser,"安全更新",tint=UpdateBlue,
                         modifier=Modifier.size(24.dp))
                 }
-                Spacer(Modifier.height(29.dp))
+                Spacer(Modifier.height(16.dp))
+                UpdatePanel(glow=light) {
+                    ApplePullDownMenu(label="自動檢查更新",choices=listOf("開啟", "關閉"),
+                        selected=if(automatic) "開啟" else "關閉",onChoose={ choice ->
+                            automatic=choice=="開啟"
+                            prefs.edit().putBoolean("check_updates_automatically",automatic).apply()
+                            io.atmos.weather.update.UpdateCheckWorker.schedule(context)
+                        })
+                    Spacer(Modifier.height(12.dp))
+                    Text("版本通道："+if(BuildConfig.THINN_OTA_CHANNEL=="preview") "測試版" else "正式版",
+                        color=UpdateSoft,fontSize=15.sp)
+                }
+                Spacer(Modifier.height(20.dp))
 
                 UpdatePanel(glow=light) {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {

@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,8 +38,8 @@ import io.atmos.weather.haptics.LocalHapticEngine
 import io.atmos.weather.presentation.home.WeatherAppearance
 import kotlin.math.roundToInt
 
-private val ink=Color.White
-private val soft=ThinnDesignTokens.secondaryInkDark
+private val ink:Color @Composable get()=MaterialTheme.colorScheme.onSurface
+private val soft:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 private val outline=Color.White.copy(alpha=.28f)
 
 /** Content surfaces deliberately remain calm; only floating controls use the glass lens.
@@ -152,8 +153,10 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
     onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
-    Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=166.dp)) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        .statusBarsPadding().navigationBarsPadding().padding(bottom=104.dp)
+        .appleBouncingScroll().verticalScroll(rememberScrollState())
+        .padding(start=16.dp,end=16.dp,top=18.dp,bottom=22.dp)) {
         Text("工具",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
         Text("常用功能與你的生活事項",color=soft,fontSize=15.sp)
         Spacer(Modifier.height(17.dp))
@@ -186,30 +189,50 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
     onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
     onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={}) {
-    val ctx=LocalContext.current
-    val prefs=remember(ctx){ctx.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
-    var reduceMotion by remember {mutableStateOf(prefs.getBoolean("reduce_motion",false))}
-    var reduceTransparency by remember {mutableStateOf(prefs.getBoolean("reduce_transparency",false))}
-    Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp,end=20.dp,top=18.dp,bottom=124.dp)) {
-        Text("設定",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
-        Text("所有選項皆使用統一的導覽、觸感與視覺語言",fontSize=15.sp,color=soft)
-        Spacer(Modifier.height(16.dp))
+    val ctx = LocalContext.current
+    val prefs = remember(ctx) { ctx.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE) }
+    var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion",false)) }
+    var reduceTransparency by remember { mutableStateOf(prefs.getBoolean("reduce_transparency",false)) }
+    var appearanceOpen by remember { mutableStateOf(false) }
+
+    if (appearanceOpen) {
+        // Drill-down replaces the existing page, keeping the outer tab and all owners unchanged.
+        IOS27AppearancePage(onBack={appearanceOpen=false},advancedSettings={
+            ThinnSection("顯示、動態與無障礙") {
+                GlassToggle("降低透明度","加強文字與材質的對比",reduceTransparency) {
+                    reduceTransparency=it
+                    prefs.edit().putBoolean("reduce_transparency",it).apply()
+                }
+                GlassDivider()
+                GlassToggle("減少動態效果","簡化轉場、放大及移動動畫",reduceMotion) {
+                    reduceMotion=it
+                    prefs.edit().putBoolean("reduce_motion",it).apply()
+                }
+                GlassDivider()
+                GlassTrackingSlider("玻璃透明感",appearance.glassOpacity) { onAppearance(appearance.copy(glassOpacity=it)) }
+                GlassTrackingSlider("玻璃霧化",appearance.glassFrost) { onAppearance(appearance.copy(glassFrost=it)) }
+                GlassTrackingSlider("邊緣光效",appearance.edgeLight) { onAppearance(appearance.copy(edgeLight=it)) }
+                GlassTrackingSlider("流動速度",appearance.liquidMotion) { onAppearance(appearance.copy(liquidMotion=it)) }
+            }
+        })
+        return
+    }
+
+    // Reserve physical space *outside* the scrolling viewport so the floating Dock
+    // cannot obscure settings controls. The Dock itself remains fixed in the parent.
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        .statusBarsPadding().navigationBarsPadding().padding(bottom=104.dp)
+        .appleBouncingScroll().verticalScroll(rememberScrollState())
+        .padding(start=16.dp,end=16.dp,top=18.dp,bottom=22.dp)) {
+        Text("設定",color=ink,style=MaterialTheme.typography.displaySmall)
+        Text("依照功能分類的設定與偏好",fontSize=15.sp,color=soft)
+        Spacer(Modifier.height(18.dp))
+
         ThinnSection("外觀與易讀性") {
-            GlassToggle("降低透明度","加強文字與材質的對比",reduceTransparency) {
-                reduceTransparency=it;prefs.edit().putBoolean("reduce_transparency",it).apply()
-            }
-            GlassDivider()
-            GlassToggle("減少動態效果","簡化轉場、放大及移動動畫",reduceMotion) {
-                reduceMotion=it;prefs.edit().putBoolean("reduce_motion",it).apply()
-            }
-            GlassDivider()
-            GlassTrackingSlider("玻璃透明感",appearance.glassOpacity) {onAppearance(appearance.copy(glassOpacity=it))}
-            GlassTrackingSlider("玻璃霧化",appearance.glassFrost) {onAppearance(appearance.copy(glassFrost=it))}
-            GlassTrackingSlider("邊緣光效",appearance.edgeLight) {onAppearance(appearance.copy(edgeLight=it))}
-            GlassTrackingSlider("流動速度",appearance.liquidMotion) {onAppearance(appearance.copy(liquidMotion=it))}
+            ThinnRow("外觀","淺色、深色、自動與顯示細節",Icons.Rounded.Palette,onClick={appearanceOpen=true})
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(20.dp))
+
         ThinnSection("個人偏好") {
             ThinnRow("智慧穿搭與開源 AI","穿搭、雨具與個人化選擇",Icons.Rounded.Checkroom,onClick=onLifestyle)
             GlassDivider()
@@ -217,7 +240,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             GlassDivider()
             ThinnRow("進階視覺、環境音與觸感","主觸覺強度、音效、實境演示",Icons.Rounded.Tune,onClick=onAdvanced)
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(20.dp))
+
         ThinnSection("安全與警報") {
             ThinnRow("地震速報與推播安全","警報權限、測站及來源狀態",Icons.Rounded.Shield,onClick=onPushSettings)
             GlassDivider()
@@ -225,7 +249,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             GlassDivider()
             ThinnRow("天氣鬧鐘","時間、重複與起床語音",Icons.Rounded.Alarm,onClick=onWeatherAlarms)
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(20.dp))
+
         ThinnSection("系統與版本") {
             GlassToggle("自動檢查更新","由系統安排背景檢查時間",automaticUpdates,onUpdates)
             GlassDivider()
@@ -234,6 +259,6 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             ThinnRow("權限與健康檢查","背景、省電、定位及通知診斷",Icons.Rounded.FactCheck,onClick=onDiagnostics)
         }
         Spacer(Modifier.height(18.dp))
-        Text("thinn-khì · 跨平台獨立實作的玻璃視覺語言",color=soft,fontSize=14.sp)
+        Text("thinn-khì · 原生 Android 實作的 iOS 風格介面",color=soft,fontSize=14.sp)
     }
 }

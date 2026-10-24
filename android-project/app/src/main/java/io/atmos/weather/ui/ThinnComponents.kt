@@ -2,10 +2,12 @@ package io.atmos.weather.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -35,7 +38,7 @@ import io.atmos.weather.haptics.LocalHapticEngine
 
 private val bg = ThinnOpticalMaterial.surface
 private val stroke = Color.White.copy(alpha=.16f)
-private val dim = Color(0xFFD0DFED)
+private val dim:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 fun ThinnSection(label:String, modifier:Modifier=Modifier, content:@Composable ColumnScope.()->Unit) {
@@ -52,8 +55,19 @@ fun ThinnRow(title:String,subtitle:String="",icon:ImageVector?=null,destructive:
     trailing:(@Composable ()->Unit)?=null,onClick:(()->Unit)?=null) {
     val haptic=LocalHapticEngine.current
     val interaction=remember { MutableInteractionSource() }
-    val textColor=if(destructive) ThinnDesignTokens.critical else Color.White
-    Row(Modifier.fillMaxWidth().heightIn(min=58.dp)
+    val pressed by interaction.collectIsPressedAsState()
+    val pressedFill by animateColorAsState(if(pressed) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+        animationSpec=tween(if(pressed)80 else 250), label="ios27-cell-press")
+    val textColor=if(destructive) ThinnDesignTokens.critical else MaterialTheme.colorScheme.onSurface
+    val iconColor=when {
+        title.contains("鬧鐘") -> Color(0xFFFF9F0A)
+        title.contains("更新") -> Color(0xFF007AFF)
+        title.contains("語音") -> Color(0xFF34C759)
+        title.contains("警報") || title.contains("地震") -> Color(0xFF8E8E93)
+        else -> Color(0xFF5AC8FA)
+    }
+    Row(Modifier.fillMaxWidth().heightIn(min=48.dp)
+        .background(pressedFill)
         .then(if(onClick!=null) Modifier.clickable(
             interactionSource=interaction,indication=null,role=Role.Button) {
             haptic?.play(HapticEngine.Event.TAP)
@@ -61,9 +75,9 @@ fun ThinnRow(title:String,subtitle:String="",icon:ImageVector?=null,destructive:
         } else Modifier)
         .padding(horizontal=15.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
         if(icon!=null) {
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp))
-                .background(ThinnDesignTokens.accent.copy(alpha=.19f)),contentAlignment=Alignment.Center) {
-                Icon(icon,null,Modifier.size(20.dp),tint=ThinnDesignTokens.accent)
+            Box(Modifier.size(29.dp).clip(RoundedCornerShape(7.dp))
+                .background(iconColor),contentAlignment=Alignment.Center) {
+                Icon(icon,null,Modifier.size(18.dp),tint=Color.White)
             }
             Spacer(Modifier.width(12.dp))
         }
