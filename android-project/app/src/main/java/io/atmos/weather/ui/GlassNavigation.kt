@@ -61,11 +61,11 @@ fun GlassAction(title:String,subtitle:String="",modifier:Modifier=Modifier,onCli
     val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
     val interaction=remember {MutableInteractionSource()}
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if(pressed&&!reduce)AppleMotion.pressedScale else 1f,
-        animationSpec=if(reduce)tween(0) else if(pressed)tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),label="選項回饋")
+    val highlight by androidx.compose.animation.animateColorAsState(
+        if(pressed) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+        tween(if(pressed)80 else 250),label="選項按壓背景")
     Row(modifier.fillMaxWidth().heightIn(min=56.dp)
-        .graphicsLayer{scaleX=scale;scaleY=scale;alpha=if(pressed&&!reduce)AppleMotion.pressedAlpha else 1f}
-        .clip(RoundedCornerShape(ThinnDesignTokens.radiusRow))
+        .clip(RoundedCornerShape(ThinnDesignTokens.radiusRow)).background(highlight)
         .clickable(interactionSource=interaction,indication=null) {
             feedback?.play(HapticEngine.Event.TAP);onClick()
         }
@@ -110,8 +110,7 @@ private val navTabs=listOf(
 @Composable
 fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier) {
     // NEXT navigation remains aligned to the existing four main Pager pages.
-    // Persist stable tool IDs rather than array positions so reordering never
-    // changes the semantic destination of a tab or breaks a deep link.
+    // Fixed canonical destinations; migrate away from the old saved ordering.
     val context=LocalContext.current
     val feedback=LocalHapticEngine.current
     val prefs=remember(context) {context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
@@ -122,14 +121,9 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         io.atmos.weather.next.NextToolAction("tools","工具",AppleNavSymbols.tools),
         io.atmos.weather.next.NextToolAction("settings","設定",AppleNavSymbols.settings)
     )
-    fun normalized(saved:List<String>):List<String> =
-        saved.filter { it in canonical }.distinct() + canonical.filter { it !in saved }
-    var toolOrder by remember(prefs) {
-        mutableStateOf(normalized(prefs.getString("next_navigation_order",null)?.split(",") ?: emptyList()))
-    }
-    val orderedActions=toolOrder.mapNotNull { id -> tabs.firstOrNull { it.id == id } }
+    LaunchedEffect(prefs) {prefs.edit().remove("next_navigation_order").apply()}
     io.atmos.weather.next.NextReorderableToolDock(
-        actions=orderedActions,
+        actions=tabs,
         selectedId=canonical.getOrNull(selected),
         onSelected={ id ->
             val page=canonical.indexOf(id)
@@ -138,12 +132,9 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
                 onSelect(page)
             }
         },
-        onOrderChanged={ changed ->
-            val valid=normalized(changed)
-            toolOrder=valid
-            prefs.edit().putString("next_navigation_order",valid.joinToString(",")).apply()
-        },
+        onOrderChanged={ _ -> /* Main tabs have a fixed canonical order. */ },
         maxVisible=4,
+        allowReorder=false,
         reduceMotion=prefs.getBoolean("reduce_motion",false),
         reduceTransparency=prefs.getBoolean("reduce_transparency",false),
         modifier=modifier.fillMaxWidth().padding(horizontal=20.dp).height(68.dp)

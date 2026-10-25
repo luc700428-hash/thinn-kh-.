@@ -96,7 +96,20 @@ class HapticEngine(context: Context) {
     }
 
     private fun supports(vararg primitive: Int): Boolean = try {
-        vibrator?.areAllPrimitivesSupported(*primitive) == true
+        vibrator?.let { device -> primitive.all { value ->
+            // Keep the public IntDef contract explicit; unknown values fail closed.
+            when(value) {
+                VibrationEffect.Composition.PRIMITIVE_CLICK -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK)
+                VibrationEffect.Composition.PRIMITIVE_THUD -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_THUD)
+                VibrationEffect.Composition.PRIMITIVE_SPIN -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_SPIN)
+                VibrationEffect.Composition.PRIMITIVE_QUICK_RISE -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE)
+                VibrationEffect.Composition.PRIMITIVE_SLOW_RISE -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE)
+                VibrationEffect.Composition.PRIMITIVE_QUICK_FALL -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL)
+                VibrationEffect.Composition.PRIMITIVE_TICK -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_TICK)
+                VibrationEffect.Composition.PRIMITIVE_LOW_TICK -> device.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_LOW_TICK)
+                else -> false
+            }
+        }} == true
     } catch (_: Exception) { false }
 
     private fun makePrimitiveEffect(event: Event, force: Float): VibrationEffect? {

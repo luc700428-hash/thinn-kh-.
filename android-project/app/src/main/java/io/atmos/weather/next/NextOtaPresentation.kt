@@ -163,7 +163,7 @@ fun NextOtaStatusCard(
                 val subtitle=when(state){
                     NextOtaState.Idle->"檢查官方正式版本"
                     NextOtaState.Checking->"正在安全比對 GitHub Release"
-                    is NextOtaState.Available->"新版本已通過發行檢查"
+                    is NextOtaState.Available->"下載後會驗證檔案、套件與簽章"
                     is NextOtaState.Downloading->"下載量來自實際網路傳輸"
                     NextOtaState.Verifying->"檢查來源與完整性"
                     NextOtaState.ReadyToInstall->"等待系統安裝"
@@ -205,14 +205,14 @@ fun NextOtaStatusCard(
         }
         if(action!=null){
             Spacer(Modifier.height(18.dp))
-            AppleIntelligenceGlow(modifier=Modifier.fillMaxWidth().height(54.dp),radius=18.dp,
+            AppleIntelligenceGlow(modifier=Modifier.fillMaxWidth().height(50.dp),radius=25.dp,
                 enabled=available) {
                 AppleSpringButton(onPressed=action,modifier=Modifier.fillMaxSize()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Brush.horizontalGradient(fluidColors))) {
+                    .clip(RoundedCornerShape(9999.dp))
+                    .background(MaterialTheme.colorScheme.primary)) {
                     Text(when(state){
-                        is NextOtaState.Available->"立即下載並安裝"
-                        NextOtaState.ReadyToInstall->"開始安裝"
+                        is NextOtaState.Available->"下載更新"
+                        NextOtaState.ReadyToInstall->"立即安裝"
                         else->"重新檢查更新"
                     },fontWeight=FontWeight.SemiBold,fontSize=16.sp,color=Color.White)
                 }

@@ -6,6 +6,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -64,14 +70,23 @@ fun IOS27RoundControl(label: String, onClick: () -> Unit, modifier: Modifier = M
     val feedback=LocalHapticFeedback.current
     Box(modifier.size(42.dp).graphicsLayer {
             scaleX=scale;scaleY=scale;alpha=if(pressed) .92f else 1f
-        }.clip(CircleShape).background(fill)
+        }.semantics { contentDescription=when(label) { "‹" -> "返回"; "×" -> "關閉"; "✓" -> "確認";else -> label } }.shadow(5.dp,CircleShape,ambientColor=Color.Black.copy(alpha=.08f),spotColor=Color.Black.copy(alpha=.08f)).clip(CircleShape).background(fill)
         .border(0.8.dp, Brush.linearGradient(listOf(Color.White.copy(alpha=.62f),
             Color.White.copy(alpha=.18f), Color.Transparent)), CircleShape)
+        .thinnSpecularEdge(21.dp)
         .clickable(interactionSource=interaction,indication=null) {
             feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             onClick()
         }, contentAlignment=Alignment.Center) {
-        Text(label, color=foreground, fontSize=23.sp, fontWeight=FontWeight.Medium)
+        if(label in listOf("‹","×","✓")) Canvas(Modifier.size(20.dp)) {
+            val w=size.width;val h=size.height;val stroke=2.dp.toPx()
+            fun line(x1:Float,y1:Float,x2:Float,y2:Float) = drawLine(foreground,Offset(w*x1,h*y1),Offset(w*x2,h*y2),stroke,StrokeCap.Round)
+            when(label) {
+                "‹" -> {line(.63f,.16f,.29f,.5f);line(.29f,.5f,.63f,.84f)}
+                "×" -> {line(.24f,.24f,.76f,.76f);line(.76f,.24f,.24f,.76f)}
+                else -> {line(.15f,.52f,.4f,.76f);line(.4f,.76f,.86f,.24f)}
+            }
+        } else Text(label, color=foreground, fontSize=23.sp, fontWeight=FontWeight.Medium)
     }
 }
 
@@ -105,6 +120,7 @@ private fun LockPreview(dark: Boolean, chosen: Boolean, onChoose: () -> Unit) {
 
 @Composable
 fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> Unit = {}) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
     val context = LocalContext.current
     IOS27AppearanceMode.initialize(context)
     val selection = IOS27AppearanceMode.value
@@ -119,7 +135,7 @@ fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> 
         .padding(bottom=104.dp).verticalScroll(rememberScrollState())
         .padding(horizontal=16.dp)) {
         Box(Modifier.fillMaxWidth().height(68.dp), contentAlignment=Alignment.Center) {
-            IOS27RoundControl("‹", onBack, modifier=Modifier.align(Alignment.CenterStart), fill=surface,foreground=primary)
+            IOS27RoundControl("‹", onBack, modifier=Modifier.align(Alignment.CenterStart).size(40.dp), fill=surface,foreground=primary)
             Text("外觀", fontSize=20.sp,color=primary,fontWeight=FontWeight.SemiBold)
         }
         Spacer(Modifier.height(19.dp))
@@ -132,7 +148,7 @@ fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> 
                 LockPreview(true,darkChosen) { IOS27AppearanceMode.update(context,"dark") }
             }
             Box(Modifier.fillMaxWidth().padding(start=16.dp).height(.5.dp)
-                .background(MaterialTheme.colorScheme.outline.copy(alpha=.30f)))
+                .background(if(MaterialTheme.colorScheme.background.red > .5f) ThinnDesignTokens.separatorLight else ThinnDesignTokens.separatorDark))
             Row(Modifier.fillMaxWidth().heightIn(min=55.dp).padding(horizontal=18.dp),
                 verticalAlignment=Alignment.CenterVertically) {
                 Text("自動",Modifier.weight(1f),fontSize=17.sp,color=primary)
@@ -141,11 +157,13 @@ fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> 
                 })
             }
             Box(Modifier.fillMaxWidth().padding(start=16.dp).height(.5.dp)
-                .background(MaterialTheme.colorScheme.outline.copy(alpha=.30f)))
-            Row(Modifier.fillMaxWidth().heightIn(min=55.dp).padding(horizontal=18.dp),
+                .background(if(MaterialTheme.colorScheme.background.red > .5f) ThinnDesignTokens.separatorLight else ThinnDesignTokens.separatorDark))
+            Row(Modifier.fillMaxWidth().heightIn(min=55.dp).clickable {
+                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS))
+            }.padding(horizontal=18.dp),
                 verticalAlignment=Alignment.CenterVertically) {
                 Text("選項",Modifier.weight(1f),fontSize=17.sp,color=primary)
-                Text(if(auto) "跟隨系統外觀" else "手動選取",fontSize=15.sp,
+                Text(if(auto) "跟隨系統外觀  ›" else "手動選取  ›",fontSize=15.sp,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

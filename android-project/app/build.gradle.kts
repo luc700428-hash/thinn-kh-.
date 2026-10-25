@@ -7,6 +7,7 @@ plugins {
 android {
     namespace = "io.atmos.weather"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
     defaultConfig {
         applicationId = "io.atmos.weather"
         minSdk = 31

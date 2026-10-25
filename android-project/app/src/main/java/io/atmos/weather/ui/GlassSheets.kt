@@ -41,39 +41,46 @@ private val glassBorder: Brush get() = ThinnOpticalMaterial.rim
 
 /** Native full-width bottom sheet with user-controlled drag handle. */
 @Composable
-fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0xFF12344F),
+fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0xFF141416),
     contentColor:Color=Color.White,content:@Composable ColumnScope.()->Unit) {
     val scope=rememberCoroutineScope()
     val context=LocalContext.current
     val reduceMotion=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
     var offsetPx by remember { mutableFloatStateOf(750f) }
+    var grabbing by remember {mutableStateOf(false)}
+    var closing by remember {mutableStateOf(false)}
     val animatedY by animateFloatAsState(offsetPx,
-        animationSpec=tween(if(reduceMotion)0 else 320,easing=AppleMotion.fluid),label="底部面板進退場")
+        animationSpec=if(reduceMotion || grabbing) androidx.compose.animation.core.snap() else
+            androidx.compose.animation.core.spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),
+        label="底部面板進退場")
     LaunchedEffect(Unit) { offsetPx=0f }
     fun dismissAnimated() {
-        scope.launch { offsetPx=900f; delay(if(reduceMotion)0 else 240);onDismissRequest() }
+        if(closing) return
+        closing=true
+        scope.launch { offsetPx=900f; delay(if(reduceMotion)0 else 380);onDismissRequest() }
     }
     Dialog(onDismissRequest={dismissAnimated()},properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Box(Modifier.fillMaxSize(),contentAlignment=Alignment.BottomCenter) {
             Column(Modifier.fillMaxWidth().heightIn(max=780.dp)
                 .offset { IntOffset(0,animatedY.toInt()) }
-                .clip(RoundedCornerShape(topStart=28.dp,topEnd=28.dp))
-                .background(ThinnOpticalMaterial.raised)
-                .border(1.dp,glassBorder,RoundedCornerShape(topStart=28.dp,topEnd=28.dp))
+                .clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
+                .background(containerColor)
+                .border(.5.dp,glassBorder,RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
                 .thinnSpecularEdge(28.dp)
                 .navigationBarsPadding()) {
                 var dragged by remember { mutableFloatStateOf(0f) }
                 Box(Modifier.fillMaxWidth().height(36.dp)
                     .pointerInput(Unit) {
-                        detectVerticalDragGestures(onVerticalDrag={change,amount->
+                        detectVerticalDragGestures(onDragStart={grabbing=true},onVerticalDrag={change,amount->
                             dragged=(dragged+amount).coerceIn(0f,750f)
                             offsetPx=dragged
                             change.consume()
                         },onDragEnd={
+                            grabbing=false
                             if(dragged>100f) dismissAnimated() else offsetPx=0f
                             dragged=0f
-                        },onDragCancel={offsetPx=0f;dragged=0f})
+                        },onDragCancel={grabbing=false;offsetPx=0f;dragged=0f})
                     },contentAlignment=Alignment.Center) {
                     Box(Modifier.size(width=42.dp,height=5.dp).clip(RoundedCornerShape(50))
                         .background(Color.White.copy(alpha=.64f)))

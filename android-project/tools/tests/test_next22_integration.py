@@ -42,7 +42,8 @@ class NextIntegratedSafety(unittest.TestCase):
         self.assertIn('verified_full_release',tool)
         workflow=(ROOT.parent/'.github/workflows/build-apk.yml').read_text(encoding='utf-8')
         self.assertNotIn('NEXT complete feature acceptance gate',workflow)
-        self.assertNotIn('verify_next_release_gate.py',workflow)
+        self.assertIn('verify_next_release_gate.py',workflow)
+        self.assertIn('if: inputs.publish_release == true',workflow)
         self.assertIn('Publish official OTA GitHub Release',workflow)
         self.assertIn("github.event_name == 'workflow_dispatch'",workflow)
         self.assertIn("if: env.SIGN_READY == 'true'",workflow.split(

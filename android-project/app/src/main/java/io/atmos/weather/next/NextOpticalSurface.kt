@@ -1,5 +1,8 @@
 package io.atmos.weather.next
 
+import io.atmos.weather.ui.thinnBackdrop
+import io.atmos.weather.ui.thinnSpecularEdge
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +33,7 @@ fun NextOpticalSurface(
     touchX: Float = .5f,
     pressed: Boolean = false,
     reduceTransparency: Boolean = false,
+    useBackdrop: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(cornerRadiusDp.dp)
@@ -46,14 +50,15 @@ fun NextOpticalSurface(
     }
     val x = NextMotionTokens.clampedTouchX(touchX)
     val background = if (reduceTransparency) {
-        if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF263E51),Color(0xFF183044)))
+        if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF1C1C1E),Color(0xFF1C1C1E)))
     } else if(lightTheme) {
         // Pale cool-tinted glass; no heavy dark blue fill on the white Settings page.
-        Brush.verticalGradient(listOf(Color(0xEAF9FCFF), Color(0xD6E8F1F9), Color(0xD2E5EEF8)))
+        Brush.verticalGradient(listOf(Color(0xA6FFFFFF), Color(0xA6FFFFFF), Color(0xA6FFFFFF)))
     } else {
-        Brush.verticalGradient(listOf(Color(0xB064707C), Color(0xAA293746), Color(0xB2202831)))
+        Brush.verticalGradient(listOf(Color(0xA61C1C1E), Color(0xA61C1C1E), Color(0xA61C1C1E)))
     }
-    Box(modifier.clip(shape).background(background).drawWithContent {
+    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop).background(background)
+        .thinnSpecularEdge(cornerRadiusDp.dp).drawWithContent {
         val w = size.width
         val h = size.height
         // A small, localized lens flare on touch; never blanket-flood content.

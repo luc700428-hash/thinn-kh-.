@@ -10,11 +10,13 @@ import androidx.compose.ui.platform.LocalContext
 object AppleMotion {
     // Direction-preserving, non-linear 0.15,1.0,0.3,1.0 transition curve.
     val fluid: Easing = CubicBezierEasing(0.15f, 1.0f, 0.3f, 1.0f)
-    const val pressedScale: Float = 0.94f
-    const val pressedAlpha: Float = 0.70f
+    val snap: Easing = CubicBezierEasing(.22f, 1f, .36f, 1f)
+    val popover: Easing = CubicBezierEasing(.2f, .9f, .3f, 1f)
+    const val pressedScale: Float = 0.96f
+    const val pressedAlpha: Float = 0.92f
     const val springDamping: Float = 0.72f
     const val springStiffness: Float = 190f
-    const val glassBlurDp: Int = 22 // Visual backdrop, only when a backdrop slot is supplied.
+    const val glassBlurDp: Int = 30 // Visual backdrop, only when a backdrop slot is supplied.
     const val glowDurationMillis: Int = 9000
 }
 

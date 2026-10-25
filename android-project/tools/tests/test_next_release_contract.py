@@ -43,14 +43,15 @@ class NextIntegrationReleaseContract(unittest.TestCase):
         self.assertIn('AppGlassNavigation(',src)
         self.assertIn('settingsPrefs.getBoolean("sound_enabled", false)',src)
 
-    def test_tool_dock_has_real_navigation_and_persistent_order(self):
+    def test_main_dock_has_real_navigation_and_fixed_order(self):
         nav=(BASE/'ui/GlassNavigation.kt').read_text(encoding='utf-8')
         dock=(BASE/'next/NextReorderableToolDock.kt').read_text(encoding='utf-8')
-        for word in ('NextReorderableToolDock(', 'next_navigation_order',
-                     'canonical.indexOf(id)','onOrderChanged={ changed ->'):
+        for word in ('NextReorderableToolDock(', 'actions=tabs', 'allowReorder=false',
+                     'canonical.indexOf(id)', 'remove("next_navigation_order")'):
             self.assertIn(word,nav)
-        for word in ('detectDragGesturesAfterLongPress','CustomAccessibilityAction',
-                     'showOverflow','touchX = lightX'):
+        self.assertNotIn('actions=orderedActions',nav)
+        for word in ('detectHorizontalDragGestures', 'if(allowReorder)',
+                     'onDragEnd=', 'latestOnSelected(destination.id)', 'touchX = lightX'):
             self.assertIn(word,dock)
 
     def test_alarm_retains_background_service_and_fallback(self):

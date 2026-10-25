@@ -1,5 +1,6 @@
 package io.atmos.weather.update
 import io.atmos.weather.ui.appleBouncingScroll
+import io.atmos.weather.ui.thinnBackdropSource
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassButton as Button
@@ -49,8 +50,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
 
-private val UpdateText = Color(0xFF101114)
-private val UpdateSoft = Color(0xFF777982)
+private val UpdateText:Color @Composable get() = MaterialTheme.colorScheme.onSurface
+private val UpdateSoft:Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 private val UpdateBlue = Color(0xFF007AFF)
 private val UpdateCardFill = Color(0xFF88A7C5).copy(alpha = .22f)
 private val UpdateCardBorder = Color.White.copy(alpha = .28f)
@@ -64,6 +65,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
     // A scope owned by the app process instead of Compose: closing this Dialog does
     // not cancel an in-progress OTA transfer. MutableState mirrors the active task
     // when the page is reopened. The OS may still stop the app process; see README.
+    OtaRetainedSession.restore(context)
     val scope = OtaRetainedSession.scope
     var checking by remember { mutableStateOf(false) }
     var installing by OtaRetainedSession.installing
@@ -75,9 +77,11 @@ fun AppUpdatePage(onClose: () -> Unit) {
     var totalBytes by OtaRetainedSession.totalBytes
     var lastError by OtaRetainedSession.lastError
     var installerPrompted by OtaRetainedSession.installerPrompted
+    var ready by OtaRetainedSession.ready
 
     fun check() {
         if (checking || installing) return
+        ready=false
         checking = true
         pending = null
         pendingDelta = ""
@@ -90,6 +94,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
             runCatching { AppUpdater.findUpdate(context) }
                 .onSuccess {
                     pending = it
+                    OtaRetainedSession.persist(context)
                     if (it == null) {
                         status = if (BuildConfig.THINN_OTA_CHANNEL == "preview") "目前沒有較新的測試更新"
                             else "目前沒有偵測到較新的正式版本"
@@ -116,33 +121,35 @@ fun AppUpdatePage(onClose: () -> Unit) {
     fun downloadOfficial(release:ReleaseInfo) {
         if(installing || checking) return
         haptic?.play(HapticEngine.Event.TAP)
-        installing=true
-        installerPrompted=false
-        downloaded=0L
-        totalBytes=null
+        runCatching { OtaDownloadService.start(context,release) }.onFailure {
+            installing=false
+            lastError=it.localizedMessage ?: "無法啟動下載，請稍後重試"
+        }
+    }
+    fun installOfficial(release:ReleaseInfo) {
+        if(installing || checking) return
         lastError=null
         downloadJob=scope.launch {
-            val result=runCatching {
-                AppUpdater.downloadAndInstall(context,release) { soFar,total ->
-                    downloaded=soFar
-                    totalBytes=total
-                }
-            }
-            result.onSuccess {
-                // Android owns the confirmation; do not claim installed.
+            installing=true
+            try {
+                // Verified cached APK is reused, and rechecked before each handoff.
+                AppUpdater.downloadAndInstall(context,release)
                 status="已交由 Android 安裝程式，請完成系統確認。"
                 installerPrompted=true
-            }.onFailure {err ->
-                if(err is CancellationException) status="已取消下載"
-                else {lastError=err.localizedMessage ?: "請稍後重試";status="更新失敗"}
-            }
-            installing=false
-            downloadJob=null
+            } catch(error:Exception) {
+                if(!AppUpdater.downloadFile(context,release).isFile) ready=false
+                lastError=error.localizedMessage ?: "無法開啟安裝程式"
+            } finally { installing=false; downloadJob=null }
         }
     }
 
     // Do not reset a live download when the user navigates back to this page.
     LaunchedEffect(Unit) { if(!installing && pending==null && !installerPrompted) check() }
+    LaunchedEffect(pending?.sha256) {
+        pending?.let { release ->
+            if(pendingDelta.isBlank()) pendingDelta=AppUpdateDelta.describe(BuildConfig.VERSION_NAME,release)
+        }
+    }
 
     val light = if(reduceMotion) .12f else {
         val glow = rememberInfiniteTransition(label = "update glow")
@@ -158,21 +165,24 @@ fun AppUpdatePage(onClose: () -> Unit) {
     // V25 presents a content-first update center: calm surfaces, lightweight controls.
     // OTA state and package validation remain owned by AppUpdater above.
     var showBuildDetails by remember { mutableStateOf(false) }
+    var reminderStatus by remember { mutableStateOf("") }
     val prefs=remember(context) {context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE)}
     var automatic by remember {mutableStateOf(prefs.getBoolean("check_updates_automatically",true))}
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color(0xFFF2F2F7))) {
+        val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
+        CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) {
+        Box(Modifier.fillMaxSize().thinnBackdropSource(backdrop).background(MaterialTheme.colorScheme.background)) {
             // Ambient light stays behind content rather than obscuring update text.
             Box(Modifier.fillMaxWidth().height(290.dp).background(
                 Brush.radialGradient(listOf(UpdateBlue.copy(alpha=light*.08f),Color.Transparent))
             ))
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
                 .appleBouncingScroll().verticalScroll(rememberScrollState())
-                .padding(horizontal=24.dp, vertical=18.dp)) {
+                .padding(horizontal=16.dp, vertical=18.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     io.atmos.weather.ui.IOS27RoundControl("‹",onClick={
                         haptic?.play(HapticEngine.Event.TAP);onClose()
-                    },fill=Color.White,foreground=UpdateText)
+                    },fill=MaterialTheme.colorScheme.surface,foreground=UpdateText)
                     Box(Modifier.weight(1f),contentAlignment=Alignment.Center) {
                         Text("軟體更新",color=UpdateText,fontSize=21.sp,fontWeight=FontWeight.SemiBold)
                     }
@@ -180,7 +190,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                 }
                 Spacer(Modifier.height(16.dp))
                 UpdatePanel(glow=light) {
-                    ApplePullDownMenu(label="自動檢查更新",choices=listOf("開啟", "關閉"),
+                    ApplePullDownMenu(label="自動更新",choices=listOf("開啟", "關閉"),
                         selected=if(automatic) "開啟" else "關閉",onChoose={ choice ->
                             automatic=choice=="開啟"
                             prefs.edit().putBoolean("check_updates_automatically",automatic).apply()
@@ -189,6 +199,8 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     Text("更新通道："+(if(BuildConfig.THINN_OTA_CHANNEL=="preview") "測試版" else "正式版"),
                         color=UpdateSoft,fontSize=15.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("開啟後自動檢查並提醒；安裝由 Android 系統確認。",color=UpdateSoft,fontSize=14.sp)
                 }
                 Spacer(Modifier.height(20.dp))
 
@@ -237,6 +249,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     checking -> NextOtaState.Checking
                     installing -> NextOtaState.Downloading(
                         totalBytes?.takeIf {it>0L}?.let { (downloaded.toFloat()/it).coerceIn(0f,1f) } ?: 0f)
+                    ready && !installerPrompted -> NextOtaState.ReadyToInstall
                     lastError != null -> NextOtaState.Failed(lastError ?: "更新失敗")
                     installerPrompted -> NextOtaState.Installing
                     pending != null -> NextOtaState.Available(
@@ -246,24 +259,34 @@ fun AppUpdatePage(onClose: () -> Unit) {
                             .take(12).map {it.drop(2)}.toList())
                     else -> NextOtaState.Idle
                 }
-                MaterialTheme(colorScheme=lightColorScheme(
-                    background=Color(0xFFF2F2F7), surface=Color.White,
-                    onSurface=Color(0xFF1C1C1E),onSurfaceVariant=Color(0xFF777982))) {
                 NextOtaStatusCard(
                     state=otaState,
                     onCheck={check()},
                     onDownload={pending?.let {downloadOfficial(it)}},
-                    onInstall={pending?.let {downloadOfficial(it)}},
+                    onInstall={pending?.let {installOfficial(it)}},
                     reduceTransparency=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
                         .getBoolean("reduce_transparency",false)
                 )
+                if(lastError!=null && ready) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(lastError ?: "",color=MaterialTheme.colorScheme.error,fontSize=14.sp)
                 }
-                if(installerPrompted || (!checking && pending==null && lastError==null &&
-                    status != "版本與更新中心已開啟")) {
+                if(!checking && status != "版本與更新中心已開啟") {
                     Spacer(Modifier.height(12.dp))
                     Text(status,color=UpdateSoft,fontSize=14.sp)
                 }
-                pending?.let {
+                pending?.let { release ->
+                    Spacer(Modifier.height(10.dp))
+                    release.sizeBytes?.let { bytes ->
+                        Text(android.text.format.Formatter.formatFileSize(context,bytes),color=UpdateSoft,fontSize=14.sp)
+                    }
+                    if(!installing) {
+                        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable {
+                            reminderStatus=runCatching {UpdateReminderWorker.scheduleTonight(context,release.version)}
+                                .fold({"將於 $it 提醒更新；安裝時仍需系統確認。"},{it.localizedMessage ?: "目前無法安排通知"})
+                        },contentAlignment=Alignment.Center) {Text("今晚提醒更新",color=UpdateBlue,fontSize=17.sp)}
+                        if(reminderStatus.isNotBlank()) Text(reminderStatus,color=UpdateSoft,fontSize=14.sp)
+                    }
                     Spacer(Modifier.height(18.dp))
                     UpdatePanel(glow=light) {
                         Text("這次更新帶來什麼",color=UpdateText,fontSize=18.sp,
@@ -274,14 +297,15 @@ fun AppUpdatePage(onClose: () -> Unit) {
                 }
                 if(installing) {
                     Spacer(Modifier.height(14.dp))
-                    OutlinedButton(onClick={downloadJob?.cancel();status="正在取消下載…"},
-                        modifier=Modifier.fillMaxWidth()) { Text("取消下載") }
+                    OutlinedButton(onClick={OtaDownloadService.cancel(context);downloadJob?.cancel();status="正在暫停下載…"},
+                        modifier=Modifier.fillMaxWidth()) { Text("暫停下載") }
                 }
                 Spacer(Modifier.height(22.dp))
                 Text("系統更新安裝前會進行安全驗證，並由手機確認更新。",
                     color=UpdateSoft.copy(alpha=.88f),fontSize=14.sp,lineHeight=20.sp)
                 Spacer(Modifier.height(15.dp))
             }
+        }
         }
     }
 
@@ -294,7 +318,7 @@ private fun UpdatePanel(glow: Float, content: @Composable ColumnScope.() -> Unit
         .getBoolean("reduce_transparency",false)
     AppleGlassCard(modifier=Modifier.fillMaxWidth(),radius=24.dp,
         contentPadding=PaddingValues(0.dp)) {
-        Column(Modifier.fillMaxWidth().background(Color.White).padding(20.dp),content=content)
+        Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(20.dp),content=content)
     }
 }
 

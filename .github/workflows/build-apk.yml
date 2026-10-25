@@ -1,6 +1,12 @@
 name: Publish thinn-khì official OTA
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: '完成實機驗收後發布正式 OTA；關閉時只建置 APK 附件'
+        required: true
+        type: boolean
+        default: false
 permissions:
   contents: write
 jobs:
@@ -122,9 +128,13 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y --no-install-recommends ffmpeg
           fi
-          # These are three public-domain Wikimedia Commons field recordings.
-          # The existing source script creates local, crossfaded Ogg Vorbis assets.
-          python3 "$prep"
+          # Reuse the complete package's credited field recordings. Download and
+          # prepare only when a source checkout is missing a required resource.
+          missing_audio=false
+          for name in light_rain heavy_rain thunder_strike; do
+            if [[ ! -s "$raw/$name.ogg" ]]; then missing_audio=true; fi
+          done
+          if [[ "$missing_audio" == true ]]; then python3 "$prep"; fi
           for name in light_rain heavy_rain thunder_strike; do
             sound="$raw/$name.ogg"
             test -s "$sound" || { echo "::error::Missing generated raw resource $sound"; exit 1; }
@@ -140,7 +150,7 @@ jobs:
           APK_KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
           APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
           APK_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
-          PUBLISH_RELEASE: 'true'
+          PUBLISH_RELEASE: ${{ inputs.publish_release }}
         shell: bash
         run: |
           set -euo pipefail
@@ -180,7 +190,7 @@ jobs:
              -PTHINN_FIREBASE_PROJECT_ID="${THINN_FIREBASE_PROJECT_ID:-}"
              -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}"
              -PTHINN_AZURE_PROXY_URL="${THINN_AZURE_PROXY_URL:-}")
-          gradle "${args[@]}" :app:testDebugUnitTest 2>&1 | tee build.log
+          gradle "${args[@]}" :app:testDebugUnitTest :app:lintRelease 2>&1 | tee build.log
           if [[ "$SIGN_READY" == 'true' ]]; then task=:app:assembleRelease; else task=:app:assembleDebug; fi
           gradle "${args[@]}" "$task" 2>&1 | tee -a build.log
       - name: Upload CI diagnostic on failure
@@ -304,8 +314,11 @@ jobs:
           path: |
             android-project/app/build/outputs/apk/debug/*.apk
             embedded-build-source-proof.json
+      - name: Require recorded full acceptance before official publication
+        if: inputs.publish_release == true
+        run: python3 android-project/tools/verify_next_release_gate.py
       - name: Publish official OTA GitHub Release
-        if: github.event_name == 'workflow_dispatch' && env.SIGN_READY == 'true'
+        if: github.event_name == 'workflow_dispatch' && env.SIGN_READY == 'true' && inputs.publish_release == true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

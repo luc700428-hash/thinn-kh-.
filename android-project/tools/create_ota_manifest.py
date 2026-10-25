@@ -29,6 +29,7 @@ def make_manifest(apk: Path, notes: Path, version: str, version_code: int, previ
     release_tag = "v25-preview" if preview else f"v{version}"
     return {
         "schema": 1,
+        "apk_size": apk.stat().st_size,
         "version": version,
         "version_code": version_code,
         "package_name": PACKAGE,

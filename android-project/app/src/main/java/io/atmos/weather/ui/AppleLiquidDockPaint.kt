@@ -4,6 +4,7 @@ import android.graphics.BlurMaskFilter
 import android.graphics.Paint as AndroidPaint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.BoxScope
@@ -45,7 +46,7 @@ fun BoxScope.AppleLiquidDockPaint(
     var originIndex by remember { mutableIntStateOf(selectedIndex) }
     val slide by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
-        animationSpec = spring(dampingRatio = .68f, stiffness = 280f),
+        animationSpec = tween(if(reduceMotion) 0 else 380, easing = AppleMotion.snap),
         label = "liquid dock spring 0.68 280"
     )
     LaunchedEffect(selectedIndex, reduceMotion) {
@@ -57,10 +58,10 @@ fun BoxScope.AppleLiquidDockPaint(
         val inset = 6.dp.toPx()
         val step = ((size.width - 2f * inset) / tabCount).coerceAtLeast(1f)
         val originCenter = inset + (originIndex + .5f) * step
-        val centerX = inset + (if (reduceMotion) selectedIndex.toFloat() else slide) * step + step / 2f +
-            if (dragging && !reduceMotion) dragOffsetPx else 0f
+        val centerX = inset + (if (reduceMotion || dragging) selectedIndex.toFloat() else slide) * step + step / 2f +
+            if (dragging) dragOffsetPx else 0f
         val centerY = size.height / 2f
-        val width = (step - 8.dp.toPx()).coerceAtLeast(28.dp.toPx())
+        val width = (step - 8.dp.toPx()).coerceAtLeast(28.dp.toPx()) * if(dragging && !reduceMotion) 1.04f else 1f
         val height = 56.dp.toPx()
         val halfW = width / 2f
         val halfH = height / 2f
@@ -121,9 +122,9 @@ fun BoxScope.AppleLiquidDockPaint(
                 Color(0xD6D5E9F5), Color(0xA97996AD), Color(0xB03B5366))),
             alpha = if (dragging) .93f else .81f)
         drawPath(contour,
-            brush = Brush.sweepGradient(listOf(Color.White.copy(alpha=.85f),
-                Color(0xFF5AC8FA).copy(alpha=.6f),Color.White.copy(alpha=.14f),
-                Color.White.copy(alpha=.85f)),center=Offset(centerX,centerY)),
+            brush = Brush.linearGradient(listOf(Color.White.copy(alpha=.65f),
+                Color.White.copy(alpha=.15f),Color.Transparent),
+                start=Offset(centerX-halfW,centerY-halfH),end=Offset(centerX+halfW,centerY+halfH)),
             style = Stroke(width=1.2.dp.toPx()))
         drawOval(
             brush=Brush.radialGradient(listOf(Color.White.copy(alpha=.32f),Color.Transparent),

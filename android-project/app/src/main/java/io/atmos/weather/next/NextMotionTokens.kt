@@ -10,8 +10,8 @@ import androidx.compose.animation.core.spring
  * Interactive drags always use direct pointer positions; springs take over on release.
  */
 object NextMotionTokens {
-    const val PRESS_SCALE = 0.94f
-    const val ELEVATED_DRAG_SCALE = 1.055f
+    const val PRESS_SCALE = 0.96f
+    const val ELEVATED_DRAG_SCALE = 1.04f
     const val SNAP_STIFFNESS = 190f
     const val SNAP_DAMPING = 0.72f
     const val GENTLE_STIFFNESS = 190f

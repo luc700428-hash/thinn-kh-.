@@ -1,6 +1,7 @@
 package io.atmos.weather.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -61,7 +62,11 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
         val chosen=if(enabled) colors.containerColor else colors.disabledContainerColor
         listOf(chosen,chosen)
     } else if(outlined) listOf(Color.White.copy(alpha=.24f),Color.White.copy(alpha=.105f),Color.White.copy(alpha=.17f))
-        else listOf(Color(0xFFE5F7FF),Color(0xFFAFDDF6),Color(0xFF659FC7))
+        else listOf(androidx.compose.material3.MaterialTheme.colorScheme.primary,
+            androidx.compose.material3.MaterialTheme.colorScheme.primary)
+    val labelColor=colors?.let {if(enabled) it.contentColor else it.disabledContentColor}
+        ?: if(outlined) androidx.compose.material3.MaterialTheme.colorScheme.primary
+        else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
     Row(modifier.defaultMinSize(minHeight=48.dp)
         .graphicsLayer { scaleX=pressScale*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear*(if(pressed && !reduce) AppleMotion.pressedAlpha else 1f) else appear*.45f }
         .clip(corner)
@@ -72,7 +77,9 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
             haptics?.play(HapticEngine.Event.TAP); onClick()
         })
         .padding(padding), horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically,
-        content=content)
+        content={
+            CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides labelColor) {content()}
+        })
 }
 
 @Composable
@@ -128,13 +135,13 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
     val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
     val movement by androidx.compose.animation.core.animateDpAsState(
-        if(checked) 22.dp else 0.dp,
+        if(checked) 20.dp else 0.dp,
         animationSpec=if(reduce) tween(0) else spring(dampingRatio=.78f,stiffness=480f),
         label="iOS 視覺開關滑塊"
     )
     val active=enabled && onCheckedChange!=null
-    val tint=if(checked) ThinnDesignTokens.positive else Color(0xFF647688)
-    Box(modifier.size(width=58.dp,height=48.dp)
+    val tint=if(checked) colors?.checkedTrackColor ?: ThinnDesignTokens.positive else colors?.uncheckedTrackColor ?: androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
+    Box(modifier.size(width=51.dp,height=48.dp)
         .then(if(onCheckedChange!=null)
             Modifier.toggleable(value=checked,enabled=enabled,role=androidx.compose.ui.semantics.Role.Switch,
                 onValueChange={ next ->
@@ -142,11 +149,14 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
                 }) else Modifier)
         .graphicsLayer { alpha=if(active) 1f else .48f },
         contentAlignment=Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(36.dp)
+        Box(Modifier.fillMaxWidth().height(31.dp)
             .clip(CircleShape)
             .background(Brush.linearGradient(listOf(tint,tint.copy(alpha=.78f))))
             .border(1.dp,Color.White.copy(alpha=if(checked).24f else .15f),CircleShape)) {
-            Box(Modifier.padding(3.dp).offset(x=movement).size(30.dp)
+            if(checked) Canvas(Modifier.matchParentSize()) {
+                drawLine(Color.White,Offset(12.dp.toPx(),11.dp.toPx()),Offset(12.dp.toPx(),20.dp.toPx()),1.dp.toPx())
+            }
+            Box(Modifier.padding(2.dp).offset(x=movement).size(27.dp)
                 .background(Color.White,CircleShape)
                 .border(1.dp,Color.White.copy(alpha=.68f),CircleShape)
                 .thinnSpecularEdge(15.dp))
@@ -166,22 +176,35 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
     val low=valueRange.start
     val span=(valueRange.endInclusive-low).takeIf { it>0f } ?: 1f
     val fraction=((value-low)/span).coerceIn(0f,1f)
-    val smooth by animateFloatAsState(fraction,animationSpec=tween(if(reduce) 0 else 115),label="膠囊滑桿進度")
+    var tracking by remember { mutableStateOf(false) }
+    val smooth by animateFloatAsState(fraction,animationSpec=tween(if(reduce || tracking) 0 else 115),label="膠囊滑桿進度")
+    val change by rememberUpdatedState(onValueChange)
+    val finish by rememberUpdatedState(onValueChangeFinished)
+    fun quantized(proposed:Float):Float {
+        val f=((proposed-low)/span).coerceIn(0f,1f)
+        val detents=(steps+1).coerceAtLeast(1)
+        return low+span*if(steps>0) (f*detents).roundToInt().toFloat()/detents else f
+    }
     BoxWithConstraints(modifier.fillMaxWidth().heightIn(min=48.dp)
         .then(if(enabled) Modifier
-            .pointerInput(low,span) {
+            .pointerInput(low,span,steps) {
+                val halfThumb=15.dp.toPx()
+                fun mapped(x:Float)=quantized(low+span*((x-halfThumb)/(size.width-2f*halfThumb).coerceAtLeast(1f)).coerceIn(0f,1f))
                 detectTapGestures { offset ->
-                    onValueChange(low+span*(offset.x/size.width.toFloat()).coerceIn(0f,1f))
+                    change(mapped(offset.x))
                     haptics?.play(HapticEngine.Event.TAP)
-                    onValueChangeFinished?.invoke()
+                    finish?.invoke()
                 }
             }
-            .pointerInput(low,span) {
+            .pointerInput(low,span,steps) {
+                val halfThumb=15.dp.toPx()
                 detectDragGestures(
-                    onDragEnd={haptics?.play(HapticEngine.Event.RELEASE);onValueChangeFinished?.invoke()},
-                    onDrag={change,_->
-                        onValueChange(low+span*(change.position.x/size.width.toFloat()).coerceIn(0f,1f))
-                        change.consume()
+                    onDragStart={tracking=true},
+                    onDragCancel={tracking=false;finish?.invoke()},
+                    onDragEnd={tracking=false;haptics?.play(HapticEngine.Event.RELEASE);finish?.invoke()},
+                    onDrag={changePointer,_->
+                        change(quantized(low+span*((changePointer.position.x-halfThumb)/(size.width-2f*halfThumb).coerceAtLeast(1f)).coerceIn(0f,1f)))
+                        changePointer.consume()
                     }
                 )
             } else Modifier)
@@ -189,8 +212,8 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
             progressBarRangeInfo=androidx.compose.ui.semantics.ProgressBarRangeInfo(
                 value.coerceIn(valueRange.start,valueRange.endInclusive),valueRange,steps)
             if(enabled) setProgress { proposed ->
-                onValueChange(proposed.coerceIn(valueRange.start,valueRange.endInclusive))
-                onValueChangeFinished?.invoke()
+                change(quantized(proposed))
+                finish?.invoke()
                 true
             }
         },contentAlignment=Alignment.CenterStart) {

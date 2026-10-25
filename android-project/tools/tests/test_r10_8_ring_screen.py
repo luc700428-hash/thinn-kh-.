@@ -9,7 +9,7 @@ class R108RingingScreen(unittest.TestCase):
     def test_reference_layout_and_accessible_stop(self):
         src = SOURCE.read_text(encoding="utf-8")
         for token in (
-            'background(Color.Black)', '"鬧鐘"', '88.sp',
+            'background(Color.Black)', '"鬧鐘"', '92.sp',
             '"稍後提醒"', '"滑動來停止"',
             'detectHorizontalDragGestures',
             'onClick(label = "無法滑動？輕觸這裡停止鬧鐘")',
@@ -23,7 +23,7 @@ class R108RingingScreen(unittest.TestCase):
         src = SOURCE.read_text(encoding="utf-8")
         self.assertIn('setVolumeControlStream(AudioManager.STREAM_ALARM)', src)
         self.assertIn('fingerDown || reduceMotion', src)
-        self.assertIn('spring(dampingRatio = .68f, stiffness = 280f)', src)
+        self.assertIn('tween(380,easing=AppleMotion.snap)', src)
         self.assertIn('dragPx >= maxDrag * .75f', src)
         self.assertIn('setShowWhenLocked(true)', src)
         self.assertIn('setTurnScreenOn(true)', src)

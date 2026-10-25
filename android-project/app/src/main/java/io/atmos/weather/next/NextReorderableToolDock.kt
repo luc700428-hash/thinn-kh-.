@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import io.atmos.weather.ui.AppleLiquidDockPaint
 import androidx.compose.ui.unit.sp
@@ -58,10 +59,9 @@ import androidx.compose.ui.window.PopupProperties
 data class NextToolAction(val id: String, val label: String, val icon: ImageVector)
 
 /**
- * Compact physical dock: long-press and drag left/right to reorder its visible actions.
- * Overflow exposes all remaining actions without silently dropping one.
- * The owner persists [onOrderChanged] (e.g. in SharedPreferences/DataStore).
- * Users can also reorder with accessible actions, not just precise touch gestures.
+ * Fixed container; only the selection lens follows horizontal scrubbing.
+ * Optional accessible ordering is reserved for non-navigation tool palettes.
+ * The main app explicitly disables it and always uses the four canonical tabs.
  */
 @Composable
 fun NextReorderableToolDock(
@@ -72,14 +72,15 @@ fun NextReorderableToolDock(
     modifier: Modifier = Modifier,
     maxVisible: Int = 4,
     reduceMotion: Boolean = false,
-    reduceTransparency: Boolean = false
+    reduceTransparency: Boolean = false,
+    allowReorder: Boolean = false
 ) {
     require(maxVisible >= 1) { "At least one dock item must be visible" }
     val actionIds = actions.map { it.id }
     require(actionIds.distinct().size == actionIds.size) { "Tool IDs must be unique" }
     var order by remember(actionIds) { mutableStateOf(actionIds) }
     // Local state is for immediate animation; outer owner remains the persistent source.
-    val sorted = order.mapNotNull { id -> actions.firstOrNull { it.id == id } }
+    val sorted = if(allowReorder) order.mapNotNull { id -> actions.firstOrNull { it.id == id } } else actions
     val visibleLimit = if (sorted.size > maxVisible) maxVisible - 1 else maxVisible
     val visible = sorted.take(visibleLimit.coerceAtLeast(0))
     val hidden = sorted.drop(visible.size)
@@ -103,6 +104,7 @@ fun NextReorderableToolDock(
     fun previewIndex(): Int = ((scrubX-dockInsetPx) / slotPx).toInt().coerceIn(0,visible.lastIndex.coerceAtLeast(0))
 
     fun move(id: String, delta: Int): Boolean {
+        if (!allowReorder) return false
         val current = order.indexOf(id)
         val newIndex = current + delta
         if (current < 0 || newIndex !in order.indices || newIndex >= visible.size) return false
@@ -118,18 +120,18 @@ fun NextReorderableToolDock(
         ?: currentIndex
     val activeDisplayIndex=if(scrubbing && visible.isNotEmpty()) previewIndex() else lightIndex
     val lightX=if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/visible.size
-    NextOpticalSurface(modifier = modifier, touchX = lightX,
-        pressed = draggingId != null, reduceTransparency = reduceTransparency) {
+    NextOpticalSurface(modifier = modifier, cornerRadiusDp = 9999f, useBackdrop = true, touchX = lightX,
+        pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency) {
         Box(Modifier.fillMaxWidth()
             .onSizeChanged { dockWidthPx=it.width }
             .pointerInput(visible.map { it.id }, dockWidthPx) {
                 if(visible.isNotEmpty()) detectHorizontalDragGestures(
                     onDragStart={ start ->
                         scrubbing=true
-                        scrubX=start.x.coerceIn(dockInsetPx,(dockWidthPx-dockInsetPx).coerceAtLeast(dockInsetPx))
+                        scrubX=start.x.coerceIn(dockInsetPx+slotPx/2f,(dockWidthPx-dockInsetPx-slotPx/2f).coerceAtLeast(dockInsetPx+slotPx/2f))
                     },
                     onHorizontalDrag={ change,_ ->
-                        scrubX=change.position.x.coerceIn(dockInsetPx,(dockWidthPx-dockInsetPx).coerceAtLeast(dockInsetPx))
+                        scrubX=change.position.x.coerceIn(dockInsetPx+slotPx/2f,(dockWidthPx-dockInsetPx-slotPx/2f).coerceAtLeast(dockInsetPx+slotPx/2f))
                         change.consume()
                     },
                     onDragEnd={
@@ -169,15 +171,16 @@ fun NextReorderableToolDock(
                     )
                     val selected = action.id == (if(scrubbing) visible.getOrNull(activeDisplayIndex)?.id else selectedId)
                     Column(
-                        modifier = Modifier.width(65.dp).height(58.dp)
+                        modifier = Modifier.weight(1f).height(58.dp)
                             .graphicsLayer(scaleX = scale, scaleY = scale, translationX = if (reduceMotion) 0f else localX)
                             .background(Color.Transparent, RoundedCornerShape(22.dp))
                             .semantics {
                                 contentDescription = action.label
-                                customActions = listOf(
+                                customActions = if(allowReorder) listOf(
                                     CustomAccessibilityAction("將${action.label}往左移") { move(action.id, -1) },
                                     CustomAccessibilityAction("將${action.label}往右移") { move(action.id, 1) }
-                                )
+                                ) else emptyList()
+                                this.selected = selected
                             }
                             .clickable(
                                 interactionSource = interaction,

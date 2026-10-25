@@ -14,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import kotlinx.coroutines.launch
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -43,48 +45,63 @@ fun ApplePullDownMenu(
     modifier:Modifier=Modifier
 ){
     var expanded by remember { mutableStateOf(false) }
+    var closing by remember { mutableStateOf(false) }
     var anchor by remember { mutableStateOf(Rect.Zero) }
+    val reduce=rememberAppleReduceMotion()
+    val scope=rememberCoroutineScope()
+    val palette=androidx.compose.material3.MaterialTheme.colorScheme
     val density=LocalDensity.current
     val popupW=with(density){230.dp.roundToPx()}
     val feedback=LocalHapticFeedback.current
+    fun dismiss() {
+        if(closing) return
+        closing=true
+        scope.launch { if(!reduce) kotlinx.coroutines.delay(160);expanded=false;closing=false }
+    }
     Box(modifier.onGloballyPositioned { anchor=it.boundsInWindow() }) {
-        AppleSpringButton(onPressed={expanded=!expanded},modifier=Modifier.fillMaxWidth()) {
-            Text("$label · $selected",fontSize=16.sp,color=Color.White)
+        Row(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable {if(!expanded) expanded=true},
+            verticalAlignment=Alignment.CenterVertically) {
+            Text(label,fontSize=17.sp,color=palette.onSurface,modifier=Modifier.weight(1f))
+            Text("$selected  ›",fontSize=15.sp,color=palette.onSurfaceVariant)
         }
         if(expanded){
             val positioner=remember(anchor,popupW) { object:PopupPositionProvider {
                 override fun calculatePosition(anchorBounds:androidx.compose.ui.unit.IntRect,
                     windowSize:IntSize, layoutDirection:androidx.compose.ui.unit.LayoutDirection,
                     popupContentSize:IntSize):IntOffset {
-                    val left=anchor.left.roundToInt().coerceIn(8,(windowSize.width-popupContentSize.width-8).coerceAtLeast(8))
-                    val below=anchor.bottom.roundToInt()+4
-                    val top=if(below+popupContentSize.height>windowSize.height)
-                        (anchor.top.roundToInt()-popupContentSize.height-4).coerceAtLeast(8) else below
+                    val margin=with(density){8.dp.roundToPx()}
+                    val left=(anchor.right.roundToInt()-popupContentSize.width).coerceIn(margin,
+                        (windowSize.width-popupContentSize.width-margin).coerceAtLeast(margin))
+                    val top=anchor.top.roundToInt().coerceIn(margin,
+                        (windowSize.height-popupContentSize.height-margin).coerceAtLeast(margin))
                     return IntOffset(left,top)
                 }
             }}
-            Popup(popupPositionProvider=positioner,onDismissRequest={expanded=false},
+            Popup(popupPositionProvider=positioner,onDismissRequest={dismiss()},
                 properties=PopupProperties(focusable=true)) {
                 var appeared by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { appeared=true }
-                val scale by animateFloatAsState(if(appeared)1f else .15f,
-                    animationSpec=spring(stiffness=260f,dampingRatio=.78f),label="anchored-menu-origin")
-                Box(Modifier.width(230.dp).graphicsLayer {
-                    scaleX=scale;scaleY=scale;alpha=((scale-.15f)/.85f).coerceIn(0f,1f)
-                    transformOrigin=androidx.compose.ui.graphics.TransformOrigin(0f,0f)
-                }) {
-                    AppleGlassCard(radius=16.dp,contentPadding=PaddingValues(8.dp)) {
-                        choices.forEach { choice ->
-                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onChoose(choice);expanded=false
-                                }.padding(horizontal=10.dp,vertical=13.dp),
-                                verticalAlignment=Alignment.CenterVertically) {
-                                Text(if(choice==selected) "✓" else "  ",color=Color(0xFF8CD6FF),fontSize=15.sp)
-                                Spacer(Modifier.width(10.dp))
-                                Text(choice,fontSize=15.sp,color=Color.White)
-                            }
+                val shown=appeared && !closing
+                val progress by animateFloatAsState(if(shown)1f else 0f,
+                    animationSpec=tween(if(reduce)0 else if(closing)160 else 200,easing=AppleMotion.popover),
+                    label="anchored-menu-origin")
+                Column(Modifier.width(230.dp).graphicsLayer {
+                    scaleX=.85f+.15f*progress;scaleY=scaleX;alpha=progress
+                    transformOrigin=androidx.compose.ui.graphics.TransformOrigin(1f,0f)
+                }.shadow(20.dp,RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(14.dp)).thinnBackdrop(rememberAppleReduceTransparency())
+                    .background(palette.surface.copy(alpha=if(rememberAppleReduceTransparency())1f else .65f))
+                    .thinnSpecularEdge(14.dp).padding(6.dp)) {
+                    choices.forEach { choice ->
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp))
+                            .clickable(enabled=!closing) {
+                                feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onChoose(choice);dismiss()
+                            }.padding(horizontal=10.dp,vertical=13.dp),
+                            verticalAlignment=Alignment.CenterVertically) {
+                            Text(if(choice==selected) "✓" else "  ",color=palette.primary,fontSize=16.sp)
+                            Spacer(Modifier.width(10.dp))
+                            Text(choice,fontSize=17.sp,color=palette.onSurface)
                         }
                     }
                 }

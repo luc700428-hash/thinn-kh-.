@@ -100,7 +100,7 @@ class R102UserRequirements(unittest.TestCase):
                 self.assertTrue(data.is_file() and data.stat().st_size>20000,str(data))
     def test_full_screen_alarm_rebuilt_without_old_description(self):
         s=self.read('alarm/WeatherAlarmRingActivity.kt')
-        for token in ('稍後提醒','滑動來停止','detectHorizontalDragGestures','LocalHapticFeedback','88.sp'):
+        for token in ('稍後提醒','滑動來停止','detectHorizontalDragGestures','LocalHapticFeedback','92.sp'):
             self.assertIn(token,s)
         self.assertNotIn('"起床天氣語音"',s)
         self.assertNotIn('"日常提醒"',s)
@@ -118,7 +118,7 @@ class R102UserRequirements(unittest.TestCase):
         motion=self.read('ui/AppleMotion.kt')
         self.assertIn('const val springDamping: Float = 0.72f',motion)
         self.assertIn('const val springStiffness: Float = 190f',motion)
-        self.assertIn('const val pressedScale: Float = 0.94f',motion)
-        self.assertIn('const val pressedAlpha: Float = 0.70f',motion)
+        self.assertIn('const val pressedScale: Float = 0.96f',motion)
+        self.assertIn('const val pressedAlpha: Float = 0.92f',motion)
 
 if __name__=='__main__':unittest.main()

@@ -10,9 +10,11 @@ class OfficialMaintenanceOtaTests(unittest.TestCase):
     def test_single_manual_official_ota_no_duplicate_mode(self):
         w=WF.read_text(encoding='utf-8')
         self.assertIn('  workflow_dispatch:',w)
-        self.assertNotIn('publish_release:',w)
+        self.assertIn('publish_release:',w)
+        self.assertIn('default: false',w)
         self.assertNotIn('publish_maintenance:',w)
-        self.assertNotIn('verify_next_release_gate.py',w)
+        self.assertIn('verify_next_release_gate.py',w)
+        self.assertIn("env.SIGN_READY == 'true' && inputs.publish_release == true",w)
         self.assertNotIn('Publish V25 test OTA (pre-release only)',w)
         self.assertIn('Publish official OTA GitHub Release',w)
         self.assertIn('-PTHINN_OTA_CHANNEL="official"',w)

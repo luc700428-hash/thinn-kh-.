@@ -1,5 +1,7 @@
 package io.atmos.weather.presentation.home
 
+import io.atmos.weather.ui.thinnBackdropSource
+
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassModalBottomSheet as ModalBottomSheet
 import io.atmos.weather.ui.GlassAlertDialog as AlertDialog
@@ -494,7 +496,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         LocalHapticEngine provides hapticEngine
     ) {
     io.atmos.weather.ui.GlassAppTheme {
+        val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
+            io.atmos.weather.ui.LocalThinnBackdrop provides backdrop,
+            io.atmos.weather.ui.TkCardWeatherClock provides io.atmos.weather.ui.rememberTkWeatherClock(!reducedMotion && (rainy || snow)),
+            io.atmos.weather.ui.TkCardWeatherStrength provides (if(snow) ((snapshot?.snowfallCm ?: .1).toFloat()/1.5f).coerceIn(.25f,1f) else if(heavyRain) 1f else .5f),
             io.atmos.weather.ui.TkCardWeatherMood provides when {
                 snow -> io.atmos.weather.ui.TkPrecipitationMood.SNOW
                 rainy -> io.atmos.weather.ui.TkPrecipitationMood.RAIN
@@ -505,7 +511,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             // Avoid a large offscreen blur layer during scrolling: gradient already supplies depth.
             HorizontalPager(
                 state = mainPager,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().thinnBackdropSource(backdrop)
+                    .background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))),
                 beyondViewportPageCount = 0,
                 userScrollEnabled = !locationOpen && !settingsOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen
             ) { page ->
@@ -1294,10 +1301,12 @@ private fun MetricCard(title: String, value: String, subtitle: String,
                        symbol: androidx.compose.ui.graphics.vector.ImageVector,
                        modifier: Modifier=Modifier, onClick:()->Unit) {
     val appearance=LocalAppearance.current
-    Column(modifier.clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
+    Box(modifier.clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
         .border(1.dp,White.copy(alpha=.19f+appearance.edgeLight*.26f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
-        .clickable(onClick=onClick).padding(17.dp)) {
+        .clickable(onClick=onClick)) {
+        io.atmos.weather.ui.TkPrecipitationCardLens(io.atmos.weather.ui.TkCardWeatherMood.current,Modifier.matchParentSize())
+        Column(Modifier.padding(17.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Icon(symbol,contentDescription=null,tint=TextSoft,modifier=Modifier.size(16.dp))
             Spacer(Modifier.width(7.dp))
@@ -1306,6 +1315,7 @@ private fun MetricCard(title: String, value: String, subtitle: String,
         Spacer(Modifier.height(17.dp))
         Text(value,color=White,fontSize=28.sp,fontWeight=FontWeight.Light,style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
         Text(subtitle,color=TextSoft,fontSize=14.sp)
+        }
     }
 }
 

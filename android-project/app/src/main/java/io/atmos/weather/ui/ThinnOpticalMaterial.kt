@@ -33,8 +33,7 @@ object ThinnOpticalMaterial {
         Color(0xFF2C2C2E), Color(0xFF1C1C1E)
     ))
     val rim: Brush get() = Brush.linearGradient(listOf(
-        Color.White.copy(alpha=.70f), Color(0xFFD8EFFF).copy(alpha=.24f),
-        Color.White.copy(alpha=.09f), Color(0xFFD5F3FF).copy(alpha=.40f)
+        Color.White.copy(alpha=.65f),Color.White.copy(alpha=.15f),Color.Transparent
     ))
     val luminousPill: Brush get() = Brush.linearGradient(listOf(
         Color(0xFFDBF4FF), Color(0xFF92D9FF), Color(0xFF55B5EF)
@@ -55,13 +54,13 @@ object ThinnOpticalMaterial {
 fun Modifier.thinnSpecularEdge(radius: Dp = 28.dp): Modifier = drawWithContent {
     drawContent()
     val inset=1.5.dp.toPx()
-    val edgeRadius=radius.toPx()
+    val edgeRadius=radius.toPx().coerceAtMost(size.minDimension/2f)
     drawRoundRect(
         brush=Brush.linearGradient(
-            0f to Color.White.copy(alpha=.46f),
-            .32f to Color.White.copy(alpha=.10f),
-            .66f to Color.Transparent,
-            1f to Color.White.copy(alpha=.18f)
+            0f to Color.White.copy(alpha=.65f),
+            .5f to Color.White.copy(alpha=.15f),
+            1f to Color.Transparent,
+            start=Offset.Zero,end=Offset(size.width,size.height)
         ),
         topLeft=Offset(inset,inset),
         size=Size((size.width-inset*2).coerceAtLeast(0f),(size.height-inset*2).coerceAtLeast(0f)),

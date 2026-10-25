@@ -76,7 +76,15 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
             try {
                 val csv=withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { stream ->
-                        val bytes=stream.readNBytes(1_000_001)
+                        val output=java.io.ByteArrayOutputStream()
+                        val block=ByteArray(8192)
+                        while(true) {
+                            val n=stream.read(block)
+                            if(n<0) break
+                            require(output.size()+n<=1_000_000) { "檔案超過 1 MB" }
+                            output.write(block,0,n)
+                        }
+                        val bytes=output.toByteArray()
                         require(bytes.size<=1_000_000) { "檔案超過 1 MB" }
                         bytes.toString(Charsets.UTF_8)
                     } ?: error("無法讀取 CSV")

@@ -23,10 +23,10 @@ import androidx.compose.ui.unit.sp
  * iOS-inspired hierarchy, not a use of Apple UI frameworks, fonts, or SF Symbols.
  */
 object ThinnDesignTokens {
-    val radiusControl = 24.dp
+    val radiusControl = 9999.dp
     val radiusRow = 16.dp
     val radiusCard = 16.dp
-    val radiusSheet = 36.dp
+    val radiusSheet = 32.dp
     val radiusNav = 35.dp
     val touchTarget = 48.dp
     val spacingTiny = 4.dp
@@ -35,14 +35,16 @@ object ThinnDesignTokens {
     val spacingLarge = 24.dp
     val lightBackground = Color(0xFFF2F2F7)
     val darkBackground = Color(0xFF000000)
+    val separatorLight = Color(0x2E3C3C43)
+    val separatorDark = Color(0xA6545458)
     val lightGlass = Color(0xECFFFFFF)
     val darkGlass = Color(0xDB1C1C1E)
-    val accent = Color(0xFF9FE3FF)
+    val accent = Color(0xFF0A84FF)
     val positive = Color(0xFF34C759)
     val caution = Color(0xFFFFC65A)
     val critical = Color(0xFFFF5A52)
     val primaryInkDark = Color.White
-    val secondaryInkDark = Color(0xFFD3DDE8)
+    val secondaryInkDark = Color(0xFF8E8E93)
     const val shortMotionMillis = 180
     const val mediumMotionMillis = 320
     const val longMotionMillis = 480
@@ -52,7 +54,7 @@ object ThinnDesignTokens {
 
 private val thinnScheme = darkColorScheme(
     primary = ThinnDesignTokens.accent,
-    onPrimary = Color(0xFF061729),
+    onPrimary = Color.White,
     background = ThinnDesignTokens.darkBackground,
     onBackground = Color.White,
     surface = Color(0xFF1C1C1E),
@@ -68,7 +70,7 @@ private val thinnLightScheme = lightColorScheme(
     primary = Color(0xFF007AFF), onPrimary = Color.White,
     background = ThinnDesignTokens.lightBackground, onBackground = Color.Black,
     surface = Color.White, onSurface = Color(0xFF1C1C1E),
-    surfaceVariant = Color(0xFFF2F2F7), onSurfaceVariant = Color(0xFF3A3A3C),
+    surfaceVariant = Color(0xFFF2F2F7), onSurfaceVariant = Color(0xFF8E8E93),
     secondary = Color(0xFF007AFF), error = Color(0xFFFF3B30),
     outline = Color(0xFFC7C7CC)
 )

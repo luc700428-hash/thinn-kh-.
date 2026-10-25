@@ -37,9 +37,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import io.atmos.weather.ui.thinnSpecularEdge
+import androidx.compose.ui.semantics.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -55,9 +62,9 @@ import java.util.Locale
 
 /** Independently authored Compose Foundation controls, not Material picker or switch widgets. */
 private val night=Color(0xFF141416)
-private val group=Color(0xFF2B2C31)
-private val secondary=Color(0xFFB9BAC4)
-private val amber=Color(0xFFFFB32B)
+private val group=Color(0xFF1C1C1E)
+private val secondary=Color(0xFF8E8E93)
+private val amber=Color(0xFFFF9F0A)
 private val weekdays=listOf("一","二","三","四","五","六","日")
 
 object R10AlarmTones {
@@ -155,14 +162,14 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
                 .background(Color.White.copy(alpha=.16f))
                 .border(1.dp,Color.White.copy(alpha=.36f),RoundedCornerShape(17.dp)))
             Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().height(47.dp),contentAlignment=Alignment.Center) {
+                Box(Modifier.fillMaxWidth().height(47.dp).clickable {latestUpdate(0)},contentAlignment=Alignment.Center) {
                     Text("上午",color=Color.White.copy(alpha=if(value==0) 1f else .55f),
-                        fontSize=if(value==0) 28.sp else 23.sp,fontWeight=FontWeight.Light)
+                        fontSize=22.sp,fontWeight=FontWeight.Light)
                 }
                 Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().height(47.dp),contentAlignment=Alignment.Center) {
+                Box(Modifier.fillMaxWidth().height(47.dp).clickable {latestUpdate(1)},contentAlignment=Alignment.Center) {
                     Text("下午",color=Color.White.copy(alpha=if(value==1) 1f else .55f),
-                        fontSize=if(value==1) 28.sp else 23.sp,fontWeight=FontWeight.Light)
+                        fontSize=22.sp,fontWeight=FontWeight.Light)
                 }
             }
         }
@@ -172,7 +179,7 @@ private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifi
 @Composable
 private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
     val density=LocalDensity.current
-    val stepPx=with(density) { 41.dp.toPx() }
+    val stepPx=with(density) { 38.dp.toPx() }
     val scope=rememberCoroutineScope()
     val haptics=LocalHapticFeedback.current
     val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
@@ -193,6 +200,13 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
         }
     }
     Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
+        .semantics(mergeDescendants=true) {
+            stateDescription=display(value)
+            customActions=listOf(
+                CustomAccessibilityAction("增加") {movingJob?.cancel();offsetPx=0f;liveUpdate((liveValue+1)%count);true},
+                CustomAccessibilityAction("減少") {movingJob?.cancel();offsetPx=0f;liveUpdate((liveValue-1+count)%count);true}
+            )
+        }
         .pointerInput(count,stepPx,reduceMotion) {
             var tracker=VelocityTracker()
             detectVerticalDragGestures(
@@ -244,7 +258,11 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
             for (row in -3..3) {
                 val distance=abs(row-fraction/stepPx)
                 val item=((value+row-shifted)%count+count)%count
-                Box(Modifier.fillMaxWidth().height(41.dp).clickable {
+                Box(Modifier.fillMaxWidth().height(38.dp).graphicsLayer {
+                    rotationX=(-(row-fraction/stepPx)*18f).coerceIn(-54f,54f)
+                    cameraDistance=12.dp.toPx()
+                    scaleX=(1f-distance*.065f).coerceIn(.75f,1f)
+                }.clickable {
                     movingJob?.cancel()
                     liveUpdate(item)
                     offsetPx=0f
@@ -255,12 +273,12 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                             distance<1.6f -> .58f
                             distance<2.6f -> .26f
                             else -> .06f
-                        }),fontSize=if(distance<.6f) 30.sp else 23.sp,fontWeight=FontWeight.Light,
+                        }),fontSize=22.sp,fontWeight=FontWeight.Light,
                         maxLines=1)
                 }
             }
         }, modifier=Modifier.fillMaxSize()) { measurables, constraints ->
-            val rowHeight = 41.dp.roundToPx()
+            val rowHeight = 38.dp.roundToPx()
             val cells = measurables.map { it.measure(Constraints.fixed(constraints.maxWidth,rowHeight)) }
             layout(constraints.maxWidth, constraints.maxHeight) {
                 val center = (constraints.maxHeight-rowHeight)/2
@@ -285,8 +303,8 @@ fun AppleAlarmTimeSelector(
     val safeHour=hour.coerceIn(0,23)
     val safeMinute=minute.coerceIn(0,59)
     Box(modifier.fillMaxWidth().height(235.dp),contentAlignment=Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(45.dp)
-            .background(Color(0xFF303137),RoundedCornerShape(12.dp)))
+        Box(Modifier.fillMaxWidth().height(38.dp)
+            .background(Color(0xFF2C2C2E),RoundedCornerShape(9999.dp)))
         Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),
             horizontalArrangement=Arrangement.spacedBy(4.dp),
             verticalAlignment=Alignment.CenterVertically) {
@@ -307,15 +325,15 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     var ttsLabel by remember { mutableStateOf(SamsungTtsSelector.label(ctx)) }
     var ttsPreview by remember { mutableStateOf(SamsungTtsSelector.lastStatus(ctx)) }
     val now=remember { LocalTime.now().plusMinutes(5) }
-    var hour by remember(initial) { mutableIntStateOf(initial?.hour?:now.hour) }
-    var minute by remember(initial) { mutableIntStateOf(initial?.minute?:now.minute) }
-    var label by remember(initial) { mutableStateOf(initial?.title?:"鬧鐘") }
-    var repeat by remember(initial) { mutableStateOf(initial?.days?:emptySet()) }
-    var voice by remember(initial) { mutableStateOf(initial?.weatherVoice?:true) }
-    var snooze by remember(initial) { mutableStateOf(initial?.snooze?:true) }
-    var snoozeMinutes by remember(initial) { mutableIntStateOf(initial?.snoozeMinutes?:9) }
+    var hour by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.hour?:now.hour) }
+    var minute by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.minute?:now.minute) }
+    var label by rememberSaveable(initial?.id) { mutableStateOf(initial?.title?:"鬧鐘") }
+    var repeat by rememberSaveable(initial?.id) { mutableStateOf(initial?.days?:emptySet()) }
+    var voice by rememberSaveable(initial?.id) { mutableStateOf(initial?.weatherVoice?:true) }
+    var snooze by rememberSaveable(initial?.id) { mutableStateOf(initial?.snooze?:true) }
+    var snoozeMinutes by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.snoozeMinutes?:9) }
     var chooseSnoozeMinutes by remember { mutableStateOf(false) }
-    var uri by remember(initial) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+"dawn") }
+    var uri by rememberSaveable(initial?.id) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+"dawn") }
     var choosing by remember { mutableStateOf(false) }
     var repeats by remember { mutableStateOf(false) }
     var editingLabel by remember { mutableStateOf(false) }
@@ -336,7 +354,9 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 Text(if(initial==null)"新增鬧鐘" else "編輯鬧鐘",color=Color.White,fontSize=18.sp,
                     textAlign=TextAlign.Center,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                 io.atmos.weather.ui.IOS27RoundControl("✓",onClick={
-                    val id=initial?.id?:((System.currentTimeMillis()%1000000).toInt()+1)
+                    val id=initial?.id ?: generateSequence(1) {it+1}.first {candidate ->
+                        WeatherAlarmStore.load(ctx).none {it.id==candidate}
+                    }
                     onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,true,voice,snooze,uri,
                         WeatherAlarmTime.validSnoozeMinutes(snoozeMinutes)))
                 },fill=Color(0xFFFF9F0A),foreground=Color.White)
@@ -352,12 +372,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                         horizontalArrangement=Arrangement.SpaceEvenly) {
                         listOf(7,1,2,3,4,5,6).forEach { day ->
                             val active=day in repeat
-                            Box(Modifier.size(38.dp).clip(CircleShape)
-                                .background(if(active) Color(0xFFFF9F0A) else Color(0xFF2C2C2E))
-                                .clickable { repeat=if(active) repeat-day else repeat+day },
-                                contentAlignment=Alignment.Center) {
-                                Text(weekdays[day-1],color=Color.White,fontSize=15.sp)
-                            }
+                            AlarmWeekday(day,active) {repeat=if(active) repeat-day else repeat+day}
                         }
                     }
                 }
@@ -390,8 +405,10 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
         }
         }
     }
-    if(chooseSnoozeMinutes) Dialog(onDismissRequest={chooseSnoozeMinutes=false}) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
+    if(chooseSnoozeMinutes) Dialog(onDismissRequest={chooseSnoozeMinutes=false},
+        properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.46f)),contentAlignment=Alignment.BottomCenter) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
             .background(night).padding(horizontal=20.dp,vertical=18.dp),
             horizontalAlignment=Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -409,6 +426,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 modifier=Modifier.fillMaxWidth())
             Text("$snoozeMinutes 分鐘",color=amber,fontSize=17.sp)
             Spacer(Modifier.height(12.dp))
+        }
         }
     }
     if(ttsOptions) Dialog(onDismissRequest={ttsOptions=false}) {
@@ -612,5 +630,21 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
                 drawLine(Color.White.copy(alpha=.8f),c+Offset(0f,-r*1.2f),c+Offset(0f,r*1.2f),1.dp.toPx())
             }
         }
+    }
+}
+
+@Composable
+private fun AlarmWeekday(day:Int,selected:Boolean,onClick:()->Unit) {
+    val presses=remember {MutableInteractionSource()}
+    val pressed by presses.collectIsPressedAsState()
+    val reduce=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
+    val scale by animateFloatAsState(if(pressed && !reduce) .96f else 1f,
+        animationSpec=if(reduce)tween(0) else spring(.72f,190f),label="repeat-day-press")
+    Box(Modifier.size(40.dp).graphicsLayer {scaleX=scale;scaleY=scale}
+        .clip(CircleShape).background(if(selected) Color(0xFFFF9F0A) else Color(0xFF2C2C2E))
+        .thinnSpecularEdge(20.dp)
+        .semantics {stateDescription=if(selected) "已選取" else "未選取"}
+        .clickable(interactionSource=presses,indication=null,onClick=onClick),contentAlignment=Alignment.Center) {
+        Text(weekdays[day-1],color=Color.White,fontSize=15.sp)
     }
 }

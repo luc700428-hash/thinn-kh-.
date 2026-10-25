@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,25 +31,26 @@ import androidx.compose.ui.unit.sp
 /** True inset-grouped presentation cells: do not call back into business repositories. */
 @Composable
 fun IOSV25SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
         .background(MaterialTheme.colorScheme.surface),content=content)
 }
 
 @Composable
 fun IOSV25SettingsCell(
     title:String, subtitle:String, icon:ImageVector, iconColor:Color,
-    trailing:String="", last:Boolean=false, onClick:()->Unit
+    trailing:String="", last:Boolean=false, badgeCount:Int=0, onClick:()->Unit
 ) {
     val palette=MaterialTheme.colorScheme
     val interactions=remember { MutableInteractionSource() }
     val held by interactions.collectIsPressedAsState()
     val fill by animateColorAsState(
-        if(held) palette.surfaceVariant else Color.Transparent,
+        if(held) { if(palette.background.red > .5f) Color(0xFFE5E5EA) else Color(0xFF2C2C2E) } else Color.Transparent,
         tween(if(held)80 else 250),label="settings-cell-highlight")
     Column {
         Row(Modifier.fillMaxWidth().background(fill)
+            .semantics(mergeDescendants=true) {contentDescription=listOf(title,subtitle,trailing).filter {it.isNotBlank()}.joinToString("，")}
             .clickable(interactionSource=interactions,indication=null,role=Role.Button,onClick=onClick)
-            .defaultMinSize(minHeight=52.dp)
+            .defaultMinSize(minHeight=48.dp)
             .padding(start=15.dp,end=12.dp,top=7.dp,bottom=7.dp),
             verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.size(29.dp).clip(RoundedCornerShape(7.dp)).background(iconColor),
@@ -58,8 +61,14 @@ fun IOSV25SettingsCell(
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)) {
                 Text(title,color=palette.onSurface,fontSize=16.sp,
                     fontWeight=FontWeight.Medium,lineHeight=21.sp)
-                if(subtitle.isNotBlank()) Text(subtitle,color=palette.onSurfaceVariant,
-                    fontSize=14.sp,lineHeight=19.sp)
+
+            }
+            if(badgeCount>0) {
+                Box(Modifier.height(20.dp).widthIn(min=22.dp).clip(RoundedCornerShape(9999.dp))
+                    .background(Color(0xFFFF3B30)).padding(horizontal=6.dp),contentAlignment=Alignment.Center) {
+                    Text(if(badgeCount>99) "99+" else "$badgeCount",color=Color.White,fontSize=14.sp)
+                }
+                Spacer(Modifier.width(6.dp))
             }
             if(trailing.isNotBlank()) {
                 Text(trailing,color=palette.onSurfaceVariant,fontSize=14.sp,maxLines=1)
@@ -69,6 +78,6 @@ fun IOSV25SettingsCell(
                 tint=Color(0xFFC7C7CC))
         }
         if(!last) Box(Modifier.padding(start=56.dp).fillMaxWidth().height(.5.dp)
-            .background(palette.outline.copy(alpha=.23f)))
+            .background(if(palette.background.red > .5f) ThinnDesignTokens.separatorLight else ThinnDesignTokens.separatorDark))
     }
 }
