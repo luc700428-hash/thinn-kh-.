@@ -57,21 +57,24 @@ private val UpdateCardBorder = Color.White.copy(alpha = .28f)
 
 @Composable
 fun AppUpdatePage(onClose: () -> Unit) {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
     val haptic = LocalHapticEngine.current
     val appearance = LocalAppearance.current
     val reduceMotion = context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
-    val scope = rememberCoroutineScope()
+    // A scope owned by the app process instead of Compose: closing this Dialog does
+    // not cancel an in-progress OTA transfer. MutableState mirrors the active task
+    // when the page is reopened. The OS may still stop the app process; see README.
+    val scope = OtaRetainedSession.scope
     var checking by remember { mutableStateOf(false) }
-    var installing by remember { mutableStateOf(false) }
-    var downloadJob by remember { mutableStateOf<Job?>(null) }
-    var pending by remember { mutableStateOf<ReleaseInfo?>(null) }
-    var pendingDelta by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("版本與更新中心已開啟") }
-    var downloaded by remember { mutableLongStateOf(0L) }
-    var totalBytes by remember { mutableStateOf<Long?>(null) }
-    var lastError by remember { mutableStateOf<String?>(null) }
-    var installerPrompted by remember { mutableStateOf(false) }
+    var installing by OtaRetainedSession.installing
+    var downloadJob by OtaRetainedSession.downloadJob
+    var pending by OtaRetainedSession.pending
+    var pendingDelta by OtaRetainedSession.pendingDelta
+    var status by OtaRetainedSession.status
+    var downloaded by OtaRetainedSession.downloaded
+    var totalBytes by OtaRetainedSession.totalBytes
+    var lastError by OtaRetainedSession.lastError
+    var installerPrompted by OtaRetainedSession.installerPrompted
 
     fun check() {
         if (checking || installing) return
@@ -138,7 +141,8 @@ fun AppUpdatePage(onClose: () -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) { check() }
+    // Do not reset a live download when the user navigates back to this page.
+    LaunchedEffect(Unit) { if(!installing && pending==null && !installerPrompted) check() }
 
     val light = if(reduceMotion) .12f else {
         val glow = rememberInfiniteTransition(label = "update glow")
