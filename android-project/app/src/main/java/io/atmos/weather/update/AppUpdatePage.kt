@@ -8,7 +8,6 @@ import io.atmos.weather.ui.GlassOutlinedButton as OutlinedButton
 import io.atmos.weather.ui.GlassIconButton as IconButton
 import androidx.compose.animation.AnimatedVisibility
 import io.atmos.weather.ui.AppleMotion
-import io.atmos.weather.ui.AppleGlassCard
 import io.atmos.weather.ui.ApplePullDownMenu
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -32,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -151,207 +151,100 @@ fun AppUpdatePage(onClose: () -> Unit) {
         }
     }
 
-    val light = if(reduceMotion) .12f else {
-        val glow = rememberInfiniteTransition(label = "update glow")
-        val animated by glow.animateFloat(
-            initialValue = .12f,targetValue = .28f,
-            animationSpec = infiniteRepeatable(
-                animation = tween((3800 - appearance.liquidMotion.coerceIn(0f, 1f) * 2600).toInt(), easing = AppleMotion.fluid),
-                repeatMode = RepeatMode.Reverse
-            ), label = "edge")
-        animated
+    // This scope owns only page dismissal; OTA jobs remain in OtaRetainedSession.
+    val uiScope=rememberCoroutineScope()
+    var pageShown by remember {mutableStateOf(false)}
+    var closingPage by remember {mutableStateOf(false)}
+    LaunchedEffect(Unit){pageShown=true}
+    val pageProgress by androidx.compose.animation.core.animateFloatAsState(
+        if(pageShown)1f else 0f,
+        tween(if(reduceMotion)0 else if(closingPage)260 else 320,easing=AppleMotion.snap),
+        label="software-update-navigation")
+    fun closeUpdatePage() {
+        if(closingPage)return
+        closingPage=true;pageShown=false
+        uiScope.launch {if(!reduceMotion)kotlinx.coroutines.delay(260);onClose()}
     }
-
-    // V25 presents a content-first update center: calm surfaces, lightweight controls.
-    // OTA state and package validation remain owned by AppUpdater above.
+    var reminderStatus by remember {mutableStateOf("")}
     var showBuildDetails by remember { mutableStateOf(false) }
-    var reminderStatus by remember { mutableStateOf("") }
     val prefs=remember(context) {context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE)}
     var automatic by remember {mutableStateOf(prefs.getBoolean("check_updates_automatically",true))}
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    val otaState:NextOtaState=when {
+        checking->NextOtaState.Checking
+        installing && status.contains("驗證")->NextOtaState.Verifying
+        installing->NextOtaState.Downloading(
+            totalBytes?.takeIf {it>0L}?.let {(downloaded.toFloat()/it).coerceIn(0f,1f)} ?: 0f,
+            indeterminate=totalBytes?.let {it>0L}!=true)
+        ready && !installerPrompted->NextOtaState.ReadyToInstall
+        lastError!=null->NextOtaState.Failed(lastError ?: "更新失敗")
+        installerPrompted->NextOtaState.Installing
+        pending!=null->NextOtaState.Available(pending!!.version,emptyList())
+        else->NextOtaState.Idle
+    }
+    Dialog(onDismissRequest={closeUpdatePage()},properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) {
-        Box(Modifier.fillMaxSize().thinnBackdropSource(backdrop).background(MaterialTheme.colorScheme.background)) {
-            // Ambient light stays behind content rather than obscuring update text.
-            Box(Modifier.fillMaxWidth().height(290.dp).background(
-                Brush.radialGradient(listOf(UpdateBlue.copy(alpha=light*.08f),Color.Transparent))
-            ))
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-                .appleBouncingScroll().verticalScroll(rememberScrollState())
-                .padding(horizontal=16.dp, vertical=18.dp)) {
-                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    io.atmos.weather.ui.IOS27RoundControl("‹",onClick={
-                        haptic?.play(HapticEngine.Event.TAP);onClose()
-                    },fill=MaterialTheme.colorScheme.surface,foreground=UpdateText)
-                    Box(Modifier.weight(1f),contentAlignment=Alignment.Center) {
-                        Text("軟體更新",color=UpdateText,fontSize=21.sp,fontWeight=FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.width(42.dp))
+            val palette=MaterialTheme.colorScheme
+            Column(Modifier.fillMaxSize().graphicsLayer {translationX=(1f-pageProgress)*size.width}
+                .thinnBackdropSource(backdrop).background(palette.background)
+                .statusBarsPadding().navigationBarsPadding()) {
+                Box(Modifier.fillMaxWidth().height(64.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
+                    io.atmos.weather.ui.IOS27RoundControl("‹",onClick={closeUpdatePage()},
+                        modifier=Modifier.align(Alignment.CenterStart),fill=palette.surface,foreground=palette.onSurface)
+                    Text("軟體更新",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface)
                 }
-                Spacer(Modifier.height(16.dp))
-                UpdatePanel(glow=light) {
-                    ApplePullDownMenu(label="自動更新",choices=listOf("開啟", "關閉"),
-                        selected=if(automatic) "開啟" else "關閉",onChoose={ choice ->
-                            automatic=choice=="開啟"
-                            prefs.edit().putBoolean("check_updates_automatically",automatic).apply()
-                            io.atmos.weather.update.UpdateCheckWorker.schedule(context)
-                        })
-                    Spacer(Modifier.height(12.dp))
-                    Text("更新通道："+(if(BuildConfig.THINN_OTA_CHANNEL=="preview") "測試版" else "正式版"),
-                        color=UpdateSoft,fontSize=15.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("開啟後自動檢查並提醒；安裝由 Android 系統確認。",color=UpdateSoft,fontSize=14.sp)
-                }
-                Spacer(Modifier.height(20.dp))
-
-                UpdatePanel(glow=light) {
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Box(Modifier.size(64.dp).clip(RoundedCornerShape(22.dp))
-                            .background(Brush.verticalGradient(listOf(
-                                Color(0xA5BEE8FA),Color(0x665E91B1),Color(0x863C6688))))
-                            .border(1.dp,Color.White.copy(alpha=.32f),RoundedCornerShape(22.dp)),
-                            contentAlignment=Alignment.Center) {
-                            Icon(Icons.Rounded.SystemUpdate,"已安裝版本",tint=Color.White,
-                                modifier=Modifier.size(31.dp))
-                        }
-                        Spacer(Modifier.width(17.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("目前版本",color=UpdateSoft,fontSize=14.sp)
-                            Text("V${BuildConfig.VERSION_NAME.substringBefore('.')}",color=UpdateText,
-                                fontSize=33.sp,fontWeight=FontWeight.Bold)
-                            Text(BuildConfig.VERSION_NAME,color=UpdateSoft,fontSize=15.sp)
-                        }
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.CheckCircle,"已安裝",tint=Color(0xFF34C759),
-                            modifier=Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("此版本已安裝在你的手機",color=UpdateSoft,fontSize=14.sp)
-                    }
-                    Spacer(Modifier.height(13.dp))
-                    Text(if(showBuildDetails) "收起版本詳情  ↑" else "版本詳情  ↓",
-                        color=UpdateSoft,fontSize=14.sp,
-                        modifier=Modifier.clickable {
-                            haptic?.play(HapticEngine.Event.TAP)
-                            showBuildDetails = !showBuildDetails
-                        })
-                    if(showBuildDetails) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("建置識別碼 · ${BuildConfig.THINN_BUILD_SHA.take(10)}",
-                            color=UpdateSoft,fontSize=14.sp)
-                    }
-                }
-                Spacer(Modifier.height(20.dp))
-
-                // Existing download and signature verification remain unchanged.
-                val otaState:NextOtaState = when {
-                    checking -> NextOtaState.Checking
-                    installing -> NextOtaState.Downloading(
-                        totalBytes?.takeIf {it>0L}?.let { (downloaded.toFloat()/it).coerceIn(0f,1f) } ?: 0f)
-                    ready && !installerPrompted -> NextOtaState.ReadyToInstall
-                    lastError != null -> NextOtaState.Failed(lastError ?: "更新失敗")
-                    installerPrompted -> NextOtaState.Installing
-                    pending != null -> NextOtaState.Available(
-                        pending?.version ?: "新版",
-                        pendingDelta.lineSequence().map {it.trim()}
-                            .filter {it.startsWith("- ") || it.startsWith("* ")}
-                            .take(12).map {it.drop(2)}.toList())
-                    else -> NextOtaState.Idle
-                }
-                NextOtaStatusCard(
-                    state=otaState,
-                    onCheck={check()},
-                    onDownload={pending?.let {downloadOfficial(it)}},
-                    onInstall={pending?.let {installOfficial(it)}},
-                    reduceTransparency=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
-                        .getBoolean("reduce_transparency",false)
-                )
-                if(lastError!=null && ready) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(lastError ?: "",color=MaterialTheme.colorScheme.error,fontSize=14.sp)
-                }
-                if(!checking && status != "版本與更新中心已開啟") {
-                    Spacer(Modifier.height(12.dp))
-                    Text(status,color=UpdateSoft,fontSize=14.sp)
-                }
-                pending?.let { release ->
-                    Spacer(Modifier.height(10.dp))
-                    release.sizeBytes?.let { bytes ->
-                        Text(android.text.format.Formatter.formatFileSize(context,bytes),color=UpdateSoft,fontSize=14.sp)
-                    }
-                    if(!installing) {
-                        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable {
-                            reminderStatus=runCatching {UpdateReminderWorker.scheduleTonight(context,release.version)}
-                                .fold({"將於 $it 提醒更新；安裝時仍需系統確認。"},{it.localizedMessage ?: "目前無法安排通知"})
-                        },contentAlignment=Alignment.Center) {Text("今晚提醒更新",color=UpdateBlue,fontSize=17.sp)}
-                        if(reminderStatus.isNotBlank()) Text(reminderStatus,color=UpdateSoft,fontSize=14.sp)
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    UpdatePanel(glow=light) {
-                        Text("這次更新帶來什麼",color=UpdateText,fontSize=18.sp,
-                            fontWeight=FontWeight.SemiBold)
-                        Spacer(Modifier.height(11.dp))
-                        UpdateReleaseNotes(pendingDelta.ifBlank {"正在載入版本內容…"})
-                    }
-                }
-                if(installing) {
+                Column(Modifier.fillMaxSize().appleBouncingScroll().verticalScroll(rememberScrollState())
+                    .padding(horizontal=16.dp)) {
                     Spacer(Modifier.height(14.dp))
-                    OutlinedButton(onClick={OtaDownloadService.cancel(context);downloadJob?.cancel();status="正在暫停下載…"},
-                        modifier=Modifier.fillMaxWidth()) { Text("暫停下載") }
-                }
-                Spacer(Modifier.height(22.dp))
-                Text("系統更新安裝前會進行安全驗證，並由手機確認更新。",
-                    color=UpdateSoft.copy(alpha=.88f),fontSize=14.sp,lineHeight=20.sp)
-                Spacer(Modifier.height(15.dp))
-            }
-        }
-        }
-    }
-
-}
-
-@Composable
-private fun UpdatePanel(glow: Float, content: @Composable ColumnScope.() -> Unit) {
-    val context=LocalContext.current
-    val opaque=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
-        .getBoolean("reduce_transparency",false)
-    AppleGlassCard(modifier=Modifier.fillMaxWidth(),radius=24.dp,
-        contentPadding=PaddingValues(0.dp)) {
-        Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(20.dp),content=content)
-    }
-}
-
-/** Format the exact bundled/GitHub Release markdown consistently with thinn-khì glass UI. */
-@Composable
-private fun UpdateReleaseNotes(markdown: String) {
-    val lines = remember(markdown) { markdown.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList() }
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        lines.forEach { line ->
-            when {
-                line.startsWith("# ") -> Text(
-                    line.removePrefix("# ").replace("**", ""),
-                    color = UpdateText, fontWeight = FontWeight.Bold, fontSize = 17.sp, lineHeight = 25.sp
-                )
-                line.startsWith("## ") -> {
+                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(palette.surface)) {
+                        ApplePullDownMenu(label="自動更新",choices=listOf("開啟","關閉"),
+                            selected=if(automatic)"開啟" else "關閉",onChoose={choice ->
+                                automatic=choice=="開啟"
+                                prefs.edit().putBoolean("check_updates_automatically",automatic).apply()
+                                UpdateCheckWorker.schedule(context)
+                            },modifier=Modifier.padding(horizontal=16.dp))
+                        Box(Modifier.fillMaxWidth().padding(start=16.dp,end=16.dp).height(.5.dp)
+                            .background(palette.onSurface.copy(alpha=.10f)))
+                        Row(Modifier.fillMaxWidth().heightIn(min=52.dp).padding(horizontal=16.dp),
+                            verticalAlignment=Alignment.CenterVertically) {
+                            Text("更新通道",fontSize=17.sp,color=palette.onSurface,modifier=Modifier.weight(1f))
+                            Text(if(BuildConfig.THINN_OTA_CHANNEL=="preview")"測試版" else "正式版",
+                                fontSize=17.sp,color=palette.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    NextOtaStatusCard(state=otaState,
+                        onCheck={check()},onDownload={pending?.let {downloadOfficial(it)}},
+                        onInstall={pending?.let {installOfficial(it)}},
+                        version=pending?.version ?: BuildConfig.VERSION_NAME,
+                        sizeBytes=pending?.sizeBytes,releaseNotes=pendingDelta,
+                        status=if(ready && lastError!=null)lastError!! else status,
+                        hasPending=pending!=null,resumeAvailable=downloaded>0L,
+                        onTonight=if(pending!=null && !installing && !installerPrompted) ({
+                            pending?.let {release ->
+                                reminderStatus=runCatching {UpdateReminderWorker.scheduleTonight(context,release.version)}
+                                    .fold({"將於 "+it+" 提醒更新；安裝時仍需系統確認。"},
+                                        {it.localizedMessage ?: "目前無法安排通知"})
+                            };Unit
+                        }) else null,
+                        onPause={OtaDownloadService.cancel(context);downloadJob?.cancel();status="正在暫停下載…"},
+                        reduceTransparency=prefs.getBoolean("reduce_transparency",false))
                     Spacer(Modifier.height(9.dp))
-                    Text(line.removePrefix("## ").replace("**", ""),
-                        color = UpdateBlue, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 22.sp)
+                    Text(if(reminderStatus.isNotBlank())reminderStatus else
+                        "選擇「今晚更新」後，將在今晚提醒你安裝。Android 安裝時仍需由你確認。",
+                        fontSize=12.sp,lineHeight=17.sp,color=palette.onSurfaceVariant,
+                        modifier=Modifier.padding(horizontal=16.dp))
+                    Spacer(Modifier.height(20.dp))
+                    Text(if(showBuildDetails)"收起版本詳情" else "版本詳情",
+                        color=palette.primary,fontSize=14.sp,modifier=Modifier
+                            .clickable {showBuildDetails=!showBuildDetails}.padding(16.dp))
+                    if(showBuildDetails) {
+                        Text("目前版本 "+BuildConfig.VERSION_NAME+"\n建置識別碼 · "+BuildConfig.THINN_BUILD_SHA.take(10),
+                            color=palette.onSurfaceVariant,fontSize=12.sp,lineHeight=18.sp,
+                            modifier=Modifier.padding(horizontal=16.dp))
+                    }
+                    Spacer(Modifier.height(24.dp))
                 }
-                line.startsWith("### ") -> {
-                    Spacer(Modifier.height(5.dp))
-                    Text(line.removePrefix("### ").replace("**", ""),
-                        color = UpdateText, fontWeight = FontWeight.SemiBold, fontSize=16.sp, lineHeight = 21.sp)
-                }
-                line.startsWith("- ") || line.startsWith("* ") -> Row(
-                    modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top
-                ) {
-                    Text("•", color = UpdateBlue, fontSize=16.sp, lineHeight = 20.sp)
-                    Spacer(Modifier.width(8.dp))
-                    Text(line.drop(2).replace("**", ""), color = UpdateSoft,
-                        fontSize=15.sp, lineHeight = 20.sp, modifier = Modifier.weight(1f))
-                }
-                else -> Text(line.replace("**", ""), color = UpdateSoft, fontSize=15.sp, lineHeight = 20.sp)
             }
         }
     }

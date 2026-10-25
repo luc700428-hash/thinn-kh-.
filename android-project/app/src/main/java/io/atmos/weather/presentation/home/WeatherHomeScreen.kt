@@ -219,6 +219,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     var settingsOpen by remember { mutableStateOf(false) }
+    var settingsDetailOpen by remember {mutableStateOf(false)}
     var lifestyleSettingsOpen by remember { mutableStateOf(false) }
     var pushSettingsOpen by remember { mutableStateOf(false) }
     var diagnosticsOpen by remember { mutableStateOf(false) }
@@ -459,7 +460,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         snapshot?.visibilityM, thunderCue + demoThunderCue)
     var details by remember { mutableStateOf<Pair<String,String>?>(null) }
     var showLifestyleDetails by remember { mutableStateOf(false) }
-    val reducedMotion = settingsPrefs.getBoolean("reduce_motion",false)
+    val reducedMotion = io.atmos.weather.ui.rememberAppleReduceMotion()
     val transition = rememberInfiniteTransition(label="sky")
     // Keep the animation value as State. Reading it in this parent would recompose the
     // complete forecast screen every frame (including scrolling and lists).
@@ -907,7 +908,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onUpdateCenter = { updatePageOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
                 onTyphoons = { typhoonPageOpen = true },
-                onNaturalVoice = { naturalVoiceOpen=true })
+                onNaturalVoice = { naturalVoiceOpen=true },
+                onDetailVisibility = {settingsDetailOpen=it})
             } // when(page)
             } // HorizontalPager
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
@@ -1186,7 +1188,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (earthquakePageOpen) {
             EarthquakeCenterPage(onClose={earthquakePageOpen=false})
         }
-        AppGlassNavigation(
+        if(!settingsDetailOpen && !settingsOpen && !updatePageOpen && !weatherAlarmOpen) AppGlassNavigation(
             selected = mainPager.currentPage,
             onSelect = { settingsOpen=false; showMainTab(it) },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp))

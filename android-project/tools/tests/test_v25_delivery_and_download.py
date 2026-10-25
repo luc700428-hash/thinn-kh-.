@@ -62,7 +62,7 @@ class NativeDownloadContracts(unittest.TestCase):
         s=self.read('update/AppUpdater.kt')
         for token in ['"Range"','"If-Range"','response==206','output.fd.sync()','part.renameTo(target)','verifyPackage(context,release,target)','currentCerts != updateCerts','packageInfo.longVersionCode <= installed.longVersionCode','APK SHA-256 驗證失敗']:self.assertIn(token,s)
     def test_drag_is_attached_to_thumb(self):
-        s=self.read('alarm/WeatherAlarmRingActivity.kt');thumb=s.index('.size(56.dp)');gesture=s.index('.pointerInput(maxDrag)')
+        s=self.read('alarm/WeatherAlarmRingActivity.kt');thumb=s.index('.size(thumbSize)');gesture=s.index('.pointerInput(maxDrag)')
         self.assertGreater(gesture,thumb);self.assertIn('dragPx >= maxDrag * .75f',s);self.assertIn('thresholdReached = true',s);self.assertIn('if(closing) return',s)
     def test_no_default_publication(self):
         w=(ROOT/'.github/workflows/build-apk.yml').read_text();u=(ROOT/'delivery-tools/UPLOAD.sh').read_text()

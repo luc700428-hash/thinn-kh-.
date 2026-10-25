@@ -8,8 +8,10 @@ class R11UITests(unittest.TestCase):
         s=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
         # V25 design: AM always above PM, and dragging up selects PM.
         self.assertIn('V25AlarmMeridiem.fromDrag(', s)
-        self.assertIn('val targetY=if(value==V25AlarmMeridiem.AM) 0.dp else 55.dp', s)
-        self.assertIn('.offset(y=selectedY)', s)
+        self.assertIn('val step=with(density){38.dp.toPx()}', s)
+        self.assertIn('center+i*row+y.roundToInt()', s)
+        meridiem=s.split('private fun MeridiemWheel(',1)[1].split('private fun Wheel(',1)[0]
+        self.assertNotIn('.background(',meridiem)  # one shared highlight, not a second AM/PM pill
         self.assertIn('Text("上午"', s)
         self.assertIn('Text("下午"', s)
         self.assertLess(s.index('Text("上午"'), s.index('Text("下午"'))

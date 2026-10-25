@@ -34,6 +34,7 @@ fun NextOpticalSurface(
     pressed: Boolean = false,
     reduceTransparency: Boolean = false,
     useBackdrop: Boolean = false,
+    calm: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(cornerRadiusDp.dp)
@@ -41,7 +42,7 @@ fun NextOpticalSurface(
     val ctx=LocalContext.current
     val reducedMotion=ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
-    val opticalPhase=if(reducedMotion || reduceTransparency) 0.5f else {
+    val opticalPhase=if(reducedMotion || reduceTransparency || calm) 0.5f else {
         val transition=rememberInfiniteTransition(label="v25-control-light")
         val t by transition.animateFloat(initialValue=.36f,targetValue=.79f,
             animationSpec=infiniteRepeatable(tween(5200),RepeatMode.Reverse),
@@ -62,7 +63,7 @@ fun NextOpticalSurface(
         val w = size.width
         val h = size.height
         // A small, localized lens flare on touch; never blanket-flood content.
-        if (!reduceTransparency) {
+        if (!reduceTransparency && !calm) {
             val light = Offset(w * x, h * .08f)
             val radius = w.coerceAtLeast(h) * .82f
             drawRoundRect(
@@ -82,10 +83,10 @@ fun NextOpticalSurface(
                 colors = listOf(
                     Color.White.copy(alpha = if (pressed) .72f else .42f),
                     Color.White.copy(alpha = .13f),
-                    Color(0xFFBCEBFF).copy(alpha = if(lightTheme) .56f else .24f)
+                    Color.White.copy(alpha = if(calm) 0f else if(lightTheme) .56f else .24f)
                 ), start = Offset(0f, 0f), end = Offset(w, h)
             ),
-            style = Stroke(width = 1.1.dp.toPx()),
+            style = Stroke(width = (if(calm).6f else 1.1f).dp.toPx()),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadiusDp.dp.toPx())
         )
     }) { content() }

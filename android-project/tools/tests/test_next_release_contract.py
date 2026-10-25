@@ -78,6 +78,6 @@ class NextIntegrationReleaseContract(unittest.TestCase):
         nav=(BASE/'ui/GlassNavigation.kt').read_text(encoding='utf-8')
         for item in ('reduceTransparency', 'drawWithContent','Brush.radialGradient'):
             self.assertIn(item,surface)
-        self.assertIn('reduceMotion=prefs.getBoolean(',nav)
+        self.assertIn('reduceMotion=rememberAppleReduceMotion()',nav)
 
 if __name__=='__main__':unittest.main()

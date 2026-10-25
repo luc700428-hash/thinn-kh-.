@@ -5,17 +5,22 @@ BASE=Path(__file__).resolve().parents[2]/'app/src/main/java/io/atmos/weather'
 class V25UpdateCenter(unittest.TestCase):
     def test_new_center_has_real_version_and_readable_hierarchy(self):
         src=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
-        for expected in ('V${BuildConfig.VERSION_NAME.substringBefore',
-                         '此版本已安裝在你的手機', '這次更新帶來什麼',
-                         'AppleGlassCard(', '系統更新'):
-            self.assertIn(expected,src)
+        card=(BASE/'next/NextOtaPresentation.kt').read_text(encoding='utf-8')
+        self.assertIn('version=pending?.version ?: BuildConfig.VERSION_NAME',src)
+        self.assertIn('sizeBytes=pending?.sizeBytes,releaseNotes=pendingDelta',src)
+        self.assertEqual(src.count('NextOtaStatusCard('),1)
+        for expected in ('此版本已安裝在你的手機','這次更新帶來什麼',
+                         'UpdateVersionArtwork(version)','立即更新','今晚更新'):
+            self.assertIn(expected,card)
+        self.assertNotIn('AppleIntelligenceGlow(',card)
+        self.assertNotIn('iOS 27',src)
         self.assertNotIn('程式來源：',src)
         self.assertNotIn('更新來源：GitHub Releases',src)
         # Authentic provenance remains available behind an opt-in details row.
         self.assertIn('BuildConfig.THINN_BUILD_SHA.take(10)',src)
         self.assertIn('var showBuildDetails by remember { mutableStateOf(false) }',src)
         self.assertIn('if(showBuildDetails)',src)
-        self.assertIn('Modifier.clickable',src)
+        self.assertIn('.clickable {showBuildDetails=!showBuildDetails}',src)
     def test_integrated_state_is_real_and_never_fakes_install_success(self):
         src=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
         for expected in ('AppUpdater.findUpdate(context)',
@@ -26,7 +31,9 @@ class V25UpdateCenter(unittest.TestCase):
         self.assertNotIn('NextOtaState.Completed -> "已確認完成升級。"',src)
     def test_status_card_no_longer_uses_next_brand(self):
         src=(BASE/'next/NextOtaPresentation.kt').read_text(encoding='utf-8')
-        self.assertIn('V25 · 更新狀態',src)
+        self.assertIn('Text("thinn-khì "+version.removePrefix("v")',src)
+        self.assertIn('onPressed=onTonight',src)
+        self.assertIn('enabled=action!=null',src)
         self.assertNotIn('THINN-KHÌ NEXT',src)
         self.assertIn('ProgressBarRangeInfo',src)
     def test_release_gates_remain_mandatory(self):

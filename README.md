@@ -2,7 +2,7 @@
 
 Android 天氣、地震與生活工具 App；Kotlin / Jetpack Compose，Android 12 以上。
 
-本次更新：[V25 原生更新內容與驗證範圍](docs/V25_UPDATE_20261025.md)。
+本次更新：[四張參考圖與 Dock 更新](docs/V25_REFERENCE_REDESIGN_20261026.md)。
 
 本機需要 JDK 17、Android SDK Platform 36 / Build Tools 36.0.0；在 android-project 執行 `bash BUILD_APK.sh`。工程附 Gradle 8.13 Wrapper。
 

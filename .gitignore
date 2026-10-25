@@ -33,3 +33,7 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Generated local Python validation files
+**/__pycache__/
+*.py[cod]

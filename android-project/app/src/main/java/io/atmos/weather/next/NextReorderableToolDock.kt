@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -94,14 +97,17 @@ fun NextReorderableToolDock(
     var dockWidthPx by remember { mutableIntStateOf(0) }
     var scrubbing by remember { mutableStateOf(false) }
     var scrubX by remember { mutableFloatStateOf(0f) }
+    var displayId by remember {mutableStateOf(selectedId)}
+    LaunchedEffect(selectedId) {displayId=selectedId}
     val density = LocalDensity.current
     val lightTheme=MaterialTheme.colorScheme.background.red > .5f
-    val activeInk=if(lightTheme) Color(0xFF007AFF) else Color(0xFFF4FBFF)
-    val inactiveInk=if(lightTheme) Color(0xFF747783) else Color(0xFFBACAD8)
+    val activeInk=if(lightTheme) Color(0xFF007AFF) else Color(0xFF0A84FF)
+    val inactiveInk=if(lightTheme) Color(0xFF636366) else Color(0xFFAEAEB2)
     val dockInsetPx = with(density) { 6.dp.toPx() }
-    val currentIndex = visible.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)
-    val slotPx = ((dockWidthPx.toFloat() - 2f*dockInsetPx) / visible.size.coerceAtLeast(1)).coerceAtLeast(1f)
-    fun previewIndex(): Int = ((scrubX-dockInsetPx) / slotPx).toInt().coerceIn(0,visible.lastIndex.coerceAtLeast(0))
+    val currentIndex = visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)
+    val geometry=DockScrubGeometry(dockWidthPx.toFloat(),dockInsetPx,visible.size.coerceAtLeast(1))
+    val slotPx=geometry.slot
+    fun previewIndex(): Int = geometry.nearest(scrubX)
 
     fun move(id: String, delta: Int): Boolean {
         if (!allowReorder) return false
@@ -120,7 +126,9 @@ fun NextReorderableToolDock(
         ?: currentIndex
     val activeDisplayIndex=if(scrubbing && visible.isNotEmpty()) previewIndex() else lightIndex
     val lightX=if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/visible.size
-    NextOpticalSurface(modifier = modifier, cornerRadiusDp = 9999f, useBackdrop = true, touchX = lightX,
+    NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
+        ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
+        cornerRadiusDp = 9999f, useBackdrop = true, touchX = lightX, calm = true,
         pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency) {
         Box(Modifier.fillMaxWidth()
             .onSizeChanged { dockWidthPx=it.width }
@@ -128,16 +136,17 @@ fun NextReorderableToolDock(
                 if(visible.isNotEmpty()) detectHorizontalDragGestures(
                     onDragStart={ start ->
                         scrubbing=true
-                        scrubX=start.x.coerceIn(dockInsetPx+slotPx/2f,(dockWidthPx-dockInsetPx-slotPx/2f).coerceAtLeast(dockInsetPx+slotPx/2f))
+                        scrubX=geometry.clamp(start.x)
                     },
                     onHorizontalDrag={ change,_ ->
-                        scrubX=change.position.x.coerceIn(dockInsetPx+slotPx/2f,(dockWidthPx-dockInsetPx-slotPx/2f).coerceAtLeast(dockInsetPx+slotPx/2f))
+                        scrubX=geometry.clamp(change.position.x)
                         change.consume()
                     },
                     onDragEnd={
                         val destination=visible.getOrNull(previewIndex())
                         scrubbing=false
                         if(destination != null) {
+                            displayId=destination.id
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             latestOnSelected(destination.id)
                         }
@@ -169,7 +178,7 @@ fun NextReorderableToolDock(
                         animationSpec = NextMotionTokens.fastSpring(),
                         label = "next-dock-scale"
                     )
-                    val selected = action.id == (if(scrubbing) visible.getOrNull(activeDisplayIndex)?.id else selectedId)
+                    val selected = action.id == (if(scrubbing) visible.getOrNull(activeDisplayIndex)?.id else displayId)
                     Column(
                         modifier = Modifier.weight(1f).height(58.dp)
                             .graphicsLayer(scaleX = scale, scaleY = scale, translationX = if (reduceMotion) 0f else localX)
@@ -186,14 +195,15 @@ fun NextReorderableToolDock(
                                 interactionSource = interaction,
                                 indication = null,
                                 role = Role.Tab,
-                                onClick = { latestOnSelected(action.id) }
-                            ).padding(vertical = 7.dp),
+                                onClick = { displayId=action.id;latestOnSelected(action.id) }
+                            ).padding(vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Image(action.icon, null, modifier = Modifier.size(22.dp),
+                        Image(action.icon, null, modifier = Modifier.size(25.dp),
                             colorFilter = ColorFilter.tint(if (selected) activeInk else inactiveInk))
-                        Text(action.label, fontSize = 14.sp,
+                        Text(action.label, fontSize = 11.sp,lineHeight=14.sp,
+                            fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Medium,
                             color = if (selected) activeInk else inactiveInk, maxLines = 1)
                     }
                 }
@@ -204,7 +214,7 @@ fun NextReorderableToolDock(
                         Modifier.width(65.dp).height(58.dp).clickable { showOverflow = !showOverflow }
                             .padding(vertical = 7.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Image(Icons.Rounded.MoreHoriz, null, Modifier.size(22.dp),
                             colorFilter = ColorFilter.tint(Color.White))

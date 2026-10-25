@@ -102,6 +102,7 @@ class WeatherAlarmRingActivity : ComponentActivity() {
             androidx.activity.compose.BackHandler(enabled=true) { /* Keep explicit stop/snooze controls. */ }
             AlarmFullScreen(
                 timeText = timeText,
+                label = info.title.ifBlank {"鬧鐘"},
                 allowSnooze = info.snooze,
                 reduceMotion = reduceMotion,
                 onSnooze = { close(true) },
@@ -129,6 +130,7 @@ class WeatherAlarmRingActivity : ComponentActivity() {
 @Composable
 private fun AlarmFullScreen(
     timeText: String,
+    label: String,
     allowSnooze: Boolean,
     reduceMotion: Boolean,
     onSnooze: () -> Unit,
@@ -141,8 +143,17 @@ private fun AlarmFullScreen(
         val compact = maxHeight < 620.dp
         val titleTop = maxHeight * (if (compact) .12f else .20f)
         val controlsBottom = maxHeight * (if (compact) .045f else .085f)
-        val buttonHeight = 68.dp
-        val trackHeight = 68.dp
+        // The new reference is proportional: large clock and deep capsules.
+        // Compact landscape keeps the previous usable 68dp controls.
+        val density=LocalDensity.current
+        val rawClockSize=if(compact)92.sp else (maxWidth.value*.35f).coerceIn(92f,144f).sp
+        val clockSize=rawClockSize/density.fontScale
+        val labelSize=(if(compact)18f else (maxWidth.value*.06f).coerceIn(18f,24f)).sp
+        val buttonHeight=if(compact)68.dp else (maxWidth*.24f).coerceIn(68.dp,96.dp)
+        val trackHeight=buttonHeight
+        val thumbSize=trackHeight-12.dp
+        val controlsGap=if(compact)18.dp else (maxWidth*.06f).coerceIn(18.dp,24.dp)
+        val clockIconSize=if(compact)23.dp else (maxWidth*.075f).coerceIn(23.dp,30.dp)
 
         // Pure-black background and uncluttered clock face, matching the reference hierarchy.
         Column(
@@ -151,26 +162,26 @@ private fun AlarmFullScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                AlarmOutlineIcon()
-                androidx.compose.material3.Text("鬧鐘", fontSize = 18.sp,
+                AlarmOutlineIcon(Modifier.size(clockIconSize))
+                androidx.compose.material3.Text(label, fontSize = labelSize,maxLines=2,
                     color = Color(0xFFA1A1A6), fontWeight = FontWeight.Medium)
             }
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(10.dp))
             androidx.compose.material3.Text(
                 timeText,
-                fontSize = 92.sp,
+                fontSize = clockSize,
                 letterSpacing = (-3).sp,
                 style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"),
                 color = Color.White,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 textAlign = TextAlign.Center
             )
         }
 
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth(.82f).padding(bottom = controlsBottom),
-            verticalArrangement = Arrangement.spacedBy(22.dp),
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth(.86f).padding(bottom = controlsBottom),
+            verticalArrangement = Arrangement.spacedBy(controlsGap),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (allowSnooze) {
@@ -183,12 +194,12 @@ private fun AlarmFullScreen(
                 )
                 Box(
                     Modifier.fillMaxWidth().height(buttonHeight)
-                        .graphicsLayer { scaleX = scale; scaleY = scale }
-                        .clip(RoundedCornerShape(44.dp))
+                        .graphicsLayer { scaleX = scale; scaleY = scale;alpha=if(pressed).92f else 1f }
+                        .clip(RoundedCornerShape(9999.dp))
                         .background(Brush.verticalGradient(listOf(
                             Color(0xFFFF9500), Color(0xFFFF9500))))
-                        .border(.7.dp, Color(0xFFFFC876).copy(alpha = .62f), RoundedCornerShape(44.dp))
-                        .thinnSpecularEdge(34.dp)
+                        .border(.7.dp, Color(0xFFFFC876).copy(alpha = .62f), RoundedCornerShape(9999.dp))
+                        .thinnSpecularEdge(trackHeight/2)
                         .clickable(interactionSource = presses, indication = null) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSnooze()
@@ -196,14 +207,13 @@ private fun AlarmFullScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     androidx.compose.material3.Text("稍後提醒", color = Color.White,
-                        fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                        fontSize = (buttonHeight.value*.25f).coerceIn(20f,24f).sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
             var trackWidth by remember { mutableIntStateOf(0) }
-            val density = LocalDensity.current
             val insetPx = with(density) { 6.dp.toPx() }
-            val thumbPx = with(density) { 56.dp.toPx() }
+            val thumbPx = with(density) { thumbSize.toPx() }
             val maxDrag = (trackWidth - thumbPx - insetPx * 2f).coerceAtLeast(1f)
             var dragPx by remember { mutableFloatStateOf(0f) }
             var fingerDown by remember { mutableStateOf(false) }
@@ -225,10 +235,10 @@ private fun AlarmFullScreen(
             Box(
                 Modifier.fillMaxWidth().height(trackHeight)
                     .onSizeChanged { trackWidth = it.width }
-                    .clip(RoundedCornerShape(48.dp))
+                    .clip(RoundedCornerShape(9999.dp))
                     .background(Color(0xFF1C1C1E))
-                    .border(.7.dp, Color.White.copy(alpha = .075f), RoundedCornerShape(48.dp))
-                    .thinnSpecularEdge(34.dp)
+                    .border(.7.dp, Color.White.copy(alpha = .075f), RoundedCornerShape(9999.dp))
+                    .thinnSpecularEdge(trackHeight/2)
                     .semantics {
                         // Accessibility stop alternative without a visually separate Android-style button.
                         onClick(label = "無法滑動？輕觸這裡停止鬧鐘") {
@@ -243,20 +253,19 @@ private fun AlarmFullScreen(
                     style=androidx.compose.ui.text.TextStyle(brush=Brush.linearGradient(
                         listOf(Color(0xFFA2A2A7),Color.White.copy(alpha=.85f),Color(0xFFA2A2A7)),
                         start=Offset(trackWidth*(shimmer-.3f),0f),end=Offset(trackWidth*(shimmer+.3f),0f))),
-                    modifier = Modifier.padding(start = 53.dp)
-                        .graphicsLayer { alpha = (1f - progress).coerceIn(0f, 1f) },
+                    modifier = Modifier.graphicsLayer { alpha = (1f - progress).coerceIn(0f, 1f) },
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
                 Box(
                     Modifier.align(Alignment.CenterStart).padding(6.dp)
                         .offset { IntOffset(offset.roundToInt(), 0) }
-                        .size(56.dp)
+                        .size(thumbSize)
                         .clip(CircleShape)
                         .background(Brush.verticalGradient(listOf(
-                            Color(0xFF333438), Color(0xFF242528))))
+                            Color(0xFF3B3935), Color(0xFF242426))))
                         .border(.8.dp, Color.White.copy(alpha = .24f), CircleShape)
-                        .thinnSpecularEdge(28.dp)
+                        .thinnSpecularEdge(thumbSize/2)
                     .pointerInput(maxDrag) {
                         detectHorizontalDragGestures(
                             onDragStart = {
@@ -286,7 +295,7 @@ private fun AlarmFullScreen(
                     },
                     contentAlignment = Alignment.Center
                 ) {
-                    Canvas(Modifier.size(18.dp)) {
+                    Canvas(Modifier.size(thumbSize*.32f)) {
                         drawRoundRect(Color.White,cornerRadius=CornerRadius(3.dp.toPx()))
                     }
                 }
@@ -296,8 +305,8 @@ private fun AlarmFullScreen(
 }
 
 @Composable
-private fun AlarmOutlineIcon() {
-    Canvas(Modifier.size(23.dp)) {
+private fun AlarmOutlineIcon(modifier:Modifier=Modifier.size(23.dp)) {
+    Canvas(modifier) {
         val tint = Color(0xFF9B9BA0)
         val u = size.minDimension
         drawCircle(tint, radius = u * .33f,

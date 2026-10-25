@@ -59,10 +59,12 @@ fun ApplePullDownMenu(
         scope.launch { if(!reduce) kotlinx.coroutines.delay(160);expanded=false;closing=false }
     }
     Box(modifier.onGloballyPositioned { anchor=it.boundsInWindow() }) {
-        Row(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable {if(!expanded) expanded=true},
+        Row(Modifier.fillMaxWidth().heightIn(min=52.dp).clickable {if(!expanded) expanded=true},
             verticalAlignment=Alignment.CenterVertically) {
             Text(label,fontSize=17.sp,color=palette.onSurface,modifier=Modifier.weight(1f))
-            Text("$selected  ›",fontSize=15.sp,color=palette.onSurfaceVariant)
+            Text(selected,fontSize=17.sp,color=palette.onSurfaceVariant)
+            Spacer(Modifier.width(10.dp))
+            SettingsChevron()
         }
         if(expanded){
             val positioner=remember(anchor,popupW) { object:PopupPositionProvider {

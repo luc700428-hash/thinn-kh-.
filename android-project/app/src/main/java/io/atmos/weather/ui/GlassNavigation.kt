@@ -135,9 +135,9 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         onOrderChanged={ _ -> /* Main tabs have a fixed canonical order. */ },
         maxVisible=4,
         allowReorder=false,
-        reduceMotion=prefs.getBoolean("reduce_motion",false),
-        reduceTransparency=prefs.getBoolean("reduce_transparency",false),
-        modifier=modifier.fillMaxWidth().padding(horizontal=20.dp).height(68.dp)
+        reduceMotion=rememberAppleReduceMotion(),
+        reduceTransparency=rememberAppleReduceTransparency(),
+        modifier=modifier.fillMaxWidth().padding(horizontal=24.dp).height(68.dp)
     )
 }
 
@@ -179,13 +179,21 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
 fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppearance)->Unit,
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
     onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
-    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={}) {
+    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={},onDetailVisibility:(Boolean)->Unit={}) {
     val context=LocalContext.current
     val prefs=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE) }
     var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion",false)) }
     var reduceTransparency by remember { mutableStateOf(prefs.getBoolean("reduce_transparency",false)) }
     var appearanceOpen by remember { mutableStateOf(false) }
-    if(appearanceOpen) {
+    var accessibilityOpen by remember {mutableStateOf(false)}
+    var lastDetail by remember {mutableStateOf("appearance")}
+    val settingsScroll=rememberScrollState()
+    val currentAutomatic=rememberBooleanSetting("check_updates_automatically",automaticUpdates)
+    val detailsVisible=appearanceOpen || accessibilityOpen
+    SideEffect {onDetailVisibility(detailsVisible)}
+    DisposableEffect(Unit) {onDispose {onDetailVisibility(false)}}
+    androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;accessibilityOpen=false}
+    val appearanceContent:@Composable ()->Unit = {
         IOS27AppearancePage(onBack={appearanceOpen=false},advancedSettings={
             ThinnSection("進階外觀與動態") {
                 GlassToggle("降低透明度","加強文字對比",reduceTransparency) {
@@ -202,84 +210,99 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 GlassTrackingSlider("流動速度",appearance.liquidMotion) { onAppearance(appearance.copy(liquidMotion=it)) }
             }
         })
-        return
     }
     val palette=MaterialTheme.colorScheme
-    var search by remember { mutableStateOf("") }
-    val match:(String)->Boolean={ label -> search.isBlank() || label.contains(search.trim(),ignoreCase=true) }
-    // Actual four-tab settings screen; reserve the dock safe area INSIDE scroll content.
-    Column(Modifier.fillMaxSize().background(palette.background)
-        .statusBarsPadding().navigationBarsPadding()
-        .appleBouncingScroll().verticalScroll(rememberScrollState())
-        .padding(horizontal=16.dp)) {
-        Spacer(Modifier.height(24.dp))
-        Text("設定",fontSize=34.sp,fontWeight=FontWeight.Bold,
-            color=palette.onBackground,letterSpacing=(-.8).sp)
-        Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth().height(43.dp)
-            .clip(RoundedCornerShape(13.dp)).background(palette.surfaceVariant)
-            .padding(horizontal=13.dp),verticalAlignment=Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Search,null,Modifier.size(20.dp),tint=palette.onSurfaceVariant)
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.weight(1f)) {
-                if(search.isEmpty()) Text("搜尋設定",fontSize=16.sp,color=palette.onSurfaceVariant)
-                androidx.compose.foundation.text.BasicTextField(value=search,onValueChange={search=it},
-                    singleLine=true,textStyle=androidx.compose.ui.text.TextStyle(
-                        color=palette.onSurface,fontSize=16.sp),modifier=Modifier.fillMaxWidth())
+    var search by remember {mutableStateOf("")}
+    var searching by remember {mutableStateOf(false)}
+    val match:(String)->Boolean={search.isBlank() || it.contains(search.trim(),ignoreCase=true)}
+    val accessibilityContent:@Composable ()->Unit = {
+        Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
+            Box(Modifier.fillMaxWidth().height(58.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
+                IOS27RoundControl("‹",{accessibilityOpen=false},Modifier.align(Alignment.CenterStart))
+                Text("輔助使用",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface)
             }
-            if(search.isNotEmpty()) Text("×",color=palette.onSurfaceVariant,fontSize=20.sp,
-                modifier=Modifier.clickable{search=""})
-        }
-        Spacer(Modifier.height(20.dp))
-        if(search.isBlank()) {
-            // App identity only: no pretend Apple ID, mobile data or VPN settings.
-            IOSV25SettingsGroup {
-                IOSV25SettingsCell("thinn-khì","天氣・地震・日常提醒",Icons.Rounded.Cloud,
-                    Color(0xFF5BA4CF),last=true,onClick=onDiagnostics)
-            }
-            Spacer(Modifier.height(20.dp))
-        }
-        if(listOf("外觀","自然語音","地震速報與推播安全","颱風與官方特報").any(match)) {
-            IOSV25SettingsGroup {
-                if(match("外觀")) IOSV25SettingsCell("外觀","深淺色、背景與玻璃效果",Icons.Rounded.Palette,
-                    Color(0xFF007AFF),onClick={appearanceOpen=true})
-                if(match("自然語音")) IOSV25SettingsCell("自然語音","播報聲線與試聽",Icons.Rounded.RecordVoiceOver,
-                    Color(0xFFAF52DE),onClick=onNaturalVoice)
-                if(match("地震速報與推播安全")) IOSV25SettingsCell("地震速報與推播安全","通知門檻與警報",Icons.Rounded.Shield,
-                    Color(0xFFFF3B30),onClick=onPushSettings)
-                if(match("颱風與官方特報")) IOSV25SettingsCell("颱風與官方特報","路徑、長浪與警特報",Icons.Rounded.Cyclone,
-                    Color(0xFFFF9500),last=true,onClick=onTyphoons)
-            }
-            Spacer(Modifier.height(20.dp))
-        }
-        if(listOf("天氣鬧鐘","系統更新中心","權限與健康檢查","進階視覺、環境音與觸感").any(match)) {
-            IOSV25SettingsGroup {
-                if(match("天氣鬧鐘")) IOSV25SettingsCell("天氣鬧鐘","時間、重複與播報",Icons.Rounded.Alarm,
-                    Color(0xFFFF9500),onClick=onWeatherAlarms)
-                if(match("系統更新中心")) IOSV25SettingsCell("系統更新中心","真正的版本下載與驗證",Icons.Rounded.SystemUpdate,
-                    Color(0xFF34C759),onClick=onUpdateCenter)
-                if(match("權限與健康檢查")) IOSV25SettingsCell("權限與健康檢查","通知、定位與排程",Icons.Rounded.FactCheck,
-                    Color(0xFF007AFF),onClick=onDiagnostics)
-                if(match("進階視覺、環境音與觸感")) IOSV25SettingsCell("進階視覺、環境音與觸感","動畫、觸感與環境音",Icons.Rounded.Tune,
-                    Color(0xFF5856D6),last=true,onClick=onAdvanced)
-            }
-            Spacer(Modifier.height(20.dp))
-        }
-        if(listOf("智慧穿搭與開源 AI","自動檢查更新").any(match)) {
-            IOSV25SettingsGroup {
-                if(match("智慧穿搭與開源 AI")) IOSV25SettingsCell("智慧穿搭與開源 AI","雨具與個人化建議",Icons.Rounded.Checkroom,
-                    Color(0xFF8E8E93),onClick=onLifestyle)
-                if(match("自動檢查更新")) IOSV25SettingsCell("自動檢查更新",
-                    if(automaticUpdates) "開啟" else "關閉",
-                    Icons.Rounded.SystemUpdate,Color(0xFF34C759),last=true,
-                    onClick={onUpdates(!automaticUpdates)})
+            Column(Modifier.padding(16.dp)) {
+                IOSV25SettingsGroup {
+                    GlassToggle("減少動態效果","簡化轉場、掃光與位移",reduceMotion) {
+                        reduceMotion=it;prefs.edit().putBoolean("reduce_motion",it).apply()
+                    }
+                    GlassDivider()
+                    GlassToggle("降低透明度","以實色加強文字對比",reduceTransparency) {
+                        reduceTransparency=it;prefs.edit().putBoolean("reduce_transparency",it).apply()
+                    }
+                }
             }
         }
-        Spacer(Modifier.height(27.dp))
-        Text("thinn-khì V25",color=palette.onSurfaceVariant,fontSize=14.sp,
-            modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
-        // This spacer scrolls above the FIXED Dock instead of the Dock obscuring rows.
-        Spacer(Modifier.height(120.dp))
     }
-
+    AppleParallaxStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false},
+        modifier=Modifier.fillMaxSize(),root={
+    Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
+        Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
+            Text("設定",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface)
+            Box(Modifier.align(Alignment.CenterEnd).size(44.dp).clip(RoundedCornerShape(9999.dp))
+                .clickable {searching=!searching;if(!searching)search=""},contentAlignment=Alignment.Center) {
+                Icon(Icons.Rounded.Search,"搜尋設定",Modifier.size(20.dp),tint=palette.onSurfaceVariant)
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(.5.dp).background(if(palette.background.red>.5f)
+            ThinnDesignTokens.separatorLight else ThinnDesignTokens.separatorDark))
+        Column(Modifier.fillMaxSize().appleBouncingScroll().verticalScroll(settingsScroll)
+            .padding(horizontal=16.dp)) {
+            if(searching) {
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(10.dp))
+                    .background(palette.surfaceVariant).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Search,null,Modifier.size(18.dp),tint=palette.onSurfaceVariant)
+                    Spacer(Modifier.width(8.dp))
+                    Box(Modifier.weight(1f)) {
+                        if(search.isEmpty())Text("搜尋設定",fontSize=16.sp,color=palette.onSurfaceVariant)
+                        androidx.compose.foundation.text.BasicTextField(search,{search=it},singleLine=true,
+                            textStyle=androidx.compose.ui.text.TextStyle(color=palette.onSurface,fontSize=16.sp),
+                            modifier=Modifier.fillMaxWidth())
+                    }
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            val serviceRows=listOf(
+                SettingsEntry("天氣資料",SettingsSymbols.weather,Color(0xFF34C759),onDiagnostics),
+                SettingsEntry("地震警報",SettingsSymbols.notification,Color(0xFFFF3B30),onPushSettings),
+                SettingsEntry("天氣鬧鐘",SettingsSymbols.alarm,Color(0xFFFF9500),onWeatherAlarms),
+                SettingsEntry("自然語音",SettingsSymbols.voice,Color(0xFF007AFF),onNaturalVoice)
+            ).filter {match(it.title)}
+            if(serviceRows.isNotEmpty()) {
+                IOSV25SettingsGroup {
+                    serviceRows.forEachIndexed {index,row -> IOSV25SettingsCell(row.title,"",row.icon,row.color,
+                        last=index==serviceRows.lastIndex,onClick=row.action)}
+                }
+                Spacer(Modifier.height(32.dp))
+            }
+            val mainRows=listOf(
+                SettingsEntry("一般",SettingsSymbols.general,Color(0xFF8E8E93),onAdvanced),
+                SettingsEntry("輔助使用",SettingsSymbols.accessibility,Color(0xFF007AFF),{lastDetail="accessibility";accessibilityOpen=true}),
+                SettingsEntry("外觀與亮度",SettingsSymbols.display,Color(0xFF007AFF),{lastDetail="appearance";appearanceOpen=true}),
+                SettingsEntry("背景與動態",SettingsSymbols.wallpaper,Color(0xFF32ADE6),onAdvanced),
+                SettingsEntry("颱風與官方特報",SettingsSymbols.cyclone,Color(0xFF007AFF),onTyphoons),
+                SettingsEntry("智慧穿搭",SettingsSymbols.lifestyle,Color(0xFF5856D6),onLifestyle),
+                SettingsEntry("軟體更新",SettingsSymbols.update,Color(0xFF8E8E93),onUpdateCenter),
+                SettingsEntry("權限與系統健康",SettingsSymbols.controls,Color(0xFF8E8E93),onDiagnostics)
+            ).filter {match(it.title)}
+            if(mainRows.isNotEmpty()) {
+                IOSV25SettingsGroup {
+                    mainRows.forEachIndexed {index,row -> IOSV25SettingsCell(row.title,"",row.icon,row.color,
+                        last=index==mainRows.lastIndex,onClick=row.action)}
+                }
+                Spacer(Modifier.height(32.dp))
+            }
+            if(match("自動檢查更新")) IOSV25SettingsGroup {
+                IOSV25SettingsCell("自動檢查更新","",SettingsSymbols.update,Color(0xFF34C759),
+                    trailing=if(currentAutomatic)"開啟" else "關閉",last=true,onClick={onUpdates(!currentAutomatic)})
+            }
+            Spacer(Modifier.height(22.dp))
+            Text("thinn-khì",color=palette.onSurfaceVariant,fontSize=12.sp,
+                modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+            Spacer(Modifier.height(120.dp))
+        }
+    }},detail={if(lastDetail=="appearance")appearanceContent() else accessibilityContent()})
 }
+private data class SettingsEntry(val title:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,
+    val color:Color,val action:()->Unit)

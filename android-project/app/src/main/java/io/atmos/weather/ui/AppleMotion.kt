@@ -4,6 +4,8 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
 /** Presentation-only animation tokens. Never alter repository or domain state. */
@@ -20,21 +22,24 @@ object AppleMotion {
     const val glowDurationMillis: Int = 9000
 }
 
+/** Preferences are observable so changing accessibility affects the dock and controls immediately. */
 @Composable
-internal fun rememberAppleReduceMotion(): Boolean {
-    val context = LocalContext.current
-    val prefs = remember(context) {
-        context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE)
+internal fun rememberBooleanSetting(key:String,default:Boolean=false):Boolean {
+    val context=LocalContext.current
+    val prefs=remember(context){context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)}
+    var value by androidx.compose.runtime.remember(prefs,key) {
+        androidx.compose.runtime.mutableStateOf(prefs.getBoolean(key,default))
     }
-    // Recomposition follows the parent settings page, matching existing app behavior.
-    return prefs.getBoolean("reduce_motion", false)
+    androidx.compose.runtime.DisposableEffect(prefs,key) {
+        val listener=android.content.SharedPreferences.OnSharedPreferenceChangeListener {_,changed ->
+            if(changed==key || changed==null)value=prefs.getBoolean(key,default)
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {prefs.unregisterOnSharedPreferenceChangeListener(listener)}
+    }
+    return value
 }
-
 @Composable
-internal fun rememberAppleReduceTransparency(): Boolean {
-    val context = LocalContext.current
-    val prefs = remember(context) {
-        context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE)
-    }
-    return prefs.getBoolean("reduce_transparency", false)
-}
+internal fun rememberAppleReduceMotion():Boolean=rememberBooleanSetting("reduce_motion")
+@Composable
+internal fun rememberAppleReduceTransparency():Boolean=rememberBooleanSetting("reduce_transparency")

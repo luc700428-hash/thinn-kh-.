@@ -27,6 +27,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 
 /** True inset-grouped presentation cells: do not call back into business repositories. */
 @Composable
@@ -51,16 +54,16 @@ fun IOSV25SettingsCell(
             .semantics(mergeDescendants=true) {contentDescription=listOf(title,subtitle,trailing).filter {it.isNotBlank()}.joinToString("，")}
             .clickable(interactionSource=interactions,indication=null,role=Role.Button,onClick=onClick)
             .defaultMinSize(minHeight=48.dp)
-            .padding(start=15.dp,end=12.dp,top=7.dp,bottom=7.dp),
+            .padding(start=15.dp,end=16.dp,top=8.dp,bottom=8.dp),
             verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.size(29.dp).clip(RoundedCornerShape(7.dp)).background(iconColor),
                 contentAlignment=Alignment.Center) {
-                Icon(icon,null,Modifier.size(19.dp),tint=Color.White)
+                Icon(icon,null,Modifier.size(22.dp),tint=Color.White)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)) {
-                Text(title,color=palette.onSurface,fontSize=16.sp,
-                    fontWeight=FontWeight.Medium,lineHeight=21.sp)
+                Text(title,color=palette.onSurface,fontSize=17.sp,
+                    fontWeight=FontWeight.Normal,lineHeight=22.sp)
 
             }
             if(badgeCount>0) {
@@ -71,13 +74,22 @@ fun IOSV25SettingsCell(
                 Spacer(Modifier.width(6.dp))
             }
             if(trailing.isNotBlank()) {
-                Text(trailing,color=palette.onSurfaceVariant,fontSize=14.sp,maxLines=1)
-                Spacer(Modifier.width(5.dp))
+                Text(trailing,color=palette.onSurfaceVariant,fontSize=17.sp,maxLines=1)
+                Spacer(Modifier.width(9.dp))
             }
-            Icon(Icons.Rounded.ChevronRight,null,Modifier.size(18.dp),
-                tint=Color(0xFFC7C7CC))
+            SettingsChevron()
         }
         if(!last) Box(Modifier.padding(start=56.dp).fillMaxWidth().height(.5.dp)
             .background(if(palette.background.red > .5f) ThinnDesignTokens.separatorLight else ThinnDesignTokens.separatorDark))
+    }
+}
+
+/** A slim chevron with the reference's consistent stroke. */
+@Composable
+fun SettingsChevron(modifier:Modifier=Modifier) {
+    Canvas(modifier.size(width=8.dp,height=14.dp)) {
+        val stroke=1.6.dp.toPx();val tint=Color(0xFFC7C7CC)
+        drawLine(tint,Offset(stroke/2,stroke/2),Offset(size.width-stroke/2,size.height/2),stroke,StrokeCap.Round)
+        drawLine(tint,Offset(size.width-stroke/2,size.height/2),Offset(stroke/2,size.height-stroke/2),stroke,StrokeCap.Round)
     }
 }

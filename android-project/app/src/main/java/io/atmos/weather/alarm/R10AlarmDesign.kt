@@ -61,8 +61,8 @@ import java.time.LocalTime
 import java.util.Locale
 
 /** Independently authored Compose Foundation controls, not Material picker or switch widgets. */
-private val night=Color(0xFF141416)
-private val group=Color(0xFF1C1C1E)
+private val night=Color(0xFF1C1C1E)
+private val group=Color(0xFF2C2C2E)
 private val secondary=Color(0xFF8E8E93)
 private val amber=Color(0xFFFF9F0A)
 private val weekdays=listOf("一","二","三","四","五","六","日")
@@ -102,75 +102,87 @@ object R10AlarmTones {
 @Composable
 fun R10Switch(checked:Boolean,onCheckedChange:(Boolean)->Unit) {
     // One consistent optically highlighted switch and hardware-calibrated haptic feedback.
-    io.atmos.weather.ui.GlassSwitch(checked=checked,onCheckedChange=onCheckedChange)
+    io.atmos.weather.ui.GlassSwitch(checked=checked,onCheckedChange=onCheckedChange,
+        colors=androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor=Color(0xFF34C759),
+            uncheckedTrackColor=Color(0xFF39393D)))
 }
 
 @Composable
-private fun GlassSetting(label:String, detail:String?=null,click:(()->Unit)?=null, trailing:(@Composable ()->Unit)?=null) {
-    Row(Modifier.fillMaxWidth().heightIn(min=54.dp)
-        .then(if(click!=null) Modifier.clickable(onClick=click) else Modifier)
-        .padding(horizontal=18.dp,vertical=11.dp),verticalAlignment=Alignment.CenterVertically) {
-        Text(label,color=Color.White,fontSize=17.sp,modifier=Modifier.weight(1f))
-        if(trailing!=null) trailing()
-        else if(detail!=null) Text(detail,color=secondary,fontSize=16.sp)
+private fun GlassSetting(label:String, detail:String?=null,click:(()->Unit)?=null,
+    detailColor:Color=secondary,chevron:Boolean=false,trailing:(@Composable ()->Unit)?=null) {
+    val presses=remember {MutableInteractionSource()}
+    val held by presses.collectIsPressedAsState()
+    val background by androidx.compose.animation.animateColorAsState(
+        if(held)Color(0xFF3A3A3C) else Color.Transparent,
+        tween(if(held)80 else 250),label="alarm-cell-press")
+    Row(Modifier.fillMaxWidth().heightIn(min=48.dp).background(background)
+        .then(if(click!=null)Modifier.clickable(interactionSource=presses,indication=null,onClick=click) else Modifier)
+        .padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically) {
+        Text(label,color=Color.White,fontSize=17.sp,modifier=Modifier.weight(1f).padding(vertical=12.dp))
+        if(trailing!=null)trailing()
+        else if(detail!=null) {
+            Text(detail,color=detailColor,fontSize=17.sp,modifier=Modifier.widthIn(max=170.dp),maxLines=2)
+            if(chevron) {Spacer(Modifier.width(8.dp));io.atmos.weather.ui.SettingsChevron()}
+        }
     }
 }
 @Composable
-private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp).background(Color.White.copy(alpha=.13f)))}
+private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp).background(Color.White.copy(alpha=.10f)))}
 
-/** Two-state meridiem control with deterministic gestures, no fling and a short
- * visual settlement. Every completed vertical drag changes AM <-> PM exactly once,
- * whether the gesture was slow or fast. State is saved BEFORE animation begins.
- */
+/** AM stays above PM, sharing the numeric wheels' 38dp central selection row. */
 @Composable
 private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
     val haptic=LocalHapticFeedback.current
     val density=LocalDensity.current
-    val threshold=with(density) { 12.dp.toPx() }
+    val threshold=with(density){12.dp.toPx()}
+    val step=with(density){38.dp.toPx()}
     val latestValue by rememberUpdatedState(value)
     val latestUpdate by rememberUpdatedState(onValue)
-    var totalDrag by remember { mutableFloatStateOf(0f) }
+    var totalDrag by remember {mutableFloatStateOf(0f)}
+    var tracking by remember {mutableStateOf(false)}
     val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
-    val targetY=if(value==V25AlarmMeridiem.AM) 0.dp else 55.dp
-    val selectedY by animateDpAsState(
-        targetValue=targetY,
-        animationSpec=if(reduceMotion) tween(durationMillis=1) else spring(
+    val target=with(density){(-value*step+if(tracking)totalDrag else 0f).toDp()}
+    val selectedY by animateDpAsState(target,
+        animationSpec=if(tracking || reduceMotion)tween(0) else spring(
             dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
-            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="v25-am-pm-wheel")
-    val shape=RoundedCornerShape(22.dp)
-    Box(modifier.height(213.dp).clip(shape)
-        .pointerInput(threshold) {
+            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="v25-am-pm-cylinder")
+    val y=with(density){selectedY.toPx()}
+    Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
+        .semantics(mergeDescendants=true) {
+            stateDescription=if(value==0)"上午" else "下午"
+            customActions=listOf(CustomAccessibilityAction("上午"){latestUpdate(0);true},
+                CustomAccessibilityAction("下午"){latestUpdate(1);true})
+        }.pointerInput(threshold,step) {
             detectVerticalDragGestures(
-                onDragStart={totalDrag=0f},
-                onVerticalDrag={change,dy -> change.consume(); totalDrag+=dy},
-                onDragEnd={
-                    // Labels never exchange places. Direction selects the specific row.
+                onDragStart={tracking=true;totalDrag=0f},
+                onVerticalDrag={change,dy ->
+                    change.consume();totalDrag=(totalDrag+dy).coerceIn(-(1-latestValue)*step,latestValue*step)
+                },onDragEnd={
                     val next=V25AlarmMeridiem.fromDrag(latestValue,totalDrag,threshold)
                     if(next!=latestValue) {
-                        latestUpdate(next)
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        latestUpdate(next);haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     }
-                    totalDrag=0f
-                },
-                onDragCancel={totalDrag=0f}
-            )
-        },contentAlignment=Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(102.dp)) {
-            Box(Modifier.fillMaxWidth().height(47.dp).offset(y=selectedY)
-                .clip(RoundedCornerShape(17.dp))
-                .background(Color.White.copy(alpha=.16f))
-                .border(1.dp,Color.White.copy(alpha=.36f),RoundedCornerShape(17.dp)))
-            Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().height(47.dp).clickable {latestUpdate(0)},contentAlignment=Alignment.Center) {
-                    Text("上午",color=Color.White.copy(alpha=if(value==0) 1f else .55f),
-                        fontSize=22.sp,fontWeight=FontWeight.Light)
-                }
-                Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().height(47.dp).clickable {latestUpdate(1)},contentAlignment=Alignment.Center) {
-                    Text("下午",color=Color.White.copy(alpha=if(value==1) 1f else .55f),
-                        fontSize=22.sp,fontWeight=FontWeight.Light)
-                }
+                    tracking=false;totalDrag=0f
+                },onDragCancel={tracking=false;totalDrag=0f})
+        }) {
+        Layout(content={
+            Box(Modifier.fillMaxWidth().height(38.dp).graphicsLayer {
+                val d=y/step;rotationX=-d*18f;alpha=(1f-abs(d)*.64f).coerceIn(.08f,1f);cameraDistance=12.dp.toPx()
+            }.clickable {latestUpdate(0)},contentAlignment=Alignment.Center) {
+                Text("上午",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Normal)
+            }
+            Box(Modifier.fillMaxWidth().height(38.dp).graphicsLayer {
+                val d=1f+y/step;rotationX=-d*18f;alpha=(1f-abs(d)*.64f).coerceIn(.08f,1f);cameraDistance=12.dp.toPx()
+            }.clickable {latestUpdate(1)},contentAlignment=Alignment.Center) {
+                Text("下午",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Normal)
+            }
+        },modifier=Modifier.fillMaxSize()) {measurables,constraints ->
+            val row=38.dp.roundToPx()
+            val cells=measurables.map {it.measure(Constraints.fixed(constraints.maxWidth,row))}
+            layout(constraints.maxWidth,constraints.maxHeight) {
+                val center=(constraints.maxHeight-row)/2
+                cells.forEachIndexed {i,cell ->cell.placeRelative(0,center+i*row+y.roundToInt())}
             }
         }
     }
@@ -256,10 +268,10 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
         // white digits one row below the grey highlight, saving the WRONG alarm time.
         Layout(content = {
             for (row in -3..3) {
-                val distance=abs(row-fraction/stepPx)
+                val distance=abs(row+fraction/stepPx)
                 val item=((value+row-shifted)%count+count)%count
                 Box(Modifier.fillMaxWidth().height(38.dp).graphicsLayer {
-                    rotationX=(-(row-fraction/stepPx)*18f).coerceIn(-54f,54f)
+                    rotationX=(-(row+fraction/stepPx)*18f).coerceIn(-54f,54f)
                     cameraDistance=12.dp.toPx()
                     scaleX=(1f-distance*.065f).coerceIn(.75f,1f)
                 }.clickable {
@@ -270,10 +282,10 @@ private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,
                     if(count!=2 || row==0 || row==1) Text(display(item),textAlign=TextAlign.Center,
                         color=Color.White.copy(alpha=when {
                             distance<.6f -> 1f
-                            distance<1.6f -> .58f
-                            distance<2.6f -> .26f
+                            distance<1.6f -> .38f
+                            distance<2.6f -> .16f
                             else -> .06f
-                        }),fontSize=22.sp,fontWeight=FontWeight.Light,
+                        }),fontSize=22.sp,fontWeight=FontWeight.Normal,
                         maxLines=1)
                 }
             }
@@ -302,10 +314,10 @@ fun AppleAlarmTimeSelector(
 ) {
     val safeHour=hour.coerceIn(0,23)
     val safeMinute=minute.coerceIn(0,59)
-    Box(modifier.fillMaxWidth().height(235.dp),contentAlignment=Alignment.Center) {
+    Box(modifier.fillMaxWidth().height(213.dp),contentAlignment=Alignment.Center) {
         Box(Modifier.fillMaxWidth().height(38.dp)
             .background(Color(0xFF2C2C2E),RoundedCornerShape(9999.dp)))
-        Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),
+        Row(Modifier.widthIn(max=224.dp).fillMaxWidth(),
             horizontalArrangement=Arrangement.spacedBy(4.dp),
             verticalAlignment=Alignment.CenterVertically) {
             MeridiemWheel(if(safeHour<12) 0 else 1,
@@ -332,24 +344,38 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     var voice by rememberSaveable(initial?.id) { mutableStateOf(initial?.weatherVoice?:true) }
     var snooze by rememberSaveable(initial?.id) { mutableStateOf(initial?.snooze?:true) }
     var snoozeMinutes by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.snoozeMinutes?:9) }
-    var chooseSnoozeMinutes by remember { mutableStateOf(false) }
+    var chooseSnoozeMinutes by remember {mutableStateOf(false)}
+    val reducePickerMotion=io.atmos.weather.ui.rememberAppleReduceMotion()
+    val snoozeProgress by animateFloatAsState(if(chooseSnoozeMinutes)1f else 0f,
+        animationSpec=if(reducePickerMotion)tween(0) else spring(
+            dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
+            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="snooze-sheet-transition")
+    val focusManager=androidx.compose.ui.platform.LocalFocusManager.current
     var uri by rememberSaveable(initial?.id) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+"dawn") }
     var choosing by remember { mutableStateOf(false) }
-    var repeats by remember { mutableStateOf(false) }
-    var editingLabel by remember { mutableStateOf(false) }
-    var sheetShown by remember { mutableStateOf(false) }
+    var sheetShown by remember {mutableStateOf(false)}
+    var closingSheet by remember {mutableStateOf(false)}
+    val editorScope=rememberCoroutineScope()
+    val reduceEditorMotion=ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
+    fun finishSheet(action:()->Unit) {
+        if(closingSheet)return
+        closingSheet=true;sheetShown=false
+        editorScope.launch {if(!reduceEditorMotion)kotlinx.coroutines.delay(260);action()}
+    }
     LaunchedEffect(Unit) { sheetShown=true }
-    val sheetOffset by animateDpAsState(if(sheetShown) 0.dp else 650.dp,
-        animationSpec=spring(dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
-            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="ios27-alarm-sheet-entry")
-    Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+    val hiddenSheetOffset=androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp+64.dp
+    val sheetOffset by animateDpAsState(if(sheetShown) 0.dp else hiddenSheetOffset,
+        animationSpec=if(reduceEditorMotion)tween(0) else if(closingSheet)tween(260,easing=io.atmos.weather.ui.AppleMotion.snap)
+            else spring(dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
+                stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="ios27-alarm-sheet-entry")
+    Dialog(onDismissRequest={finishSheet(onClose)},properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.46f)),
             contentAlignment=Alignment.BottomCenter) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.96f).offset(y=sheetOffset)
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.94f).offset {IntOffset(0,sheetOffset.roundToPx())}
             .clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
-            .background(night).navigationBarsPadding()) {
-            Row(Modifier.fillMaxWidth().height(66.dp).padding(horizontal=20.dp),verticalAlignment=Alignment.CenterVertically) {
-                io.atmos.weather.ui.IOS27RoundControl("×",onClick=onClose,
+            .background(night).navigationBarsPadding().imePadding()) {
+            Row(Modifier.fillMaxWidth().height(72.dp).padding(horizontal=20.dp),verticalAlignment=Alignment.CenterVertically) {
+                io.atmos.weather.ui.IOS27RoundControl("×",onClick={finishSheet(onClose)},
                     fill=Color(0xFF2C2C2E),foreground=Color.White)
                 Text(if(initial==null)"新增鬧鐘" else "編輯鬧鐘",color=Color.White,fontSize=18.sp,
                     textAlign=TextAlign.Center,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
@@ -357,18 +383,19 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     val id=initial?.id ?: generateSequence(1) {it+1}.first {candidate ->
                         WeatherAlarmStore.load(ctx).none {it.id==candidate}
                     }
-                    onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,true,voice,snooze,uri,
-                        WeatherAlarmTime.validSnoozeMinutes(snoozeMinutes)))
+                    val saved=WeatherAlarm(id,hour,minute,label.take(30),repeat,initial?.enabled ?: true,voice,snooze,uri,
+                        WeatherAlarmTime.validSnoozeMinutes(snoozeMinutes))
+                    finishSheet {onSave(saved)}
                 },fill=Color(0xFFFF9F0A),foreground=Color.White)
             }
             AppleAlarmTimeSelector(hour=hour,minute=minute,
                 onHour={hour=it},onMinute={minute=it},
-                modifier=Modifier.padding(horizontal=32.dp))
+                modifier=Modifier.padding(horizontal=20.dp))
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
-                Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(group)) {
-                    GlassSetting("重複",detail=if(repeat.isEmpty())"不重複" else "每週 ${repeat.sorted().joinToString("") { weekdays[it-1] }}  ›",click={repeats=true})
-                    Row(Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=8.dp),
+                    GlassSetting("重複",detail=if(repeat.isEmpty())"不重複" else "每週 ${repeat.sorted().joinToString("") { weekdays[it-1] }}")
+                    Line()
+                    Row(Modifier.fillMaxWidth().padding(vertical=8.dp),
                         horizontalArrangement=Arrangement.SpaceEvenly) {
                         listOf(7,1,2,3,4,5,6).forEach { day ->
                             val active=day in repeat
@@ -376,40 +403,39 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                         }
                     }
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(32.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(group)) {
-                    GlassSetting("標籤",detail=label+"  ›",click={editingLabel=true});Line()
-                    GlassSetting("鈴聲",detail=(R10AlarmTones.choices.firstOrNull {R10AlarmTones.prefix+it.id==uri}?.label?:"系統鈴聲")+"  ›",click={choosing=true});Line()
+                    GlassSetting("標籤",trailing={
+                        Box(Modifier.width(170.dp).heightIn(min=48.dp),contentAlignment=Alignment.CenterEnd) {
+                            if(label.isEmpty())Text("鬧鐘",color=secondary,fontSize=17.sp)
+                            BasicTextField(value=label,onValueChange={label=it.take(30)},singleLine=true,
+                                textStyle=androidx.compose.ui.text.TextStyle(color=secondary,fontSize=17.sp,textAlign=TextAlign.End),
+                                keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Done),
+                                keyboardActions=androidx.compose.foundation.text.KeyboardActions(onDone={focusManager.clearFocus()}),
+                                modifier=Modifier.fillMaxWidth().semantics {contentDescription="鬧鐘標籤"})
+                        }
+                    });Line()
+                    GlassSetting("鈴聲",detail=(R10AlarmTones.choices.firstOrNull {R10AlarmTones.prefix+it.id==uri}?.label?:"系統鈴聲"),chevron=true,click={choosing=true});Line()
                     GlassSetting("延遲響鬧",trailing={R10Switch(snooze){snooze=it}})
                     Line()
-                    GlassSetting("延遲響鬧時長",detail="$snoozeMinutes 分鐘  ›",
-                        click={ if(snooze) chooseSnoozeMinutes=true })
-                }
-                Spacer(Modifier.height(22.dp))
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {
-                    GlassSetting("智慧天氣語音",trailing={R10Switch(voice){voice=it}})
-                    if(voice) {
-                        Line()
-                        GlassSetting("播報聲線／引擎",detail=ttsLabel+"  ›",click={ttsOptions=true})
-                        Text("上次語音狀態："+SamsungTtsSelector.lastStatus(ctx),
-                            color=secondary,fontSize=14.sp,modifier=Modifier.padding(14.dp))
-                    }
+                    GlassSetting("延遲響鬧時長",detail="$snoozeMinutes 分鐘",
+                        detailColor=if(snooze)amber else secondary,click={if(snooze)chooseSnoozeMinutes=true})
                 }
                 if(initial!=null) {
                     Spacer(Modifier.height(10.dp))
                     Text("刪除此鬧鐘",color=Color(0xFFFF7D82),fontSize=17.sp,textAlign=TextAlign.Center,
                         modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)
-                            .clickable {onDelete(initial)}.padding(17.dp))
+                            .clickable {finishSheet {onDelete(initial)}}.padding(17.dp))
                 }
             }
         }
         }
     }
-    if(chooseSnoozeMinutes) Dialog(onDismissRequest={chooseSnoozeMinutes=false},
-        properties=DialogProperties(usePlatformDefaultWidth=false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.46f)),contentAlignment=Alignment.BottomCenter) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
-            .background(night).padding(horizontal=20.dp,vertical=18.dp),
+    if(chooseSnoozeMinutes || snoozeProgress>.001f) Dialog(onDismissRequest={chooseSnoozeMinutes=false},
+        properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.46f*snoozeProgress.coerceIn(0f,1f))),contentAlignment=Alignment.BottomCenter) {
+        Column(Modifier.fillMaxWidth().offset {IntOffset(0,(650.dp.toPx()*(1f-snoozeProgress)).roundToInt())}.clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
+            .background(night).navigationBarsPadding().padding(horizontal=20.dp,vertical=18.dp),
             horizontalAlignment=Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("貪睡時間",fontSize=20.sp,color=Color.White,
@@ -458,31 +484,18 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 .clickable {ttsOptions=false}.padding(12.dp))
         }
     }
-    if(choosing) R10RingtonePicker(selected=uri,onChoose={uri=it;choosing=false},onClose={choosing=false})
-    if(repeats) Dialog(onDismissRequest={repeats=false}) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(night).padding(22.dp)) {
-            Text("重複",color=Color.White,fontSize=24.sp,fontWeight=FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-            weekdays.forEachIndexed {index,name ->
-                val d=index+1
-                GlassSetting("星期$name",trailing={Text(if(d in repeat)"✓" else "",color=amber,fontSize=22.sp)},click={
-                    repeat=if(d in repeat) repeat-d else repeat+d
-                })
+    if(choosing) R10RingtonePicker(selected=uri,onChoose={uri=it;choosing=false},onClose={choosing=false},voiceSettings={
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(group)) {
+            GlassSetting("智慧天氣語音",trailing={R10Switch(voice){voice=it}})
+            if(voice) {
                 Line()
+                GlassSetting("播報聲線／引擎",detail=ttsLabel,chevron=true,click={choosing=false;ttsOptions=true})
+                Text("上次語音狀態："+SamsungTtsSelector.lastStatus(ctx),color=secondary,fontSize=14.sp,
+                    modifier=Modifier.padding(horizontal=18.dp,vertical=10.dp))
             }
-            Text("完成",color=amber,modifier=Modifier.align(Alignment.End).clickable {repeats=false}.padding(15.dp))
         }
-    }
-    if(editingLabel) Dialog(onDismissRequest={editingLabel=false}) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(group).padding(20.dp)) {
-            Text("鬧鐘標籤",color=Color.White,fontSize=20.sp)
-            Spacer(Modifier.height(20.dp))
-            BasicTextField(value=label,onValueChange={label=it.take(30)},singleLine=true,
-                textStyle=androidx.compose.ui.text.TextStyle(color=Color.White,fontSize=19.sp),
-                modifier=Modifier.fillMaxWidth().background(Color.Black.copy(alpha=.4f),RoundedCornerShape(12.dp)).padding(14.dp))
-            Text("完成",color=amber,modifier=Modifier.align(Alignment.End).clickable {editingLabel=false}.padding(15.dp))
-        }
-    }
+        Spacer(Modifier.height(20.dp))
+    })
 }
 
 /** Preview through Android's ALARM volume stream, not the media-volume stream. */
@@ -502,7 +515,7 @@ private fun prepareAlarmPreview(context:Context,uri:Uri):MediaPlayer? {
 }
 
 @Composable
-private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:()->Unit) {
+private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:()->Unit,voiceSettings:@Composable ()->Unit={}) {
     val ctx=androidx.compose.ui.platform.LocalContext.current
     var active by remember { mutableStateOf(selected?:R10AlarmTones.prefix+"dawn") }
     var preview by remember { mutableStateOf<MediaPlayer?>(null) }
@@ -526,6 +539,7 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                 Text("鬧鐘鈴聲",color=Color.White,fontSize=19.sp,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
                 Text("完成",color=amber,fontSize=17.sp,modifier=Modifier.clickable {preview?.release();preview=null;onChoose(active)})
             }
+            voiceSettings()
             Text("專屬自然系鈴聲",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text("點選卡片選取並試聽。六款都會依有效天氣資料調整聲景；沒有新資料時播放中性版本。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
@@ -641,10 +655,10 @@ private fun AlarmWeekday(day:Int,selected:Boolean,onClick:()->Unit) {
     val scale by animateFloatAsState(if(pressed && !reduce) .96f else 1f,
         animationSpec=if(reduce)tween(0) else spring(.72f,190f),label="repeat-day-press")
     Box(Modifier.size(40.dp).graphicsLayer {scaleX=scale;scaleY=scale}
-        .clip(CircleShape).background(if(selected) Color(0xFFFF9F0A) else Color(0xFF2C2C2E))
+        .clip(CircleShape).background(if(selected) Color(0xFFFF9F0A) else Color(0xFF3A3A3C))
         .thinnSpecularEdge(20.dp)
-        .semantics {stateDescription=if(selected) "已選取" else "未選取"}
+        .semantics {contentDescription="星期"+weekdays[day-1];stateDescription=if(selected)"已選取" else "未選取"}
         .clickable(interactionSource=presses,indication=null,onClick=onClick),contentAlignment=Alignment.Center) {
-        Text(weekdays[day-1],color=Color.White,fontSize=15.sp)
+        Text(weekdays[day-1],color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Medium)
     }
 }
