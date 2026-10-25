@@ -88,7 +88,9 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel,"停止",controlIntent(ctx,alarm.id,ACTION_STOP))
-            if(alarm.snooze) b.addAction(android.R.drawable.ic_popup_reminder,"10 分鐘後",controlIntent(ctx,alarm.id,ACTION_SNOOZE))
+            if(alarm.snooze) b.addAction(android.R.drawable.ic_popup_reminder,
+                "${WeatherAlarmTime.validSnoozeMinutes(alarm.snoozeMinutes)} 分鐘後",
+                controlIntent(ctx,alarm.id,ACTION_SNOOZE))
             val islandPreferred = XiaomiFocusBridge.shouldUseAlarmIsland(ctx)
             if (!islandPreferred) b.setFullScreenIntent(openIntent(ctx,alarm.id),true)
             var note = b.build()

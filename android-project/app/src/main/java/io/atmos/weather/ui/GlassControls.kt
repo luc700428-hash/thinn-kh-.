@@ -194,15 +194,16 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
                 true
             }
         },contentAlignment=Alignment.CenterStart) {
-        val thumb=28.dp
+        val thumb=30.dp
         val travel=(maxWidth-thumb).coerceAtLeast(0.dp)
-        Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape)
+        Box(Modifier.fillMaxWidth().height(9.dp).clip(CircleShape)
             .background(Color.White.copy(alpha=.24f)))
-        Box(Modifier.fillMaxWidth(fraction=smooth.coerceAtLeast(.001f)).height(7.dp)
+        Box(Modifier.fillMaxWidth(fraction=smooth.coerceAtLeast(.001f)).height(9.dp)
             .clip(CircleShape).background(ThinnOpticalMaterial.luminousPill))
         Box(Modifier.offset(x=travel*smooth).size(thumb)
-            .clip(CircleShape).background(ThinnOpticalMaterial.opaque)
-            .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)
+            .clip(CircleShape).background(Brush.linearGradient(listOf(
+                Color(0xFFFAFCFF), Color(0xFFD4E5F5),Color(0xFF93BCD6))))
+            .border(1.dp,Color.White.copy(alpha=.72f),CircleShape)
             .thinnSpecularEdge(14.dp))
     }
 }

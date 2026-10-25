@@ -118,8 +118,8 @@ fun BoxScope.AppleLiquidDockPaint(
         drawPath(contour,
             brush = Brush.verticalGradient(if(isLight) listOf(
                 Color(0xF5FFFFFF), Color(0xCCBFE7FF), Color(0xDAE8F6FF)) else listOf(
-                Color(0xE0CFE9FC), Color(0xC24B819F), Color(0xDB2F6D95))),
-            alpha = if (dragging) .98f else .90f)
+                Color(0xD6D5E9F5), Color(0xA97996AD), Color(0xB03B5366))),
+            alpha = if (dragging) .93f else .81f)
         drawPath(contour,
             brush = Brush.sweepGradient(listOf(Color.White.copy(alpha=.85f),
                 Color(0xFF5AC8FA).copy(alpha=.6f),Color.White.copy(alpha=.14f),

@@ -14,10 +14,14 @@ data class WeatherAlarm(
     val enabled: Boolean = true,
     val weatherVoice: Boolean = true,
     val snooze: Boolean = true,
-    val ringtoneUri: String? = null
+    val ringtoneUri: String? = null,
+    val snoozeMinutes: Int = 10 // Migration compatibility: old alarms really used 10 minutes
 )
 
 object WeatherAlarmTime {
+    /** UI allows 1..30 min; never schedule arbitrary/untrusted intervals. */
+    fun validSnoozeMinutes(minutes: Int): Int = minutes.coerceIn(1, 30)
+
     fun next(a: WeatherAlarm, after: ZonedDateTime): Instant? {
         if (!a.enabled || a.hour !in 0..23 || a.minute !in 0..59) return null
         for (daysAway in 0..8) {

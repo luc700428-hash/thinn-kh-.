@@ -494,6 +494,13 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         LocalHapticEngine provides hapticEngine
     ) {
     io.atmos.weather.ui.GlassAppTheme {
+        androidx.compose.runtime.CompositionLocalProvider(
+            io.atmos.weather.ui.TkCardWeatherMood provides when {
+                snow -> io.atmos.weather.ui.TkPrecipitationMood.SNOW
+                rainy -> io.atmos.weather.ui.TkPrecipitationMood.RAIN
+                else -> io.atmos.weather.ui.TkPrecipitationMood.CLEAR
+            }
+        ) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow)))) {
             // Avoid a large offscreen blur layer during scrolling: gradient already supplies depth.
             HorizontalPager(
@@ -1174,6 +1181,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
             title={Text(info.first)},text={Text(info.second)}) }
         } // 根 Box：底部分頁列為 BoxScope 子元素，Modifier.align 在此合法。
+        } // Close precipitation CompositionLocalProvider inside GlassAppTheme.
     }
     }
 }
@@ -1235,6 +1243,10 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
     val damping=(.98f-appearance.springiness*.54f).coerceIn(.35f,.98f)
     val stiffness=Spring.StiffnessMediumLow + appearance.springiness*Spring.StiffnessMedium
     val shape=RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
+    // Weather surface layer is visual only. Condition comes from the real snapshot,
+    // not from demo mode or a synthetic forecast. A shared weather store is read
+    // without launching a second particle loop for every card.
+    val cardMood=io.atmos.weather.ui.TkCardWeatherMood.current
     Box(Modifier.fillMaxWidth()
         .graphicsLayer {
             translationX=horizontalShift.value
@@ -1265,6 +1277,8 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
                 radius=size.width*.86f,center=center
             )
         }
+        io.atmos.weather.ui.TkPrecipitationCardLens(cardMood,
+            modifier=Modifier.matchParentSize())
         Column(Modifier.fillMaxWidth().padding(19.dp),content=content)
     }
 }

@@ -47,15 +47,15 @@ fun IOSV25SettingsCell(
     Column {
         Row(Modifier.fillMaxWidth().background(fill)
             .clickable(interactionSource=interactions,indication=null,role=Role.Button,onClick=onClick)
-            .defaultMinSize(minHeight=61.dp)
-            .padding(start=15.dp,end=12.dp,top=10.dp,bottom=10.dp),
+            .defaultMinSize(minHeight=52.dp)
+            .padding(start=15.dp,end=12.dp,top=7.dp,bottom=7.dp),
             verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.size(29.dp).clip(RoundedCornerShape(7.dp)).background(iconColor),
                 contentAlignment=Alignment.Center) {
                 Icon(icon,null,Modifier.size(19.dp),tint=Color.White)
             }
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(1.dp)) {
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)) {
                 Text(title,color=palette.onSurface,fontSize=16.sp,
                     fontWeight=FontWeight.Medium,lineHeight=21.sp)
                 if(subtitle.isNotBlank()) Text(subtitle,color=palette.onSurfaceVariant,

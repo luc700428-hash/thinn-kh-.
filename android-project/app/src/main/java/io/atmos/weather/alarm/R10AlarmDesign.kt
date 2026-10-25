@@ -313,6 +313,8 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     var repeat by remember(initial) { mutableStateOf(initial?.days?:emptySet()) }
     var voice by remember(initial) { mutableStateOf(initial?.weatherVoice?:true) }
     var snooze by remember(initial) { mutableStateOf(initial?.snooze?:true) }
+    var snoozeMinutes by remember(initial) { mutableIntStateOf(initial?.snoozeMinutes?:9) }
+    var chooseSnoozeMinutes by remember { mutableStateOf(false) }
     var uri by remember(initial) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+"dawn") }
     var choosing by remember { mutableStateOf(false) }
     var repeats by remember { mutableStateOf(false) }
@@ -335,7 +337,8 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     textAlign=TextAlign.Center,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                 io.atmos.weather.ui.IOS27RoundControl("✓",onClick={
                     val id=initial?.id?:((System.currentTimeMillis()%1000000).toInt()+1)
-                    onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,true,voice,snooze,uri))
+                    onSave(WeatherAlarm(id,hour,minute,label.take(30),repeat,true,voice,snooze,uri,
+                        WeatherAlarmTime.validSnoozeMinutes(snoozeMinutes)))
                 },fill=Color(0xFFFF9F0A),foreground=Color.White)
             }
             AppleAlarmTimeSelector(hour=hour,minute=minute,
@@ -364,7 +367,8 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     GlassSetting("鈴聲",detail=(R10AlarmTones.choices.firstOrNull {R10AlarmTones.prefix+it.id==uri}?.label?:"系統鈴聲")+"  ›",click={choosing=true});Line()
                     GlassSetting("延遲響鬧",trailing={R10Switch(snooze){snooze=it}})
                     Line()
-                    GlassSetting("延遲響鬧時長",detail="9 分鐘")
+                    GlassSetting("延遲響鬧時長",detail="$snoozeMinutes 分鐘  ›",
+                        click={ if(snooze) chooseSnoozeMinutes=true })
                 }
                 Spacer(Modifier.height(22.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(group)) {
@@ -386,9 +390,32 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
         }
         }
     }
+    if(chooseSnoozeMinutes) Dialog(onDismissRequest={chooseSnoozeMinutes=false}) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
+            .background(night).padding(horizontal=20.dp,vertical=18.dp),
+            horizontalAlignment=Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Text("貪睡時間",fontSize=20.sp,color=Color.White,
+                    modifier=Modifier.weight(1f),fontWeight=FontWeight.SemiBold)
+                io.atmos.weather.ui.IOS27RoundControl("✓",onClick={chooseSnoozeMinutes=false},
+                    fill=Color(0xFFFF9F0A),foreground=Color.White)
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("選擇再次響鈴的間隔",fontSize=14.sp,color=secondary)
+            Spacer(Modifier.height(12.dp))
+            // Reuse the same physical detent wheel as the clock selector.
+            Wheel(value=snoozeMinutes-1,count=30,display={"${it+1} 分鐘"},
+                onValue={snoozeMinutes=it+1},
+                modifier=Modifier.fillMaxWidth())
+            Text("$snoozeMinutes 分鐘",color=amber,fontSize=17.sp)
+            Spacer(Modifier.height(12.dp))
+        }
+    }
     if(ttsOptions) Dialog(onDismissRequest={ttsOptions=false}) {
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .background(night).padding(20.dp).verticalScroll(rememberScrollState())) {
+            .background(Brush.verticalGradient(listOf(Color(0xFF24252B),night)))
+            .border(1.dp,Color.White.copy(alpha=.28f),RoundedCornerShape(24.dp))
+            .padding(20.dp).verticalScroll(rememberScrollState())) {
             Text("鬧鐘播報引擎",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Color.White)
             Spacer(Modifier.height(8.dp))
             Text("每支手機分開設定。Samsung TTS 需要手機已安裝繁中離線聲線；Bixby 非公開 TTS。",
@@ -402,7 +429,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                         ttsPreview="已選擇，請按試聽"
                     }.padding(vertical=12.dp))
             }
-            Text("試聽所選引擎",fontSize=16.sp,color=amber,modifier=Modifier
+            Text("試聽所選引擎  ▷",fontSize=16.sp,color=amber,modifier=Modifier
                 .fillMaxWidth().clickable {
                     ttsPreview="正在試聽…"
                     SamsungTtsSelector.preview(ctx) { result -> ttsPreview=result }

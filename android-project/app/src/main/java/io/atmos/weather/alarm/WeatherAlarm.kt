@@ -31,7 +31,8 @@ object WeatherAlarmStore {
                     value.optString("title","鬧鐘"),
                     (0 until arr.length()).map { arr.getInt(it) }.filter { it in 1..7 }.toSet(),
                     value.optBoolean("enabled",true),value.optBoolean("weatherVoice",true),
-                    value.optBoolean("snooze",true),value.optString("ringtoneUri","").takeIf { it.isNotBlank() })
+                    value.optBoolean("snooze",true),value.optString("ringtoneUri","").takeIf { it.isNotBlank() },
+                    WeatherAlarmTime.validSnoozeMinutes(value.optInt("snoozeMinutes",10)))
             }.getOrNull()
         }
     }.getOrDefault(emptyList())
@@ -43,6 +44,7 @@ object WeatherAlarmStore {
                 put("days",JSONArray().apply { a.days.sorted().forEach {put(it)} })
                 put("enabled",a.enabled);put("weatherVoice",a.weatherVoice);put("snooze",a.snooze)
                 put("ringtoneUri", a.ringtoneUri ?: "")
+                put("snoozeMinutes",WeatherAlarmTime.validSnoozeMinutes(a.snoozeMinutes))
             })
         }
         ctx.getSharedPreferences("thinn_alarms",Context.MODE_PRIVATE).edit().putString(KEY,array.toString()).apply()
@@ -60,7 +62,7 @@ object WeatherAlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
     fun schedule(ctx: Context, alarm: WeatherAlarm) {
-        // Do not clear an already-requested ten-minute snooze when the app restarts.
+        // Preserve any previously requested snooze when the app restarts.
         val manager=ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         manager.cancel(pending(ctx,alarm.id))
         if (!alarm.enabled) return
@@ -79,7 +81,11 @@ object WeatherAlarmScheduler {
         }
     }
     fun scheduleSnooze(ctx:Context,id:Int) {
-        set(ctx,System.currentTimeMillis()+10*60_000L,pending(ctx,id,true))
+        // The service always resolves the user-saved alarm; there is no UI-only time.
+        val alarm=WeatherAlarmStore.load(ctx).firstOrNull { it.id==id } ?: return
+        if (!alarm.snooze) return
+        val minutes=WeatherAlarmTime.validSnoozeMinutes(alarm.snoozeMinutes)
+        set(ctx,System.currentTimeMillis()+minutes*60_000L,pending(ctx,id,true))
     }
     fun cancel(ctx: Context,id:Int) {
         val manager=ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager

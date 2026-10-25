@@ -208,7 +208,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     }
                     Spacer(Modifier.height(18.dp))
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.CheckCircle,"已安裝",tint=Color(0xFF9FE3CD),
+                        Icon(Icons.Rounded.CheckCircle,"已安裝",tint=Color(0xFF34C759),
                             modifier=Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("此版本已安裝在你的手機",color=UpdateSoft,fontSize=14.sp)

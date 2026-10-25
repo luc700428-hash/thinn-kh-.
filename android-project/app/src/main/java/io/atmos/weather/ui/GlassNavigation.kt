@@ -214,46 +214,81 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         return
     }
     val palette=MaterialTheme.colorScheme
-    // Fixed Dock occupies its own overlay; scroll content reserves its real viewport area.
+    var search by remember { mutableStateOf("") }
+    val match:(String)->Boolean={ label -> search.isBlank() || label.contains(search.trim(),ignoreCase=true) }
+    // Actual four-tab settings screen; reserve the dock safe area INSIDE scroll content.
     Column(Modifier.fillMaxSize().background(palette.background)
-        .statusBarsPadding().navigationBarsPadding().padding(bottom=106.dp)
+        .statusBarsPadding().navigationBarsPadding()
         .appleBouncingScroll().verticalScroll(rememberScrollState())
         .padding(horizontal=16.dp)) {
-        Box(Modifier.fillMaxWidth().height(70.dp),contentAlignment=Alignment.Center) {
-            Text("設定",fontSize=22.sp,fontWeight=FontWeight.SemiBold,color=palette.onBackground)
-        }
-        Spacer(Modifier.height(12.dp))
-        IOSV25SettingsGroup {
-            IOSV25SettingsCell("外觀","主題、天氣背景與介面風格",Icons.Rounded.Palette,
-                Color(0xFF457DFF),onClick={appearanceOpen=true})
-            IOSV25SettingsCell("自然語音","天氣語音播報與語音角色",Icons.Rounded.RecordVoiceOver,
-                Color(0xFF8658E8),onClick=onNaturalVoice)
-            IOSV25SettingsCell("地震速報與推播安全","地震速報、危險示警與推播設定",Icons.Rounded.Shield,
-                Color(0xFFFF7657),onClick=onPushSettings)
-            IOSV25SettingsCell("颱風與官方特報","颱風警報、豪雨與政府訊息",Icons.Rounded.Cyclone,
-                Color(0xFFF24B62),last=true,onClick=onTyphoons)
-        }
-        Spacer(Modifier.height(20.dp))
-        IOSV25SettingsGroup {
-            IOSV25SettingsCell("天氣鬧鐘","每日天氣摘要與起床提醒",Icons.Rounded.Alarm,
-                Color(0xFF36B4FA),onClick=onWeatherAlarms)
-            IOSV25SettingsCell("系統更新中心","版本資訊與更新功能",Icons.Rounded.SystemUpdate,
-                Color(0xFF34C759),onClick=onUpdateCenter)
-            IOSV25SettingsCell("權限與健康檢查","定位、通知與背景運作狀態",Icons.Rounded.FactCheck,
-                Color(0xFF218DFA),onClick=onDiagnostics)
-            IOSV25SettingsCell("進階視覺、環境音與觸感","動畫效果、環境音效與觸覺回饋",Icons.Rounded.Tune,
-                Color(0xFF7560E8),last=true,onClick=onAdvanced)
+        Spacer(Modifier.height(24.dp))
+        Text("設定",fontSize=34.sp,fontWeight=FontWeight.Bold,
+            color=palette.onBackground,letterSpacing=(-.8).sp)
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth().height(43.dp)
+            .clip(RoundedCornerShape(13.dp)).background(palette.surfaceVariant)
+            .padding(horizontal=13.dp),verticalAlignment=Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Search,null,Modifier.size(20.dp),tint=palette.onSurfaceVariant)
+            Spacer(Modifier.width(8.dp))
+            Box(Modifier.weight(1f)) {
+                if(search.isEmpty()) Text("搜尋設定",fontSize=16.sp,color=palette.onSurfaceVariant)
+                androidx.compose.foundation.text.BasicTextField(value=search,onValueChange={search=it},
+                    singleLine=true,textStyle=androidx.compose.ui.text.TextStyle(
+                        color=palette.onSurface,fontSize=16.sp),modifier=Modifier.fillMaxWidth())
+            }
+            if(search.isNotEmpty()) Text("×",color=palette.onSurfaceVariant,fontSize=20.sp,
+                modifier=Modifier.clickable{search=""})
         }
         Spacer(Modifier.height(20.dp))
-        IOSV25SettingsGroup {
-            IOSV25SettingsCell("智慧穿搭與開源 AI","穿搭、雨具與個人化選擇",Icons.Rounded.Checkroom,
-                Color(0xFF80889A),onClick=onLifestyle)
-            IOSV25SettingsCell("自動檢查更新","目前："+if(automaticUpdates)"開啟" else "關閉",
-                Icons.Rounded.SystemUpdate,Color(0xFF34C759),last=true,
-                onClick={onUpdates(!automaticUpdates)})
+        if(search.isBlank()) {
+            // App identity only: no pretend Apple ID, mobile data or VPN settings.
+            IOSV25SettingsGroup {
+                IOSV25SettingsCell("thinn-khì","天氣・地震・日常提醒",Icons.Rounded.Cloud,
+                    Color(0xFF5BA4CF),last=true,onClick=onDiagnostics)
+            }
+            Spacer(Modifier.height(20.dp))
         }
-        Spacer(Modifier.height(25.dp))
+        if(listOf("外觀","自然語音","地震速報與推播安全","颱風與官方特報").any(match)) {
+            IOSV25SettingsGroup {
+                if(match("外觀")) IOSV25SettingsCell("外觀","深淺色、背景與玻璃效果",Icons.Rounded.Palette,
+                    Color(0xFF007AFF),onClick={appearanceOpen=true})
+                if(match("自然語音")) IOSV25SettingsCell("自然語音","播報聲線與試聽",Icons.Rounded.RecordVoiceOver,
+                    Color(0xFFAF52DE),onClick=onNaturalVoice)
+                if(match("地震速報與推播安全")) IOSV25SettingsCell("地震速報與推播安全","通知門檻與警報",Icons.Rounded.Shield,
+                    Color(0xFFFF3B30),onClick=onPushSettings)
+                if(match("颱風與官方特報")) IOSV25SettingsCell("颱風與官方特報","路徑、長浪與警特報",Icons.Rounded.Cyclone,
+                    Color(0xFFFF9500),last=true,onClick=onTyphoons)
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+        if(listOf("天氣鬧鐘","系統更新中心","權限與健康檢查","進階視覺、環境音與觸感").any(match)) {
+            IOSV25SettingsGroup {
+                if(match("天氣鬧鐘")) IOSV25SettingsCell("天氣鬧鐘","時間、重複與播報",Icons.Rounded.Alarm,
+                    Color(0xFFFF9500),onClick=onWeatherAlarms)
+                if(match("系統更新中心")) IOSV25SettingsCell("系統更新中心","真正的版本下載與驗證",Icons.Rounded.SystemUpdate,
+                    Color(0xFF34C759),onClick=onUpdateCenter)
+                if(match("權限與健康檢查")) IOSV25SettingsCell("權限與健康檢查","通知、定位與排程",Icons.Rounded.FactCheck,
+                    Color(0xFF007AFF),onClick=onDiagnostics)
+                if(match("進階視覺、環境音與觸感")) IOSV25SettingsCell("進階視覺、環境音與觸感","動畫、觸感與環境音",Icons.Rounded.Tune,
+                    Color(0xFF5856D6),last=true,onClick=onAdvanced)
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+        if(listOf("智慧穿搭與開源 AI","自動檢查更新").any(match)) {
+            IOSV25SettingsGroup {
+                if(match("智慧穿搭與開源 AI")) IOSV25SettingsCell("智慧穿搭與開源 AI","雨具與個人化建議",Icons.Rounded.Checkroom,
+                    Color(0xFF8E8E93),onClick=onLifestyle)
+                if(match("自動檢查更新")) IOSV25SettingsCell("自動檢查更新",
+                    if(automaticUpdates) "開啟" else "關閉",
+                    Icons.Rounded.SystemUpdate,Color(0xFF34C759),last=true,
+                    onClick={onUpdates(!automaticUpdates)})
+            }
+        }
+        Spacer(Modifier.height(27.dp))
         Text("thinn-khì V25",color=palette.onSurfaceVariant,fontSize=14.sp,
-            modifier=Modifier.fillMaxWidth().padding(bottom=16.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+            modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+        // This spacer scrolls above the FIXED Dock instead of the Dock obscuring rows.
+        Spacer(Modifier.height(120.dp))
     }
+
 }

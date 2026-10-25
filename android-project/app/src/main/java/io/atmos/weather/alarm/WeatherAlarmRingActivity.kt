@@ -223,15 +223,14 @@ private fun AlarmFullScreen(
                                 dragPx = (dragPx + amount).coerceIn(0f, maxDrag)
                                 if (!thresholdReached && dragPx >= maxDrag * .75f) {
                                     thresholdReached = true
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    fingerDown = false
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onStop() // Action is idempotent; service owns real stop.
                                 }
                             },
                             onDragEnd = {
                                 fingerDown = false
-                                if (dragPx >= maxDrag * .75f) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onStop()
-                                } else dragPx = 0f
+                                if (!thresholdReached) dragPx = 0f
                             },
                             onDragCancel = {
                                 fingerDown = false

@@ -46,12 +46,12 @@ fun NextOpticalSurface(
     }
     val x = NextMotionTokens.clampedTouchX(touchX)
     val background = if (reduceTransparency) {
-        Brush.verticalGradient(listOf(Color(0xFF263E51), Color(0xFF183044)))
+        if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF263E51),Color(0xFF183044)))
     } else if(lightTheme) {
         // Pale cool-tinted glass; no heavy dark blue fill on the white Settings page.
         Brush.verticalGradient(listOf(Color(0xEAF9FCFF), Color(0xD6E8F1F9), Color(0xD2E5EEF8)))
     } else {
-        Brush.verticalGradient(listOf(Color(0xBD879AAB), Color(0xA0445462), Color(0xBE29333D)))
+        Brush.verticalGradient(listOf(Color(0xB064707C), Color(0xAA293746), Color(0xB2202831)))
     }
     Box(modifier.clip(shape).background(background).drawWithContent {
         val w = size.width
@@ -75,7 +75,7 @@ fun NextOpticalSurface(
         drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = if (pressed) .91f else .73f),
+                    Color.White.copy(alpha = if (pressed) .72f else .42f),
                     Color.White.copy(alpha = .13f),
                     Color(0xFFBCEBFF).copy(alpha = if(lightTheme) .56f else .24f)
                 ), start = Offset(0f, 0f), end = Offset(w, h)

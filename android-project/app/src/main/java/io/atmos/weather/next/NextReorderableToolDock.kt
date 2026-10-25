@@ -95,8 +95,8 @@ fun NextReorderableToolDock(
     var scrubX by remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
     val lightTheme=MaterialTheme.colorScheme.background.red > .5f
-    val activeInk=if(lightTheme) Color(0xFF007AFF) else Color.White
-    val inactiveInk=if(lightTheme) Color(0xFF677388) else Color(0xFFE2EAF2)
+    val activeInk=if(lightTheme) Color(0xFF007AFF) else Color(0xFFF4FBFF)
+    val inactiveInk=if(lightTheme) Color(0xFF747783) else Color(0xFFBACAD8)
     val dockInsetPx = with(density) { 6.dp.toPx() }
     val currentIndex = visible.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)
     val slotPx = ((dockWidthPx.toFloat() - 2f*dockInsetPx) / visible.size.coerceAtLeast(1)).coerceAtLeast(1f)
@@ -172,29 +172,6 @@ fun NextReorderableToolDock(
                         modifier = Modifier.width(65.dp).height(58.dp)
                             .graphicsLayer(scaleX = scale, scaleY = scale, translationX = if (reduceMotion) 0f else localX)
                             .background(Color.Transparent, RoundedCornerShape(22.dp))
-                            .pointerInput(action.id, itemWidthPx) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = {
-                                        draggingId = action.id
-                                        localX = 0f
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    },
-                                    onDrag = { change, delta ->
-                                        change.consume()
-                                        localX += delta.x
-                                        dockDragOffsetPx=localX
-                                        if (localX >= itemWidthPx && move(action.id, 1)) {
-                                            localX -= itemWidthPx
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        } else if (localX <= -itemWidthPx && move(action.id, -1)) {
-                                            localX += itemWidthPx
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        }
-                                    },
-                                    onDragEnd = { draggingId = null; localX = 0f; dockDragOffsetPx=0f },
-                                    onDragCancel = { draggingId = null; localX = 0f; dockDragOffsetPx=0f }
-                                )
-                            }
                             .semantics {
                                 contentDescription = action.label
                                 customActions = listOf(
