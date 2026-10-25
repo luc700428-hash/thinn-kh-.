@@ -152,11 +152,20 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
             Text(status,color=Color.White,fontSize=15.sp)
         }
         Spacer(Modifier.height(14.dp))
-        if(fixes.isNotEmpty() || googlePath.isNotEmpty()) {
-            if (googlePath.isEmpty()) OfficialTrackPlot(fixes,verifiedTracks)
-            else OfficialTrackPlot(fixes,verifiedTracks,googlePath)
-            Spacer(Modifier.height(12.dp))
-            Text(if(fixes.isNotEmpty()) "官方預報路徑 · 台灣、澎湖、金門、馬祖" else "Weather Lab 本機匯入路徑 · 尚無官方路徑",                color=Color(0xFFCDE7F3),fontSize=14.sp)
+        // Basemap is always available, but forecast data is never fabricated.
+        // Keep the existing native two-argument overload for official-only mode.
+        if (googlePath.isEmpty()) OfficialTrackPlot(fixes,verifiedTracks)
+        else OfficialTrackPlot(fixes,verifiedTracks,googlePath)
+        Spacer(Modifier.height(12.dp))
+        if(fixes.isNotEmpty()) {
+            Text("官方預報路徑 · 臺灣、澎湖、金門、馬祖",
+                color=Color(0xFFCDE7F3),fontSize=14.sp)
+        } else if(googlePath.isNotEmpty()) {
+            Text("Weather Lab 本機匯入路徑 · 尚無官方路徑",
+                color=Color(0xFFCDE7F3),fontSize=14.sp)
+        } else {
+            Text("臺澎金馬地圖 · 目前沒有可顯示的官方路徑（不代表沒有天氣風險）",
+                color=Color(0xFFCDE7F3),fontSize=14.sp)
         }
         Spacer(Modifier.height(15.dp))
         Column(Modifier.fillMaxWidth()

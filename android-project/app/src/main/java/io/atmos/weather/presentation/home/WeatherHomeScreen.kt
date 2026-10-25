@@ -826,6 +826,12 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         InteractiveForecast(snapshot.nextHours.take(24),snapshot.timeZoneId, sunrise=snapshot.sunrise, sunset=snapshot.sunset)
                     }
                     Spacer(Modifier.height(15.dp))
+                    // Restore the existing native CWA radar card to the weather home.
+                    // When imagery is unavailable, the original card shows an honest
+                    // unavailable/coverage status instead of silently removing the map.
+                    RadarThreeHourCard(weather=snapshot,
+                        openCwaRadar={ uriHandler.openUri("https://qpeplus.cwa.gov.tw/") })
+                    Spacer(Modifier.height(15.dp))
                     WeatherIndicatorGrid(snapshot)
                     if(snapshot.temperatureC <= 6.0 && snapshot.condition in
                         setOf(WeatherCondition.SNOW, WeatherCondition.SLEET, WeatherCondition.FREEZING_RAIN)) {
