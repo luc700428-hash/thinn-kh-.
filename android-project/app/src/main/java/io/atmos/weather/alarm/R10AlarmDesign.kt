@@ -57,12 +57,13 @@ import androidx.compose.ui.unit.sp
 import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.atmos.weather.R
+import io.atmos.weather.ui.iosJellyPress
 import java.time.LocalTime
 import java.util.Locale
 
 /** Independently authored Compose Foundation controls, not Material picker or switch widgets. */
-private val night=Color(0xFF1C1C1E)
-private val group=Color(0xFF2C2C2E)
+private val night=Color(0xFF141416)
+private val group=Color(0xFF1C1C1E)
 private val secondary=Color(0xFF8E8E93)
 private val amber=Color(0xFFFF9F0A)
 private val weekdays=listOf("一","二","三","四","五","六","日")
@@ -71,12 +72,12 @@ object R10AlarmTones {
     const val prefix="thinn://alarm/"
     data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color)
     val choices=listOf(
-        Choice("dawn","晨光序曲","14 種天氣的清新鋼琴與自然音",Color(0xFFEF7AB0),Color(0xFF9D428F)),
-        Choice("rain","天氣絮語","14 種天氣的舒緩和聲與環境白噪音",Color(0xFF90EFF3),Color(0xFF258FC1)),
-        Choice("wood","木息 Forest","林間木琴 · 自然柔和",Color(0xFF74D1B9),Color(0xFF286E69)),
-        Choice("water","水漣 Spring","山泉水滴 · 透明鐘音",Color(0xFF99C1F4),Color(0xFF516BBB)),
-        Choice("fire","曜火 Dawn","溫暖漸進 · 日出能量",Color(0xFFFFB877),Color(0xFFD16B68)),
-        Choice("metal","金石 Bellglass","清透和弦 · 明確醒腦",Color(0xFFC9B4F8),Color(0xFF6C5AA8))
+        Choice("dawn","晨光序曲","鋼琴旋律 · 14 種天氣編曲",Color(0xFFEF7AB0),Color(0xFF9D428F)),
+        Choice("rain","雨光節拍","柔鋼琴與明確節拍 · 天氣自適應",Color(0xFF90EFF3),Color(0xFF258FC1)),
+        Choice("wood","森間晨行","木琴與撥弦 · 天氣自適應",Color(0xFF74D1B9),Color(0xFF286E69)),
+        Choice("water","水漣初醒","豎琴與水紋旋律 · 天氣自適應",Color(0xFF99C1F4),Color(0xFF516BBB)),
+        Choice("fire","晴日躍動","溫暖撥弦與輕節奏 · 天氣自適應",Color(0xFFFFB877),Color(0xFFD16B68)),
+        Choice("metal","霜光鈴奏","柔亮鐘琴與旋律回應 · 天氣自適應",Color(0xFFC9B4F8),Color(0xFF6C5AA8))
     )
     fun isBuiltIn(uri:String?):Boolean=uri?.startsWith(prefix)==true && choices.any { prefix+it.id==uri }
     fun resource(uri:String?, weather:AlarmWeatherReading?, nowMs:Long):Int? {
@@ -129,205 +130,9 @@ private fun GlassSetting(label:String, detail:String?=null,click:(()->Unit)?=nul
 @Composable
 private fun Line(){Box(Modifier.fillMaxWidth().padding(start=18.dp).height(.5.dp).background(Color.White.copy(alpha=.10f)))}
 
-/** AM stays above PM, sharing the numeric wheels' 38dp central selection row. */
-@Composable
-private fun MeridiemWheel(value:Int,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
-    val haptic=LocalHapticFeedback.current
-    val density=LocalDensity.current
-    val threshold=with(density){12.dp.toPx()}
-    val step=with(density){38.dp.toPx()}
-    val latestValue by rememberUpdatedState(value)
-    val latestUpdate by rememberUpdatedState(onValue)
-    var totalDrag by remember {mutableFloatStateOf(0f)}
-    var tracking by remember {mutableStateOf(false)}
-    val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
-    val target=with(density){(-value*step+if(tracking)totalDrag else 0f).toDp()}
-    val selectedY by animateDpAsState(target,
-        animationSpec=if(tracking || reduceMotion)tween(0) else spring(
-            dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
-            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="v25-am-pm-cylinder")
-    val y=with(density){selectedY.toPx()}
-    Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
-        .semantics(mergeDescendants=true) {
-            stateDescription=if(value==0)"上午" else "下午"
-            customActions=listOf(CustomAccessibilityAction("上午"){latestUpdate(0);true},
-                CustomAccessibilityAction("下午"){latestUpdate(1);true})
-        }.pointerInput(threshold,step) {
-            detectVerticalDragGestures(
-                onDragStart={tracking=true;totalDrag=0f},
-                onVerticalDrag={change,dy ->
-                    change.consume();totalDrag=(totalDrag+dy).coerceIn(-(1-latestValue)*step,latestValue*step)
-                },onDragEnd={
-                    val next=V25AlarmMeridiem.fromDrag(latestValue,totalDrag,threshold)
-                    if(next!=latestValue) {
-                        latestUpdate(next);haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
-                    tracking=false;totalDrag=0f
-                },onDragCancel={tracking=false;totalDrag=0f})
-        }) {
-        Layout(content={
-            Box(Modifier.fillMaxWidth().height(38.dp).graphicsLayer {
-                val d=y/step;rotationX=-d*18f;alpha=(1f-abs(d)*.64f).coerceIn(.08f,1f);cameraDistance=12.dp.toPx()
-            }.clickable {latestUpdate(0)},contentAlignment=Alignment.Center) {
-                Text("上午",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Normal)
-            }
-            Box(Modifier.fillMaxWidth().height(38.dp).graphicsLayer {
-                val d=1f+y/step;rotationX=-d*18f;alpha=(1f-abs(d)*.64f).coerceIn(.08f,1f);cameraDistance=12.dp.toPx()
-            }.clickable {latestUpdate(1)},contentAlignment=Alignment.Center) {
-                Text("下午",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Normal)
-            }
-        },modifier=Modifier.fillMaxSize()) {measurables,constraints ->
-            val row=38.dp.roundToPx()
-            val cells=measurables.map {it.measure(Constraints.fixed(constraints.maxWidth,row))}
-            layout(constraints.maxWidth,constraints.maxHeight) {
-                val center=(constraints.maxHeight-row)/2
-                cells.forEachIndexed {i,cell ->cell.placeRelative(0,center+i*row+y.roundToInt())}
-            }
-        }
-    }
-}
-
-@Composable
-private fun Wheel(value:Int,count:Int,display:(Int)->String,onValue:(Int)->Unit,modifier:Modifier=Modifier) {
-    val density=LocalDensity.current
-    val stepPx=with(density) { 38.dp.toPx() }
-    val scope=rememberCoroutineScope()
-    val haptics=LocalHapticFeedback.current
-    val reduceMotion=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
-    var offsetPx by remember { mutableFloatStateOf(0f) }
-    var movingJob by remember { mutableStateOf<Job?>(null) }
-    val liveValue by rememberUpdatedState(value)
-    val liveUpdate by rememberUpdatedState(onValue)
-    val shifted= (offsetPx/stepPx).roundToInt()
-    val fraction=offsetPx-shifted*stepPx
-    val selectedDetent=((value-shifted)%count+count)%count
-    var lastFeedbackValue by remember { mutableIntStateOf(selectedDetent) }
-    LaunchedEffect(selectedDetent) {
-        if(selectedDetent!=lastFeedbackValue) {
-            // One tactile request per visible time unit (subject to Android hardware settings).
-            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            lastFeedbackValue=selectedDetent
-        }
-    }
-    Box(modifier.height(213.dp).clip(RoundedCornerShape(18.dp))
-        .semantics(mergeDescendants=true) {
-            stateDescription=display(value)
-            customActions=listOf(
-                CustomAccessibilityAction("增加") {movingJob?.cancel();offsetPx=0f;liveUpdate((liveValue+1)%count);true},
-                CustomAccessibilityAction("減少") {movingJob?.cancel();offsetPx=0f;liveUpdate((liveValue-1+count)%count);true}
-            )
-        }
-        .pointerInput(count,stepPx,reduceMotion) {
-            var tracker=VelocityTracker()
-            detectVerticalDragGestures(
-                onDragStart={ position ->
-                    movingJob?.cancel()
-                    tracker=VelocityTracker()
-                    // Initial contact is recorded by the first real drag event.
-                },
-                onVerticalDrag={ change, distance ->
-                    change.consume()
-                    tracker.addPosition(change.uptimeMillis,change.position)
-                    offsetPx=(offsetPx+distance).coerceIn(-stepPx*160f,stepPx*160f)
-                },
-                onDragEnd={
-                    val speed=tracker.calculateVelocity().y.coerceIn(-2400f,2400f)
-                    // Keep a small fling prediction, but NEVER run a long decay + spring.
-                    // The value is committed synchronously, before Save could be pressed.
-                    val coastPx=if(reduceMotion) 0f
-                        else (speed*.065f).coerceIn(-stepPx*2f,stepPx*2f)
-                    val nearest=((offsetPx+coastPx)/stepPx).roundToInt().coerceIn(-160,160)
-                    offsetPx-=nearest*stepPx
-                    if(nearest!=0) {
-                        liveUpdate(((liveValue-nearest)%count+count)%count)
-                    }
-                    val visualStart=offsetPx
-                    movingJob=scope.launch {
-                        if(!reduceMotion) {
-                            Animatable(visualStart).animateTo(0f,spring(
-                                dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
-                                stiffness=io.atmos.weather.ui.AppleMotion.springStiffness)) {
-                                offsetPx=this.value
-                            }
-                        }
-                        offsetPx=0f
-                    }
-                },onDragCancel={
-                    movingJob=scope.launch {
-                        val snap=(offsetPx/stepPx).roundToInt()
-                        if(snap!=0) liveUpdate(((liveValue-snap)%count+count)%count)
-                        offsetPx=0f
-                    }
-                }
-            )
-        },contentAlignment=Alignment.Center) {
-        // Place the actual selected value at the middle of the 213dp viewport.
-        // A constrained Column previously clipped its 7 rows and shifted the selected
-        // white digits one row below the grey highlight, saving the WRONG alarm time.
-        Layout(content = {
-            for (row in -3..3) {
-                val distance=abs(row+fraction/stepPx)
-                val item=((value+row-shifted)%count+count)%count
-                Box(Modifier.fillMaxWidth().height(38.dp).graphicsLayer {
-                    rotationX=(-(row+fraction/stepPx)*18f).coerceIn(-54f,54f)
-                    cameraDistance=12.dp.toPx()
-                    scaleX=(1f-distance*.065f).coerceIn(.75f,1f)
-                }.clickable {
-                    movingJob?.cancel()
-                    liveUpdate(item)
-                    offsetPx=0f
-                },contentAlignment=Alignment.Center) {
-                    if(count!=2 || row==0 || row==1) Text(display(item),textAlign=TextAlign.Center,
-                        color=Color.White.copy(alpha=when {
-                            distance<.6f -> 1f
-                            distance<1.6f -> .38f
-                            distance<2.6f -> .16f
-                            else -> .06f
-                        }),fontSize=22.sp,fontWeight=FontWeight.Normal,
-                        maxLines=1)
-                }
-            }
-        }, modifier=Modifier.fillMaxSize()) { measurables, constraints ->
-            val rowHeight = 38.dp.roundToPx()
-            val cells = measurables.map { it.measure(Constraints.fixed(constraints.maxWidth,rowHeight)) }
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                val center = (constraints.maxHeight-rowHeight)/2
-                cells.forEachIndexed { index, placeable ->
-                    placeable.placeRelative(0, center+(index-3)*rowHeight+fraction.roundToInt())
-                }
-            }
-        }
-    }
-}
-
-/**
- * Single time-selection renderer for alarm, reminders, and scheduled briefing.
- * All callers own their own hour/minute state and business callbacks.
- * AM is permanently above PM; time values are committed on drag release BEFORE save.
- */
-@Composable
-fun AppleAlarmTimeSelector(
-    hour:Int, minute:Int, onHour:(Int)->Unit, onMinute:(Int)->Unit,
-    modifier:Modifier=Modifier
-) {
-    val safeHour=hour.coerceIn(0,23)
-    val safeMinute=minute.coerceIn(0,59)
-    Box(modifier.fillMaxWidth().height(213.dp),contentAlignment=Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(38.dp)
-            .background(Color(0xFF2C2C2E),RoundedCornerShape(9999.dp)))
-        Row(Modifier.widthIn(max=224.dp).fillMaxWidth(),
-            horizontalArrangement=Arrangement.spacedBy(4.dp),
-            verticalAlignment=Alignment.CenterVertically) {
-            MeridiemWheel(if(safeHour<12) 0 else 1,
-                {part -> onHour((safeHour%12)+part*12)},Modifier.weight(1.15f))
-            Wheel(safeHour%12,12,{if(it==0)"12" else "$it"},
-                {v->onHour((safeHour/12)*12+v)},Modifier.weight(.85f))
-            Wheel(safeMinute,60,{"%02d".format(Locale.TAIWAN,it)},
-                {onMinute(it)},Modifier.weight(.85f))
-        }
-    }
+/** Shared date/time/duration cylinders; callers retain their 24-hour business values. */
+@Composable fun AppleAlarmTimeSelector(hour:Int,minute:Int,onHour:(Int)->Unit,onMinute:(Int)->Unit,modifier:Modifier=Modifier){
+ io.atmos.weather.ui.IOSClockDrums(hour,minute,onHour,onMinute,modifier)
 }
 
 @Composable
@@ -341,15 +146,10 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     var minute by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.minute?:now.minute) }
     var label by rememberSaveable(initial?.id) { mutableStateOf(initial?.title?:"鬧鐘") }
     var repeat by rememberSaveable(initial?.id) { mutableStateOf(initial?.days?:emptySet()) }
-    var voice by rememberSaveable(initial?.id) { mutableStateOf(initial?.weatherVoice?:true) }
+    var voice by rememberSaveable(initial?.id) { mutableStateOf(false) }
     var snooze by rememberSaveable(initial?.id) { mutableStateOf(initial?.snooze?:true) }
     var snoozeMinutes by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.snoozeMinutes?:9) }
     var chooseSnoozeMinutes by remember {mutableStateOf(false)}
-    val reducePickerMotion=io.atmos.weather.ui.rememberAppleReduceMotion()
-    val snoozeProgress by animateFloatAsState(if(chooseSnoozeMinutes)1f else 0f,
-        animationSpec=if(reducePickerMotion)tween(0) else spring(
-            dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping,
-            stiffness=io.atmos.weather.ui.AppleMotion.springStiffness),label="snooze-sheet-transition")
     val focusManager=androidx.compose.ui.platform.LocalFocusManager.current
     var uri by rememberSaveable(initial?.id) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+"dawn") }
     var choosing by remember { mutableStateOf(false) }
@@ -431,28 +231,10 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
         }
         }
     }
-    if(chooseSnoozeMinutes || snoozeProgress>.001f) Dialog(onDismissRequest={chooseSnoozeMinutes=false},
-        properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.46f*snoozeProgress.coerceIn(0f,1f))),contentAlignment=Alignment.BottomCenter) {
-        Column(Modifier.fillMaxWidth().offset {IntOffset(0,(650.dp.toPx()*(1f-snoozeProgress)).roundToInt())}.clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp))
-            .background(night).navigationBarsPadding().padding(horizontal=20.dp,vertical=18.dp),
-            horizontalAlignment=Alignment.CenterHorizontally) {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text("貪睡時間",fontSize=20.sp,color=Color.White,
-                    modifier=Modifier.weight(1f),fontWeight=FontWeight.SemiBold)
-                io.atmos.weather.ui.IOS27RoundControl("✓",onClick={chooseSnoozeMinutes=false},
-                    fill=Color(0xFFFF9F0A),foreground=Color.White)
-            }
-            Spacer(Modifier.height(12.dp))
-            Text("選擇再次響鈴的間隔",fontSize=14.sp,color=secondary)
-            Spacer(Modifier.height(12.dp))
-            // Reuse the same physical detent wheel as the clock selector.
-            Wheel(value=snoozeMinutes-1,count=30,display={"${it+1} 分鐘"},
-                onValue={snoozeMinutes=it+1},
-                modifier=Modifier.fillMaxWidth())
-            Text("$snoozeMinutes 分鐘",color=amber,fontSize=17.sp)
-            Spacer(Modifier.height(12.dp))
-        }
+    if(chooseSnoozeMinutes){
+        var draft by remember{mutableIntStateOf(snoozeMinutes)}
+        io.atmos.weather.ui.IOSFormSheet("延遲響鬧時長",onDismiss={chooseSnoozeMinutes=false},onDone={snoozeMinutes=draft;chooseSnoozeMinutes=false},accent=amber){
+            io.atmos.weather.ui.IOSDurationDrums(draft,{draft=it},1,30)
         }
     }
     if(ttsOptions) Dialog(onDismissRequest={ttsOptions=false}) {
@@ -519,12 +301,13 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
     val ctx=androidx.compose.ui.platform.LocalContext.current
     var active by remember { mutableStateOf(selected?:R10AlarmTones.prefix+"dawn") }
     var preview by remember { mutableStateOf<MediaPlayer?>(null) }
-    DisposableEffect(Unit) {onDispose {preview?.release()}}
+    var weatherPreview by remember {mutableStateOf<io.atmos.weather.next.NextWeatherAlarmPlayer?>(null)}
+    DisposableEffect(Unit) {onDispose {preview?.release();weatherPreview?.close()}}
     val localAudioPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if(picked!=null) {
             val access=Intent.FLAG_GRANT_READ_URI_PERMISSION
             runCatching { ctx.contentResolver.takePersistableUriPermission(picked,access) }
-            preview?.release(); preview=null
+            preview?.release(); preview=null;weatherPreview?.close();weatherPreview=null
             active=picked.toString()
             preview=runCatching { prepareAlarmPreview(ctx,picked)?.apply {
                 setOnCompletionListener {player->player.release();if(preview===player)preview=null}
@@ -535,27 +318,28 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Column(Modifier.fillMaxSize().background(night).statusBarsPadding().navigationBarsPadding().padding(horizontal=20.dp)) {
             Row(Modifier.fillMaxWidth().height(68.dp),verticalAlignment=Alignment.CenterVertically) {
-                Text("返回",color=amber,fontSize=17.sp,modifier=Modifier.clickable(onClick=onClose))
+                io.atmos.weather.ui.IOS27RoundControl("×",onClose,fill=Color(0xFF2C2C2E),foreground=Color.White)
                 Text("鬧鐘鈴聲",color=Color.White,fontSize=19.sp,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
-                Text("完成",color=amber,fontSize=17.sp,modifier=Modifier.clickable {preview?.release();preview=null;onChoose(active)})
+                io.atmos.weather.ui.IOS27RoundControl("✓",onClick={preview?.release();preview=null;weatherPreview?.close();onChoose(active)},fill=amber,foreground=Color.White)
             }
-            voiceSettings()
+            // Weather speech remains removed; the rebuilt suite uses melody and nature.
             Text("專屬自然系鈴聲",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text("點選卡片選取並試聽。六款都會依有效天氣資料調整聲景；沒有新資料時播放中性版本。",
+            Text("六款全新旋律，依有效天氣切換 14 種編曲與自然聲景。點選試聽 12 秒；資料過期時播放中性版本。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 R10AlarmTones.choices.chunked(2).forEach {row ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         row.forEach {choice->
                             val chosen=active==R10AlarmTones.prefix+choice.id
-                            Column(Modifier.weight(1f).height(176.dp).clip(RoundedCornerShape(22.dp))
+                            Column(Modifier.weight(1f).height(176.dp).iosJellyPress().clip(RoundedCornerShape(22.dp))
                                 .background(Brush.linearGradient(listOf(choice.upper,choice.lower)))
                                 .border(if(chosen) 2.dp else 1.dp,if(chosen) Color.White else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
                                 .clickable {
                                     active=R10AlarmTones.prefix+choice.id
-                                    preview?.release()
+                                    preview?.release();preview=null;weatherPreview?.close()
+                                    weatherPreview=io.atmos.weather.next.NextWeatherAlarmPlayer.start(ctx,active,WeatherAlarmSpeechCache.load(ctx),preview=true)
                                     val res=R10AlarmTones.resource(active,WeatherAlarmSpeechCache.load(ctx),System.currentTimeMillis())
-                                    preview=if(res!=null) runCatching {prepareAlarmPreview(ctx,Uri.parse("android.resource://${ctx.packageName}/$res"))?.apply {
+                                    preview=if(weatherPreview==null && res!=null) runCatching {prepareAlarmPreview(ctx,Uri.parse("android.resource://${ctx.packageName}/$res"))?.apply {
                                         setOnCompletionListener {p->p.release();if(preview===p)preview=null}
                                         start()
                                     }}.getOrNull() else null

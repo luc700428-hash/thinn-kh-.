@@ -1,0 +1,1 @@
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_countdown" android:layout_width="match_parent" android:layout_height="match_parent" android:fontFamily="sans-serif" android:gravity="center_vertical" android:textSize="15sp" android:textColor="#FFFFFF" android:includeFontPadding="false"/>

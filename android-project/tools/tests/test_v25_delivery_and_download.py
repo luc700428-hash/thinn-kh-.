@@ -69,3 +69,24 @@ class NativeDownloadContracts(unittest.TestCase):
         self.assertIn('default: false',w);self.assertIn('verify_next_release_gate.py',w);self.assertIn('inputs.publish_release == true',w)
         self.assertIn('publish_release=false',u);self.assertNotIn('--force',u);self.assertIn('rev-parse --is-inside-work-tree',u)
 if __name__=='__main__':unittest.main()
+
+class BinaryPayloadTests(unittest.TestCase):
+    def fixture(self,root,current=b'old',payload=b'new'):
+        package=root/'package';checkout=root/'checkout';package.mkdir();checkout.mkdir()
+        (checkout/'tone.wav').write_bytes(current);(package/'source').mkdir();(package/'source/tone.wav').write_bytes(payload)
+        git(checkout,'init');git(checkout,'config','user.name','Test');git(checkout,'config','user.email','test@example.invalid');git(checkout,'add','.');git(checkout,'commit','-m','base')
+        manifest={'schema':1,'base_commit':'unused-for-binary-only','binary_changes':['tone.wav'],'changes':[{'path':'tone.wav','before_sha256':digest(b'old'),'after_sha256':digest(b'new')}]}
+        (package/'PACKAGE_MANIFEST.json').write_text(json.dumps(manifest));return package,checkout
+    def test_binary_updates_and_repeats_without_a_network_fetch(self):
+        with tempfile.TemporaryDirectory() as d:
+            p,c=self.fixture(Path(d));apply.apply(p,c);self.assertEqual((c/'tone.wav').read_bytes(),b'new');apply.apply(p,c)
+    def test_binary_upstream_conflict_preserves_local_data(self):
+        with tempfile.TemporaryDirectory() as d:
+            p,c=self.fixture(Path(d),current=b'upstream');before=git(c,'rev-parse','HEAD')
+            with self.assertRaisesRegex(ValueError,'Binary conflict'):apply.apply(p,c)
+            self.assertEqual((c/'tone.wav').read_bytes(),b'upstream');self.assertEqual(git(c,'rev-parse','HEAD'),before)
+    def test_bad_payload_fails_before_any_patch(self):
+        with tempfile.TemporaryDirectory() as d:
+            p,c=self.fixture(Path(d),payload=b'bad')
+            with self.assertRaisesRegex(ValueError,'integrity'):apply.apply(p,c)
+            self.assertEqual((c/'tone.wav').read_bytes(),b'old')

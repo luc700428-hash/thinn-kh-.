@@ -2,11 +2,14 @@ package io.atmos.weather.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -34,8 +37,46 @@ import androidx.compose.ui.graphics.StrokeCap
 /** True inset-grouped presentation cells: do not call back into business repositories. */
 @Composable
 fun IOSV25SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    val opaque=rememberAppleReduceTransparency()
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-        .background(MaterialTheme.colorScheme.surface),content=content)
+        .thinnBackdrop(opaque,16.dp)
+        .background(MaterialTheme.colorScheme.surface.copy(alpha=if(opaque)1f else .94f))
+        .thinnSpecularEdge(16.dp),content=content)
+}
+
+/** Shared inset navigation bar, with the same optical back control on settings pages. */
+@Composable
+fun IOSSettingsHeader(title:String,onBack:()->Unit,modifier:Modifier=Modifier) {
+    Box(modifier.fillMaxWidth().heightIn(min=58.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
+        IOS27RoundControl("‹",onBack,Modifier.align(Alignment.CenterStart))
+        Text(title,color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,
+            fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(horizontal=54.dp))
+    }
+}
+
+@Composable
+fun IOSSegmentedControl(labels:List<String>,selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier) {
+    require(labels.isNotEmpty())
+    val palette=MaterialTheme.colorScheme
+    val reduce=rememberAppleReduceMotion()
+    val response=iosMotionResponse()
+    BoxWithConstraints(modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(9999.dp))
+        .background(palette.surfaceVariant)) {
+        val cell=(maxWidth-8.dp)/labels.size
+        val position by animateDpAsState(cell*selected.coerceIn(labels.indices),
+            if(reduce)tween(0) else spring(response.damping,response.stiffness),label="分段控制滑動")
+        Box(Modifier.padding(4.dp).offset(x=position).width(cell).fillMaxHeight()
+            .clip(RoundedCornerShape(9999.dp)).thinnBackdrop(rememberAppleReduceTransparency(),9999.dp)
+            .background(palette.surface).thinnSpecularEdge(9999.dp))
+        Row(Modifier.fillMaxSize().padding(4.dp)) {
+            labels.forEachIndexed { index,label ->
+                Box(Modifier.weight(1f).fillMaxHeight().iosJellyPress().selectable(
+                    selected=index==selected,role=Role.Tab,onClick={onSelect(index)}),contentAlignment=Alignment.Center) {
+                    Text(label,color=palette.onSurface,fontSize=14.sp,fontWeight=if(index==selected)FontWeight.SemiBold else FontWeight.Normal)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -44,15 +85,18 @@ fun IOSV25SettingsCell(
     trailing:String="", last:Boolean=false, badgeCount:Int=0, onClick:()->Unit
 ) {
     val palette=MaterialTheme.colorScheme
+    val feedback=io.atmos.weather.haptics.LocalHapticEngine.current
     val interactions=remember { MutableInteractionSource() }
     val held by interactions.collectIsPressedAsState()
     val fill by animateColorAsState(
         if(held) { if(palette.background.red > .5f) Color(0xFFE5E5EA) else Color(0xFF2C2C2E) } else Color.Transparent,
         tween(if(held)80 else 250),label="settings-cell-highlight")
     Column {
-        Row(Modifier.fillMaxWidth().background(fill)
+        Row(Modifier.fillMaxWidth().iosJellyPress().background(fill)
             .semantics(mergeDescendants=true) {contentDescription=listOf(title,subtitle,trailing).filter {it.isNotBlank()}.joinToString("，")}
-            .clickable(interactionSource=interactions,indication=null,role=Role.Button,onClick=onClick)
+            .clickable(interactionSource=interactions,indication=null,role=Role.Button,onClick={
+                feedback?.play(io.atmos.weather.haptics.HapticEngine.Event.TAP);onClick()
+            })
             .defaultMinSize(minHeight=48.dp)
             .padding(start=15.dp,end=16.dp,top=8.dp,bottom=8.dp),
             verticalAlignment=Alignment.CenterVertically) {

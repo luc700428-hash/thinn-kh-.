@@ -1,4 +1,5 @@
 package io.atmos.weather.earthquake
+import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 import io.atmos.weather.ui.appleBouncingScroll
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider

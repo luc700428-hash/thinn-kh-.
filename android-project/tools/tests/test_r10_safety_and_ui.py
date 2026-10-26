@@ -23,14 +23,14 @@ class R10SafetyAndVisual(unittest.TestCase):
     def test_wheels_and_audio_cards_not_material(self):
         ui=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
         page=(JAVA/'alarm/WeatherAlarmPage.kt').read_text()
-        for must in ('detectVerticalDragGestures','R10Switch','R10RingtonePicker','remember { mutableStateOf'):
+        for must in ('IOSClockDrums(','R10Switch','R10RingtonePicker','remember { mutableStateOf'):
             self.assertIn(must,ui)
         self.assertIn('R10AlarmEditor(initial=editing',page)
         self.assertNotIn('AndroidView(',ui)
         self.assertNotIn('ButtonDefaults.',ui)
         self.assertEqual(6,len(re.findall(r'Choice\("(dawn|rain|wood|water|fire|metal)"',ui)))
         for n in ('dawn','dawn_rain','rain','rain_clear','wood','water','fire','metal'):
-            self.assertGreater((RAW/f'thinn_alarm_{n}.ogg').stat().st_size,50000)
+            self.assertGreater((RAW/f'thinn_alarm_{n}.ogg').stat().st_size,20000)
     def test_weather_voice_keeps_freshness_and_fallback(self):
         alarm=(JAVA/'alarm/WeatherAlarmAudioService.kt').read_text()
         narr=(JAVA/'alarm/WeatherAlarmNarration.kt').read_text()

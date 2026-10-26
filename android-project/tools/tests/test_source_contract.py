@@ -27,7 +27,7 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('Modifier.toggleable(',controls)
         self.assertIn('Role.Switch',controls)
         self.assertIn('setProgress {',controls)
-        self.assertIn('detectDragGestures(',controls)
+        self.assertIn('detectHorizontalDragGestures(',controls)
         self.assertIn('progressBarRangeInfo=',controls)
         self.assertIn('defaultMinSize(48.dp,48.dp)',controls)
     def test_stale_station_points_not_cleared(self):

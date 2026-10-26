@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -26,16 +27,15 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
     }
     Column(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF091B30), Color(0xFF235477))))
-            .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(22.dp)
+            .background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()
+            .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(bottom=120.dp)
     ) {
-        Spacer(Modifier.height(24.dp))
-        Text("台灣地震通知", fontSize = 28.sp, color = Color.White)
+        io.atmos.weather.ui.IOSSettingsHeader("台灣地震通知",onClose)
         Text("需主動同意；僅涵蓋台灣本島與離島，不冒充官方災防細胞廣播。",
-            color = Color.White.copy(alpha = .8f))
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(18.dp))
         GlassSurface {
-            Text("FCM ${if (SeismicPushRegistration.configured()) "已配置" else "尚未配置"}", color = Color.White)
+            Text("FCM ${if (SeismicPushRegistration.configured()) "已配置" else "尚未配置"}", color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(10.dp))
             GlassToggle(
                 "接收台灣與離島地震通知",
@@ -56,10 +56,10 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
                 Text("目前不可接收：尚未配置 Firebase Cloud Messaging",
                     color = Color(0xFFFFD38C), fontSize = 15.sp)
             }
-            Text(status, color = Color.White.copy(alpha = .9f), fontSize = 15.sp)
+            Text(status, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
             Spacer(Modifier.height(10.dp))
             Text("訂閱成功不等於後端已部署，也不代表取得合法即時預警來源。啟用前應完成 Cloudflare Worker、FCM 發送及實機驗證。",
-                color = Color.White.copy(alpha = .75f), fontSize = 14.sp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
             Spacer(Modifier.height(10.dp))
             Text("本服務不能保證地震到達前通知；緊急防災資訊以中央氣象署和手機官方災防告警為準。",
                 color = Color(0xFFFFDB9D), fontSize = 14.sp)

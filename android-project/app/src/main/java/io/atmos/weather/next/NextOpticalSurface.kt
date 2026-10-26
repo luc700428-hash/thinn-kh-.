@@ -37,6 +37,7 @@ fun NextOpticalSurface(
     calm: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
     val shape = RoundedCornerShape(cornerRadiusDp.dp)
     val lightTheme=MaterialTheme.colorScheme.background.red > .5f
     val ctx=LocalContext.current
@@ -45,12 +46,11 @@ fun NextOpticalSurface(
     val opticalPhase=if(reducedMotion || reduceTransparency || calm) 0.5f else {
         val transition=rememberInfiniteTransition(label="v25-control-light")
         val t by transition.animateFloat(initialValue=.36f,targetValue=.79f,
-            animationSpec=infiniteRepeatable(tween(5200),RepeatMode.Reverse),
+            animationSpec=infiniteRepeatable(tween((7000-4500*appearance.liquidMotion.coerceIn(0f,1f)).toInt()),RepeatMode.Reverse),
             label="v25-control-glimmer")
         t
     }
     val x = NextMotionTokens.clampedTouchX(touchX)
-    val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
     val glassTint=(.62f-.30f*appearance.glassOpacity.coerceIn(0f,1f))
     val background = if (reduceTransparency) {
         if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF1C1C1E),Color(0xFF1C1C1E)))

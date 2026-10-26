@@ -44,9 +44,7 @@ private val glassBorder: Brush get() = ThinnOpticalMaterial.rim
 fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0xFF141416),
     contentColor:Color=Color.White,content:@Composable ColumnScope.()->Unit) {
     val scope=rememberCoroutineScope()
-    val context=LocalContext.current
-    val reduceMotion=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
+    val reduceMotion=rememberAppleReduceMotion()
     var offsetPx by remember { mutableFloatStateOf(750f) }
     var grabbing by remember {mutableStateOf(false)}
     var closing by remember {mutableStateOf(false)}
@@ -94,9 +92,7 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
 @Composable
 fun GlassAlertDialog(onDismissRequest:()->Unit,confirmButton:@Composable ()->Unit,
     title:@Composable (()->Unit)?=null,text:@Composable (()->Unit)?=null) {
-    val context=LocalContext.current
-    val reduceMotion=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
+    val reduceMotion=rememberAppleReduceMotion()
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown=true }
     val opacity by animateFloatAsState(if(shown)1f else 0f,animationSpec=tween(if(reduceMotion)0 else 180,easing=AppleMotion.fluid),label="對話框進場")
@@ -121,22 +117,19 @@ fun GlassOutlinedTextField(value:String,onValueChange:(String)->Unit,
     keyboardActions:KeyboardActions=KeyboardActions.Default,
     leadingIcon:(@Composable ()->Unit)?=null,
     label:(@Composable ()->Unit)?=null,
+    placeholder:(@Composable ()->Unit)?=null,
     colors:TextFieldColors?=null) {
-    androidx.compose.material3.TextField(
-        value=value,onValueChange=onValueChange,modifier=modifier.fillMaxWidth().heightIn(min=56.dp),
-        singleLine=singleLine,keyboardOptions=keyboardOptions,keyboardActions=keyboardActions,
-        leadingIcon=leadingIcon,label=label,shape=RoundedCornerShape(ThinnDesignTokens.radiusControl),
-        colors=colors ?: androidx.compose.material3.TextFieldDefaults.colors(
-            focusedTextColor=Color.White,unfocusedTextColor=Color.White,
-            focusedContainerColor=Color.White.copy(alpha=.16f),
-            unfocusedContainerColor=Color.White.copy(alpha=.09f),
-            focusedIndicatorColor=Color.Transparent,
-            unfocusedIndicatorColor=Color.Transparent,
-            cursorColor=ThinnDesignTokens.accent,
-            focusedLabelColor=ThinnDesignTokens.accent,
-            unfocusedLabelColor=Color(0xFFCBDCE8)
-        )
-    )
+    val dark=LocalOpticalFormDark.current || MaterialTheme.colorScheme.background.red<.5f
+    val fieldInk=if(dark)Color.White else Color(0xFF1C1C1E)
+    var focused by remember{mutableStateOf(false)}
+    Row(modifier.fillMaxWidth().heightIn(min=if(singleLine)54.dp else 96.dp).clip(RoundedCornerShape(18.dp))
+        .background(if(dark){if(focused)Color(0xFF333337) else Color(0xFF252528)} else Color(0xFFE9E9EE)).thinnSpecularEdge(18.dp).padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
+        leadingIcon?.let{it();Spacer(Modifier.width(10.dp))}
+        BasicTextField(value=value,onValueChange=onValueChange,singleLine=singleLine,keyboardOptions=keyboardOptions,keyboardActions=keyboardActions,
+            textStyle=TextStyle(color=fieldInk,fontSize=17.sp),cursorBrush=SolidColor(Color(0xFF0A84FF)),modifier=Modifier.weight(1f).onFocusChanged{focused=it.isFocused},
+            decorationBox={inner->Box{if(value.isEmpty())(placeholder?:label)?.invoke();inner()}})
+    }
+
 }
 
 @Composable
@@ -164,7 +157,7 @@ fun GlassDropdownMenu(expanded:Boolean,onDismissRequest:()->Unit,
 @Composable
 fun GlassDropdownMenuItem(text:@Composable ()->Unit,onClick:()->Unit) {
     val haptic=io.atmos.weather.haptics.LocalHapticEngine.current
-    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight=48.dp)
+    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight=48.dp).iosJellyPress()
         .clip(RoundedCornerShape(14.dp)).clickable {
             haptic?.play(io.atmos.weather.haptics.HapticEngine.Event.TAP)
             onClick()

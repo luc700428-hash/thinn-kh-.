@@ -8,7 +8,7 @@ package io.atmos.weather.notifications
  */
 internal enum class IslandIconScene {
     ALARM, SUN, CLOUD, RAIN, SNOW, TIMER, QUAKE, TYPHOON, THUNDER,
-    HOT, COLD, AIR, UV, NOTE, CALENDAR, GENERIC
+    HOT, COLD, AIR, UV, NOTE, CALENDAR, GENERIC, MOON, FOG, UPDATE, DUST
 }
 
 internal object IslandIconClassifier {
@@ -22,6 +22,9 @@ internal object IslandIconClassifier {
             "TASK_REMINDER" -> if (listOf("行程", "日曆", "會議", "約會", "schedule").any(label::contains))
                 IslandIconScene.CALENDAR else IslandIconScene.NOTE
             else -> when {
+                listOf("沙塵", "揚塵", "dust").any(label::contains) -> IslandIconScene.DUST
+                listOf("有霧", "大霧", "濃霧", "霧", "fog").any(label::contains) -> IslandIconScene.FOG
+
                 listOf("颱風", "台風", "typhoon", "cyclone").any(label::contains) -> IslandIconScene.TYPHOON
                 listOf("雷雨", "閃電", "雷暴", "thunder").any(label::contains) -> IslandIconScene.THUNDER
                 listOf("豪雨", "大雨", "降雨", "陣雨", "下雨", "rain").any(label::contains) -> IslandIconScene.RAIN
@@ -33,7 +36,7 @@ internal object IslandIconClassifier {
                 listOf("多雲", "陰天", "雲", "cloud").any(label::contains) -> IslandIconScene.CLOUD
                 listOf("晴", "陽光", "sunny", "sunshine").any(label::contains) -> IslandIconScene.SUN
                 "EARTHQUAKE_REPORT" == kind -> IslandIconScene.QUAKE
-                "APP_UPDATE" == kind -> IslandIconScene.GENERIC
+                "APP_UPDATE" == kind -> IslandIconScene.UPDATE
                 else -> IslandIconScene.GENERIC
             }
         }

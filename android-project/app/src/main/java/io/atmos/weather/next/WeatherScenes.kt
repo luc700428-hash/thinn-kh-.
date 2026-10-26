@@ -70,12 +70,12 @@ object WeatherScenes {
         }
     }
 
-    fun fromCachedName(value: String?, code: Int? = null): WeatherScene? {
+    fun fromCachedName(value: String?, code: Int? = null, visibilityM:Double?=null): WeatherScene? {
         val condition = WeatherCondition.entries.firstOrNull { it.name == value }
-        return classify(condition, code)
+        return classify(condition, code, visibilityM)
     }
 
     fun ambienceAsset(scene: WeatherScene) = "next_weather/ambience/${scene.name.lowercase()}.wav"
-    fun musicAsset(theme: String, scene: WeatherScene): String? =
-        if (theme == "dawn" || theme == "rain") "next_weather/music/$theme/${scene.name.lowercase()}.wav" else null
+    fun musicAsset(theme: String, scene: WeatherScene?): String? =
+        if (theme in WeatherWakePolicy.themes) "next_weather/music/$theme/${scene?.name?.lowercase() ?: "neutral"}.wav" else null
 }

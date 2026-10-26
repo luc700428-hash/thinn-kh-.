@@ -65,6 +65,7 @@ fun GlassAction(title:String,subtitle:String="",modifier:Modifier=Modifier,onCli
         if(pressed) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
         tween(if(pressed)80 else 250),label="選項按壓背景")
     Row(modifier.fillMaxWidth().heightIn(min=56.dp)
+        .iosJellyPress()
         .clip(RoundedCornerShape(ThinnDesignTokens.radiusRow)).background(highlight)
         .clickable(interactionSource=interaction,indication=null) {
             feedback?.play(HapticEngine.Event.TAP);onClick()
@@ -203,13 +204,14 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     var reduceTransparency by remember { mutableStateOf(prefs.getBoolean("reduce_transparency",false)) }
     var appearanceOpen by remember { mutableStateOf(false) }
     var accessibilityOpen by remember {mutableStateOf(false)}
+    var surfacesOpen by remember {mutableStateOf(false)}
     var lastDetail by remember {mutableStateOf("appearance")}
     val settingsScroll=rememberScrollState()
     val currentAutomatic=rememberBooleanSetting("check_updates_automatically",automaticUpdates)
-    val detailsVisible=appearanceOpen || accessibilityOpen
+    val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen
     SideEffect {onDetailVisibility(detailsVisible)}
     DisposableEffect(Unit) {onDispose {onDetailVisibility(false)}}
-    androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;accessibilityOpen=false}
+    androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false}
     val appearanceContent:@Composable ()->Unit = {
         IOS27AppearancePage(onBack={appearanceOpen=false},advancedSettings={
             ThinnSection("進階外觀與動態") {
@@ -252,7 +254,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             }
         }
     }
-    AppleParallaxStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false},
+    AppleParallaxStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false},
         modifier=Modifier.fillMaxSize(),root={
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
@@ -287,7 +289,9 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     SettingsEntry("字體與閱讀",SettingsSymbols.general,Color(0xFF8E8E93),{onAdvancedCategory("外觀")}),
                     SettingsEntry("聲音與觸覺",SettingsSymbols.wallpaper,Color(0xFF32ADE6),{onAdvancedCategory("聲音")}),
                     SettingsEntry("輔助使用",SettingsSymbols.accessibility,Color(0xFF007AFF),{lastDetail="accessibility";accessibilityOpen=true})),
-                "提醒與偏好" to listOf(
+                "桌面與即時資訊" to listOf(
+                    SettingsEntry("小工具與動態島",SettingsSymbols.controls,Color(0xFF5856D6),{lastDetail="surfaces";surfacesOpen=true})),
+                "提醒與生活" to listOf(
                     SettingsEntry("地震警報與通知",SettingsSymbols.notification,Color(0xFFFF3B30),onPushSettings),
                     SettingsEntry("通知音效與背景提醒",SettingsSymbols.notification,Color(0xFFFF9500),{onAdvancedCategory("通知")}),
                     SettingsEntry("穿搭與生活偏好",SettingsSymbols.lifestyle,Color(0xFF5856D6),onLifestyle)),
@@ -318,7 +322,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
             Spacer(Modifier.height(120.dp))
         }
-    }},detail={if(lastDetail=="appearance")appearanceContent() else accessibilityContent()})
+    }},detail={when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};else->accessibilityContent()}})
 }
 private data class SettingsEntry(val title:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,
     val color:Color,val action:()->Unit)

@@ -1,6 +1,9 @@
 package io.atmos.weather.presentation.home
+import io.atmos.weather.ui.IOSActivityIndicator as CircularProgressIndicator
+import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
 import io.atmos.weather.ui.thinnBackdropSource
+import io.atmos.weather.ui.appleBouncingScroll
 import io.atmos.weather.ui.thinnBackdrop
 import io.atmos.weather.ui.weatherCollisionSurface
 
@@ -944,26 +947,19 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             val White=preferencePalette.onSurface
             val TextSoft=preferencePalette.onSurfaceVariant
             Column(Modifier.fillMaxSize().background(preferencePalette.background).statusBarsPadding().navigationBarsPadding()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-                    io.atmos.weather.ui.GlassIconButton(onClick={settingsOpen=false}) {
-                        Icon(Icons.Rounded.ArrowBack,"返回設定首頁",tint=White)
-                    }
-                    Text(when(advancedCategory){"外觀"->"字體與閱讀";"資料"->"資料更新頻率";"通知"->"通知音效與背景提醒";else->"聲音與觸覺"},
-                        fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=White,modifier=Modifier.weight(1f),textAlign=TextAlign.Center)
-                    Spacer(Modifier.width(48.dp))
-                }
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(top=16.dp,bottom=100.dp)) {
+                io.atmos.weather.ui.IOSSettingsHeader(
+                    when(advancedCategory){"外觀"->"字體與閱讀";"資料"->"資料更新頻率";"通知"->"通知音效與背景提醒";else->"聲音與觸覺"},
+                    onBack={settingsOpen=false})
+                Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(top=16.dp,bottom=100.dp)) {
                     when(advancedCategory) {
                         "資料" -> {
                 Text("天氣資訊更新頻率",fontSize=19.sp,color=White,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.height(7.dp))
                 Text("App 開啟期間每 $refreshMinutes 分鐘自動更新",color=TextSoft,fontSize=15.sp)
                 Spacer(Modifier.height(12.dp))
-                GlassTrackingSlider("更新頻率",(refreshMinutes-5)/115f) { fraction ->
-                    refreshMinutes=(5+fraction*115).roundToInt().coerceIn(5,120)
-                    settingsPrefs.edit().putInt("refresh_minutes",refreshMinutes).apply()
-                    WidgetSync.schedule(context)
-                }
+                io.atmos.weather.ui.IOSDurationSetting("更新頻率",refreshMinutes,{selected ->
+                    refreshMinutes=selected;settingsPrefs.edit().putInt("refresh_minutes",refreshMinutes).apply();WidgetSync.schedule(context)
+                },min=5,max=120)
                 Spacer(Modifier.height(15.dp))
                 HorizontalDivider(color=White.copy(alpha=.13f))
                 Spacer(Modifier.height(17.dp))

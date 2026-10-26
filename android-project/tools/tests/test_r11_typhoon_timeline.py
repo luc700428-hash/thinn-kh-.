@@ -5,19 +5,11 @@ ROOT=Path(__file__).resolve().parents[2]
 JAVA=ROOT/'app/src/main/java/io/atmos/weather'
 class R11UITests(unittest.TestCase):
     def test_both_periods_visible_and_centered(self):
-        s=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
-        # V25 design: AM always above PM, and dragging up selects PM.
-        self.assertIn('V25AlarmMeridiem.fromDrag(', s)
-        self.assertIn('val step=with(density){38.dp.toPx()}', s)
-        self.assertIn('center+i*row+y.roundToInt()', s)
-        meridiem=s.split('private fun MeridiemWheel(',1)[1].split('private fun Wheel(',1)[0]
-        self.assertNotIn('.background(',meridiem)  # one shared highlight, not a second AM/PM pill
-        self.assertIn('Text("上午"', s)
-        self.assertIn('Text("下午"', s)
-        self.assertLess(s.index('Text("上午"'), s.index('Text("下午"'))
-        self.assertNotIn('val otherSide=if(value==0) 1 else -1', s)
-        core=(JAVA/'alarm/V25AlarmMeridiem.kt').read_text()
-        self.assertIn('if (totalDragPx < 0f) PM else AM', core)
+        s=(JAVA/'ui/IOSDrumPicker.kt').read_text()
+        self.assertIn('"AM" else "PM"',s)
+        self.assertIn('"AM 上午或 PM 下午",false',s)
+        self.assertIn('center+(i-3)*h+(offset*h).roundToInt()',s)
+        self.assertNotIn('updateValue(1-currentValue)',s)
     def test_official_only_track_and_taiwan_filter(self):
         s=(JAVA/'typhoon/OfficialStormTimeline.kt').read_text()
         for token in ('OfficialTyphoonTrack.extract','verifiedForecastSegments','isMovingTowardTaiwan','closest <= 900.0','closest < first-75.0'):

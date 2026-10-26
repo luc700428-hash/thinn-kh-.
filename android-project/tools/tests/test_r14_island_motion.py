@@ -23,7 +23,7 @@ class IslandMotionContract(unittest.TestCase):
 
     def test_island_uses_real_vendor_pics_not_app_launcher(self):
         s=(J/'XiaomiFocusBridge.kt').read_text()
-        self.assertIn('Icon.createWithResource(context,vectorId)',s)
+        self.assertIn('Icon.createWithBitmap(IslandGlyphPainter.bitmap(',s)
         self.assertIn('IslandIconClassifier.choose(',s)
         self.assertIn('IslandIconMotionPolicy.next(',s)
         self.assertIn('miui.focus.pic_alert',s)

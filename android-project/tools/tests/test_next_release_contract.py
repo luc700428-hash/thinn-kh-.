@@ -26,7 +26,7 @@ class NextIntegrationReleaseContract(unittest.TestCase):
                 with wave.open(str(path),'rb') as wav:
                     self.assertEqual(wav.getnchannels(),1)
                     self.assertEqual(wav.getsampwidth(),2)
-                    self.assertEqual(wav.getframerate(),22050)
+                    self.assertEqual(wav.getframerate(),44100)
                     self.assertGreater(wav.getnframes(),wav.getframerate()*8)
                     first=struct.unpack('<hh',wav.readframes(2))
                     wav.setpos(wav.getnframes()-2)

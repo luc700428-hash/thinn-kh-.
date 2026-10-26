@@ -38,6 +38,7 @@ object WeatherAlarmSpeechCache {
         }
         ctx.getSharedPreferences(PREF,Context.MODE_PRIVATE).edit()
             .putString(KEY,payload.toString())
+            .putFloat("next_weather_visibility",w.visibilityM?.takeIf{it.isFinite()}?.toFloat()?:-1f)
             .putInt("next_weather_code",w.weatherCode ?: -1)
             .putLong("next_weather_code_fetched",w.fetchedAt.toEpochMilli())
             .apply()

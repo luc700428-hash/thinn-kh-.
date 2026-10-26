@@ -36,5 +36,6 @@ object TaskStore {
         check(context.getSharedPreferences(FILE,Context.MODE_PRIVATE).edit()
             .putString(KEY,arr.toString()).commit()) { "事項儲存失敗" }
         TaskReminderScheduler.sync(context,tasks)
+        io.atmos.weather.widgets.WidgetSync.refreshCached(context)
     }
 }

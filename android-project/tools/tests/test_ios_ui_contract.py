@@ -24,9 +24,11 @@ class IOSUIContractTests(unittest.TestCase):
 
     def test_time_selector_is_not_canvas_only(self):
         clock=self.source('ui/GlassClockDial.kt')
-        self.assertIn('ThinnNumberWheel',clock)
-        self.assertIn('detectVerticalDragGestures',clock)
-        self.assertIn('contentDescription',clock)
+        self.assertIn('IOSClockDrums(',clock)
+        shared=self.source('ui/IOSDrumPicker.kt')
+        self.assertIn('contentDescription=label',shared)
+        self.assertIn('customActions=',shared)
+        self.assertIn('detectVerticalDragGestures',shared)
         self.assertNotIn('Canvas(',clock)
 
     def test_personal_tasks_have_persistent_crud_and_optional_reminders(self):
@@ -66,7 +68,7 @@ class IOSUIContractTests(unittest.TestCase):
         self.assertIn('Modifier.toggleable(',controls)
         self.assertIn('Role.Switch',controls)
         self.assertIn('setProgress {',controls)
-        self.assertIn('detectDragGestures(',controls)
+        self.assertIn('detectHorizontalDragGestures(',controls)
         self.assertIn('progressBarRangeInfo=',controls)
         self.assertIn('ThinnDesignTokens.radiusControl',controls)
         self.assertIn('contentDescription=label',self.source('ui/GlassNavigation.kt'))

@@ -25,15 +25,12 @@ class CrispMapGoogleWidgets(unittest.TestCase):
             self.assertIn(word,s)
         self.assertNotIn('HttpURLConnection',s)
     def test_dynamic_state_widget_art(self):
-        a=(B/'visual/WeatherArtRenderer.kt').read_text()
         w=(B/'widgets/AtmosWidgets.kt').read_text()
-        self.assertIn('lightPhase:Int=0',a)
-        self.assertIn('RadialGradient(mx,my',a)
-        # V25's weather companion is derived from real widget weather state.
-        self.assertIn('V25WidgetMood.forWeather(',w)
-        self.assertIn('WText("${mood.eyebrow} · ${mood.message}"',w)
-        self.assertIn('val mood=remember(condition,scene.nightLight,rain)',w)
-        self.assertIn('val lightPhase=((System.currentTimeMillis()',w)
+        self.assertIn('AndroidRemoteViews(glyph',w)
+        self.assertIn('widget_motion_enabled',w)
+        self.assertIn('isPowerSaveMode',w)
+        self.assertIn('WidgetGlassRenderer.background(',w)
+        self.assertIn('condition',w)
     def test_retains_signing_and_release_gate(self):
         root=Path(__file__).resolve().parents[2]
         import json

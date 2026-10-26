@@ -15,6 +15,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import io.atmos.weather.MainActivity
 import io.atmos.weather.R
+import io.atmos.weather.notifications.XiaomiFocusBridge
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +87,7 @@ class OtaDownloadService:Service() {
                 OtaRetainedSession.downloadJob.value=null
                 OtaRetainedSession.persist(this@OtaDownloadService)
                 stopForeground(STOP_FOREGROUND_REMOVE)
+                XiaomiFocusBridge.finish(ID)
                 if(OtaRetainedSession.ready.value) {
                     runCatching { getSystemService(NotificationManager::class.java).notify(ID,notification("更新已準備好，開啟 App 安裝",false)) }
                 }
@@ -110,10 +112,15 @@ class OtaDownloadService:Service() {
             val total=OtaRetainedSession.totalBytes.value ?: 0L
             val bytes=OtaRetainedSession.downloaded.longValue
             builder.setProgress(1000,if(total>0L) ((bytes.toDouble()/total)*1000).toInt().coerceIn(0,1000) else 0,total<=0L)
+            builder.setRequestPromotedOngoing(true)
             val stop=PendingIntent.getService(this,1,Intent(this,OtaDownloadService::class.java).setAction(CANCEL),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             builder.addAction(0,"暫停",stop)
         }
-        return builder.build()
+        return builder.build().also { note ->
+            if(ongoing)runCatching {
+                XiaomiFocusBridge.decorate(this,note,"軟體更新",text,XiaomiFocusBridge.Kind.APP_UPDATE,ID)
+            }
+        }
     }
     companion object {
         private const val CHANNEL="thinn_ota_download"

@@ -61,16 +61,17 @@ object IOS27AppearanceMode {
 @Composable
 fun IOS27RoundControl(label: String, onClick: () -> Unit, modifier: Modifier = Modifier,
                       fill: Color = MaterialTheme.colorScheme.surface, foreground: Color = MaterialTheme.colorScheme.onSurface) {
+    val response=iosMotionResponse()
     val interaction=remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val reduce=rememberAppleReduceMotion()
     val scale by animateFloatAsState(if(pressed && !reduce) .96f else 1f,
         animationSpec=if(reduce)tween(0) else if(pressed)tween(90) else spring(
-            dampingRatio=.72f,stiffness=190f),label="ios27-round-control")
+            dampingRatio=response.damping,stiffness=response.stiffness),label="ios27-round-control")
     val feedback=LocalHapticFeedback.current
     Box(modifier.size(42.dp).graphicsLayer {
             scaleX=scale;scaleY=scale;alpha=if(pressed) .92f else 1f
-        }.semantics { contentDescription=when(label) { "‹" -> "返回"; "×" -> "關閉"; "✓" -> "確認";else -> label } }.shadow(5.dp,CircleShape,ambientColor=Color.Black.copy(alpha=.08f),spotColor=Color.Black.copy(alpha=.08f)).clip(CircleShape).background(fill)
+        }.semantics { contentDescription=when(label) { "‹" -> "返回"; "×" -> "關閉"; "✓" -> "確認";else -> label } }.shadow(5.dp,CircleShape,ambientColor=Color.Black.copy(alpha=.08f),spotColor=Color.Black.copy(alpha=.08f)).clip(CircleShape).thinnBackdrop(rememberAppleReduceTransparency(),21.dp).background(fill.copy(alpha=if(rememberAppleReduceTransparency())1f else .87f))
         .border(0.8.dp, Brush.linearGradient(listOf(Color.White.copy(alpha=.62f),
             Color.White.copy(alpha=.18f), Color.Transparent)), CircleShape)
         .thinnSpecularEdge(21.dp)
@@ -94,7 +95,7 @@ fun IOS27RoundControl(label: String, onClick: () -> Unit, modifier: Modifier = M
 private fun LockPreview(dark: Boolean, chosen: Boolean, onChoose: () -> Unit) {
     val background = if (dark) Color(0xFF070F22) else Color(0xFFBBDCE8)
     val label = if (dark) "深色" else "淺色"
-    Column(horizontalAlignment=Alignment.CenterHorizontally, modifier=Modifier.clickable(
+    Column(horizontalAlignment=Alignment.CenterHorizontally, modifier=Modifier.iosJellyPress().clickable(
         interactionSource=remember {MutableInteractionSource()},indication=null,onClick=onChoose)) {
         Box(Modifier.width(111.dp).height(181.dp).clip(RoundedCornerShape(20.dp))
             .background(Brush.verticalGradient(listOf(background, Color(0xFF126DA5), Color(0xFF20B2A0))))
@@ -132,7 +133,7 @@ fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> 
     val primary by animateColorAsState(MaterialTheme.colorScheme.onSurface, tween(300), label="appearance-ink")
     val page by animateColorAsState(MaterialTheme.colorScheme.background, tween(300), label="appearance-page")
     Column(Modifier.fillMaxSize().background(page).statusBarsPadding().navigationBarsPadding()
-        .padding(bottom=104.dp).verticalScroll(rememberScrollState())
+        .padding(bottom=104.dp).appleBouncingScroll().verticalScroll(rememberScrollState())
         .padding(horizontal=16.dp)) {
         Box(Modifier.fillMaxWidth().height(68.dp), contentAlignment=Alignment.Center) {
             IOS27RoundControl("‹", onBack, modifier=Modifier.align(Alignment.CenterStart).size(40.dp), fill=surface,foreground=primary)
@@ -158,7 +159,7 @@ fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> 
             }
             Box(Modifier.fillMaxWidth().padding(start=16.dp).height(.5.dp)
                 .background(if(MaterialTheme.colorScheme.background.red > .5f) ThinnDesignTokens.separatorLight else ThinnDesignTokens.separatorDark))
-            Row(Modifier.fillMaxWidth().heightIn(min=55.dp).clickable {
+            Row(Modifier.fillMaxWidth().heightIn(min=55.dp).iosJellyPress().clickable {
                 context.startActivity(android.content.Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS))
             }.padding(horizontal=18.dp),
                 verticalAlignment=Alignment.CenterVertically) {

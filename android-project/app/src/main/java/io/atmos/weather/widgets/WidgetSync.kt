@@ -40,10 +40,15 @@ object WidgetSync {
         )
         for(widget in widgets) {
             try{ widget.updateAll(context) }
+            catch (cancel:CancellationException){throw cancel}
             catch (_:Exception){ /* some launchers reject updates while widget not placed */ }
         }
     }
     fun updateVisible(context:Context) { request(context) }
+    fun refreshCached(context:Context){
+        WorkManager.getInstance(context).enqueueUniqueWork("thinn-widget-cached-view",ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<WidgetCachedViewWorker>().build())
+    }
 }
 class WeatherWidgetWorker(context:Context,params:WorkerParameters):CoroutineWorker(context,params){
     override suspend fun doWork():Result {
@@ -57,11 +62,18 @@ class WeatherWidgetWorker(context:Context,params:WorkerParameters):CoroutineWork
             val result=AppContainer.repository(applicationContext).load(city,false)
             if(result is WeatherLoadResult.Success) {
                 // Avoid a background request overwriting a newly selected city.
-                if (prefs.getString("city_id",null)==id) WidgetSnapshotStore.publish(applicationContext,result.value)
+                if (prefs.getString("city_id",null)==id) {
+                    WidgetSnapshotStore.publish(applicationContext,result.value)
+                    io.atmos.weather.alarm.WeatherAlarmSpeechCache.save(applicationContext,result.value)
+                }
             }
             WidgetSync.refreshAll(applicationContext)
             if(result is WeatherLoadResult.Failure) Result.retry() else Result.success()
         } catch (cancel:CancellationException){throw cancel}
         catch (_:Exception){Result.retry()}
     }
+}
+
+class WidgetCachedViewWorker(context:Context,params:WorkerParameters):CoroutineWorker(context,params){
+    override suspend fun doWork():Result=try{WidgetSync.refreshAll(applicationContext);Result.success()}catch(cancel:CancellationException){throw cancel}catch(_:Exception){Result.retry()}
 }

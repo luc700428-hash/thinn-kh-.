@@ -47,7 +47,7 @@ if ! git -C "$checkout" diff --cached --quiet; then
     account_id="$(gh api user --jq .id)"
     git -C "$checkout" config user.email "$account_id+$account_login@users.noreply.github.com"
   fi
-  git -C "$checkout" commit -m 'fix(v25): reconcile installed updates and deliver collision rain, glass and high refresh' -m 'Update-Package-ID: thinn-khi-v25-refresh-20261026'
+  git -C "$checkout" commit -m 'feat(v25): unify iOS controls and upgrade weather wake, widgets and island' -m 'Update-Package-ID: thinn-khi-v25-ios-upgrade-20261027'
   # Normal push only: another main update cannot be silently overwritten.
   if ! git -C "$checkout" push origin HEAD:main; then
     echo "尚未啟動建置。程式保留於 $checkout；若 GitHub 提示 workflow 權限，請執行 gh auth refresh -h github.com -s workflow 後重跑本腳本。" >&2

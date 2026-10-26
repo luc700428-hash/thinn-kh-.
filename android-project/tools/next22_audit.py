@@ -107,9 +107,9 @@ def audit(root:Path=ROOT):
                      'requires_external_verification':EXTERNAL.get(fid,'需要實機操作、邊界情境和品質驗收'),
                      'verified_by_this_audit':False})
     audio={}
-    for group in ('ambience','music/dawn','music/rain'):
+    for group in ['ambience']+[f'music/{t}' for t in ('dawn','rain','wood','water','fire','metal')]:
         audio[group]={}
-        for scene in SCENES:
+        for scene in SCENES+(('neutral',) if group!='ambience' else ()):
             p=root/'app/src/main/assets/next_weather'/group/(scene+'.wav')
             audio[group][scene]=inspect_audio(p) if p.exists() else {'ok':False,'issue':'missing asset'}
     result={
@@ -161,7 +161,7 @@ def main():
     r=audit()
     (out/'next22_source_audit.json').write_text(json.dumps(r,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     (out/'next22_source_audit.md').write_text(render_markdown(r),encoding='utf-8')
-    print(f"完整驗收 {r['release_verified_count']}/22；靜態檔案證據 {r['source_file_groups_present']}/22；波形檢測 {r['audio_assets_numerically_ok']}/42。")
+    print(f"完整驗收 {r['release_verified_count']}/22；靜態檔案證據 {r['source_file_groups_present']}/22；波形檢測 {r['audio_assets_numerically_ok']}/{r['wave_assets_count']}。")
     print('報告：',out/'next22_source_audit.md')
     if r['audio_assets_failed']:
         print('存在音檔數值問題：',len(r['audio_assets_failed']))

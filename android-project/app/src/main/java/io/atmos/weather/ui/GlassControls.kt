@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -51,16 +52,18 @@ private val edge: Brush get() = ThinnOpticalMaterial.rim
 private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     padding:PaddingValues, outlined:Boolean, content:@Composable RowScope.()->Unit,
     colors:ButtonColors?=null, border:androidx.compose.foundation.BorderStroke?=null) {
+    val opaque=rememberAppleReduceTransparency()
+    val response=iosMotionResponse()
     val haptics=LocalHapticEngine.current
     val corner=RoundedCornerShape(ThinnDesignTokens.radiusControl)
     val context=LocalContext.current
-    val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
+    val reduce=rememberAppleReduceMotion()
     val interaction=remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered=true }
     val pressScale by animateFloatAsState(if(pressed && !reduce) AppleMotion.pressedScale else 1f,
-        animationSpec=if(reduce) tween(0) else if(pressed) tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),label="玻璃按鈕按壓")
+        animationSpec=if(reduce) tween(0) else if(pressed) tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃按鈕按壓")
     val appear by animateFloatAsState(if(entered) 1f else .94f,
         animationSpec=tween(if(reduce) 0 else 170,easing=AppleMotion.fluid),label="玻璃按鈕入場")
     val fill=if(colors!=null) {
@@ -75,7 +78,8 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     Row(modifier.defaultMinSize(minHeight=48.dp)
         .graphicsLayer { scaleX=pressScale*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear*(if(pressed && !reduce) AppleMotion.pressedAlpha else 1f) else appear*.45f }
         .clip(corner)
-        .background(Brush.linearGradient(fill))
+        .thinnBackdrop(opaque,ThinnDesignTokens.radiusControl)
+        .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque)1f else if(pressed).80f else .93f))}))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
         .thinnSpecularEdge(ThinnDesignTokens.radiusControl)
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,onClick={
@@ -113,16 +117,19 @@ fun GlassTextButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
 @Composable
 fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=true,
     content:@Composable ()->Unit) {
+    val opaque=rememberAppleReduceTransparency()
+    val response=iosMotionResponse()
     val haptics=LocalHapticEngine.current
     val interaction=remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val context=LocalContext.current
-    val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
+    val reduce=rememberAppleReduceMotion()
     val scale by animateFloatAsState(if(pressed && !reduce)AppleMotion.pressedScale else 1f,
-        animationSpec=if(reduce)tween(0) else if(pressed)tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),label="玻璃圖示按鈕回饋")
+        animationSpec=if(reduce)tween(0) else if(pressed)tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃圖示按鈕回饋")
     Box(modifier.defaultMinSize(48.dp,48.dp)
         .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else if(pressed && !reduce) AppleMotion.pressedAlpha else 1f }
         .clip(CircleShape)
+        .thinnBackdrop(opaque,24.dp)
         .background(ThinnOpticalMaterial.subtlePill)
         .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)
         .thinnSpecularEdge(24.dp)
@@ -135,23 +142,45 @@ fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
 @Composable
 fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modifier=Modifier,
     enabled:Boolean=true,colors:SwitchColors?=null) {
+    val opaque=rememberAppleReduceTransparency()
+    val response=iosMotionResponse()
     val haptics=LocalHapticEngine.current
     val context=LocalContext.current
-    val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
+    val reduce=rememberAppleReduceMotion()
+    val density=LocalDensity.current
+    val presses=remember { MutableInteractionSource() }
+    val pressed by presses.collectIsPressedAsState()
+    var dragging by remember { mutableStateOf(false) }
+    var dragDp by remember { mutableFloatStateOf(0f) }
+    val change by rememberUpdatedState(onCheckedChange)
     val movement by androidx.compose.animation.core.animateDpAsState(
-        if(checked) 20.dp else 0.dp,
-        animationSpec=if(reduce) tween(0) else spring(dampingRatio=.78f,stiffness=480f),
+        (if(dragging) ((if(checked)20f else 0f)+dragDp).coerceIn(0f,20f) else if(checked)20f else 0f).dp,
+        animationSpec=if(reduce||dragging) tween(0) else spring(dampingRatio=response.damping,stiffness=response.stiffness),
         label="iOS 視覺開關滑塊"
     )
     val active=enabled && onCheckedChange!=null
+    val thumbStretch by animateFloatAsState(if((pressed||dragging)&&active&&!reduce)1.12f else 1f,
+        if(reduce)tween(0) else spring(response.damping,response.stiffness),label="開關果凍形變")
     val tint=if(checked) colors?.checkedTrackColor ?: ThinnDesignTokens.positive else colors?.uncheckedTrackColor ?: androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
     Box(modifier.size(width=51.dp,height=48.dp)
         .then(if(onCheckedChange!=null)
             Modifier.toggleable(value=checked,enabled=enabled,role=androidx.compose.ui.semantics.Role.Switch,
+                interactionSource=presses,indication=null,
                 onValueChange={ next ->
                     haptics?.play(HapticEngine.Event.TAP);onCheckedChange(next)
                 }) else Modifier)
+        .then(if(active)Modifier.pointerInput(checked,density){
+            detectHorizontalDragGestures(
+                onDragStart={dragDp=0f;dragging=true},
+                onHorizontalDrag={pointer,delta->pointer.consume();dragDp+=delta/density.density},
+                onDragEnd={
+                    val next=(if(checked)20f else 0f)+dragDp>=10f
+                    dragging=false;dragDp=0f
+                    if(next!=checked){haptics?.play(HapticEngine.Event.RELEASE);change?.invoke(next)}
+                },
+                onDragCancel={dragging=false;dragDp=0f}
+            )
+        }else Modifier)
         .graphicsLayer { alpha=if(active) 1f else .48f },
         contentAlignment=Alignment.Center) {
         Box(Modifier.fillMaxWidth().height(31.dp)
@@ -162,7 +191,9 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
                 drawLine(Color.White,Offset(12.dp.toPx(),11.dp.toPx()),Offset(12.dp.toPx(),20.dp.toPx()),1.dp.toPx())
             }
             Box(Modifier.padding(2.dp).offset(x=movement).size(27.dp)
-                .background(Color.White,CircleShape)
+                .graphicsLayer{scaleX=thumbStretch;scaleY=if(pressed&&!reduce).97f else 1f}
+                .clip(CircleShape).thinnBackdrop(opaque,15.dp)
+                .background(Color.White.copy(alpha=if(opaque)1f else .88f),CircleShape)
                 .border(1.dp,Color.White.copy(alpha=.68f),CircleShape)
                 .thinnSpecularEdge(15.dp))
         }
@@ -174,10 +205,11 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
 fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifier,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f, steps:Int=0,
     onValueChangeFinished:(()->Unit)?=null, colors:SliderColors?=null,enabled:Boolean=true) {
+    val opaque=rememberAppleReduceTransparency()
+    val response=iosMotionResponse()
     val haptics=LocalHapticEngine.current
     val context=LocalContext.current
-    val reduce=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
+    val reduce=rememberAppleReduceMotion()
     val low=valueRange.start
     val span=(valueRange.endInclusive-low).takeIf { it>0f } ?: 1f
     val fraction=((value-low)/span).coerceIn(0f,1f)
@@ -205,7 +237,7 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
             .pointerInput(low,span,steps) {
                 val halfThumb=27.dp.toPx()
                 var grabOffset=0f
-                detectDragGestures(
+                detectHorizontalDragGestures(
                     onDragStart={position ->
                         tracking=true
                         val center=halfThumb+(size.width-2*halfThumb)*currentFraction
@@ -213,7 +245,7 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
                     },
                     onDragCancel={tracking=false;finish?.invoke()},
                     onDragEnd={tracking=false;haptics?.play(HapticEngine.Event.RELEASE);finish?.invoke()},
-                    onDrag={changePointer,_->
+                    onHorizontalDrag={changePointer,_->
                         change(quantized(low+span*((changePointer.position.x-grabOffset-halfThumb)/(size.width-2f*halfThumb).coerceAtLeast(1f)).coerceIn(0f,1f)))
                         changePointer.consume()
                     }
@@ -233,7 +265,7 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
         val travel=(maxWidth-thumbWidth).coerceAtLeast(0.dp)
         val trackWidth=(maxWidth-thumbWidth).coerceAtLeast(0.dp)
         val extension by animateFloatAsState(if(tracking && !reduce)1.12f else 1f,
-            if(reduce)tween(0) else spring(dampingRatio=.74f,stiffness=420f),label="光學滑塊形變")
+            if(reduce)tween(0) else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="光學滑塊形變")
         val dark=androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f
         val blue=colors?.activeTrackColor ?: if(dark)Color(0xFF0A84FF) else Color(0xFF007AFF)
         val gray=colors?.inactiveTrackColor ?: if(dark)Color(0xFF48484A) else Color(0xFFD1D1D6)
@@ -247,7 +279,8 @@ fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifi
             .graphicsLayer {scaleX=extension;scaleY=if(tracking && !reduce)1.03f else 1f;alpha=if(enabled)1f else .45f}
             .shadow(if(tracking)14.dp else 8.dp,CircleShape,ambientColor=Color.Black.copy(alpha=.22f),spotColor=Color.Black.copy(alpha=.24f))
             .clip(CircleShape)
-            // This control may live inside the captured page; use its own optical band, avoiding self-sampling.
+            .thinnBackdrop(transparency,999.dp,currentFraction)
+            // Foreground track caustics remain sharp over the guarded background sample.
             .background(if(transparency)Brush.linearGradient(listOf(Color(0xFFF2F2F7),Color(0xFFE5E5EA)))
                 else Brush.linearGradient(listOf(Color.White.copy(alpha=if(dark).34f else .72f),
                     Color.White.copy(alpha=if(dark).09f else .22f),Color.White.copy(alpha=if(dark).24f else .56f))))

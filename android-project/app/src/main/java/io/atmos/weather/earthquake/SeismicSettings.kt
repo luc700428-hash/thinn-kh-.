@@ -116,8 +116,8 @@ object SeismicPreviewPlayer {
     }
 }
 
-private val ice = Color(0xFF87E7FC)
-private val pale = Color.White.copy(alpha = 0.74f)
+private val ice:Color @Composable get()=MaterialTheme.colorScheme.primary
+private val pale:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 private val blue = Color(0xFF0D2C48)
 
 /** Earthquake-specific settings, separate from the weather app's eight ordinary tones. */
@@ -139,33 +139,11 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     var magnitude by remember { mutableFloatStateOf(pref.getFloat("report_min_magnitude", 4.5f)) }
     DisposableEffect(Unit) { onDispose { SeismicPreviewPlayer.stop() } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page).statusBarsPadding().navigationBarsPadding()) {
-            Spacer(Modifier.height(28.dp))
-            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.ArrowBack, "返回地震中心", tint = Color.White) }
-                Column(Modifier.weight(1f)) {
-                    Text("地震監測設定", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text("thinn-khì · 獨立警示音與監測偏好", color = pale, fontSize=14.sp)
-                }
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "關閉", tint = pale) }
-            }
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
+            io.atmos.weather.ui.IOSSettingsHeader("地震監測設定",onClose)
             Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                val names = listOf("一般", "警報", "音效", "關於")
-                val icons = listOf(Icons.Rounded.Tune, Icons.Rounded.NotificationsActive, Icons.Rounded.VolumeUp, Icons.Rounded.Info)
-                names.forEachIndexed { index, name ->
-                    val selected = tab == index
-                    Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                        .background(if (selected) Color.White.copy(alpha=.18f) else Color.Transparent)
-                        .border(1.dp,if(selected) ice.copy(alpha=.4f) else Color.Transparent,RoundedCornerShape(18.dp))
-                        .clickable { tab=index; SeismicPreviewPlayer.stop() }
-                        .padding(vertical=12.dp), horizontalAlignment=Alignment.CenterHorizontally) {
-                        Icon(icons[index], name, tint=if(selected) ice else pale,modifier=Modifier.size(23.dp))
-                        Spacer(Modifier.height(5.dp))
-                        Text(name, color=if(selected)Color.White else pale, fontSize=14.sp, fontWeight=if(selected)FontWeight.Bold else FontWeight.Normal)
-                    }
-                }
-            }
+            io.atmos.weather.ui.IOSSegmentedControl(listOf("一般","警報","音效","關於"),tab,
+                onSelect={tab=it;SeismicPreviewPlayer.stop()},modifier=Modifier.padding(horizontal=16.dp))
             Spacer(Modifier.height(14.dp))
             Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
                 when(tab) {
@@ -174,7 +152,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                         SettingsGlass {
                             Row(verticalAlignment=Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("即時串流監測",color=Color.White,fontWeight=FontWeight.SemiBold)
+                                    Text("即時串流監測",color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold)
                                     Text("EEW：${realtime.eewStatus}\nRTS：${realtime.rtsStatus}",color=pale,fontSize=14.sp,lineHeight=17.sp)
                                     Text("注意：此按鈕啟動手機前景串流，不等於保證全天候預警；監測中會顯示常駐通知。",color=pale,fontSize=14.sp,lineHeight=15.sp)
                                 }
@@ -185,7 +163,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                     }
                                 }) { Text(if(realtime.enabled) "停止" else "啟動") }
                             }
-                            HorizontalDivider(color=Color.White.copy(alpha=.14f),modifier=Modifier.padding(vertical=12.dp))
+                            HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.14f),modifier=Modifier.padding(vertical=12.dp))
                             SettingsSwitch("開啟 APP 後自動啟動即時監測", "每次開啟 APP 時嘗試建立前景監測連線；會消耗網路與電量，Android 仍可能停止服務",autoStartRealtime) {
                                 autoStartRealtime=it
                                 pref.edit().putBoolean("auto_start_realtime_on_app_open",it).apply()
@@ -200,7 +178,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                         SectionName("預警依據位置")
                         SettingsGlass {
                             val location=SeismicUserLocation.current(ctx)
-                            Text("目前：${location?.name ?: "定位資料尚未取得"}",color=Color.White,fontWeight=FontWeight.SemiBold)
+                            Text("目前：${location?.name ?: "定位資料尚未取得"}",color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold)
                             Text(location?.source ?: "預設手機定位；請先在天氣首頁允許並取得 GPS 定位",color=pale,fontSize=14.sp)
                             Spacer(Modifier.height(7.dp))
                             Box {
@@ -226,7 +204,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                 reportNotify=it; pref.edit().putBoolean("earthquake_report_notify",it).apply()
                             }
                             Spacer(Modifier.height(10.dp))
-                            Text("規模門檻：M ${"%.1f".format(java.util.Locale.US,magnitude)}",color=Color.White)
+                            Text("規模門檻：M ${"%.1f".format(java.util.Locale.US,magnitude)}",color=MaterialTheme.colorScheme.onSurface)
                             Slider(value=magnitude,onValueChange={magnitude=it},valueRange=3f..7f,steps=7,
                                 onValueChangeFinished={pref.edit().putFloat("report_min_magnitude",magnitude).apply()})
                             Text("一般使用者不需要申請 CWA 授權碼；震後報告由公開的 ExpTech 資料來源查詢。",color=pale,fontSize=14.sp,lineHeight=18.sp)
@@ -237,7 +215,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                         SettingsGlass {
                             listOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE).forEachIndexed { i,s ->
                                 AlertRow(s)
-                                if(i<2) HorizontalDivider(color=Color.White.copy(alpha=.12f), modifier=Modifier.padding(vertical=10.dp))
+                                if(i<2) HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f), modifier=Modifier.padding(vertical=10.dp))
                             }
                         }
                         SectionName("鎖定畫面與焦點通知")
@@ -284,7 +262,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                 SeismicAlertPolicy.Scenario.DETECT_STRONG,SeismicAlertPolicy.Scenario.GAL_MEDIUM,
                                 SeismicAlertPolicy.Scenario.GAL_STRONG).forEach { scenario ->
                                 AlertRow(scenario)
-                                HorizontalDivider(color=Color.White.copy(alpha=.1f),modifier=Modifier.padding(vertical=7.dp))
+                                HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.1f),modifier=Modifier.padding(vertical=7.dp))
                             }
                         }
                     }
@@ -293,7 +271,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                         SettingsGlass {
                             listOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE).forEachIndexed { index,s ->
                                 SoundRow(s)
-                                if(index<2) HorizontalDivider(color=Color.White.copy(alpha=.12f),modifier=Modifier.padding(vertical=12.dp))
+                                if(index<2) HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f),modifier=Modifier.padding(vertical=12.dp))
                             }
                         }
                         SectionName("地震檢知")
@@ -301,7 +279,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             val items=listOf(SeismicAlertPolicy.Scenario.DETECT_WEAK,SeismicAlertPolicy.Scenario.DETECT_MEDIUM,SeismicAlertPolicy.Scenario.DETECT_STRONG,SeismicAlertPolicy.Scenario.GAL_MEDIUM,SeismicAlertPolicy.Scenario.GAL_STRONG)
                             items.forEachIndexed { index,s ->
                                 SoundRow(s)
-                                if(index<items.lastIndex) HorizontalDivider(color=Color.White.copy(alpha=.12f),modifier=Modifier.padding(vertical=12.dp))
+                                if(index<items.lastIndex) HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f),modifier=Modifier.padding(vertical=12.dp))
                             }
                         }
                         SectionName("報告")
@@ -311,7 +289,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                     else -> {
                         SectionName("資料來源與安全")
                         SettingsGlass {
-                            Text("thinn-khì · 臺灣即時地震監測",color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold)
+                            Text("thinn-khì · 臺灣即時地震監測",color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,fontWeight=FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
                             Text("EEW / RTS：ExpTech DPIP 公開即時串流；震後報告：ExpTech 公開 API。此功能為獨立實作，並非官方 TREM-Lite App。",color=pale,fontSize=14.sp,lineHeight=19.sp)
                             Spacer(Modifier.height(10.dp))
@@ -331,18 +309,17 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     Text(title,color=ice,fontSize=15.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=16.dp,bottom=12.dp,start=4.dp))
 }
 @Composable private fun SettingsGlass(content:@Composable ColumnScope.()->Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-        .background(Brush.verticalGradient(listOf(Color.White.copy(alpha=.14f),Color.White.copy(alpha=.07f))))
-        .border(1.dp,Color.White.copy(alpha=.14f),RoundedCornerShape(22.dp))
-        .padding(horizontal=16.dp,vertical=15.dp),content=content)
+    io.atmos.weather.ui.IOSV25SettingsGroup {
+        Column(Modifier.padding(horizontal=16.dp,vertical=15.dp),content=content)
+    }
 }
 @Composable private fun SettingsSwitch(title:String,description:String,checked:Boolean,onChange:(Boolean)->Unit) {
     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title,color=Color.White,fontSize=16.sp,fontWeight=FontWeight.Medium)
+            Text(title,color=MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.Medium)
             Text(description,color=pale,fontSize=14.sp,lineHeight=16.sp)
         }
-        Switch(checked=checked,onCheckedChange=onChange,colors=SwitchDefaults.colors(checkedTrackColor=Color(0xFF38B4BE)))
+        Switch(checked=checked,onCheckedChange=onChange)
     }
 }
 @Composable private fun AlertRow(s:SeismicAlertPolicy.Scenario) {
@@ -357,7 +334,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     var checked by remember(s) { mutableStateOf(SeismicAlertPolicy.soundEnabled(ctx,s)) }
     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
         Column(Modifier.weight(1f)) {
-            Text(s.title,color=Color.White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+            Text(s.title,color=MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
             Text(s.subtitle,color=pale,fontSize=14.sp,lineHeight=16.sp)
         }
         OutlinedButton(onClick={
@@ -368,6 +345,6 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
             Text("試聽",fontSize=14.sp,color=ice)
         }
         Switch(checked=checked,onCheckedChange={checked=it;SeismicAlertPolicy.setSoundEnabled(ctx,s,it)},
-            modifier=Modifier.height(40.dp),colors=SwitchDefaults.colors(checkedTrackColor=Color(0xFF38B4BE)))
+            modifier=Modifier.height(40.dp))
     }
 }

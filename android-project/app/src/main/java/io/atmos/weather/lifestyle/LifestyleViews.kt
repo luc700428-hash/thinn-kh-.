@@ -1,4 +1,5 @@
 package io.atmos.weather.lifestyle
+import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.foundation.*
@@ -10,6 +11,8 @@ import io.atmos.weather.ui.GlassSwitch as Switch
 import io.atmos.weather.ui.GlassButton as Button
 import io.atmos.weather.ui.GlassOutlinedButton as OutlinedButton
 import io.atmos.weather.ui.GlassTextButton as TextButton
+import io.atmos.weather.ui.GlassOutlinedTextField as OutlinedTextField
+import io.atmos.weather.ui.GlassDivider as Divider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -121,8 +124,8 @@ fun LifestyleAiSettingsPage(onClose: () -> Unit) {
     var umbrellaThreshold by remember { mutableFloatStateOf(originalPreferences.umbrellaThresholdPct.toFloat()) }
     Column(Modifier.fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp, end=20.dp, top=54.dp, bottom=145.dp)) {
-        Text("智慧生活 · 開源 AI", color=textColor, fontWeight=FontWeight.Bold, fontSize=25.sp)
+        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=16.dp, end=16.dp, bottom=120.dp)) {
+        io.atmos.weather.ui.IOSSettingsHeader("智慧生活",onClose)
         Spacer(Modifier.height(7.dp))
         Text("上衣、褲子、鞋子、雨具由本機可解釋規則即時計算。AI 僅補充生活化建議。",
             color=detailColor, fontSize=15.sp)

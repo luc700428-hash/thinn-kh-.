@@ -30,7 +30,7 @@ object WeatherAlarmStore {
                 WeatherAlarm(value.getInt("id"),value.getInt("hour"),value.getInt("minute"),
                     value.optString("title","鬧鐘"),
                     (0 until arr.length()).map { arr.getInt(it) }.filter { it in 1..7 }.toSet(),
-                    value.optBoolean("enabled",true),value.optBoolean("weatherVoice",true),
+                    value.optBoolean("enabled",true),false,
                     value.optBoolean("snooze",true),value.optString("ringtoneUri","").takeIf { it.isNotBlank() },
                     WeatherAlarmTime.validSnoozeMinutes(value.optInt("snoozeMinutes",10)))
             }.getOrNull()
@@ -42,12 +42,13 @@ object WeatherAlarmStore {
             array.put(JSONObject().apply {
                 put("id",a.id);put("hour",a.hour);put("minute",a.minute);put("title",a.title)
                 put("days",JSONArray().apply { a.days.sorted().forEach {put(it)} })
-                put("enabled",a.enabled);put("weatherVoice",a.weatherVoice);put("snooze",a.snooze)
+                put("enabled",a.enabled);put("weatherVoice",false);put("snooze",a.snooze)
                 put("ringtoneUri", a.ringtoneUri ?: "")
                 put("snoozeMinutes",WeatherAlarmTime.validSnoozeMinutes(a.snoozeMinutes))
             })
         }
         ctx.getSharedPreferences("thinn_alarms",Context.MODE_PRIVATE).edit().putString(KEY,array.toString()).apply()
+        io.atmos.weather.widgets.WidgetSync.refreshCached(ctx)
     }
 }
 

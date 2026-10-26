@@ -66,7 +66,10 @@ object IslandEventPublisher {
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("計時器進行中").setContentText(text)
             .setContentIntent(openApp(ctx,id)).setOngoing(true)
+            .setRequestPromotedOngoing(true)
             .setOnlyAlertOnce(true)
+            .setWhen(System.currentTimeMillis()+remainingSeconds*1000L).setUsesChronometer(true).setChronometerCountDown(true)
+            .addExtras(android.os.Bundle().apply{putLong("thinn.island.deadline",System.currentTimeMillis()+remainingSeconds*1000L)})
             .setTimeoutAfter(remainingSeconds * 1000L)
             .build()
         return WeatherNotificationDispatcher.post(ctx,id,message,"計時器",text,
@@ -86,6 +89,7 @@ object IslandEventPublisher {
             ThinnNotificationChannels.channelId(ctx, ThinnNotificationChannels.Type.BRIEFINGS))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("即時天氣").setContentText(heading)
+            .addExtras(android.os.Bundle().apply{putString("thinn.island.primary","${temperatureC}°")})
             .setContentIntent(openApp(ctx,id)).setOnlyAlertOnce(true)
             .setAutoCancel(true).setTimeoutAfter(20_000L).build()
         return WeatherNotificationDispatcher.post(ctx,id,note,"即時天氣",heading,

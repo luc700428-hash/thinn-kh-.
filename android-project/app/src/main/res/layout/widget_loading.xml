@@ -1,5 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="#274963" android:textColor="#FFFFFF"
-    android:text="ATMOS · 正在同步天氣" android:textSize="14sp" android:gravity="center" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_preview_background" android:padding="16dp">
+ <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="thinn-khì" android:textColor="#FFEAF4FC" android:textSize="14sp"/>
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="—°" android:textColor="#FFFFFFFF" android:textSize="40sp" android:fontFamily="sans-serif-light"/>
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="等待天氣同步" android:textColor="#FFD8E8F5" android:textSize="14sp"/>
+ </LinearLayout>
+ <ImageView android:layout_width="44dp" android:layout_height="44dp" android:layout_gravity="top|end" android:src="@drawable/island_cloud_0" android:contentDescription="天氣圖示"/>
+</FrameLayout>

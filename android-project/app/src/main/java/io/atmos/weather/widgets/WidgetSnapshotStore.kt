@@ -8,6 +8,7 @@ import io.atmos.weather.domain.visual.sceneFor
 object WidgetSnapshotStore {
     fun publish(context:Context, weather:WeatherSnapshot) {
         val scene=sceneFor(weather)
+        val hours=org.json.JSONArray().apply{weather.nextHours.take(12).forEach{h->put(org.json.JSONObject().apply{put("at",h.at.toEpochMilli());put("temp",h.temperatureC);put("rain",h.precipitationProbabilityPct?:-1);put("code",h.weatherCode?:-1)})}}
         context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE).edit()
             .putString("widget_city",weather.city.name)
             .putString("widget_city_id",weather.city.id)
@@ -22,6 +23,13 @@ object WidgetSnapshotStore {
             .putString("widget_county",scene.county)
             .putString("widget_locality",scene.locality)
             .putInt("widget_weather_code",weather.weatherCode ?: -1)
+            .putString("widget_hours",hours.toString())
+            .putString("widget_zone",weather.timeZoneId?:java.time.ZoneId.systemDefault().id)
+            .putInt("widget_humidity",weather.humidityPct?:-1)
+            .putFloat("widget_wind",weather.windKmh?.div(3.6)?.toFloat()?:-1f)
+            .putFloat("widget_uv",weather.currentUv?.toFloat()?:-1f)
+            .apply {if(weather.maxTempC!=null&&weather.minTempC!=null){putInt("widget_high",weather.maxTempC.toInt());putInt("widget_low",weather.minTempC.toInt())}else{remove("widget_high");remove("widget_low")}}
+            .putLong("widget_observed_time",weather.observedAt.toEpochMilli())
             .putLong("widget_time",weather.fetchedAt.toEpochMilli())
             .apply()
     }

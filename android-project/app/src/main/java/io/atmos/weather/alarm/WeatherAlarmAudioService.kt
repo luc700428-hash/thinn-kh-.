@@ -93,6 +93,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                 controlIntent(ctx,alarm.id,ACTION_SNOOZE))
             val islandPreferred = XiaomiFocusBridge.shouldUseAlarmIsland(ctx)
             if (!islandPreferred) b.setFullScreenIntent(openIntent(ctx,alarm.id),true)
+            b.addExtras(android.os.Bundle().apply{putString("thinn.island.primary","%02d:%02d".format(alarm.hour,alarm.minute))})
             var note = b.build()
             if (islandPreferred) {
                 val text = String.format(Locale.TAIWAN,"%02d:%02d 鬧鐘響鈴中",alarm.hour,alarm.minute)
@@ -173,7 +174,7 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             else runCatching { alarm.ringtoneUri?.let(android.net.Uri::parse) }.getOrNull()
         val default=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        // Only the first two bundled themes get the weather-aware sound engine.
+        // All six bundled themes select a fresh weather arrangement or a neutral composition.
         // If assets/cache are unavailable the existing MediaPlayer tone still works.
         nextPlayer=NextWeatherAlarmPlayer.start(this,alarm.ringtoneUri,WeatherAlarmSpeechCache.load(this))
         if(nextPlayer==null) for(uri in listOfNotNull(selected,default).distinct()) {

@@ -28,57 +28,26 @@ class R102UserRequirements(unittest.TestCase):
         self.assertIn('模擬演練',train)
         self.assertIn('removePrefix("地震速報！慎防強烈搖晃！趴下、掩護、穩住！")',train)
     def test_wheel_has_fast_settle_and_reliable_meridiem(self):
-        s=self.read('alarm/R10AlarmDesign.kt')
+        s=self.read('ui/IOSDrumPicker.kt')
         self.assertIn('VelocityTracker()',s)
-        self.assertNotIn('animateDecay(',s)
-        self.assertNotIn('exponentialDecay(',s)
-        self.assertIn('V25AlarmMeridiem.fromDrag(',s)
-        # New shared iOS-style wheel settles with a bounded spring, not a fixed 140ms tween.
-        self.assertIn('Animatable(visualStart).animateTo(0f,spring(',s)
-        self.assertIn('stiffness=io.atmos.weather.ui.AppleMotion.springStiffness',s)
-        self.assertIn('animateTo(',s)
-        self.assertNotIn('while(acc>36f)',s)
-        # The alarm editor and the other time settings share one renderer.
-        self.assertIn('AppleAlarmTimeSelector(hour=hour,minute=minute,',s)
-        self.assertIn('MeridiemWheel(if(safeHour<12) 0 else 1',s)
-        self.assertIn('io.atmos.weather.alarm.AppleAlarmTimeSelector(',
-                      self.read('ui/GlassClockDial.kt'))
-        self.assertIn('Text("上午"',s)
-        self.assertIn('Text("下午"',s)
-        self.assertIn('onDragEnd={',s)
-        self.assertNotIn('val expected=offsetPx+velocity*.065f',s)
-        self.assertIn('val coastPx=if(reduceMotion) 0f',s)
-        self.assertNotIn('updateValue(1-currentValue)',s)
-        self.assertIn('liveUpdate(((liveValue-nearest)%count+count)%count)',s)
-        self.assertIn('offsetPx-=nearest*stepPx',s)
-        self.assertIn('val selectedDetent=',s)
-        self.assertIn('LaunchedEffect(selectedDetent)',s)
-        self.assertNotIn('HapticEngine.Event.DRAG',s)
-        self.assertIn('Layout(content = {',s)
-        self.assertIn('center+(index-3)*rowHeight+fraction.roundToInt()',s)
-        self.assertNotIn('.clickable { hour=(hour+12)%24 }',s)
+        self.assertIn('DrumWheelRules.move(',s)
+        self.assertIn('IOSClockDrums(',self.read('alarm/R10AlarmDesign.kt'))
+        self.assertIn('IOSClockDrums(',self.read('ui/GlassClockDial.kt'))
+        self.assertNotIn('private fun Wheel(',self.read('alarm/R10AlarmDesign.kt'))
     def test_meridiem_fixed_rows_and_synchronous_commit(self):
-        s=self.read('alarm/R10AlarmDesign.kt')
-        meridiem=s.split('private fun MeridiemWheel(',1)[1].split('private fun Wheel(',1)[0]
-        self.assertIn('V25AlarmMeridiem.fromDrag(',meridiem)
-        self.assertIn('latestUpdate(next)',meridiem)
-        self.assertIn('Text("上午"',meridiem)
-        self.assertIn('Text("下午"',meridiem)
-        self.assertLess(meridiem.index('Text("上午"'),meridiem.index('Text("下午"'))
-        self.assertNotIn('updateValue(1-currentValue)',meridiem)
-        self.assertNotIn('VelocityTracker()',meridiem)
-        self.assertIn('animateDpAsState(',meridiem)
-        self.assertIn('reduce_motion',meridiem)
+        s=self.read('ui/IOSDrumPicker.kt')
+        self.assertIn('h/12,2',s)
+        self.assertIn('"AM" else "PM"',s)
+        self.assertIn('"AM 上午或 PM 下午",false',s)
+        self.assertIn('report(next)',s)
+        self.assertIn('DisposableEffect(count)',s)
 
     def test_hour_minute_snap_does_not_wait_for_fling(self):
-        s=self.read('alarm/R10AlarmDesign.kt')
-        wheel=s.split('private fun Wheel(',1)[1].split('fun R10AlarmEditor(',1)[0]
-        self.assertIn('coerceIn(-stepPx*2f,stepPx*2f)',wheel)
-        # The value still commits synchronously before visual spring settlement.
-        self.assertIn('Animatable(visualStart).animateTo(0f,spring(',wheel)
-        self.assertIn('dampingRatio=io.atmos.weather.ui.AppleMotion.springDamping',wheel)
-        self.assertLess(wheel.index('liveUpdate(((liveValue-nearest)%count+count)%count)'),
-                        wheel.index('movingJob=scope.launch {',wheel.index('onDragEnd={')))
+        s=self.read('ui/IOSDrumPicker.kt')
+        self.assertIn('onVerticalDrag={c,dy->c.consume()',s)
+        self.assertIn('move(dy)',s)
+        self.assertIn('selected=next;sent=next;report(next)',s)
+        self.assertIn('Animatable(offset).animateTo(0f',s)
 
     def test_air_quality_short_labels_are_honest(self):
         p=(PKG/'presentation/home/HomeWeatherBriefing.kt').read_text()
@@ -94,10 +63,25 @@ class R102UserRequirements(unittest.TestCase):
         self.assertIn('ToneArtwork(',s)
         self.assertIn('R10AlarmTones.resource',s)
     def test_six_tones_each_have_three_variants(self):
+        import struct
         for label in ('dawn','rain','wood','water','fire','metal'):
             for mood in ('','_clear','_rain'):
-                data=RAW/f'thinn_alarm_{label}{mood}.ogg'
-                self.assertTrue(data.is_file() and data.stat().st_size>20000,str(data))
+                path=RAW/f'thinn_alarm_{label}{mood}.ogg'
+                self.assertTrue(path.is_file(),str(path))
+                data=path.read_bytes()
+                self.assertEqual(data[:4],b'OggS',str(path))
+                ident=data.index(b'\x01vorbis')
+                rate=struct.unpack_from('<I',data,ident+12)[0]
+                self.assertEqual(rate,44100,str(path))
+                position=0;last_frame=0
+                while position<len(data):
+                    self.assertEqual(data[position:position+4],b'OggS',str(path))
+                    frame=struct.unpack_from('<Q',data,position+6)[0]
+                    if frame != (1<<64)-1:last_frame=frame
+                    count=data[position+26]
+                    position+=27+count+sum(data[position+27:position+27+count])
+                self.assertEqual(position,len(data),str(path))
+                self.assertGreater(last_frame/rate,8,str(path))
     def test_full_screen_alarm_rebuilt_without_old_description(self):
         s=self.read('alarm/WeatherAlarmRingActivity.kt')
         for token in ('稍後提醒','滑動來停止','detectHorizontalDragGestures','LocalHapticFeedback','92.sp'):
@@ -113,7 +97,7 @@ class R102UserRequirements(unittest.TestCase):
         s=self.read('ui/GlassControls.kt')
         self.assertIn('HapticEngine.Event.TAP',s)
         # Shared buttons now follow approved UI motion tokens and remain ripple-free.
-        self.assertIn('spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness)',s)
+        self.assertIn('spring(dampingRatio=response.damping,stiffness=response.stiffness)',s)
         self.assertIn('indication=null',s)
         motion=self.read('ui/AppleMotion.kt')
         self.assertIn('const val springDamping: Float = 0.72f',motion)

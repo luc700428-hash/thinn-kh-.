@@ -1,4 +1,5 @@
 package io.atmos.weather.ui
+import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -14,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,6 +67,7 @@ fun ThinnRow(title:String,subtitle:String="",icon:ImageVector?=null,destructive:
         else -> Color(0xFF5AC8FA)
     }
     Row(Modifier.fillMaxWidth().heightIn(min=48.dp)
+        .then(if(onClick!=null)Modifier.iosJellyPress() else Modifier)
         .background(pressedFill)
         .then(if(onClick!=null) Modifier.clickable(
             interactionSource=interaction,indication=null,role=Role.Button) {

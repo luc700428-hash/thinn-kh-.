@@ -120,7 +120,8 @@ fun ThinnAppTheme(content:@Composable ()->Unit) {
         typography=thinnTypography, shapes=thinnShapes) {
         // Compose Foundation >=1.8: remove Android stretch/glow globally.
         // Add our own rubber-band effect ONLY to appropriate scroll surfaces.
-        CompositionLocalProvider(LocalOverscrollFactory provides null) {
+        CompositionLocalProvider(LocalOverscrollFactory provides null,
+            androidx.compose.foundation.LocalIndication provides IOSPressIndication) {
             androidx.compose.material3.ProvideTextStyle(value=thinnTypography.bodyMedium) { content() }
         }
     }

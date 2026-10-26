@@ -23,7 +23,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** WAV PCM16 mono reader with explicit bounds checks; 22,050 Hz assets from this update. */
+/** WAV PCM16 mono reader with explicit bounds checks; supports the 44,100 Hz wake suite. */
 internal object LoopWav {
     data class Decoded(val sampleRate: Int, val pcm: ByteArray) {
         val frames: Int get() = pcm.size / 2
@@ -96,18 +96,24 @@ internal class NextAmbienceController(private val context:Context) {
     private val lock = Mutex()
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var track: NextLoopTrack? = null
+    private var incomingTrack: NextLoopTrack? = null
     private var scene: WeatherScene? = null
     private var enabled = false
     private var active = false
     private var level = .15f
     private var thunder:MediaPlayer?=null
+    private var closed=false
 
     fun foreground(on:Boolean) {
         active=on
-        if(!on || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) track?.pause()
-        else if(enabled) track?.resume()
+        if(closed)return
+        if(!on || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
+            track?.pause();incomingTrack?.pause()
+            runCatching{thunder?.release()};thunder=null
+        } else if(enabled) {track?.resume();incomingTrack?.resume()}
     }
     suspend fun configure(next:WeatherScene?, on:Boolean, volume:Float) = lock.withLock {
+        if(closed)return@withLock
         enabled=on
         level=volume.coerceIn(0f,.55f)
         if(!on || next == null) {track?.pause();return@withLock}
@@ -118,28 +124,35 @@ internal class NextAmbienceController(private val context:Context) {
         }
         val incoming=NextLoopTrack.open(context,WeatherScenes.ambienceAsset(next),AudioAttributes.USAGE_MEDIA)
             ?: return@withLock
+        incomingTrack=incoming
         val old=track
         val playing=active && audio.ringerMode == AudioManager.RINGER_MODE_NORMAL
         if(playing) incoming.start(0f)
         try {
             // 1.12 seconds; cos/sin are equal-power instead of linear loudness dipping.
             repeat(28) { i ->
+                if(closed)return@withLock
                 val p=(i+1)/28f
-                val to=if(playing) level else 0f
+                val to=if(active && enabled && audio.ringerMode == AudioManager.RINGER_MODE_NORMAL) level else 0f
                 incoming.volume((to*sin(p*Math.PI/2).toFloat()).coerceIn(0f,1f))
                 old?.volume((to*cos(p*Math.PI/2).toFloat()).coerceIn(0f,1f))
                 delay(40)
             }
         } finally {
-            old?.close()
-            track=incoming
-            scene=next
-            incoming.volume(if(playing)level else 0f)
-            if(!playing) incoming.pause()
+            if(closed) {
+                // close() has already released both tracks; never reattach a released one.
+                track=null;incomingTrack=null
+            } else {
+                old?.close()
+                track=incoming;incomingTrack=null;scene=next
+                val audible=active && enabled && audio.ringerMode == AudioManager.RINGER_MODE_NORMAL
+                incoming.volume(if(audible)level else 0f)
+                if(!audible)incoming.pause()
+            }
         }
     }
     fun thunderCue() {
-        if(!active || !enabled || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        if(closed || !active || !enabled || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
         runCatching { thunder?.release() }
         thunder = MediaPlayer.create(context,R.raw.thunder_strike)?.apply {
             setVolume((level*.45f).coerceIn(0f,.24f),(level*.45f).coerceIn(0f,.24f))
@@ -147,7 +160,12 @@ internal class NextAmbienceController(private val context:Context) {
             start()
         }
     }
-    fun close() { track?.close();track=null; runCatching {thunder?.release()};thunder=null }
+    fun close() {
+        if(closed)return
+        closed=true;active=false
+        track?.close();track=null;incomingTrack?.close();incomingTrack=null
+        runCatching {thunder?.release()};thunder=null
+    }
 }
 
 @Composable

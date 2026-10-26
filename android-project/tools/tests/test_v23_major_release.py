@@ -24,7 +24,7 @@ class MajorV23Contract(unittest.TestCase):
         for required in ['AlarmManager','WeatherAlarmStore','getSharedPreferences','scheduleSnooze','canScheduleExactAlarms','setAlarmClock','setAndAllowWhileIdle']:
             self.assertIn(required,alarm)
         design=(JAVA/'alarm/R10AlarmDesign.kt').read_text()
-        for required in ['R10AlarmEditor','R10AlarmTones','Wheel(','R10Switch','onSave','onDelete']:
+        for required in ['R10AlarmEditor','R10AlarmTones','IOSClockDrums(','R10Switch','onSave','onDelete']:
             self.assertIn(required,design)
         self.assertNotIn('AndroidView(',design)
         self.assertNotIn('FilterChip',design)

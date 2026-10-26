@@ -1,4 +1,5 @@
 package io.atmos.weather.earthquake
+import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
 import io.atmos.weather.ui.GlassSurfaceBox as Surface
 import io.atmos.weather.ui.GlassButton as Button

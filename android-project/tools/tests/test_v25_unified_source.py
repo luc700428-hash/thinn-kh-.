@@ -11,10 +11,10 @@ class UnifiedWiringTests(unittest.TestCase):
         self.assertIn('reduce_motion',hero)
         self.assertIn('reduce_transparency',hero)
     def test_fixed_am_pm_and_no_blind_toggle(self):
-        a=(SRC/'alarm/R10AlarmDesign.kt').read_text()
-        self.assertIn('V25AlarmMeridiem.fromDrag(',a)
-        self.assertIn('Text("上午"',a)
-        self.assertIn('Text("下午"',a)
+        a=(SRC/'ui/IOSDrumPicker.kt').read_text()
+        self.assertIn('IOSDrumColumn(h/12,2',a)
+        self.assertIn('"AM" else "PM"',a)
+        self.assertIn('"AM 上午或 PM 下午",false',a)
         self.assertNotIn('updateValue(1-currentValue)',a)
     def test_global_glimmer_obeys_accessibility(self):
         src=(SRC/'next/NextOpticalSurface.kt').read_text()
@@ -30,7 +30,7 @@ class UnifiedWiringTests(unittest.TestCase):
         self.assertIn('V25StormComparison.compare(',s)
         self.assertIn('rememberTaiwanVectorAtlas()',s)
     def test_widget_mood_from_actual_weather_and_radar_reload(self):
-        self.assertIn('V25WidgetMood.forWeather(',
+        self.assertIn('OpticalWidgetData.read(',
                       (SRC/'widgets/AtmosWidgets.kt').read_text())
         self.assertIn('onClick={web.reload()}',
                       (SRC/'ui/RadarHistoryDialog.kt').read_text())

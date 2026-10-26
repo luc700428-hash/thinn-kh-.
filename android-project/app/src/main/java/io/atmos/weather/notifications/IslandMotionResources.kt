@@ -22,6 +22,10 @@ internal object IslandMotionResources {
             IslandIconScene.UV -> if(active) R.drawable.island_uv_1 else R.drawable.island_uv_0
             IslandIconScene.NOTE -> if(active) R.drawable.island_note_1 else R.drawable.island_note_0
             IslandIconScene.CALENDAR -> if(active) R.drawable.island_calendar_1 else R.drawable.island_calendar_0
+            IslandIconScene.MOON -> if(active) R.drawable.island_moon_1 else R.drawable.island_moon_0
+            IslandIconScene.FOG -> if(active) R.drawable.island_fog_1 else R.drawable.island_fog_0
+            IslandIconScene.UPDATE -> if(active) R.drawable.island_update_1 else R.drawable.island_update_0
+            IslandIconScene.DUST -> if(active) R.drawable.island_dust_1 else R.drawable.island_dust_0
             IslandIconScene.GENERIC -> if(active) R.drawable.island_generic_1 else R.drawable.island_generic_0
         }
     }
