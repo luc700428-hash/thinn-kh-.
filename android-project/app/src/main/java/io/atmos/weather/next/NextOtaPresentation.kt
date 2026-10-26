@@ -128,7 +128,7 @@ fun NextOtaStatusCard(
                     Row(verticalAlignment=Alignment.Top) {
                         Text("•",fontSize=17.sp,color=blue);Spacer(Modifier.width(8.dp))
                         Text("完整版本說明",color=blue,fontSize=17.sp,textDecoration=TextDecoration.Underline,
-                            modifier=Modifier.clickable {uriHandler.openUri("https://github.com/luc700428-hash/thinn-kh-./releases")})
+                            modifier=Modifier.clickable {uriHandler.openUri("https://github.com/luc700428-hash/thinn-kh-./releases/tag/v"+version.removePrefix("v"))})
                     }
                 } else Text(when(state) {
                     NextOtaState.Checking->"正在檢查軟體更新…"

@@ -28,4 +28,15 @@ class TyphoonViewportTest {
         assertTrue(x in 0f..300f)
         assertTrue(y in 0f..200f)
     }
+    @Test fun taiwanCameraKeepsAllFourIslandGroupsVisible() {
+        for((width,height) in listOf(320f to 430f,430f to 315f)) {
+            val view=TyphoonViewport.forTaiwan(width,height,20f)
+            listOf(121.0 to 23.65,119.57 to 23.57,118.38 to 24.44,119.95 to 26.17).forEach {(lon,lat) ->
+                val (x,y)=view.project(lon,lat)
+                assertTrue(x in 0f..width && y in 0f..height)
+            }
+            val west=view.project(120.0,24.0);val east=view.project(122.0,24.0)
+            assertTrue(east.first-west.first>width*.15f)
+        }
+    }
 }

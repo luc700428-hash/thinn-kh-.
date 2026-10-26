@@ -147,7 +147,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
     LaunchedEffect(Unit) { if(!installing && pending==null && !installerPrompted) check() }
     LaunchedEffect(pending?.sha256) {
         pending?.let { release ->
-            if(pendingDelta.isBlank()) pendingDelta=AppUpdateDelta.describe(BuildConfig.VERSION_NAME,release)
+            pendingDelta=AppUpdateDelta.describe(BuildConfig.VERSION_NAME,release)
         }
     }
 

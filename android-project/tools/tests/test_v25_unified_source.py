@@ -28,7 +28,7 @@ class UnifiedWiringTests(unittest.TestCase):
         s=(SRC/'typhoon/TyphoonCenterPage.kt').read_text()
         self.assertIn('sameStormConfirmed',s)
         self.assertIn('V25StormComparison.compare(',s)
-        self.assertIn('rememberNlscMap(',s)
+        self.assertIn('rememberTaiwanVectorAtlas()',s)
     def test_widget_mood_from_actual_weather_and_radar_reload(self):
         self.assertIn('V25WidgetMood.forWeather(',
                       (SRC/'widgets/AtmosWidgets.kt').read_text())

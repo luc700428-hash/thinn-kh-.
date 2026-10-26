@@ -3,12 +3,12 @@ import unittest
 from pathlib import Path
 B=Path(__file__).resolve().parents[2]/'app/src/main/java/io/atmos/weather'
 class CrispMapGoogleWidgets(unittest.TestCase):
-    def test_map_reprojects_and_requests_new_bbox(self):
+    def test_map_reprojects_offline_vectors_without_raster_stretch(self):
         s=(B/'typhoon/TyphoonCenterPage.kt').read_text()
         fragment=s[s.index('private fun OfficialTrackPlot'):]
-        self.assertIn('view.rasterBounds()',fragment)
-        self.assertIn('rememberNlscMap(settledBounds',fragment)
-        self.assertIn('delay(420)',fragment)
+        self.assertIn('rememberTaiwanVectorAtlas()',fragment)
+        self.assertIn('atlas.draw(this)',fragment)
+        self.assertIn('coerceIn(1f,32f)',fragment)
         self.assertIn('mapPan.x/scale',fragment)
         self.assertNotIn('graphicsLayer',fragment)
         self.assertIn('mapZoom=1f;mapPan=Offset.Zero',fragment)

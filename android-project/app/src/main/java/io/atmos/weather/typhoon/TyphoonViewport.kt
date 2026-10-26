@@ -29,6 +29,16 @@ data class TyphoonViewport(
     }
 
     companion object {
+        /** Taiwan-first camera, independent of an overseas storm's track extent. */
+        fun forTaiwan(widthPx:Float,heightPx:Float,paddingPx:Float):TyphoonViewport {
+            val cosine=cos(Math.toRadians(24.1))
+            val availableW=max(1.0,widthPx-2.0*paddingPx)
+            val availableH=max(1.0,heightPx-2.0*paddingPx)
+            return TyphoonViewport(120.65*111.2*cosine,24.1*111.2,
+                min(availableW/(5.6*111.2*cosine),availableH/(5.7*111.2)),
+                widthPx.toDouble(),heightPx.toDouble(),cosine)
+        }
+
         fun forPoints(points:List<Pair<Double,Double>>,widthPx:Float,heightPx:Float,paddingPx:Float):TyphoonViewport {
             // Keep Taiwan visible if a storm is nearby; otherwise show the verified points only.
             val src=points.filter { it.first.isFinite() && it.second.isFinite() &&

@@ -1,3 +1,5 @@
+> 2026-10-26 液態介面／天氣物理／地圖／OTA 更新包：請先閱讀 [工程說明](docs/V25_PHYSICS_UPDATE_20261026.md)。一般簽章 OTA 與完整功能里程碑分開判定，完整驗收狀態並未被改成通過。
+
 # thinn-khì
 
 Android 天氣、地震與生活工具 App；Kotlin / Jetpack Compose，Android 12 以上。

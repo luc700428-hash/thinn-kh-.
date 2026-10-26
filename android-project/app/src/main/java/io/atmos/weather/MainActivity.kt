@@ -40,6 +40,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CrashDiagnostics.install(this)
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            io.atmos.weather.voice.NaturalVoiceHub.retire(this@MainActivity)
+        }
         // Lock-screen activation is governed by OS notification policy. Do not
         // enable wake from an exported Activity intent extra that another app can forge.
         window.statusBarColor = android.graphics.Color.TRANSPARENT

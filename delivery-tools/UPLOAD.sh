@@ -2,12 +2,12 @@
 set -euo pipefail
 package_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 mode="${1:-upload}"
-if [[ "$mode" != upload && "$mode" != --check ]]; then
-  echo '用法：bash UPLOAD.sh [--check]' >&2
+if [[ "$mode" != upload && "$mode" != --check && "$mode" != --publish ]]; then
+  echo '用法：bash UPLOAD.sh [--check | --publish]' >&2
   exit 2
 fi
 required=(python3)
-if [[ "$mode" == upload ]]; then required+=(git gh); fi
+if [[ "$mode" != --check ]]; then required+=(git gh); fi
 for cmd in "${required[@]}"; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     if command -v pkg >/dev/null 2>&1; then
@@ -47,7 +47,7 @@ if ! git -C "$checkout" diff --cached --quiet; then
     account_id="$(gh api user --jq .id)"
     git -C "$checkout" config user.email "$account_id+$account_login@users.noreply.github.com"
   fi
-  git -C "$checkout" commit -m 'feat(v25): match four reference screens and redesign dock' -m 'Update-Package-ID: thinn-khi-v25-reference-20261026'
+  git -C "$checkout" commit -m 'feat(v25): unify liquid UI, restore maps and repair signed OTA release' -m 'Update-Package-ID: thinn-khi-v25-physics-20261026'
   # Normal push only: another main update cannot be silently overwritten.
   if ! git -C "$checkout" push origin HEAD:main; then
     echo "尚未啟動建置。程式保留於 $checkout；若 GitHub 提示 workflow 權限，請執行 gh auth refresh -h github.com -s workflow 後重跑本腳本。" >&2
@@ -56,11 +56,16 @@ if ! git -C "$checkout" diff --cached --quiet; then
 fi
 head_sha="$(git -C "$checkout" rev-parse HEAD)"
 existing_url="$(gh run list --repo "$repo" --workflow build-apk.yml --commit "$head_sha" --limit 1 --json url --jq '.[0].url // empty')"
-if [[ -z "$existing_url" ]]; then
-  gh workflow run build-apk.yml --repo "$repo" --ref main -f publish_release=false
-  echo '上傳完成，已啟動 APK 建置。'
+if [[ "$mode" == --publish ]]; then
+  gh workflow run build-apk.yml --repo "$repo" --ref main -f publish_release=true -f full_milestone=false
+  echo '已啟動一般簽章 OTA 發布；須等待 GitHub Actions 簽章、版本與檔案驗證通過。'
+elif [[ -z "$existing_url" ]]; then
+  gh workflow run build-apk.yml --repo "$repo" --ref main -f publish_release=false -f full_milestone=false
+  echo '上傳完成，已啟動候選 APK 建置。'
 else
   echo "此版本已有建置：$existing_url"
 fi
-printf '建置與 APK 附件：https://github.com/%s/actions/workflows/build-apk.yml\n' "$repo"
-echo '正式 OTA 不會由此腳本發布。簽章、實機與原版升級驗收完成後，才能開啟正式發布。'
+printf '建置狀態：https://github.com/%s/actions/workflows/build-apk.yml\n' "$repo"
+if [[ "$mode" != --publish ]]; then
+  echo '要發布正式 OTA，執行 bash UPLOAD.sh --publish；沿用 GitHub 既有簽章，未宣告全部功能通過真機驗收。'
+fi

@@ -3,12 +3,20 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: '完成實機驗收後發布正式 OTA；關閉時只建置 APK 附件'
+        description: '發布一般簽章 OTA 更新；關閉時只建置候選 APK'
         required: true
+        type: boolean
+        default: false
+      full_milestone:
+        description: '額外宣告 V25 全部 22 項完成；須有完整驗收紀錄'
+        required: false
         type: boolean
         default: false
 permissions:
   contents: write
+concurrency:
+  group: thinn-official-ota-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -314,8 +322,17 @@ jobs:
           path: |
             android-project/app/build/outputs/apk/debug/*.apk
             embedded-build-source-proof.json
-      - name: Require recorded full acceptance before official publication
-        if: inputs.publish_release == true
+      - name: Record release scope honestly
+        env:
+          FULL_MILESTONE: ${{ inputs.full_milestone }}
+        run: |
+          if [[ "$FULL_MILESTONE" == 'true' ]]; then
+            echo 'Release scope: full V25 milestone, all recorded evidence required.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Release scope: signed app update. Full V25 device acceptance is not claimed.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Require recorded full acceptance for a full milestone claim
+        if: inputs.publish_release == true && inputs.full_milestone == true
         run: python3 android-project/tools/verify_next_release_gate.py
       - name: Publish official OTA GitHub Release
         if: github.event_name == 'workflow_dispatch' && env.SIGN_READY == 'true' && inputs.publish_release == true

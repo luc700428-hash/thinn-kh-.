@@ -5,6 +5,11 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import io.atmos.weather.ui.GlassSlider as Slider
+import io.atmos.weather.ui.GlassSwitch as Switch
+import io.atmos.weather.ui.GlassButton as Button
+import io.atmos.weather.ui.GlassOutlinedButton as OutlinedButton
+import io.atmos.weather.ui.GlassTextButton as TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,8 +22,8 @@ import androidx.compose.ui.unit.sp
 import io.atmos.weather.domain.model.WeatherSnapshot
 import kotlinx.coroutines.launch
 
-private val textColor = Color.White
-private val detailColor = Color.White.copy(alpha = .84f)
+private val textColor:Color @Composable get()=MaterialTheme.colorScheme.onSurface
+private val detailColor:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 fun LifestyleAdviceCard(weather: WeatherSnapshot, stale: Boolean, onOpenSettings: () -> Unit) {
@@ -115,7 +120,7 @@ fun LifestyleAiSettingsPage(onClose: () -> Unit) {
     var style by remember { mutableStateOf(originalPreferences.style) }
     var umbrellaThreshold by remember { mutableFloatStateOf(originalPreferences.umbrellaThresholdPct.toFloat()) }
     Column(Modifier.fillMaxSize()
-        .background(Brush.verticalGradient(listOf(Color(0xFF08192F), Color(0xFF235678))))
+        .background(MaterialTheme.colorScheme.background)
         .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(start=20.dp, end=20.dp, top=54.dp, bottom=145.dp)) {
         Text("智慧生活 · 開源 AI", color=textColor, fontWeight=FontWeight.Bold, fontSize=25.sp)
         Spacer(Modifier.height(7.dp))

@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 class ThinnBackdrop internal constructor(internal val layer:GraphicsLayer) {
     internal var origin by mutableStateOf(Offset.Zero)
     internal var ready by mutableStateOf(false)
+    // Drawing a sampled descendant into the same layer would form a render-cycle.
+    internal var recording=false
 }
 val LocalThinnBackdrop=staticCompositionLocalOf<ThinnBackdrop?> {null}
 @Composable fun rememberThinnBackdrop():ThinnBackdrop {
@@ -37,7 +39,9 @@ fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
         val xy=IntArray(2);view.getLocationOnScreen(xy)
         source.origin=it.positionInWindow()+Offset(xy[0].toFloat(),xy[1].toFloat())
     }.drawWithContent {
-        source.layer.record {this@drawWithContent.drawContent()}
+        source.recording=true
+        try {source.layer.record {this@drawWithContent.drawContent()}}
+        finally {source.recording=false}
         drawLayer(source.layer)
         if(!source.ready) source.ready=true
     }
@@ -61,7 +65,7 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean):Modifier {
         val xy=IntArray(2);view.getLocationOnScreen(xy)
         origin=it.positionInWindow()+Offset(xy[0].toFloat(),xy[1].toFloat())
     }.drawWithContent {
-        if(source.ready) {
+        if(source.ready && !source.recording) {
             glass.renderEffect=effect
             glass.record {
                 translate(source.origin.x-origin.x,source.origin.y-origin.y) {drawLayer(source.layer)}

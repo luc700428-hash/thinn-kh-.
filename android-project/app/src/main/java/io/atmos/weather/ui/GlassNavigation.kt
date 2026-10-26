@@ -143,43 +143,60 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
-    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={}) {
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-        .statusBarsPadding().navigationBarsPadding().padding(bottom=104.dp)
-        .appleBouncingScroll().verticalScroll(rememberScrollState())
-        .padding(start=16.dp,end=16.dp,top=18.dp,bottom=22.dp)) {
-        Text("工具",color=ink,style=androidx.compose.material3.MaterialTheme.typography.displaySmall)
-        Text("常用功能與你的生活事項",color=soft,fontSize=15.sp)
-        Spacer(Modifier.height(17.dp))
-        ThinnSection("日常生活") {
-            ThinnRow("我的事項","新增、完成與安排提醒",Icons.Rounded.Checklist,onClick=onTasks)
-            GlassDivider()
-            ThinnRow("天氣鬧鐘","鬧鐘、重複星期與起床天氣語音",Icons.Rounded.Alarm,onClick=onWeatherAlarms)
-            GlassDivider()
-            ThinnRow("智慧天氣定時通知","最多 5 組週間與時間提醒",Icons.Rounded.NotificationsActive,onClick=onBriefings)
+    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={}) {
+    val palette=MaterialTheme.colorScheme
+    var query by remember {mutableStateOf("")}
+    var utility by remember {mutableStateOf<String?>(null)}
+    data class Entry(val title:String,val subtitle:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,val action:()->Unit)
+    val groups=listOf(
+        "日常生活" to listOf(Entry("天氣鬧鐘","重複星期、鈴聲與稍後提醒",SettingsSymbols.alarm,onWeatherAlarms),
+            Entry("我的事項","待辦清單與個人提醒",Icons.Rounded.Checklist,onTasks),
+            Entry("天氣定時通知","週間與指定時間的天氣摘要",SettingsSymbols.notification,onBriefings)),
+        "天氣與防災" to listOf(Entry("颱風動向","官方警報、路徑與預報時間軸",SettingsSymbols.cyclone,onTyphoons),
+            Entry("地震監測","測站、震後報告與演練",Icons.Rounded.Waves,onSeismic),
+            Entry("降雨雷達","開啟中央氣象署 QPE 雷達",Icons.Rounded.Radar,onRadar)),
+        "時間與換算" to listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{utility="碼錶"}),
+            Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,{utility="世界時鐘"}),
+            Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{utility="氣象單位換算"}))
+    )
+    Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()
+        .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=18.dp,bottom=120.dp),
+        verticalArrangement=Arrangement.spacedBy(18.dp)) {
+        Column {
+            Text("工具",color=palette.onSurface,fontSize=34.sp,fontWeight=FontWeight.Bold,letterSpacing=(-1).sp)
+            Text("把每天要用的功能放在一起",color=palette.onSurfaceVariant,fontSize=14.sp)
         }
-        Spacer(Modifier.height(8.dp))
-        ThinnSection("天氣與安全") {
-            ThinnRow("臺灣地震監測","即時觀測與歷史地震",Icons.Rounded.Waves,onClick=onSeismic)
-            GlassDivider()
-            ThinnRow("颱風動向與警報","官方颱風警報、路徑及最新資訊",Icons.Rounded.Cyclone,onClick=onTyphoons)
+        Row(Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp)).background(palette.surfaceVariant).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Search,null,tint=palette.onSurfaceVariant,modifier=Modifier.size(20.dp));Spacer(Modifier.width(8.dp))
+            Box(Modifier.weight(1f)) {
+                if(query.isBlank())Text("搜尋工具",color=palette.onSurfaceVariant,fontSize=16.sp)
+                androidx.compose.foundation.text.BasicTextField(query,{query=it},singleLine=true,
+                    textStyle=androidx.compose.ui.text.TextStyle(color=palette.onSurface,fontSize=16.sp),modifier=Modifier.fillMaxWidth())
+            }
         }
-        Spacer(Modifier.height(8.dp))
-        ThinnSection("系統與維護") {
-            ThinnRow("系統更新中心","版本內容與安全更新",Icons.Rounded.SystemUpdate,onClick=onUpdates)
-            GlassDivider()
-            ThinnRow("系統健康檢查","通知、定位與排程狀態",Icons.Rounded.FactCheck,onClick=onDiagnostics)
+        var count=0
+        groups.forEachIndexed {groupIndex,(title,entries) ->
+            val shown=entries.filter {query.isBlank() || (it.title+it.subtitle).contains(query.trim(),ignoreCase=true)}
+            count+=shown.size
+            if(shown.isNotEmpty()) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(title,color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(horizontal=6.dp))
+                IOSV25SettingsGroup {
+                    shown.forEachIndexed {i,item ->IOSV25SettingsCell(item.title,"",item.icon,
+                        listOf(Color(0xFFFF9500),Color(0xFF007AFF),Color(0xFF5856D6))[groupIndex],
+                        last=i==shown.lastIndex,onClick=item.action)}
+                }
+            }
         }
-        Spacer(Modifier.height(20.dp))
-        Text("地震警示與演示會明確區別；災害資訊請以官方發布為準。",color=soft,fontSize=14.sp,lineHeight=18.sp)
+        if(count==0)Text("找不到符合的工具",color=palette.onSurfaceVariant,fontSize=15.sp)
     }
+    EverydayToolsSheet(utility,onDismiss={utility=null})
 }
 
 @Composable
 fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppearance)->Unit,
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
     onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
-    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onNaturalVoice:()->Unit={},onDetailVisibility:(Boolean)->Unit={}) {
+    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onDetailVisibility:(Boolean)->Unit={},onAdvancedCategory:(String)->Unit={onAdvanced()}) {
     val context=LocalContext.current
     val prefs=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE) }
     var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion",false)) }
@@ -208,6 +225,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 GlassTrackingSlider("玻璃霧化",appearance.glassFrost) { onAppearance(appearance.copy(glassFrost=it)) }
                 GlassTrackingSlider("邊緣光效",appearance.edgeLight) { onAppearance(appearance.copy(edgeLight=it)) }
                 GlassTrackingSlider("流動速度",appearance.liquidMotion) { onAppearance(appearance.copy(liquidMotion=it)) }
+                GlassTrackingSlider("回彈彈性",appearance.springiness) { onAppearance(appearance.copy(springiness=it)) }
             }
         })
     }
@@ -263,36 +281,34 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 }
             }
             Spacer(Modifier.height(20.dp))
-            val serviceRows=listOf(
-                SettingsEntry("天氣資料",SettingsSymbols.weather,Color(0xFF34C759),onDiagnostics),
-                SettingsEntry("地震警報",SettingsSymbols.notification,Color(0xFFFF3B30),onPushSettings),
-                SettingsEntry("天氣鬧鐘",SettingsSymbols.alarm,Color(0xFFFF9500),onWeatherAlarms),
-                SettingsEntry("自然語音",SettingsSymbols.voice,Color(0xFF007AFF),onNaturalVoice)
-            ).filter {match(it.title)}
-            if(serviceRows.isNotEmpty()) {
-                IOSV25SettingsGroup {
-                    serviceRows.forEachIndexed {index,row -> IOSV25SettingsCell(row.title,"",row.icon,row.color,
-                        last=index==serviceRows.lastIndex,onClick=row.action)}
+            val categories=listOf(
+                "外觀與操作" to listOf(
+                    SettingsEntry("外觀與亮度",SettingsSymbols.display,Color(0xFF007AFF),{lastDetail="appearance";appearanceOpen=true}),
+                    SettingsEntry("字體與閱讀",SettingsSymbols.general,Color(0xFF8E8E93),{onAdvancedCategory("外觀")}),
+                    SettingsEntry("聲音與觸覺",SettingsSymbols.wallpaper,Color(0xFF32ADE6),{onAdvancedCategory("聲音")}),
+                    SettingsEntry("輔助使用",SettingsSymbols.accessibility,Color(0xFF007AFF),{lastDetail="accessibility";accessibilityOpen=true})),
+                "提醒與偏好" to listOf(
+                    SettingsEntry("地震警報與通知",SettingsSymbols.notification,Color(0xFFFF3B30),onPushSettings),
+                    SettingsEntry("通知音效與背景提醒",SettingsSymbols.notification,Color(0xFFFF9500),{onAdvancedCategory("通知")}),
+                    SettingsEntry("穿搭與生活偏好",SettingsSymbols.lifestyle,Color(0xFF5856D6),onLifestyle)),
+                "系統與資料" to listOf(
+                    SettingsEntry("資料更新頻率",SettingsSymbols.weather,Color(0xFF007AFF),{onAdvancedCategory("資料")}),
+                    SettingsEntry("軟體更新",SettingsSymbols.update,Color(0xFF8E8E93),onUpdateCenter),
+                    SettingsEntry("權限與系統健康",SettingsSymbols.controls,Color(0xFF34C759),onDiagnostics))
+            )
+            var resultCount=0
+            categories.forEach {(title,rows) ->
+                val shown=rows.filter {match(it.title)};resultCount+=shown.size
+                if(shown.isNotEmpty()) {
+                    Text(title,fontSize=14.sp,color=palette.onSurfaceVariant,modifier=Modifier.padding(start=16.dp,bottom=8.dp))
+                    IOSV25SettingsGroup {
+                        shown.forEachIndexed {index,row ->IOSV25SettingsCell(row.title,"",row.icon,row.color,
+                            last=index==shown.lastIndex,onClick=row.action)}
+                    }
+                    Spacer(Modifier.height(20.dp))
                 }
-                Spacer(Modifier.height(32.dp))
             }
-            val mainRows=listOf(
-                SettingsEntry("一般",SettingsSymbols.general,Color(0xFF8E8E93),onAdvanced),
-                SettingsEntry("輔助使用",SettingsSymbols.accessibility,Color(0xFF007AFF),{lastDetail="accessibility";accessibilityOpen=true}),
-                SettingsEntry("外觀與亮度",SettingsSymbols.display,Color(0xFF007AFF),{lastDetail="appearance";appearanceOpen=true}),
-                SettingsEntry("背景與動態",SettingsSymbols.wallpaper,Color(0xFF32ADE6),onAdvanced),
-                SettingsEntry("颱風與官方特報",SettingsSymbols.cyclone,Color(0xFF007AFF),onTyphoons),
-                SettingsEntry("智慧穿搭",SettingsSymbols.lifestyle,Color(0xFF5856D6),onLifestyle),
-                SettingsEntry("軟體更新",SettingsSymbols.update,Color(0xFF8E8E93),onUpdateCenter),
-                SettingsEntry("權限與系統健康",SettingsSymbols.controls,Color(0xFF8E8E93),onDiagnostics)
-            ).filter {match(it.title)}
-            if(mainRows.isNotEmpty()) {
-                IOSV25SettingsGroup {
-                    mainRows.forEachIndexed {index,row -> IOSV25SettingsCell(row.title,"",row.icon,row.color,
-                        last=index==mainRows.lastIndex,onClick=row.action)}
-                }
-                Spacer(Modifier.height(32.dp))
-            }
+            if(resultCount==0 && search.isNotBlank())Text("找不到符合的設定",fontSize=15.sp,color=palette.onSurfaceVariant,modifier=Modifier.padding(16.dp))
             if(match("自動檢查更新")) IOSV25SettingsGroup {
                 IOSV25SettingsCell("自動檢查更新","",SettingsSymbols.update,Color(0xFF34C759),
                     trailing=if(currentAutomatic)"開啟" else "關閉",last=true,onClick={onUpdates(!currentAutomatic)})

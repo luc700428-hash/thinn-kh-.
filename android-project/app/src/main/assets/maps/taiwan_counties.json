@@ -1,0 +1,23 @@
+{
+  "title": "縣市界線 TWD97 經緯度",
+  "authority": "內政部國土測繪中心",
+  "source": "https://maps.nlsc.gov.tw/download/縣市界線(TWD97經緯度).zip",
+  "catalog": "https://data.gov.tw/dataset/7442",
+  "license": "政府資料開放授權條款第1版",
+  "license_url": "https://data.gov.tw/license",
+  "source_dataset_version": "1090820",
+  "source_crs": "EPSG:3824 (TWD97 geographic)",
+  "source_shp_sha256": "f534543bc2e5f11bce439d76ab0ed0fde760ca50cf118e0c08fa1ab94ef396f7",
+  "atlas_sha256": "bb2b1bcb3c72563f41db999f87fe390d9e82bba5a4c6e3ef8ec114505841d196",
+  "vertices": [
+    7113,
+    20233,
+    84579
+  ],
+  "tolerance_degrees": [
+    0.002,
+    0.0004,
+    4e-05
+  ],
+  "note": "行政界線向量顯示；不是災害、領海或風險範圍。高倍率使用最細向量，無線上瓦片依賴。"
+}

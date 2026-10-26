@@ -27,7 +27,7 @@ def make_manifest(apk: Path, notes: Path, version: str, version_code: int, previ
     if preview and not version.startswith("25.0."):
         raise ValueError("preview release must use V25 version")
     release_tag = "v25-preview" if preview else f"v{version}"
-    return {
+    manifest = {
         "schema": 1,
         "apk_size": apk.stat().st_size,
         "version": version,
@@ -35,8 +35,11 @@ def make_manifest(apk: Path, notes: Path, version: str, version_code: int, previ
         "package_name": PACKAGE,
         "apk_url": f"https://github.com/{REPOSITORY}/releases/download/{release_tag}/thinn-khi.apk",
         "sha256": checksum.hexdigest(),
-        "notes": notes.read_text(encoding="utf-8")[:16000],
+        "notes": notes.read_text(encoding="utf-8"),
     }
+    if len((json.dumps(manifest,ensure_ascii=False,indent=2)+"\n").encode("utf-8")) > 131072:
+        raise ValueError("OTA manifest exceeds 128 KiB; shorten release notes explicitly instead of silent truncation")
+    return manifest
 
 
 def main() -> None:

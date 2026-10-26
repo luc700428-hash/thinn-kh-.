@@ -1,9 +1,7 @@
 package io.atmos.weather.update
 
 
-/** Delta-only release notes. Do not present a cumulative history as new features.
- * A release without a dedicated incremental block is reported as undocumented.
- */
+/** Actual notes from the verified target release; never invent an OS version or changelog. */
 object AppUpdateDelta {
     const val MARKER = "<!-- THINN_INCREMENTAL_CHANGES -->"
 
@@ -26,22 +24,20 @@ object AppUpdateDelta {
             .substringBefore("<!-- END_THINN_INCREMENTAL_CHANGES -->")
         return block.lineSequence().map { it.trim() }
             .filter { it.startsWith("- ") }.map { it.removePrefix("- ").replace("**", "") }
-            .filter(String::isNotBlank).take(8).toList()
+            .filter(String::isNotBlank).toList()
     }
 
-    /** The signed Release manifest carries notes for the *latest* release.
-     * Do not fabricate intermediate-version changes or call rate-limited APIs.
-     */
-    suspend fun describe(installed: String, latest: ReleaseInfo): String {
-        val result = mutableListOf("$installed → ${latest.version}")
-        val details = changes(latest.notes)
-        if (!details.isNullOrEmpty()) {
-            result.add("本次最新版本的變更：")
-            result.addAll(details.map { "- $it" })
-        } else {
-            result.add("最新版本未提供獨立的更新差異清單。")
-        }
-        result.add("跨多個版本的完整變更請參閱 GitHub Releases。")
-        return result.joinToString("\n")
+    internal fun displayNotes(notes:String):String {
+        val start=notes.indexOf(MARKER)
+        val selected=if(start>=0) notes.substring(start+MARKER.length)
+            .substringBefore("<!-- END_THINN_INCREMENTAL_CHANGES -->") else notes
+        return selected.replace(Regex("<!--[^>]*-->",RegexOption.DOT_MATCHES_ALL),"").trim()
+    }
+
+    /** Only the target release's own content is shown; previous releases aren't inferred. */
+    suspend fun describe(installed:String,latest:ReleaseInfo):String {
+        val details=displayNotes(latest.notes)
+        return "$installed → ${latest.version}"+"\n\n"+
+            if(details.isNotBlank()) details else "此版本尚未提供更新說明，請查看發行頁面。"
     }
 }

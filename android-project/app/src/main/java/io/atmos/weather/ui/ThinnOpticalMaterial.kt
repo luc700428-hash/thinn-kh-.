@@ -60,7 +60,7 @@ fun Modifier.thinnSpecularEdge(radius: Dp = 28.dp): Modifier = drawWithContent {
             0f to Color.White.copy(alpha=.65f),
             .5f to Color.White.copy(alpha=.15f),
             1f to Color.Transparent,
-            start=Offset.Zero,end=Offset(size.width,size.height)
+            start=Offset.Zero,end=Offset((size.width+size.height)/2f,(size.width+size.height)/2f)
         ),
         topLeft=Offset(inset,inset),
         size=Size((size.width-inset*2).coerceAtLeast(0f),(size.height-inset*2).coerceAtLeast(0f)),

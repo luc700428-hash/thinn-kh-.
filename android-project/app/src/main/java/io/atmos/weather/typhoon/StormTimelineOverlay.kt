@@ -12,6 +12,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import io.atmos.weather.maps.rememberTaiwanVectorAtlas
+import io.atmos.weather.maps.drawTaiwanAtlasCredit
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -88,10 +91,16 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     val terrainPoints=storm.fixes.map { it.latitude to it.longitude }+
         TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
     val terrainPad=with(LocalDensity.current) { 28.dp.toPx() }
-    val terrainBounds=if(terrainCanvasSize.width>60 && terrainCanvasSize.height>60)
-        TyphoonViewport.forPoints(terrainPoints,terrainCanvasSize.width.toFloat(),
-            terrainCanvasSize.height.toFloat(),terrainPad).rasterBounds() else null
-    val terrain=rememberNlscMap(terrainBounds,terrainCanvasSize.width,terrainCanvasSize.height)
+    val atlas=rememberTaiwanVectorAtlas()
+    var zoom by remember {mutableFloatStateOf(1f)}
+    var pan by remember {mutableStateOf(Offset.Zero)}
+    var fitTrack by remember {mutableStateOf(false)}
+    val base=if(fitTrack) TyphoonViewport.forPoints(terrainPoints,terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
+        terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)
+        else TyphoonViewport.forTaiwan(terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
+            terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)
+    val scale=base.pxPerKm*zoom
+    val camera=base.copy(originXKm=base.originXKm-pan.x/scale,originYKm=base.originYKm+pan.y/scale,pxPerKm=scale)
     Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(.95f)
             .padding(horizontal=8.dp).clip(RoundedCornerShape(34.dp))
@@ -107,16 +116,27 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                     }
                     StormCloseButton(onDismiss)
                 }
-                StormText("未來動向 · 官方預報時間軸",17,cream,FontWeight.Medium)
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    StormText("未來動向 · 官方預報時間軸",17,cream,FontWeight.Medium,Modifier.weight(1f))
+                    io.atmos.weather.ui.GlassTextButton(onClick={fitTrack=!fitTrack;zoom=1f;pan=Offset.Zero}) {
+                        StormText(if(fitTrack) "臺灣" else "完整路徑",13,cyan)
+                    }
+                }
                 Box(Modifier.fillMaxWidth().height(315.dp).clip(RoundedCornerShape(26.dp))
                     .background(Brush.radialGradient(listOf(Color(0xFF24587B),Color(0xFF081D34),Color(0xFF051426))))) {
-                    Canvas(Modifier.fillMaxSize().onSizeChanged { terrainCanvasSize=it }) {
+                    Canvas(Modifier.fillMaxSize().onSizeChanged { terrainCanvasSize=it }.pointerInput(Unit) {
+                        detectTransformGestures {centroid,move,magnification,_ ->
+                            val next=(zoom*magnification).coerceIn(1f,32f)
+                            val anchor=centroid-Offset(size.width/2f,size.height/2f)
+                            pan=anchor+(pan-anchor)*(next/zoom)+move;zoom=next
+                        }
+                    }) {
+                        val viewport=camera
                         val pad=28.dp.toPx()
-                        val viewport=TyphoonViewport.forPoints(terrainPoints,size.width,size.height,pad)
-                        if(terrain!=null) {
-                            drawImage(terrain,dstSize=IntSize(size.width.toInt(),size.height.toInt()))
-                            with(NlscTerrain) { drawCredit() }
-                        } else with(TyphoonGeoBackdrop) { draw(viewport) }
+                        if(atlas!=null) atlas.draw(this) {lon,lat ->
+                            val (x,y)=viewport.project(lon,lat);Offset(x,y)
+                        } else with(TyphoonGeoBackdrop) {draw(viewport)}
+                        drawTaiwanAtlasCredit()
                         TyphoonGeoBackdrop.drawLabels(this,viewport)
                         val pts=storm.fixes.map {fix ->
                             val (x,y)=viewport.project(fix.longitude,fix.latitude)
@@ -167,28 +187,9 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                         StormText("${progress.roundToInt()+1} / ${storm.fixes.size}",14,cyan)
                     }
                     Spacer(Modifier.height(12.dp))
-                    // Gesture track: no Material Slider, thumb follows scrubbing and snaps to official fix.
-                    Box(Modifier.fillMaxWidth().height(45.dp).pointerInput(storm.signature) {
-                        detectDragGestures(onDragStart={ start ->
-                            progress=(start.x/size.width.toFloat()).coerceIn(0f,1f)*maxStep
-                        },onDrag={ change,_ ->
-                            progress=(change.position.x/size.width.toFloat()).coerceIn(0f,1f)*maxStep
-                            change.consume()
-                        },onDragEnd={progress=progress.roundToInt().toFloat()})
-                    },contentAlignment=Alignment.Center) {
-                        Canvas(Modifier.fillMaxWidth().height(34.dp)) {
-                            val left=8.dp.toPx();val right=size.width-left
-                            val x=left+(right-left)*(progress/maxStep)
-                            drawLine(Color.White.copy(alpha=.18f),Offset(left,size.height/2),Offset(right,size.height/2),4.dp.toPx())
-                            drawLine(cyan,Offset(left,size.height/2),Offset(x,size.height/2),4.dp.toPx())
-                            storm.fixes.indices.forEach { k ->
-                                val tx=left+(right-left)*k/maxStep
-                                drawCircle(Color.White.copy(alpha=.63f),2.5.dp.toPx(),Offset(tx,size.height/2))
-                            }
-                            drawCircle(cyan.copy(alpha=.2f),15.dp.toPx(),Offset(x,size.height/2))
-                            drawCircle(Color.White,7.dp.toPx(),Offset(x,size.height/2))
-                        }
-                    }
+                    io.atmos.weather.ui.GlassSlider(value=progress,onValueChange={progress=it},
+                        valueRange=0f..maxStep,steps=(storm.fixes.size-2).coerceAtLeast(0),
+                        onValueChangeFinished={progress=progress.roundToInt().toFloat()},modifier=Modifier.fillMaxWidth())
                     StormText("左右拖動：查看官方各預報時刻；時間之間僅為動畫，非新增預報",12,muted)
                 }
                 GlassPlate(Modifier.fillMaxWidth()) {

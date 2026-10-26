@@ -25,6 +25,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import io.atmos.weather.maps.rememberNlscMap
+import io.atmos.weather.maps.rememberTaiwanVectorAtlas
+import io.atmos.weather.maps.drawTaiwanAtlasCredit
 import io.atmos.weather.maps.NlscTerrain
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -322,14 +324,18 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
             points.filter { it.kind==TyphoonFix.Kind.FORECAST }.takeLast(16)
     }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val atlas=rememberTaiwanVectorAtlas()
+    var fitTrack by remember {mutableStateOf(false)}
     var mapZoom by remember { mutableFloatStateOf(1f) }
     var mapPan by remember { mutableStateOf(Offset.Zero) }
     val pxPad=with(LocalDensity.current) { 20.dp.toPx() }
     val reference=displayPoints.map { it.latitude to it.longitude } +
         googlePath.map { it.latitude to it.longitude } +
         TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
-    val baseline=remember(reference,canvasSize,pxPad) {
-        TyphoonViewport.forPoints(reference,canvasSize.width.toFloat().coerceAtLeast(1f),
+    val baseline=remember(reference,canvasSize,pxPad,fitTrack) {
+        if(fitTrack) TyphoonViewport.forPoints(reference,canvasSize.width.toFloat().coerceAtLeast(1f),
+            canvasSize.height.toFloat().coerceAtLeast(1f),pxPad)
+        else TyphoonViewport.forTaiwan(canvasSize.width.toFloat().coerceAtLeast(1f),
             canvasSize.height.toFloat().coerceAtLeast(1f),pxPad)
     }
     // Geographic camera: every pointer move reprojects the vectors and CWA track at native pixels.
@@ -341,44 +347,26 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
             baseline.originYKm + mapPan.y/scale,
             scale,baseline.widthPx,baseline.heightPx,baseline.cosCenter)
     }
-    val bounds=if(canvasSize.width>60 && canvasSize.height>60) view.rasterBounds() else null
-    val settledBounds by produceState<io.atmos.weather.maps.NlscTerrain.Bounds?>(
-        null,bounds) {
-        value=null
-        if(bounds!=null) { delay(420); value=bounds }
-    }
-    val terrain=rememberNlscMap(settledBounds,canvasSize.width,canvasSize.height)
-    val rasterReady=settledBounds==bounds && terrain!=null
     Box(Modifier.fillMaxWidth().height(430.dp)
         .clip(RoundedCornerShape(25.dp))
         .background(Color(0xFF0B253B))
         .border(1.dp,Color.White.copy(alpha=.19f),RoundedCornerShape(25.dp))
         .pointerInput(Unit) {
-            detectTransformGestures { _, move, magnification, _ ->
-                val next=(mapZoom*magnification).coerceIn(1f,8f)
+            detectTransformGestures { centroid, move, magnification, _ ->
+                val next=(mapZoom*magnification).coerceIn(1f,32f)
+                val anchor=centroid-Offset(size.width/2f,size.height/2f)
+                val adjusted=anchor+(mapPan-anchor)*(next/mapZoom)+move
                 mapZoom=next
-                val maxX=size.width*next*0.65f
-                val maxY=size.height*next*0.65f
-                mapPan=if(next<=1.01f) Offset.Zero else Offset(
-                    (mapPan.x+move.x).coerceIn(-maxX,maxX),
-                    (mapPan.y+move.y).coerceIn(-maxY,maxY))
+                mapPan=Offset(adjusted.x.coerceIn(-size.width*next,size.width*next),
+                    adjusted.y.coerceIn(-size.height*next,size.height*next))
             }
         }) {
         Canvas(Modifier.matchParentSize().onSizeChanged { canvasSize=it }) {
             val viewport=view
-            if(rasterReady && terrain!=null) {
-                drawImage(terrain,dstSize=IntSize(size.width.toInt(),size.height.toInt()))
-                with(NlscTerrain) { drawCredit() }
-            } else {
-                // Crisp vector fallback while the new-resolution map loads.
-                with(TyphoonGeoBackdrop) { draw(viewport) }
-                for(i in 1..3) {
-                    val x=size.width*i/4f
-                    val y=size.height*i/4f
-                    drawLine(Color.White.copy(alpha=.07f),Offset(x,0f),Offset(x,size.height),1.dp.toPx())
-                    drawLine(Color.White.copy(alpha=.07f),Offset(0f,y),Offset(size.width,y),1.dp.toPx())
-                }
-            }
+            if(atlas!=null) atlas.draw(this) {lon,lat ->
+                val (x,y)=viewport.project(lon,lat);Offset(x,y)
+            } else with(TyphoonGeoBackdrop) { draw(viewport) }
+            drawTaiwanAtlasCredit()
             verifiedTracks.forEach { track ->
                 for(i in 0 until track.size-1) {
                     val from=track[i];val to=track[i+1]
@@ -412,9 +400,9 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
         Box(Modifier.align(Alignment.TopEnd).padding(12.dp)
             .clip(RoundedCornerShape(17.dp))
             .background(Color(0xBC183950))
-            .clickable { mapZoom=1f;mapPan=Offset.Zero }
+            .clickable { fitTrack=!fitTrack;mapZoom=1f;mapPan=Offset.Zero }
             .padding(horizontal=14.dp,vertical=9.dp)) {
-            Text("重設視角",color=Color.White,fontSize=14.sp)
+            Text(if(fitTrack) "回到臺灣" else "完整路徑",color=Color.White,fontSize=14.sp)
         }
     }
     Column(Modifier.padding(top=9.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
@@ -423,7 +411,7 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
             Text("● 官方預報",color=Color(0xFF66C7FF),fontSize=14.sp)
             if(googlePath.isNotEmpty()) Text("● Weather Lab（匯入）",color=Color(0xFFF6A8F3),fontSize=14.sp)
         }
-        Text("雙指縮放、拖移 · 地圖將依視角重新載入清晰圖資",
+        Text("雙指縮放、拖移 · 離線向量底圖，支援 32 倍縮放",
             color=Color(0xFFCCE3ED),fontSize=14.sp)
     }
 }

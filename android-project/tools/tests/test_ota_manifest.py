@@ -30,6 +30,16 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(item["apk_url"], "https://github.com/luc700428-hash/thinn-kh-./releases/download/v22.0.123/thinn-khi.apk")
         self.assertIn("新功能", item["notes"])
 
+    def test_long_notes_are_complete_not_silently_truncated(self):
+        text="實際發行內容\n"*4000
+        self.notes.write_text(text,encoding='utf-8')
+        item=module.make_manifest(self.apk,self.notes,"25.0.300",25000300)
+        self.assertEqual(item['notes'],text)
+    def test_oversize_manifest_fails_before_publication(self):
+        self.notes.write_text("大"*50000,encoding='utf-8')
+        with self.assertRaisesRegex(ValueError,'128 KiB'):
+            module.make_manifest(self.apk,self.notes,"25.0.300",25000300)
+
     def test_reject_version_injection(self):
         with self.assertRaises(ValueError):
             module.make_manifest(self.apk, self.notes, "../../other", 1)

@@ -16,11 +16,11 @@ class R9Contracts(unittest.TestCase):
         self.assertGreaterEqual(self.home.count('ThinnAtmospherePanel('), 2)
         self.assertIn('ThinnOpticalMaterial.surface', self.panel)
 
-    def test_service_cards_fixed_dimensions(self):
-        self.assertEqual(self.map.count('modifier.height(142.dp)'), 2)
-        self.assertIn('modifier.height(142.dp)', self.map)
-        self.assertIn('modifier.height(174.dp)', self.map)
-        self.assertIn('status=readingLabel', self.map)
+    def test_service_cards_adapt_to_text_and_keep_observation_status(self):
+        self.assertIn('heightIn(min=72.dp)',self.map)
+        self.assertIn('heightIn(min=122.dp)',self.map)
+        self.assertIn('readingLabel',self.map)
+        self.assertIn('SeismicMetricCard("有效測站"',self.map)
 
     def test_no_stale_readings_as_live(self):
         self.assertIn('上次觀測，非即時', self.map)

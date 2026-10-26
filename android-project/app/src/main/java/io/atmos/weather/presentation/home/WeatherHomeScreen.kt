@@ -219,6 +219,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     var settingsOpen by remember { mutableStateOf(false) }
+    var advancedCategory by remember {mutableStateOf("聲音")}
     var settingsDetailOpen by remember {mutableStateOf(false)}
     var lifestyleSettingsOpen by remember { mutableStateOf(false) }
     var pushSettingsOpen by remember { mutableStateOf(false) }
@@ -243,7 +244,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val fromUpdateNotification = remember { (context as? android.app.Activity)?.intent?.getBooleanExtra("open_update_center",false) == true }
     var updatePageOpen by remember { mutableStateOf(fromUpdateNotification) }
     var typhoonPageOpen by remember { mutableStateOf(false) }
-    var naturalVoiceOpen by remember { mutableStateOf(false) }
     var officialStormActive by remember { mutableStateOf(false) }
     var typhoonPrimaryUnavailable by remember { mutableStateOf(false) }
     var typhoonBackupUnavailable by remember { mutableStateOf(false) }
@@ -312,10 +312,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
     BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
         pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen ||
-        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || naturalVoiceOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen ||
         mainPager.currentPage != 0) {
         when {
-            naturalVoiceOpen -> naturalVoiceOpen=false
             weatherAlarmOpen -> weatherAlarmOpen=false
             typhoonPageOpen -> typhoonPageOpen=false
             earthquakePageOpen -> earthquakePageOpen=false
@@ -500,7 +499,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
             io.atmos.weather.ui.LocalThinnBackdrop provides backdrop,
-            io.atmos.weather.ui.TkCardWeatherClock provides io.atmos.weather.ui.rememberTkWeatherClock(!reducedMotion && (rainy || snow)),
+            io.atmos.weather.ui.TkCardWeatherClock provides io.atmos.weather.ui.rememberTkWeatherClock(!reducedMotion && mainPager.currentPage==0 && (rainy || snow)),
             io.atmos.weather.ui.TkCardWeatherStrength provides (if(snow) ((snapshot?.snowfallCm ?: .1).toFloat()/1.5f).coerceIn(.25f,1f) else if(heavyRain) 1f else .5f),
             io.atmos.weather.ui.TkCardWeatherMood provides when {
                 snow -> io.atmos.weather.ui.TkPrecipitationMood.SNOW
@@ -891,7 +890,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onSeismic = { showMainTab(1) },
                 onTasks = { tasksOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
-                onTyphoons = { typhoonPageOpen = true })
+                onTyphoons = { typhoonPageOpen = true },
+                onRadar = {uriHandler.openUri("https://qpeplus.cwa.gov.tw/")})
             3 -> AppGlassSettingsPage(
                 appearance = appearance,
                 onAppearance = { appearance = it },
@@ -901,14 +901,14 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     settingsPrefs.edit().putBoolean("check_updates_automatically", enabled).apply()
                     io.atmos.weather.update.UpdateCheckWorker.schedule(context)
                 },
-                onAdvanced = { settingsOpen = true },
+                onAdvanced = { advancedCategory="聲音";settingsOpen = true },
+                onAdvancedCategory = {advancedCategory=it;settingsOpen=true},
                 onDiagnostics = { diagnosticsOpen = true },
                 onLifestyle = { lifestyleSettingsOpen = true },
                 onPushSettings = { pushSettingsOpen = true },
                 onUpdateCenter = { updatePageOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
                 onTyphoons = { typhoonPageOpen = true },
-                onNaturalVoice = { naturalVoiceOpen=true },
                 onDetailVisibility = {settingsDetailOpen=it})
             } // when(page)
             } // HorizontalPager
@@ -917,29 +917,22 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             onQuery=viewModel::search,
             onSelect={ viewModel.addSavedCity(it);viewModel.onIntent(WeatherIntent.SelectCity(it));locationOpen=false },
             onRemove=viewModel::removeSavedCity,onClose={locationOpen=false})
-        if (settingsOpen) Box(Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFF0A2139),Color(0xFF225875))))) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal=24.dp).padding(top=54.dp,bottom=130.dp)) {
-                Text("進階偏好設定",fontSize=26.sp,fontWeight=FontWeight.Bold,color=White)
-                Text("這是獨立設定畫面；功能清單請到「工具」分頁。",fontSize=14.sp,color=TextSoft)
-                androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
-                io.atmos.weather.ui.GlassAction("返回設定首頁",onClick={settingsOpen=false})
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick={settingsOpen=false;diagnosticsOpen=true},modifier=Modifier.fillMaxWidth()) {
-                    Text("檢查設定是否真的生效 · 權限／排程／地震",color=White)
+        if (settingsOpen) {
+            val preferencePalette=androidx.compose.material3.MaterialTheme.colorScheme
+            val White=preferencePalette.onSurface
+            val TextSoft=preferencePalette.onSurfaceVariant
+            Column(Modifier.fillMaxSize().background(preferencePalette.background).statusBarsPadding().navigationBarsPadding()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                    io.atmos.weather.ui.GlassIconButton(onClick={settingsOpen=false}) {
+                        Icon(Icons.Rounded.ArrowBack,"返回設定首頁",tint=White)
+                    }
+                    Text(when(advancedCategory){"外觀"->"字體與閱讀";"資料"->"資料更新頻率";"通知"->"通知音效與背景提醒";else->"聲音與觸覺"},
+                        fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=White,modifier=Modifier.weight(1f),textAlign=TextAlign.Center)
+                    Spacer(Modifier.width(48.dp))
                 }
-                Spacer(Modifier.height(22.dp))
-                GlassToggle("天氣環境音", "晴天、雨天、雷雨與降雪",soundOn) {
-                    soundOn=it;settingsPrefs.edit().putBoolean("sound_enabled",it).apply()
-                }
-                GlassTrackingSlider("環境音量",soundVolume) {
-                    soundVolume=it;settingsPrefs.edit().putFloat("sound_volume",it).apply()
-                }
-                Text("僅在 App 前景播放。首次安裝預設開啟、音量 50%；可隨時關閉。",color=TextSoft,fontSize=14.sp)
-                Spacer(Modifier.height(22.dp))
-                HorizontalDivider(color=White.copy(alpha=.13f))
-                Spacer(Modifier.height(20.dp))
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(top=16.dp,bottom=100.dp)) {
+                    when(advancedCategory) {
+                        "資料" -> {
                 Text("天氣資訊更新頻率",fontSize=19.sp,color=White,fontWeight=FontWeight.SemiBold)
                 Spacer(Modifier.height(7.dp))
                 Text("App 開啟期間每 $refreshMinutes 分鐘自動更新",color=TextSoft,fontSize=15.sp)
@@ -952,7 +945,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(15.dp))
                 HorizontalDivider(color=White.copy(alpha=.13f))
                 Spacer(Modifier.height(17.dp))
-                Text("字體與玻璃視覺",fontSize=19.sp,color=White,fontWeight=FontWeight.SemiBold)
+                Text("桌面與背景更新由 Android 排程；Widget 同步最近一次天氣資料，實際更新可能受省電影響。",color=TextSoft,fontSize=14.sp)
+                        }
+                        "外觀" -> {
+                Text("字體與閱讀",fontSize=19.sp,color=White,fontWeight=FontWeight.SemiBold)
                 Text("文字最低維持清晰可讀大小，支援 100–150% 調整；首頁與其他頁面共用新版字階。部分特殊地圖圖例仍需要實機確認。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(10.dp))
                 AppearanceSlider("字體大小",appearance.fontScale,1f..1.5f,
@@ -962,7 +958,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                     listOf("系統","襯線","等寬","手寫").forEachIndexed { index,title ->
                         val chosen=index==appearance.fontChoice
-                        Box(Modifier.weight(1f).clip(RoundedCornerShape(13.dp))
+                        Box(Modifier.weight(1f).clip(RoundedCornerShape(999.dp))
                             .background(White.copy(alpha=if(chosen) .23f else .07f))
                             .clickable {appearance=appearance.copy(fontChoice=index)}
                             .padding(vertical=11.dp),contentAlignment=Alignment.Center) {
@@ -971,69 +967,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                AppearanceSlider("玻璃霧化",appearance.glassFrost,0f..1f,
-                    "${(appearance.glassFrost*100).roundToInt()}%") {appearance=appearance.copy(glassFrost=it)}
-                AppearanceSlider("玻璃透明感",appearance.glassOpacity,0f..1f,
-                    "${(appearance.glassOpacity*100).roundToInt()}%") {appearance=appearance.copy(glassOpacity=it)}
-                AppearanceSlider("玻璃邊緣高光",appearance.edgeLight,0f..1f,
-                    "${(appearance.edgeLight*100).roundToInt()}%") {appearance=appearance.copy(edgeLight=it)}
-                AppearanceSlider("液態流動速度",appearance.liquidMotion,0f..1f,
-                    "${(appearance.liquidMotion*100).roundToInt()}%") {appearance=appearance.copy(liquidMotion=it)}
-                AppearanceSlider("手勢回彈彈性",appearance.springiness,0f..1f,
-                    "${(appearance.springiness*100).roundToInt()}%") {appearance=appearance.copy(springiness=it)}
-                Spacer(Modifier.height(22.dp))
-                HorizontalDivider(color=White.copy(alpha=.13f))
-                Spacer(Modifier.height(18.dp))
-                Text("觸覺回饋 · Haptic Engine",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
-                Text("所有天氣、點擊、拖曳與回彈觸覺統一調整；新安裝預設 100%，向左調至 0% 即關閉。",color=TextSoft,fontSize=14.sp)
-                Spacer(Modifier.height(12.dp))
-                Text("觸覺回饋強度 ${(hapticSettings.master*100).roundToInt()}%",
-                    fontSize=15.sp,fontWeight=FontWeight.Medium,color=White)
-                GlassTrackingSlider("觸覺強度",hapticSettings.master) {
-                    hapticSettings=hapticSettings.copy(master=it,enabled=true)
-                }
-                Text(if (hapticEngine.available) "裝置已支援觸覺馬達；實際強度受硬體與系統限制。"
-                    else "此裝置目前未提供可用的震動馬達。",color=TextSoft,fontSize=14.sp)
-                Spacer(Modifier.height(12.dp))
-                Button(onClick={
-                    WeatherDemoDispatcher.dispatch(WeatherDemoEvent.Start)
-                },enabled=demoRemaining == 0,modifier=Modifier.fillMaxWidth()) {
-                    Icon(Icons.Rounded.PlayArrow,null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(if(demoRemaining > 0) "演示中 · 剩餘 $demoRemaining 秒" else "試震 10 秒 · 真實情境變化")
-                }
-                if(demoRemaining > 0) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("模擬天氣演示中 · 剩餘 $demoRemaining 秒",color=White,fontSize=15.sp,fontWeight=FontWeight.Medium)
-                    Text(demoDescription,color=TextSoft,fontSize=14.sp)
-                    LinearProgressIndicator(progress={ (10-demoRemaining)/10f },modifier=Modifier.fillMaxWidth())
-                    TextButton(onClick={WeatherDemoDispatcher.dispatch(WeatherDemoEvent.Stop)}) {
-                        Text("提前結束演示",color=White)
-                    }
-                } else if(demoCompleted) {
-                    Text("10 秒天氣演示已結束",color=TextSoft,fontSize=14.sp)
-                }
-                Text("示範事件僅在 App 內觸發畫面、雨聲和觸覺，不會發送虛構的官方氣象警報或手機緊急通知。",color=TextSoft,fontSize=14.sp)
-                Spacer(Modifier.height(17.dp))
-                GlassCard(enableDrag=true) {
-                    Text("thinn-khì · 即時預覽",fontSize=15.sp,fontFamily=appearance.family,
-                        fontWeight=FontWeight(appearance.fontWeight.roundToInt()),color=White)
-                    Spacer(Modifier.height(6.dp))
-                    Text("輕輕向左右拖曳這張卡片，感受回彈與玻璃高光變化。",color=TextSoft,fontSize=14.sp)
-                }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick={appearance=WeatherAppearance()}) {
-                    Text("恢復預設外觀",color=White)
-                }
-                Spacer(Modifier.height(9.dp))
-                Text("桌面與背景更新最快約每 15 分鐘排程一次，實際可能受系統省電措施延遲；Widget 會同步最近一次天氣和地標快照。",color=TextSoft,fontSize=14.sp)
-                Spacer(Modifier.height(20.dp))
-                Text("空氣品質",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
-                Spacer(Modifier.height(5.dp))
-                Text("顯示所在地的空氣品質資訊。",color=TextSoft,fontSize=14.sp)
-                Spacer(Modifier.height(20.dp))
-                HorizontalDivider(color=White.copy(alpha=.13f))
-                Spacer(Modifier.height(18.dp))
+                        }
+                        "通知" -> {
                 Text("天氣警特報提醒",color=White,fontSize=17.sp)
                 Text("APP 通知統一優先使用焦點通知／超級島；是否上島仍由系統授權與小米核准情境決定。未獲支援時以一般通知呈現，避免漏接警特報。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(13.dp))
@@ -1065,7 +1000,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                 Text(tone.title,color=White,fontSize=16.sp,fontWeight=if(selected) FontWeight.SemiBold else FontWeight.Normal)
                                 Text(tone.description,color=TextSoft,fontSize=14.sp)
                             }
-                            Box(Modifier.size(45.dp).clip(RoundedCornerShape(18.dp))
+                            Box(Modifier.size(45.dp).clip(CircleShape)
                                 .background(White.copy(alpha=.15f))
                                 .clickable {
                                     hapticEngine.play(HapticEngine.Event.TAP)
@@ -1147,7 +1082,65 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Text("開啟省電策略設定指引",color=White)
                     }
                 }
-
+                        }
+                        else -> {
+                GlassToggle("天氣環境音", "晴天、雨天、雷雨與降雪",soundOn) {
+                    soundOn=it;settingsPrefs.edit().putBoolean("sound_enabled",it).apply()
+                }
+                GlassTrackingSlider("環境音量",soundVolume) {
+                    soundVolume=it;settingsPrefs.edit().putFloat("sound_volume",it).apply()
+                }
+                Text("僅在 App 前景播放；可調整音量或隨時關閉。",color=TextSoft,fontSize=14.sp)
+                Spacer(Modifier.height(22.dp))
+                HorizontalDivider(color=White.copy(alpha=.13f))
+                Spacer(Modifier.height(20.dp))
+                Text("觸覺回饋 · Haptic Engine",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                Text("所有天氣、點擊、拖曳與回彈觸覺統一調整；新安裝預設 100%，向左調至 0% 即關閉。",color=TextSoft,fontSize=14.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("觸覺回饋強度 ${(hapticSettings.master*100).roundToInt()}%",
+                    fontSize=15.sp,fontWeight=FontWeight.Medium,color=White)
+                GlassTrackingSlider("觸覺強度",hapticSettings.master) {
+                    hapticSettings=hapticSettings.copy(master=it,enabled=true)
+                }
+                Text(if (hapticEngine.available) "裝置已支援觸覺馬達；實際強度受硬體與系統限制。"
+                    else "此裝置目前未提供可用的震動馬達。",color=TextSoft,fontSize=14.sp)
+                Spacer(Modifier.height(12.dp))
+                Button(onClick={
+                    WeatherDemoDispatcher.dispatch(WeatherDemoEvent.Start)
+                },enabled=demoRemaining == 0,modifier=Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.PlayArrow,null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if(demoRemaining > 0) "演示中 · 剩餘 $demoRemaining 秒" else "試震 10 秒 · 真實情境變化")
+                }
+                if(demoRemaining > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("模擬天氣演示中 · 剩餘 $demoRemaining 秒",color=White,fontSize=15.sp,fontWeight=FontWeight.Medium)
+                    Text(demoDescription,color=TextSoft,fontSize=14.sp)
+                    LinearProgressIndicator(progress={ (10-demoRemaining)/10f },modifier=Modifier.fillMaxWidth())
+                    TextButton(onClick={WeatherDemoDispatcher.dispatch(WeatherDemoEvent.Stop)}) {
+                        Text("提前結束演示",color=White)
+                    }
+                } else if(demoCompleted) {
+                    Text("10 秒天氣演示已結束",color=TextSoft,fontSize=14.sp)
+                }
+                Text("示範事件僅在 App 內觸發畫面、雨聲和觸覺，不會發送虛構的官方氣象警報或手機緊急通知。",color=TextSoft,fontSize=14.sp)
+                Spacer(Modifier.height(17.dp))
+                GlassCard(enableDrag=true) {
+                    Text("thinn-khì · 即時預覽",fontSize=15.sp,fontFamily=appearance.family,
+                        fontWeight=FontWeight(appearance.fontWeight.roundToInt()),color=White)
+                    Spacer(Modifier.height(6.dp))
+                    Text("輕輕向左右拖曳這張卡片，感受回彈與玻璃高光變化。",color=TextSoft,fontSize=14.sp)
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick={appearance=WeatherAppearance()}) {
+                    Text("恢復預設外觀",color=White)
+                }
+                Spacer(Modifier.height(9.dp))
+                Text("桌面與背景更新最快約每 15 分鐘排程一次，實際可能受系統省電措施延遲；Widget 會同步最近一次天氣和地標快照。",color=TextSoft,fontSize=14.sp)
+                Spacer(Modifier.height(20.dp))
+                        }
+                    }
+                }
             }
         }
         if (pushSettingsOpen) io.atmos.weather.push.SeismicPushSettingsPage(onClose={pushSettingsOpen=false})
@@ -1172,7 +1165,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
             }
         }
-        if (naturalVoiceOpen) io.atmos.weather.voice.NaturalVoiceSettingsPage(onClose={naturalVoiceOpen=false})
         if (diagnosticsOpen) SettingsDiagnosticsPage(onClose={diagnosticsOpen=false})
         if (briefingOpen) WeatherBriefingSettingsPage(onClose={briefingOpen=false})
         if (tasksOpen) io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})
@@ -1278,12 +1270,11 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
                 scope.launch { horizontalShift.snapTo((horizontalShift.value+dragAmount*.64f).coerceIn(-52f,52f)) }
             }
         } else Modifier)
-        .clip(shape)
-        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
+        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface,shape)
         .border(1.dp,Color.White.copy(alpha=.27f),shape)
     ) {
         // Specular sheen follows the direction of a drag; it is not a false claim of live wallpaper blur.
-        Canvas(Modifier.matchParentSize()) {
+        Canvas(Modifier.matchParentSize().clip(shape)) {
             val x=(horizontalShift.value/52f).coerceIn(-1f,1f)
             val center=Offset(size.width*(.20f+x*.25f),size.height*.10f)
             drawCircle(
@@ -1292,9 +1283,8 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
                 radius=size.width*.86f,center=center
             )
         }
-        io.atmos.weather.ui.TkPrecipitationCardLens(cardMood,
-            modifier=Modifier.matchParentSize())
-        Column(Modifier.fillMaxWidth().padding(19.dp),content=content)
+        Column(Modifier.fillMaxWidth().clip(shape).padding(19.dp),content=content)
+        io.atmos.weather.ui.TkPrecipitationCardLens(cardMood,modifier=Modifier.matchParentSize())
     }
 }
 
@@ -1303,11 +1293,10 @@ private fun MetricCard(title: String, value: String, subtitle: String,
                        symbol: androidx.compose.ui.graphics.vector.ImageVector,
                        modifier: Modifier=Modifier, onClick:()->Unit) {
     val appearance=LocalAppearance.current
-    Box(modifier.clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
-        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
+    Box(modifier
+        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface,RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .border(1.dp,White.copy(alpha=.19f+appearance.edgeLight*.26f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .clickable(onClick=onClick)) {
-        io.atmos.weather.ui.TkPrecipitationCardLens(io.atmos.weather.ui.TkCardWeatherMood.current,Modifier.matchParentSize())
         Column(Modifier.padding(17.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Icon(symbol,contentDescription=null,tint=TextSoft,modifier=Modifier.size(16.dp))
@@ -1318,6 +1307,7 @@ private fun MetricCard(title: String, value: String, subtitle: String,
         Text(value,color=White,fontSize=28.sp,fontWeight=FontWeight.Light,style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
         Text(subtitle,color=TextSoft,fontSize=14.sp)
         }
+        io.atmos.weather.ui.TkPrecipitationCardLens(io.atmos.weather.ui.TkCardWeatherMood.current,Modifier.matchParentSize())
     }
 }
 

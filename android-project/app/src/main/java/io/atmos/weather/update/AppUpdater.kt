@@ -82,7 +82,7 @@ object AppUpdater {
             if (inPreviewChannel) require(version.startsWith("25.0.")) { "測試 OTA 版本不合法" }
             require(url == "${downloadBase}$expectedTag/thinn-khi.apk") { "OTA APK 來源不受信任" }
             if (!newer(version, BuildConfig.VERSION_NAME)) return@withContext null
-            ReleaseInfo(version, info.optString("notes").take(16000), url, sha,info.optLong("apk_size",0L).takeIf {it>0L && it<=OtaTransferProtocol.MAX_APK_BYTES})
+            ReleaseInfo(version, info.optString("notes"), url, sha,info.optLong("apk_size",0L).takeIf {it>0L && it<=OtaTransferProtocol.MAX_APK_BYTES})
         } finally {
             conn.disconnect()
         }
