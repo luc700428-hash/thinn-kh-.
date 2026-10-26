@@ -91,7 +91,7 @@ fun ApplePullDownMenu(
                     scaleX=.85f+.15f*progress;scaleY=scaleX;alpha=progress
                     transformOrigin=androidx.compose.ui.graphics.TransformOrigin(1f,0f)
                 }.shadow(20.dp,RoundedCornerShape(14.dp))
-                    .clip(RoundedCornerShape(14.dp)).thinnBackdrop(rememberAppleReduceTransparency())
+                    .clip(RoundedCornerShape(14.dp)).thinnBackdrop(rememberAppleReduceTransparency(),14.dp)
                     .background(palette.surface.copy(alpha=if(rememberAppleReduceTransparency())1f else .65f))
                     .thinnSpecularEdge(14.dp).padding(6.dp)) {
                     choices.forEach { choice ->

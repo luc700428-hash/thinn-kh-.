@@ -14,7 +14,7 @@ import kotlin.math.sin
 
 /** Background extension: does NOT alter existing layout, pager or touch targets. */
 @Composable
-fun NextWeatherBackdrop(scene:WeatherScene?, phase:Float, night:Boolean, modifier:Modifier=Modifier.fillMaxSize()) {
+fun NextWeatherBackdrop(scene:WeatherScene?, phase:Float, night:Boolean, modifier:Modifier=Modifier.fillMaxSize(),precipitation:Boolean=true) {
     if(scene == null) return
     Canvas(modifier) {
         val w=size.width;val h=size.height
@@ -36,6 +36,7 @@ fun NextWeatherBackdrop(scene:WeatherScene?, phase:Float, night:Boolean, modifie
             }
             WeatherScene.DRIZZLE,WeatherScene.LIGHT_RAIN,WeatherScene.MODERATE_RAIN,
             WeatherScene.HEAVY_RAIN,WeatherScene.THUNDERSTORM,WeatherScene.SEVERE_THUNDERSTORM -> {
+                if(!precipitation)return@Canvas
                 val intensity=when(scene) {
                     WeatherScene.DRIZZLE -> 24
                     WeatherScene.LIGHT_RAIN -> 42
@@ -74,6 +75,7 @@ fun NextWeatherBackdrop(scene:WeatherScene?, phase:Float, night:Boolean, modifie
                 }
             }
             WeatherScene.LIGHT_SNOW,WeatherScene.MODERATE_SNOW,WeatherScene.HEAVY_SNOW -> {
+                if(!precipitation)return@Canvas
                 val count=when(scene){WeatherScene.LIGHT_SNOW->25;WeatherScene.MODERATE_SNOW->58;else->96}
                 for(i in 0 until count) {
                     val x=((i*.61803f + sin(t*tau+i*.46f)*.028f)%1f)*w

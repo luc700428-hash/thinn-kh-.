@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 
 /** Explicit, opt-in embedded 2h historical radar map. Satellite is intentionally disabled

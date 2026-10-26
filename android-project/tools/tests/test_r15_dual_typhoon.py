@@ -35,7 +35,7 @@ class IntegratedTyphoonFallbackTests(unittest.TestCase):
         for token in ['val ageSec=', 'now.epochSecond-last.epochSecond','MAX_BYTES','HttpsURLConnection','if(!lat.isFinite() || !lon.isFinite()']:
             self.assertIn(token,g)
         c=read('typhoon/TyphoonCenterPage.kt')
-        self.assertIn('OfficialTrackPlot(fixes,verifiedTracks)',c)
+        self.assertIn('OfficialTrackPlot(plotFixes,plotTracks)',c)
         self.assertNotIn('GdacsCycloneFeed.read()',c)
     def test_original_alert_and_island_unmodified(self):
         self.assertIn('正式警戒範圍以氣象署為準',read('presentation/home/WeatherHomeScreen.kt'))

@@ -50,15 +50,17 @@ fun NextOpticalSurface(
         t
     }
     val x = NextMotionTokens.clampedTouchX(touchX)
+    val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
+    val glassTint=(.62f-.30f*appearance.glassOpacity.coerceIn(0f,1f))
     val background = if (reduceTransparency) {
         if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF1C1C1E),Color(0xFF1C1C1E)))
     } else if(lightTheme) {
         // Pale cool-tinted glass; no heavy dark blue fill on the white Settings page.
-        Brush.verticalGradient(listOf(Color(0xA6FFFFFF), Color(0xA6FFFFFF), Color(0xA6FFFFFF)))
+        Brush.verticalGradient(listOf(Color.White.copy(alpha=glassTint), Color.White.copy(alpha=glassTint), Color.White.copy(alpha=glassTint)))
     } else {
-        Brush.verticalGradient(listOf(Color(0xA61C1C1E), Color(0xA61C1C1E), Color(0xA61C1C1E)))
+        Brush.verticalGradient(listOf(Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint)))
     }
-    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop).background(background)
+    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x).background(background)
         .thinnSpecularEdge(cornerRadiusDp.dp).drawWithContent {
         val w = size.width
         val h = size.height

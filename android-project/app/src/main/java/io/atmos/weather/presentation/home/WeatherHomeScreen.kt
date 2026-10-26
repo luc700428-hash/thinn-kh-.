@@ -1,6 +1,8 @@
 package io.atmos.weather.presentation.home
 
 import io.atmos.weather.ui.thinnBackdropSource
+import io.atmos.weather.ui.thinnBackdrop
+import io.atmos.weather.ui.weatherCollisionSurface
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassModalBottomSheet as ModalBottomSheet
@@ -56,7 +58,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.animation.core.Animatable
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.HapticSettings
@@ -491,6 +493,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
 
+    val renderedCondition=demoCondition ?: snapshot?.condition
+    val renderedSnow=renderedCondition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)
+    val renderedRain=renderedCondition in setOf(WeatherCondition.RAIN,WeatherCondition.FREEZING_RAIN,WeatherCondition.HAIL,WeatherCondition.THUNDERSTORM)
     CompositionLocalProvider(
         LocalAppearance provides appearance,
         LocalHapticEngine provides hapticEngine
@@ -499,11 +504,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
             io.atmos.weather.ui.LocalThinnBackdrop provides backdrop,
-            io.atmos.weather.ui.TkCardWeatherClock provides io.atmos.weather.ui.rememberTkWeatherClock(!reducedMotion && mainPager.currentPage==0 && (rainy || snow)),
-            io.atmos.weather.ui.TkCardWeatherStrength provides (if(snow) ((snapshot?.snowfallCm ?: .1).toFloat()/1.5f).coerceIn(.25f,1f) else if(heavyRain) 1f else .5f),
+            io.atmos.weather.ui.TkCardWeatherStrength provides (if(renderedSnow) ((snapshot?.snowfallCm ?: .1).toFloat()/1.5f).coerceIn(.25f,1f) else if(heavyRain) 1f else .5f),
             io.atmos.weather.ui.TkCardWeatherMood provides when {
-                snow -> io.atmos.weather.ui.TkPrecipitationMood.SNOW
-                rainy -> io.atmos.weather.ui.TkPrecipitationMood.RAIN
+                renderedSnow -> io.atmos.weather.ui.TkPrecipitationMood.SNOW
+                renderedRain -> io.atmos.weather.ui.TkPrecipitationMood.RAIN
                 else -> io.atmos.weather.ui.TkPrecipitationMood.CLEAR
             }
         ) {
@@ -522,7 +526,23 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // SkyEffects full-screen canvases and forecast Column were emitted
                 // as independent page roots, allowing the scenery to occupy the
                 // page while all of the foreground forecast was laid out offscreen.
-                Box(Modifier.fillMaxSize()) {
+                val weatherBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
+                val visualScene=WeatherScenes.classify(demoCondition ?: snapshot?.condition,
+                    if(demoCondition!=null)null else snapshot?.weatherCode,snapshot?.visibilityM)
+                val rainIntensity=when(visualScene) {
+                    io.atmos.weather.next.WeatherScene.DRIZZLE->.12f
+                    io.atmos.weather.next.WeatherScene.LIGHT_RAIN->.28f
+                    io.atmos.weather.next.WeatherScene.MODERATE_RAIN->.50f
+                    io.atmos.weather.next.WeatherScene.HEAVY_RAIN->.80f
+                    io.atmos.weather.next.WeatherScene.THUNDERSTORM->.85f
+                    io.atmos.weather.next.WeatherScene.SEVERE_THUNDERSTORM->1f
+                    else->0f
+                }
+                CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides weatherBackdrop) {
+                io.atmos.weather.ui.RainCollisionScene(rainIntensity,((snapshot?.windKmh ?: 0.0)*
+                    -kotlin.math.sin(Math.toRadians((snapshot?.windDirectionDeg ?: 270).toDouble()))).toFloat(),Modifier.fillMaxSize()) {
+                    Box(Modifier.matchParentSize().thinnBackdropSource(weatherBackdrop)
+                        .background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow)))) {
                     // Full-screen background layer. It never captures gestures.
                     SkyEffects(demoCondition ?: snapshot?.condition, isNight,
                         heavyRain || demoCondition == WeatherCondition.THUNDERSTORM,
@@ -531,6 +551,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // A fixed dark scrim prevents white copy washing out against bright daylight skies.
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
                         Color(0x9807192C),Color(0x4207192C),Color(0x9B07192C)))))
+                    }
                     // Keep location, temperature, cards, loading and errors above
                     // the background, independently of whether weather data loads.
                     Column(Modifier.fillMaxSize().zIndex(1f)
@@ -880,6 +901,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                     } // forecast Column: always overlays the animation
                 } // page Box: one measurable root for HorizontalPager
+                } // weather background material provider
             } // page 0
         // 四頁由單一 Foundation HorizontalPager 承接，頁面與底部分頁保持同步。
             1 -> SeismicPrimaryTab(onExit = { showMainTab(0) })
@@ -1254,7 +1276,7 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
     // not from demo mode or a synthetic forecast. A shared weather store is read
     // without launching a second particle loop for every card.
     val cardMood=io.atmos.weather.ui.TkCardWeatherMood.current
-    Box(Modifier.fillMaxWidth()
+    Box(Modifier.fillMaxWidth().weatherCollisionSurface(io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
         .graphicsLayer {
             translationX=horizontalShift.value
             rotationZ=horizontalShift.value*.022f
@@ -1270,6 +1292,7 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
                 scope.launch { horizontalShift.snapTo((horizontalShift.value+dragAmount*.64f).coerceIn(-52f,52f)) }
             }
         } else Modifier)
+        .thinnBackdrop(reducedMotion,io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
         .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface,shape)
         .border(1.dp,Color.White.copy(alpha=.27f),shape)
     ) {
@@ -1293,7 +1316,7 @@ private fun MetricCard(title: String, value: String, subtitle: String,
                        symbol: androidx.compose.ui.graphics.vector.ImageVector,
                        modifier: Modifier=Modifier, onClick:()->Unit) {
     val appearance=LocalAppearance.current
-    Box(modifier
+    Box(modifier.weatherCollisionSurface(io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
         .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface,RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .border(1.dp,White.copy(alpha=.19f+appearance.edgeLight*.26f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .clickable(onClick=onClick)) {
@@ -1501,14 +1524,10 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
         else -> WeatherSurface.Kind.NONE
     }
     // Single time-based scene: no abrupt restarting of particle clocks when the source changes.
-    WeatherSurfaceOverlay(weatherSurface, windKmh.toFloat(), Modifier.fillMaxSize())
+    if(weatherSurface==WeatherSurface.Kind.SAND) WeatherSurfaceOverlay(weatherSurface, windKmh.toFloat(), Modifier.fillMaxSize())
     // NEXT secondary layer. Existing sky, brand, forecast layout and pager remain unchanged.
-    NextWeatherBackdrop(WeatherScenes.classify(condition,weatherCode,visibilityM),phase,night)
-    if (condition in setOf(WeatherCondition.RAIN, WeatherCondition.THUNDERSTORM, WeatherCondition.HAIL, WeatherCondition.FREEZING_RAIN)) {
-        ContinuousRain(heavyRain || condition == WeatherCondition.THUNDERSTORM, Modifier.fillMaxSize())
-    } else if (condition in setOf(WeatherCondition.SNOW, WeatherCondition.SLEET)) {
-        ContinuousSnow(Modifier.fillMaxSize())
-    }
+    NextWeatherBackdrop(WeatherScenes.classify(condition,weatherCode,visibilityM),phase,night,precipitation=false)
+    if(condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)) ContinuousSnow(Modifier.fillMaxSize())
     if (condition == WeatherCondition.THUNDERSTORM && lightningAlpha > 0f) {
         Canvas(Modifier.fillMaxSize()) {
             val w=size.width; val h=size.height
@@ -1531,7 +1550,7 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
 private fun AtmosphereCanvas(condition:WeatherCondition, isNight:Boolean, phase:Float, modifier:Modifier=Modifier) {
     Canvas(modifier) {
         val w=size.width; val h=size.height
-        if (!isNight && condition != WeatherCondition.THUNDERSTORM) {
+        if (!isNight && condition in setOf(WeatherCondition.CLEAR,WeatherCondition.PARTLY_CLOUDY)) {
             val sun=Offset(w*.80f + sin(phase*6.283f)*w*.025f,h*.12f)
             drawCircle(Brush.radialGradient(listOf(Color(0xFFFFF4B5).copy(alpha=.38f),Color.Transparent),center=sun,radius=w*.57f),radius=w*.57f,center=sun)
             drawCircle(Color(0xFFFFF1BE).copy(alpha=if(condition==WeatherCondition.CLEAR) .76f else .28f),radius=w*.07f,center=sun)

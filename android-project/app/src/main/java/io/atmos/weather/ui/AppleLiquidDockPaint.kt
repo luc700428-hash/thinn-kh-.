@@ -36,8 +36,14 @@ fun BoxScope.AppleLiquidDockPaint(
         animationSpec=if(dragging || reduceMotion)snap() else tween(380,easing=AppleMotion.snap),
         label="dock-continuous-position")
     // A second, slower body inherits motion instead of duplicating a static selected pill.
-    val tail by animateFloatAsState(location,animationSpec=if(reduceMotion)snap()
-        else spring(dampingRatio=.78f,stiffness=135f),label="dock-liquid-tail")
+    var adhesionAnchor by remember {mutableFloatStateOf(selectedIndex.toFloat())}
+    LaunchedEffect(dragging,location) {
+        if(!dragging)adhesionAnchor=selectedIndex.toFloat()
+        else if(kotlin.math.abs(location-adhesionAnchor)>1.12f)
+            adhesionAnchor+=(if(location>adhesionAnchor)1f else -1f)
+    }
+    val tail by animateFloatAsState(if(dragging)adhesionAnchor else location,animationSpec=if(reduceMotion)snap()
+        else spring(dampingRatio=.72f,stiffness=100f),label="dock-liquid-tail")
     val lift by animateFloatAsState(if(dragging && !reduceMotion)1.04f else 1f,
         tween(if(reduceMotion)0 else 180,easing=AppleMotion.snap),label="dock-lens-lift")
     val light=MaterialTheme.colorScheme.background.red>.5f
@@ -49,7 +55,7 @@ fun BoxScope.AppleLiquidDockPaint(
         val lag=((tail-location)*slot).coerceIn(-slot*1.35f,slot*1.35f)
         val distance=abs(lag)
         val pull=(distance/slot).coerceIn(0f,1.35f)
-        val tailRadius=h*.46f*(1f-pull*.55f).coerceIn(.12f,1f)
+        val tailRadius=h*.46f*(1f-pull*.35f).coerceIn(.12f,1f)
         val head=Path().apply {addRoundRect(RoundRect(Rect(x-w/2,y-h/2,x+w/2,y+h/2),CornerRadius(h/2)))}
         var liquid=head
         if(!reduceMotion && distance>1.dp.toPx()) {
@@ -57,7 +63,7 @@ fun BoxScope.AppleLiquidDockPaint(
             val rear=Path().apply {addOval(Rect(tx-tailRadius,y-tailRadius,tx+tailRadius,y+tailRadius))}
             liquid=Path.combine(PathOperation.Union,liquid,rear)
             // The neck narrows under tension and detaches at excessive speed; both bodies rejoin.
-            val adhesion=(1f-(pull-.62f).coerceAtLeast(0f)/.55f).coerceIn(0f,1f)
+            val adhesion=(1f-(pull-.94f).coerceAtLeast(0f)/.40f).coerceIn(0f,1f)
             if(adhesion>.01f) {
                 val left=min(x,tx);val right=maxOf(x,tx);val d=right-left
                 val r1=if(tx<x)tailRadius else h*.47f

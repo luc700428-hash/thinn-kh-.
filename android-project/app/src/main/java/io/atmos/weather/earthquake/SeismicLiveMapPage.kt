@@ -48,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -90,7 +90,6 @@ fun SeismicLiveMapPage(
     var selected by remember { mutableStateOf<SeismicStation?>(null) }
     var details by remember { mutableStateOf<EarthquakeReport?>(null) }
     var timestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var waveNow by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var replayStatus by remember { mutableStateOf("") }
     var replayReport by remember { mutableStateOf<EarthquakeReport?>(null) }
     var replayIncident by remember { mutableStateOf<EewIncident?>(null) }
@@ -202,21 +201,17 @@ fun SeismicLiveMapPage(
             }
         }
     }
-    LaunchedEffect(incidentRecent, inReplay) {
-        while(incidentRecent && !inReplay) {
-            waveNow=System.currentTimeMillis()
-            delay(120) // Smooth P/S expanding circles without frequent GPS lookups.
-        }
-    }
+    val waveNow=io.atmos.weather.ui.rememberDisplayWallClock(incidentRecent && !inReplay && !reduceMotion)
+    val replayBase=replayReport?.origin?.toEpochMilli() ?: 0L
+    val replayWaveTime=animateFloatAsState(((replayClock-replayBase)/1000.0).toFloat(),
+        tween(if(reduceMotion)0 else 120,easing=LinearEasing),label="回放波圈顯示時間")
     val latestReport = reports.firstOrNull { SeismicGeo.visible(it.latitude,it.longitude) }
     val displayQuake = if(inReplay) replayIncident else quake.takeIf { incidentRecent }
     val displayReport = if(inReplay) replayReport else latestReport
     val waveLat = if(inReplay) replayReport?.latitude else displayQuake?.latitude
     val waveLon = if(inReplay) replayReport?.longitude else displayQuake?.longitude
     val originMillis = if(inReplay) replayReport?.origin?.toEpochMilli() else displayQuake?.originAtMs
-    val wavefront = if(SeismicGeo.visible(waveLat,waveLon) && originMillis!=null)
-        SeismicWavePhysics.wavefront(originMillis,if(inReplay)replayClock else waveNow,
-            if(inReplay) (replayReport?.depthKm ?: 0.0) else (displayQuake?.depthKm ?: 0.0)) else null
+
 
     // Real provider updates create one brief 260 ms highlight, not a simulated new event.
     val stationFlash = remember { androidx.compose.animation.core.Animatable(0f) }
@@ -313,6 +308,9 @@ fun SeismicLiveMapPage(
                                 if(atlas!=null) atlas.draw(this) {lon,lat ->
                                     Offset(SeismicGeo.screenX(lon,size.width,size.height),SeismicGeo.screenY(lat,size.width,size.height))
                                 }
+                                val wavefront = if(SeismicGeo.visible(waveLat,waveLon) && originMillis!=null)
+                                    SeismicWavePhysics.wavefront(originMillis,if(inReplay)replayBase+(replayWaveTime.value*1000).toLong() else waveNow.value,
+                                        if(inReplay) (replayReport?.depthKm ?: 0.0) else (displayQuake?.depthKm ?: 0.0)) else null
                                 // Distinct P (cyan) and S (amber) travel wavefronts. Educational speeds only.
                                 if(layer!="測站" && wavefront!=null && waveLat!=null && waveLon!=null) {
                                     val epicenter=Offset(SeismicGeo.screenX(waveLon,size.width,size.height),SeismicGeo.screenY(waveLat,size.width,size.height))

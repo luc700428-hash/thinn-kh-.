@@ -47,13 +47,7 @@ class MainActivity : ComponentActivity() {
         // enable wake from an exported Activity intent extra that another app can forge.
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.BLACK
-        // Choose the fastest available mode as a preference only. Android may lower it
-        // for thermal limits, battery, accessibility or app compatibility.
-        @Suppress("DEPRECATION")
-        val fastMode = windowManager.defaultDisplay.supportedModes.maxByOrNull { it.refreshRate }
-        if (fastMode != null && fastMode.refreshRate > 60f) {
-            window.attributes = window.attributes.apply { preferredRefreshRate = fastMode.refreshRate }
-        }
+        io.atmos.weather.ui.HighRefreshWindow.apply(window,window.decorView)
         ThinnNotificationChannels.ensure(this)
         // Start a foreground seismic stream only after the user has explicitly opted in.
         // Android may still deny or terminate the foreground service; never promise delivery.

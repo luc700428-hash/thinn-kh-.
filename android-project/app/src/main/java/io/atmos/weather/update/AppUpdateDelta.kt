@@ -37,7 +37,8 @@ object AppUpdateDelta {
     /** Only the target release's own content is shown; previous releases aren't inferred. */
     suspend fun describe(installed:String,latest:ReleaseInfo):String {
         val details=displayNotes(latest.notes)
-        return "$installed → ${latest.version}"+"\n\n"+
+        val heading=if(compare(latest.version,installed)>0) "$installed → ${latest.version}" else "已安裝 ${latest.version}"
+        return heading+"\n\n"+
             if(details.isNotBlank()) details else "此版本尚未提供更新說明，請查看發行頁面。"
     }
 }

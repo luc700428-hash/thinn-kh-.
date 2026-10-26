@@ -42,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -62,7 +62,7 @@ private val timeFormatter=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ta
 }
 @Composable private fun GlassPlate(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
     Column(modifier.clip(RoundedCornerShape(24.dp))
-        .background(Brush.verticalGradient(listOf(Color(0xFF315675).copy(alpha=.76f),Color(0xFF122E4A).copy(alpha=.88f))))
+        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
         .border(1.dp,Color.White.copy(alpha=.28f),RoundedCornerShape(24.dp))
         .padding(16.dp),content=content)
 }
@@ -94,17 +94,18 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     val atlas=rememberTaiwanVectorAtlas()
     var zoom by remember {mutableFloatStateOf(1f)}
     var pan by remember {mutableStateOf(Offset.Zero)}
-    var fitTrack by remember {mutableStateOf(false)}
+    var fitTrack by remember {mutableStateOf(true)}
     val base=if(fitTrack) TyphoonViewport.forPoints(terrainPoints,terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
         terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)
         else TyphoonViewport.forTaiwan(terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
             terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)
     val scale=base.pxPerKm*zoom
     val camera=base.copy(originXKm=base.originXKm-pan.x/scale,originYKm=base.originYKm+pan.y/scale,pxPerKm=scale)
-    Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
-        Box(Modifier.fillMaxWidth().fillMaxHeight(.95f)
+    androidx.activity.compose.BackHandler(onBack=onDismiss)
+    Box(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
+        Box(Modifier.fillMaxSize()
             .padding(horizontal=8.dp).clip(RoundedCornerShape(34.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF193F65),ink,Color(0xFF061321))))
+            .background(Color(0xFF141416))
             .border(1.dp,Color.White.copy(alpha=.23f),RoundedCornerShape(34.dp))) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -147,12 +148,13 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                             drawLine(cyan.copy(alpha=.09f),Offset(0f,y),Offset(size.width,y),1.dp.toPx())
                         }
                         // Precisely CWA forecast coordinates; no synthetic forecast beyond end points.
-                        val path=Path().apply {
-                            moveTo(pts.first().x,pts.first().y)
-                            pts.drop(1).forEach { lineTo(it.x,it.y) }
+                        for(i in 0 until pts.lastIndex)drawDirectedTrack(pts[i],pts[i+1],cyan)
+                        val occupied=ArrayList<Offset>()
+                        pts.forEachIndexed {index,point ->
+                            if(occupied.none {(it-point).getDistance()<76.dp.toPx()}) {
+                                drawTrackTime(timeFormatter.format(storm.fixes[index].time),point);occupied+=point
+                            }
                         }
-                        drawPath(path,cyan.copy(alpha=.15f),style=Stroke(width=9.dp.toPx()))
-                        drawPath(path,cyan.copy(alpha=.88f),style=Stroke(width=2.6.dp.toPx()))
                         pts.forEachIndexed { index,pt ->
                             drawCircle(cyan.copy(alpha=.23f),7.dp.toPx(),pt)
                             drawCircle(if(index==progress.roundToInt()) Color.White else cyan,3.dp.toPx(),pt)
@@ -167,8 +169,6 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                             drawCircle(cyan.copy(alpha=.21f),radius=radius.toFloat()*viewport.pxPerKm.toFloat(),center=here,
                                 style=Stroke(width=1.5.dp.toPx()))
                         }
-                        for(k in 1..3) drawCircle(cyan.copy(alpha=(.16f/k)*(if(reduceMotion) 1f else breathing)),
-                            radius=(14+k*12).dp.toPx(),center=here,style=Stroke(width=1.dp.toPx()))
                         drawCircle(Color(0xFFFFD39F),7.dp.toPx(),here)
                         drawCircle(cream,3.dp.toPx(),here)
                         val (tx,ty)=viewport.project(121.0,23.65)
@@ -177,7 +177,7 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                             drawCircle(Color(0xFF83F4D1).copy(alpha=.35f),9.dp.toPx(),Offset(tx,ty),style=Stroke(1.dp.toPx()))
                         }
                     }
-                    StormText("官方路徑座標 · 時間軸動畫為視覺插值",12,muted,
+                    StormText("箭頭：預報順序 · 移動僅為視覺插值",12,muted,
                         modifier=Modifier.align(Alignment.BottomStart).padding(14.dp))
                 }
                 GlassPlate(Modifier.fillMaxWidth()) {

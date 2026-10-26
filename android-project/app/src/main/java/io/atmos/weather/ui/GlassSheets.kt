@@ -34,7 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 
 private val glassBorder: Brush get() = ThinnOpticalMaterial.rim

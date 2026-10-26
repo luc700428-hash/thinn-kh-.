@@ -42,9 +42,12 @@ class OtaDownloadService:Service() {
         val release=runCatching {
             val request=requireNotNull(intent)
             ReleaseInfo(requireNotNull(request.getStringExtra("version")),request.getStringExtra("notes") ?: "",
-                requireNotNull(request.getStringExtra("url")),requireNotNull(request.getStringExtra("sha256")),request.getLongExtra("apk_size",0L).takeIf {it>0L})
+                requireNotNull(request.getStringExtra("url")),requireNotNull(request.getStringExtra("sha256")),request.getLongExtra("apk_size",0L).takeIf {it>0L},request.getLongExtra("version_code",0L).takeIf {it>0L})
                 .also(AppUpdater::validateRelease)
         }.getOrElse {stopSelf();return START_NOT_STICKY}
+        if(!AppUpdater.isNewerThanInstalled(this,release)) {
+            OtaRetainedSession.reconcileInstalled(this);stopSelf();return START_NOT_STICKY
+        }
         // Must foreground promptly, even when Android redelivers after process death.
         try {
             ServiceCompat.startForeground(this,ID,notification("正在下載更新",true),ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -118,9 +121,10 @@ class OtaDownloadService:Service() {
         private const val CANCEL="thinn.ota.PAUSE"
         fun start(context:Context,release:ReleaseInfo) {
             AppUpdater.validateRelease(release)
+            require(AppUpdater.isNewerThanInstalled(context,release)) {"此版本已安裝，請重新檢查更新"}
             ContextCompat.startForegroundService(context,Intent(context,OtaDownloadService::class.java)
                 .putExtra("version",release.version).putExtra("notes",release.notes)
-                .putExtra("url",release.url).putExtra("sha256",release.sha256).putExtra("apk_size",release.sizeBytes ?: 0L))
+                .putExtra("url",release.url).putExtra("sha256",release.sha256).putExtra("apk_size",release.sizeBytes ?: 0L).putExtra("version_code",release.versionCode ?: 0L))
         }
         fun cancel(context:Context) {
             if(OtaRetainedSession.installing.value) context.startService(Intent(context,OtaDownloadService::class.java).setAction(CANCEL))

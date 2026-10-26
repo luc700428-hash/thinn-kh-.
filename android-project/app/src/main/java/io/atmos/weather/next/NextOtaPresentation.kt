@@ -38,6 +38,7 @@ import io.atmos.weather.ui.thinnSpecularEdge
 /** Actual transfer/install state. Handoff to the installer never implies success. */
 sealed interface NextOtaState {
     data object Idle:NextOtaState
+    data object UpToDate:NextOtaState
     data object Checking:NextOtaState
     data class Available(val version:String,val notes:List<String>):NextOtaState
     data class Downloading(val progress:Float,val indeterminate:Boolean=false):NextOtaState
@@ -131,6 +132,7 @@ fun NextOtaStatusCard(
                             modifier=Modifier.clickable {uriHandler.openUri("https://github.com/luc700428-hash/thinn-kh-./releases/tag/v"+version.removePrefix("v"))})
                     }
                 } else Text(when(state) {
+                    NextOtaState.UpToDate->"你的軟體已是最新版本。"
                     NextOtaState.Checking->"正在檢查軟體更新…"
                     NextOtaState.Idle,NextOtaState.Completed->"此版本已安裝在你的手機。"
                     is NextOtaState.Failed->state.message
@@ -156,7 +158,7 @@ fun NextOtaStatusCard(
                 is NextOtaState.Available->onDownload
                 NextOtaState.ReadyToInstall,NextOtaState.Installing->onInstall
                 is NextOtaState.Downloading->onPause
-                NextOtaState.Idle,NextOtaState.Completed->onCheck
+                NextOtaState.Idle,NextOtaState.Completed,NextOtaState.UpToDate->onCheck
                 is NextOtaState.Failed->if(hasPending)onDownload else onCheck
                 else->null
             }
@@ -179,7 +181,7 @@ fun NextOtaStatusCard(
                 modifier=Modifier.fillMaxWidth().height(58.dp)) {
                 Text("今晚更新",color=blue,fontSize=17.sp)
             } else Box(Modifier.fillMaxWidth().height(58.dp),contentAlignment=Alignment.Center) {
-                Text(if(state==NextOtaState.Idle && status.contains("目前沒有"))"已是最新版本" else "軟體更新",
+                Text(if(state==NextOtaState.UpToDate)"已是最新版本" else "軟體更新",
                     color=palette.onSurfaceVariant,fontSize=17.sp)
             }
         }

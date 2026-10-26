@@ -37,7 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.atmos.weather.next.NextOtaState
 import io.atmos.weather.next.NextOtaStatusCard
@@ -78,11 +78,14 @@ fun AppUpdatePage(onClose: () -> Unit) {
     var lastError by OtaRetainedSession.lastError
     var installerPrompted by OtaRetainedSession.installerPrompted
     var ready by OtaRetainedSession.ready
+    var checkedSuccessfully by OtaRetainedSession.checkedSuccessfully
+    var latestChecked by OtaRetainedSession.latestChecked
 
     fun check() {
         if (checking || installing) return
         ready=false
         checking = true
+        checkedSuccessfully=false
         pending = null
         pendingDelta = ""
         lastError = null
@@ -91,13 +94,15 @@ fun AppUpdatePage(onClose: () -> Unit) {
         else "正在檢查最新正式版本…"
         haptic?.play(HapticEngine.Event.TAP)
         scope.launch {
-            runCatching { AppUpdater.findUpdate(context) }
-                .onSuccess {
+            runCatching { AppUpdater.findLatestRelease(context) }
+                .onSuccess { latest ->
+                    latestChecked=latest;checkedSuccessfully=true
+                    val it=latest.takeIf {candidate ->AppUpdater.isNewerThanInstalled(context,candidate)}
                     pending = it
                     OtaRetainedSession.persist(context)
                     if (it == null) {
                         status = if (BuildConfig.THINN_OTA_CHANNEL == "preview") "目前沒有較新的測試更新"
-                            else "目前沒有偵測到較新的正式版本"
+                            else "你的軟體已是最新版本"
                     } else {
                         status = "有可安裝的新版"
                         haptic?.play(HapticEngine.Event.RELEASE)
@@ -145,6 +150,16 @@ fun AppUpdatePage(onClose: () -> Unit) {
 
     // Do not reset a live download when the user navigates back to this page.
     LaunchedEffect(Unit) { if(!installing && pending==null && !installerPrompted) check() }
+    val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer=androidx.lifecycle.LifecycleEventObserver {_,event ->
+            if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val cleared=OtaRetainedSession.reconcileInstalled(context)
+                if(cleared) {if(!installing)check()}
+            }
+        }
+        lifecycle.addObserver(observer);onDispose {lifecycle.removeObserver(observer)}
+    }
     LaunchedEffect(pending?.sha256) {
         pending?.let { release ->
             pendingDelta=AppUpdateDelta.describe(BuildConfig.VERSION_NAME,release)
@@ -175,10 +190,11 @@ fun AppUpdatePage(onClose: () -> Unit) {
         installing->NextOtaState.Downloading(
             totalBytes?.takeIf {it>0L}?.let {(downloaded.toFloat()/it).coerceIn(0f,1f)} ?: 0f,
             indeterminate=totalBytes?.let {it>0L}!=true)
-        ready && !installerPrompted->NextOtaState.ReadyToInstall
         lastError!=null->NextOtaState.Failed(lastError ?: "更新失敗")
+        ready && !installerPrompted->NextOtaState.ReadyToInstall
         installerPrompted->NextOtaState.Installing
         pending!=null->NextOtaState.Available(pending!!.version,emptyList())
+        checkedSuccessfully->NextOtaState.UpToDate
         else->NextOtaState.Idle
     }
     Dialog(onDismissRequest={closeUpdatePage()},properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
@@ -217,8 +233,8 @@ fun AppUpdatePage(onClose: () -> Unit) {
                         onCheck={check()},onDownload={pending?.let {downloadOfficial(it)}},
                         onInstall={pending?.let {installOfficial(it)}},
                         version=pending?.version ?: BuildConfig.VERSION_NAME,
-                        sizeBytes=pending?.sizeBytes,releaseNotes=pendingDelta,
-                        status=if(ready && lastError!=null)lastError!! else status,
+                        sizeBytes=pending?.sizeBytes ?: latestChecked?.sizeBytes,releaseNotes=if(pending!=null)pendingDelta else "",
+                        status=status,
                         hasPending=pending!=null,resumeAvailable=downloaded>0L,
                         onTonight=if(pending!=null && !installing && !installerPrompted) ({
                             pending?.let {release ->

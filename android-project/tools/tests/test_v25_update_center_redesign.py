@@ -7,7 +7,7 @@ class V25UpdateCenter(unittest.TestCase):
         src=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
         card=(BASE/'next/NextOtaPresentation.kt').read_text(encoding='utf-8')
         self.assertIn('version=pending?.version ?: BuildConfig.VERSION_NAME',src)
-        self.assertIn('sizeBytes=pending?.sizeBytes,releaseNotes=pendingDelta',src)
+        self.assertIn('sizeBytes=pending?.sizeBytes ?: latestChecked?.sizeBytes,releaseNotes=if(pending!=null)pendingDelta else ""',src)
         self.assertEqual(src.count('NextOtaStatusCard('),1)
         for expected in ('此版本已安裝在你的手機','這次更新帶來什麼',
                          'UpdateVersionArtwork(version)','立即更新','今晚更新'):
@@ -23,7 +23,7 @@ class V25UpdateCenter(unittest.TestCase):
         self.assertIn('.clickable {showBuildDetails=!showBuildDetails}',src)
     def test_integrated_state_is_real_and_never_fakes_install_success(self):
         src=(BASE/'update/AppUpdatePage.kt').read_text(encoding='utf-8')
-        for expected in ('AppUpdater.findUpdate(context)',
+        for expected in ('AppUpdater.findLatestRelease(context)',
                          'AppUpdater.downloadAndInstall(context,release)',
                          'installerPrompted', 'NextOtaStatusCard(',
                          'downloadJob?.cancel()'):

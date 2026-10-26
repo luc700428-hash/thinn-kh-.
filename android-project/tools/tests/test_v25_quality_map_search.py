@@ -11,7 +11,7 @@ class V25MapSearchQuality(unittest.TestCase):
         self.assertNotIn('目前侵台機率：68%',s)
     def test_map_pinch_zoom_and_verified_point_types(self):
         s=(SRC/'typhoon/TyphoonCenterPage.kt').read_text()
-        for token in ('detectTransformGestures','mapZoom','mapPan','● 實測位置','● 官方預報','VerifiedTrackPlanner.verifiedForecastSegments'):
+        for token in ('detectTransformGestures','mapZoom','mapPan','● 實測位置','┄ 官方預報 →','VerifiedTrackPlanner.verifiedForecastSegments'):
             self.assertIn(token,s)
         self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',s)
     def test_saved_places_stay_searchable_without_api(self):

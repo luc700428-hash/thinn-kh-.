@@ -23,7 +23,8 @@ class SeismicR6Tests(unittest.TestCase):
         ui=src('earthquake/SeismicWarningOverlay.kt')
         self.assertIn('SeismicWavePhysics.wavefront(',ui)
         self.assertIn('SeismicGeo.kmPerPixel(',ui)
-        self.assertIn('delay(120)',ui)
+        self.assertIn('rememberDisplayWallClock',ui)
+        self.assertIn('withFrameNanos',src('ui/DisplayFrameClock.kt'))
         self.assertIn('非到達預測',ui)
     def test_alarm_bounded_stops_on_dismiss(self):
         service=src('earthquake/SeismicContinuousWarning.kt')

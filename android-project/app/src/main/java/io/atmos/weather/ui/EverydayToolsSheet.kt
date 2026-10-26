@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -43,7 +43,7 @@ import java.util.Locale
     var wallNow by remember {mutableStateOf(ZonedDateTime.now())}
     LaunchedEffect(tool,started) {
         if(started!=null && started!!>SystemClock.elapsedRealtime()) {started=null;accumulated=0L}
-        while(tool!=null) {now=SystemClock.elapsedRealtime();wallNow=ZonedDateTime.now();delay(if(tool=="碼錶" && started!=null)50 else 1000)}
+        while(tool!=null) {now=SystemClock.elapsedRealtime();wallNow=ZonedDateTime.now();if(tool=="碼錶" && started!=null)withFrameNanos {} else delay(1000)}
     }
     if(tool==null)return
     val palette=MaterialTheme.colorScheme

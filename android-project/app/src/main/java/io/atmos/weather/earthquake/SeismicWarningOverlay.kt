@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -61,10 +61,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     val allCounties=remember(incident) { SeismicWarningCounties.allFromProvider(incident.localIntensityByCounty) }
     val local=supplied.firstOrNull { it.county==county || (county.isNotEmpty() && county.contains(it.county)) }?.intensity
     val eventKey="${incident.id}:${incident.serial}:$replay:$simulation"
-    var frameNow by remember(eventKey) { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(eventKey) {
-        while(true) { frameNow=System.currentTimeMillis(); delay(120) }
-    }
+    val frameNow=io.atmos.weather.ui.rememberDisplayWallClock(!reduce)
     // A true incident plays a bounded looping alert tone and one descriptive spoken warning.
     // Historical replay never uses the live alarm tone.
     DisposableEffect(context,eventKey) {
@@ -86,8 +83,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
         }
     }
     val origin=incident.originAtMs
-    val wave=if(origin!=null && SeismicGeo.visible(incident.latitude,incident.longitude))
-        SeismicWavePhysics.wavefront(origin,frameNow,incident.depthKm ?: 0.0) else null
+    val waveAvailable=origin!=null && SeismicGeo.visible(incident.latitude,incident.longitude)
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
             if(replay || simulation)Color(0xFF241B10) else Color(0xFF291114),Color(0xFF050506),Color.Black)))
@@ -134,6 +130,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                 Box(Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(24.dp))
                     .background(Color(0xFF081B24)).thinnSpecularEdge(24.dp)) {
                     Canvas(Modifier.fillMaxSize()) {
+                        val wave=if(waveAvailable)SeismicWavePhysics.wavefront(origin!!,frameNow.value,incident.depthKm ?: 0.0) else null
                         if(atlas!=null)atlas.draw(this) {lon,lat ->Offset(SeismicGeo.screenX(lon,size.width,size.height),SeismicGeo.screenY(lat,size.width,size.height))}
                         if(SeismicGeo.visible(incident.latitude,incident.longitude)) {
                             val epicenter=Offset(SeismicGeo.screenX(incident.longitude!!,size.width,size.height),SeismicGeo.screenY(incident.latitude!!,size.width,size.height))
@@ -149,7 +146,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                     }
                     Column(Modifier.padding(12.dp)) {
                         Text("震央與波圈",color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Medium)
-                        Text(if(wave==null)"來源資料不足，暫不繪製波圈" else "P／S 波為示意，非到達預測",color=Color(0xFFB2C9D1),fontSize=14.sp)
+                        Text(if(!waveAvailable)"來源資料不足，暫不繪製波圈" else "P／S 波為示意，非到達預測",color=Color(0xFFB2C9D1),fontSize=14.sp)
                     }
                 }
                 WarningPlate {

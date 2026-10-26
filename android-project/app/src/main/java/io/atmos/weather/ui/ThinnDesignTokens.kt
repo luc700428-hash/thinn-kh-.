@@ -96,6 +96,7 @@ private val thinnShapes = Shapes(
 
 @Composable
 fun ThinnAppTheme(content:@Composable ()->Unit) {
+    HighRefreshHost()
     // Theme tokens never rewrite weather-data-driven sky colors or domain state.
     // Existing feature screens still hardcode white foreground; keep dark until
     // all light-screen text/colors pass contrast and device regression tests.

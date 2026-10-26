@@ -102,7 +102,7 @@ fun NextReorderableToolDock(
     val density = LocalDensity.current
     val lightTheme=MaterialTheme.colorScheme.background.red > .5f
     val activeInk=if(lightTheme) Color(0xFF007AFF) else Color(0xFF0A84FF)
-    val inactiveInk=if(lightTheme) Color(0xFF636366) else Color(0xFFAEAEB2)
+    val inactiveInk=if(lightTheme) Color(0xFF2C2C2E) else Color(0xFFEBEBF0)
     val dockInsetPx = with(density) { 6.dp.toPx() }
     val currentIndex = visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)
     val geometry=DockScrubGeometry(dockWidthPx.toFloat(),dockInsetPx,visible.size.coerceAtLeast(1))
@@ -125,7 +125,7 @@ fun NextReorderableToolDock(
     val lightIndex=visible.indexOfFirst {it.id == draggingId}.takeIf {it >= 0}
         ?: currentIndex
     val activeDisplayIndex=if(scrubbing && visible.isNotEmpty()) previewIndex() else lightIndex
-    val lightX=if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/visible.size
+    val lightX=if(scrubbing) (scrubX/dockWidthPx.coerceAtLeast(1)).coerceIn(0f,1f) else if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/visible.size
     NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
         cornerRadiusDp = 9999f, useBackdrop = true, touchX = lightX, calm = true,

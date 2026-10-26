@@ -70,20 +70,20 @@ fun AppleGlassCard(
             Color.White.copy(alpha = .04f), Color.White.copy(alpha = .26f))
     )
     val darkSurface=MaterialTheme.colorScheme.background.red < .5f
-    Box(modifier
+    Box(modifier.weatherCollisionSurface(radius)
         // Very soft shadow; no black hard edge.
         .shadow(16.dp, shape, ambientColor = Color.Black.copy(alpha = .05f),
             spotColor = Color.Black.copy(alpha = .04f))
-        .clip(shape)) {
+        .clip(shape).thinnBackdrop(opaque,radius)) {
         if (!opaque && backdrop != null) {
             Box(Modifier.matchParentSize().blur(blurSigma), content = backdrop)
         }
         Box(Modifier.matchParentSize().background(
             if (!darkSurface) Brush.linearGradient(listOf(
-                if(opaque) Color.White else Color.White.copy(alpha=.78f),
-                if(opaque) Color.White else Color.White.copy(alpha=.78f)))
+                if(opaque) Color.White else Color.White.copy(alpha=.68f),
+                if(opaque) Color.White else Color.White.copy(alpha=.68f)))
             else if (opaque) Brush.linearGradient(listOf(Color(0xFF1C1C1E), Color(0xFF1C1C1E)))
-            else Brush.linearGradient(listOf(Color(0xD93B3B41), Color(0xCC1C1C1E)))
+            else Brush.linearGradient(listOf(Color(0x823B3B41), Color(0x991C1C1E)))
         ))
         Column(Modifier.fillMaxWidth().border(BorderStroke(.75.dp, rim), shape)
             .padding(contentPadding), content = content)

@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
     initialBackup:List<GdacsCyclone> = emptyList(), primaryUnavailable:Boolean = false,
     currentLat:Double=Double.NaN,currentLon:Double=Double.NaN,currentName:String="目前位置") {
+    var focusStorm by remember {mutableStateOf("")}
     val context=LocalContext.current
     val link=LocalUriHandler.current
     val scope=rememberCoroutineScope()
@@ -141,6 +142,7 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
         }
         refresh()
     }
+    val rootContent:@Composable ()->Unit = {
     Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
         .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState())
         .padding(horizontal=20.dp,vertical=20.dp)) {
@@ -162,10 +164,17 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
             Text(status,color=Color.White,fontSize=15.sp)
         }
         Spacer(Modifier.height(14.dp))
-        // Basemap is always available, but forecast data is never fabricated.
-        // Keep the existing native two-argument overload for official-only mode.
-        if (googlePath.isEmpty()) OfficialTrackPlot(fixes,verifiedTracks)
-        else OfficialTrackPlot(fixes,verifiedTracks,googlePath)
+        val ids=fixes.map {it.stormId}.filter {it.isNotBlank()}.distinct()
+        val focused=focusStorm.takeIf {it in ids} ?: ids.firstOrNull()
+        if(ids.size>1)Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            ids.forEach {id ->io.atmos.weather.ui.GlassTextButton(onClick={focusStorm=id}) {
+                Text(timelines.firstOrNull {it.stormId==id}?.name ?: id,color=if(id==focused)Color(0xFF0A84FF) else Color.White)
+            }}
+        }
+        val plotFixes=fixes.filter {focused==null || it.stormId==focused}
+        val plotTracks=verifiedTracks.filter {focused==null || it.firstOrNull()?.stormId==focused}
+        if(googlePath.isEmpty())OfficialTrackPlot(plotFixes,plotTracks)
+        else OfficialTrackPlot(plotFixes,plotTracks,googlePath)
         Spacer(Modifier.height(12.dp))
         if(fixes.isNotEmpty()) {
             Text("官方預報路徑 · 臺灣、澎湖、金門、馬祖",
@@ -311,9 +320,11 @@ fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
         Text("路徑與警報以中央氣象署最新公告為準。",
             color=Color(0xFFCDE1ED),fontSize=14.sp)
     }
-    selectedTimeline?.let { storm ->
-        StormTimelineOverlay(storm) { selectedTimeline=null }
     }
+    io.atmos.weather.ui.AppleParallaxStack(nested=selectedTimeline!=null,onBack={selectedTimeline=null},
+        modifier=Modifier.fillMaxSize(),root=rootContent,detail={
+            selectedTimeline?.let {storm ->StormTimelineOverlay(storm) {selectedTimeline=null}}
+        })
 }
 
 @Composable
@@ -325,7 +336,7 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
     }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val atlas=rememberTaiwanVectorAtlas()
-    var fitTrack by remember {mutableStateOf(false)}
+    var fitTrack by remember(points) {mutableStateOf(true)}
     var mapZoom by remember { mutableFloatStateOf(1f) }
     var mapPan by remember { mutableStateOf(Offset.Zero) }
     val pxPad=with(LocalDensity.current) { 20.dp.toPx() }
@@ -372,8 +383,7 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
                     val from=track[i];val to=track[i+1]
                     val (x1,y1)=viewport.project(from.longitude,from.latitude)
                     val (x2,y2)=viewport.project(to.longitude,to.latitude)
-                    drawLine(Color(0xFF66C7FF),Offset(x1,y1),Offset(x2,y2),
-                        strokeWidth=3.dp.toPx())
+                    drawDirectedTrack(Offset(x1,y1),Offset(x2,y2),Color(0xFF66C7FF))
                 }
             }
             // Imported research data is NEVER represented as an official warning or CWA forecast.
@@ -385,6 +395,7 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
                     strokeWidth=2.5.dp.toPx())
             }
             TyphoonGeoBackdrop.drawLabels(this,viewport)
+            val labelled=ArrayList<Offset>()
             displayPoints.forEach { pt ->
                 val color=when(pt.kind) {
                     TyphoonFix.Kind.FORECAST->Color(0xFF66C7FF)
@@ -393,6 +404,11 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
                 }
                 val (x,y)=viewport.project(pt.longitude,pt.latitude)
                 val at=Offset(x,y)
+                if(pt.kind==TyphoonFix.Kind.FORECAST && labelled.none {(it-at).getDistance()<70.dp.toPx()}) {
+                    val time=runCatching {java.time.Instant.parse(pt.timestamp).atZone(java.time.ZoneId.of("Asia/Taipei"))
+                        .format(java.time.format.DateTimeFormatter.ofPattern("dd日 HH:mm"))}.getOrNull()
+                    if(time!=null){drawTrackTime(time,at);labelled+=at}
+                }
                 drawCircle(color,5.dp.toPx(),at)
                 drawCircle(color.copy(alpha=.33f),10.dp.toPx(),at,style=Stroke(1.dp.toPx()))
             }
@@ -408,9 +424,10 @@ private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<D
     Column(Modifier.padding(top=9.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
             Text("● 實測位置",color=Color(0xFFFFD389),fontSize=14.sp)
-            Text("● 官方預報",color=Color(0xFF66C7FF),fontSize=14.sp)
+            Text("┄ 官方預報 →",color=Color(0xFF66C7FF),fontSize=14.sp)
             if(googlePath.isNotEmpty()) Text("● Weather Lab（匯入）",color=Color(0xFFF6A8F3),fontSize=14.sp)
         }
+        Text("箭頭表示預報順序 · 時間為臺灣時間",color=Color(0xFFCCE3ED),fontSize=14.sp)
         Text("雙指縮放、拖移 · 離線向量底圖，支援 32 倍縮放",
             color=Color(0xFFCCE3ED),fontSize=14.sp)
     }

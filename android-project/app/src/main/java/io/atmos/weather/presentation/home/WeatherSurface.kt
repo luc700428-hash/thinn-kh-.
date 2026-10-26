@@ -42,8 +42,7 @@ internal fun WeatherSurfaceOverlay(kind: WeatherSurface.Kind, windKmh: Float, mo
     var clock by remember { mutableFloatStateOf(WeatherSurface.time()) }
     LaunchedEffect(kind) {
         while (kind != WeatherSurface.Kind.NONE || rain > .01f || snow > .01f || sand > .01f) {
-            clock = WeatherSurface.time()
-            delay(33L) // ~30 FPS ceiling for lightweight surface decoration
+            withFrameNanos {clock=WeatherSurface.time()}
         }
     }
     Canvas(modifier) {

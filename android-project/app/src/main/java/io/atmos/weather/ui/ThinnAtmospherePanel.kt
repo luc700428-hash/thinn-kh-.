@@ -34,7 +34,7 @@ fun ThinnAtmospherePanel(
             .getBoolean("reduce_transparency", false)
     }
     val shape = RoundedCornerShape(ThinnDesignTokens.radiusCard)
-    Box(modifier.fillMaxWidth().clip(shape)
+    Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnBackdrop(reduceTransparency,ThinnDesignTokens.radiusCard)
         .background(if(reduceTransparency) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
         .border(1.dp, ThinnOpticalMaterial.rim, shape)) {
         if(!reduceTransparency) Canvas(Modifier.matchParentSize()) {

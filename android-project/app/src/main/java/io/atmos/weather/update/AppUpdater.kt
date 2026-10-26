@@ -20,7 +20,7 @@ import java.security.MessageDigest
  * A release must be signed by the SAME key as the installed APK; Android enforces that on install.
  * No silent installation is attempted or permitted.
  */
-data class ReleaseInfo(val version:String,val notes:String,val url:String,val sha256:String,val sizeBytes:Long?=null)
+data class ReleaseInfo(val version:String,val notes:String,val url:String,val sha256:String,val sizeBytes:Long?=null,val versionCode:Long?=null)
 object AppUpdater {
     /** Public Release asset: no api.github.com access or GitHub login required. */
     private const val officialManifestUrl =
@@ -33,17 +33,15 @@ object AppUpdater {
     private const val downloadBase =
         "https://github.com/luc700428-hash/thinn-kh-./releases/download/"
 
-    private fun newer(latest: String, installed: String): Boolean {
-        val a = latest.removePrefix("v").split('.').map { it.toIntOrNull() ?: 0 }
-        val b = installed.removePrefix("v").split('.').map { it.toIntOrNull() ?: 0 }
-        for (i in 0 until maxOf(a.size, b.size)) {
-            val comparison = a.getOrElse(i) { 0 }.compareTo(b.getOrElse(i) { 0 })
-            if (comparison != 0) return comparison > 0
-        }
-        return false
+    internal fun newer(latest:String,installed:String)=OtaVersionPolicy.isNewer(latest,installed)
+    internal fun isNewerThanInstalled(context:Context,release:ReleaseInfo):Boolean {
+        val installed=context.packageManager.getPackageInfo(context.packageName,0)
+        return OtaVersionPolicy.isNewer(release.version,installed.versionName ?: BuildConfig.VERSION_NAME,
+            release.versionCode,installed.longVersionCode)
     }
+    suspend fun findUpdate(context:Context):ReleaseInfo?=findLatestRelease(context).takeIf {isNewerThanInstalled(context,it)}
 
-    suspend fun findUpdate(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
+    suspend fun findLatestRelease(context: Context): ReleaseInfo = withContext(Dispatchers.IO) {
         val conn = (URL(manifestUrl).openConnection() as HttpURLConnection).apply {
             instanceFollowRedirects = true
             connectTimeout = 12000
@@ -81,8 +79,8 @@ object AppUpdater {
             val expectedTag = if (inPreviewChannel) "v25-preview" else "v$version"
             if (inPreviewChannel) require(version.startsWith("25.0.")) { "測試 OTA 版本不合法" }
             require(url == "${downloadBase}$expectedTag/thinn-khi.apk") { "OTA APK 來源不受信任" }
-            if (!newer(version, BuildConfig.VERSION_NAME)) return@withContext null
-            ReleaseInfo(version, info.optString("notes"), url, sha,info.optLong("apk_size",0L).takeIf {it>0L && it<=OtaTransferProtocol.MAX_APK_BYTES})
+            ReleaseInfo(version, info.optString("notes"), url, sha,info.optLong("apk_size",0L).takeIf {it>0L && it<=OtaTransferProtocol.MAX_APK_BYTES},
+                info.optLong("version_code",0L).takeIf {it>0L})
         } finally {
             conn.disconnect()
         }
@@ -95,6 +93,7 @@ object AppUpdater {
         onProgress: suspend (downloaded:Long,total:Long?)->Unit = { _, _ -> }
     ) = withContext(Dispatchers.IO) {
         validateRelease(release)
+        require(isNewerThanInstalled(context,release)) {"此版本已安裝，請重新檢查軟體更新"}
         val target=downloadFile(context,release)
         target.parentFile?.mkdirs()
         if(!target.isFile) downloadResumable(context,release,target,onProgress)
