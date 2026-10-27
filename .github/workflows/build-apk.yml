@@ -1,5 +1,9 @@
 name: Publish thinn-khì official OTA
 on:
+  pull_request:
+    paths:
+      - 'android-project/**'
+      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
     inputs:
       publish_release:
@@ -13,12 +17,74 @@ on:
         type: boolean
         default: false
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: thinn-official-ota-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  rendering-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Android API 36 and tools
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Compile fixture APKs before starting the emulator
+        timeout-minutes: 12
+        run: >-
+          gradle --no-daemon --no-configuration-cache --console=plain
+          --project-dir android-project --max-workers=2
+          '-Dorg.gradle.jvmargs=-Xmx2300m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8'
+          -Pkotlin.compiler.execution.strategy=in-process
+          :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify scroll, glass clipping and settings on Android
+        timeout-minutes: 12
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          emulator-boot-timeout: 120
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 2048M
+          disk-size: 4096M
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
+          script: bash android-project/tools/run_rendering_regression.sh
+      - name: Retain Android UI regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thinn-khi-ui-regression
+          path: |
+            android-project/app/build/reports/androidTests/connected/
+            android-project/app/build/outputs/androidTest-results/connected/
+            android-project/build/ui-regression/
+          if-no-files-found: ignore
   build:
+    if: github.event_name == 'workflow_dispatch'
+    needs: rendering-regression
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -152,36 +218,6 @@ jobs:
           done
       - name: Node backend policy regression tests
         run: node --test android-project/backend/tests/*.test.cjs
-      - name: Enable Android emulator acceleration
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Verify scroll, glass clipping and settings on Android
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
-        with:
-          api-level: 35
-          target: default
-          arch: x86_64
-          profile: pixel_6
-          cores: 2
-          ram-size: 2048M
-          disk-size: 4096M
-          disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
-          script: bash android-project/tools/run_rendering_regression.sh
-      - name: Retain Android UI regression evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: thinn-khi-ui-regression
-          path: |
-            android-project/app/build/reports/androidTests/connected/
-            android-project/app/build/outputs/androidTest-results/connected/
-            android-project/build/ui-regression/
-          if-no-files-found: ignore
-      - name: Clear emulator test build outputs before candidate packaging
-        run: gradle --no-daemon --project-dir android-project :app:clean
       - name: Prepare signing mode
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}

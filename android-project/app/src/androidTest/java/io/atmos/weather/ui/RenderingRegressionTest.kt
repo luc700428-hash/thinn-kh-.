@@ -2,6 +2,7 @@ package io.atmos.weather.ui
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.espresso.IdlingPolicies
 import androidx.test.platform.app.InstrumentationRegistry
 import io.atmos.weather.CrashDiagnostics
 import io.atmos.weather.domain.model.*
@@ -36,6 +38,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.time.Instant
+import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 @RunWith(AndroidJUnit4::class)
 class RenderingRegressionTest {
@@ -44,14 +48,22 @@ class RenderingRegressionTest {
 
     @Before fun prepare() {
         compose.mainClock.autoAdvance=false
+        IdlingPolicies.setMasterPolicyTimeout(30,TimeUnit.SECONDS)
+        IdlingPolicies.setIdlingResourceTimeout(30,TimeUnit.SECONDS)
         context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).edit()
             .putBoolean("reduce_motion",false).putBoolean("reduce_transparency",false)
             .putBoolean("sound_enabled",false).commit()
         context.getSharedPreferences("thinn_crash_diagnostics",Context.MODE_PRIVATE).edit().clear().commit()
     }
     private fun frame() {compose.mainClock.advanceTimeBy(650);compose.waitForIdle()}
+    private fun checkpoint(stage:String) {
+        Log.i("ThinnUiRegression",stage)
+        val dir=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
+        File(dir,"progress.txt").appendText("${Instant.now()} $stage\n")
+    }
 
-    @Test fun glassSamplingCannotPaintOverItsForegroundSiblings() {
+    @Test(timeout=120_000) fun glassSamplingCannotPaintOverItsForegroundSiblings() {
+        checkpoint("glass: set content")
         compose.setContent {
             ThinnAppTheme {
                 val source=rememberThinnBackdrop()
@@ -77,7 +89,8 @@ class RenderingRegressionTest {
         assertNull(CrashDiagnostics.graphics(context))
     }
 
-    @Test fun deferredChildRecordingCannotSampleItsOwnAncestor() {
+    @Test(timeout=120_000) fun deferredChildRecordingCannotSampleItsOwnAncestor() {
+        checkpoint("ancestor: set content")
         val page=mutableIntStateOf(0)
         compose.setContent {
             ThinnAppTheme {
@@ -101,7 +114,8 @@ class RenderingRegressionTest {
         assertNull(CrashDiagnostics.graphics(context))
     }
 
-    @Test fun weatherScrollAndRepeatedSettingsNavigationKeepVisibleText() {
+    @Test(timeout=120_000) fun weatherScrollAndRepeatedSettingsNavigationKeepVisibleText() {
+        checkpoint("weather: prepare fixture")
         val now=Instant.now()
         val city=SampleCities.all.first()
         val fixture=WeatherSnapshot(city,now,now,"instrumentation-fixture",22.0,23.0,70,12.0,1012.0,
@@ -111,22 +125,28 @@ class RenderingRegressionTest {
         val repository=object:WeatherDataRepository {
             override suspend fun load(city:WeatherCity,forceRefresh:Boolean)=WeatherLoadResult.Success(fixture,false,false)
         }
+        checkpoint("weather: set content")
         compose.setContent {
             val ctx=LocalContext.current
             val vm:WeatherViewModel=viewModel(factory=WeatherViewModel.Factory(repository,ctx))
             ThinnAppTheme {WeatherHomeScreen(vm,onLocate={})}
         }
+        checkpoint("weather: await fixture")
         compose.waitUntil(20_000) {
             compose.mainClock.advanceTimeBy(32)
             compose.onAllNodesWithText("24 小時預報").fetchSemanticsNodes().isNotEmpty()
         }
-        repeat(4) {
+        repeat(4) {iteration ->
+            checkpoint("weather: round $iteration forecast")
             centerWeatherText("24 小時預報")
             assertPaintedText("24 小時預報")
+            checkpoint("weather: round $iteration settings")
             compose.onNodeWithContentDescription("設定").performClick()
             frame()
+            checkpoint("weather: round $iteration appearance")
             compose.onNodeWithText("外觀與亮度").performClick()
             frame();compose.onNodeWithText("深色").assertIsDisplayed()
+            checkpoint("weather: round $iteration return")
             compose.onNodeWithContentDescription("返回").performClick()
             frame()
             compose.onNodeWithContentDescription("天氣").performClick()
@@ -134,21 +154,39 @@ class RenderingRegressionTest {
             centerWeatherText("現在最重要的天氣")
             assertPaintedText("現在最重要的天氣")
         }
+        checkpoint("weather: capture final screen")
         val image=compose.onRoot().captureToImage().asAndroidBitmap()
         val dir=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
         File(dir,"weather-after-scroll-and-settings.png").outputStream().use {image.compress(Bitmap.CompressFormat.PNG,100,it)}
         assertNull(CrashDiagnostics.graphics(context))
+        checkpoint("weather: passed")
     }
 
     private fun centerWeatherText(text:String) {
-        val node=compose.onNodeWithText(text).performScrollTo()
         frame()
-        val bounds=node.fetchSemanticsNode().boundsInRoot
-        val root=compose.onRoot().fetchSemanticsNode().boundsInRoot
-        val delta=bounds.top-root.top-root.height*.25f
-        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and
-            hasAnyDescendant(hasText(text))).performSemanticsAction(SemanticsActions.ScrollBy) {it(0f,delta)}
-        frame()
+        val node=compose.onNodeWithText(text)
+        val scroll=compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and
+            hasAnyDescendant(hasText(text)))
+        // performScrollTo loops until the target is visible, without advancing a
+        // paused animation clock. Drive each asynchronous ScrollBy explicitly.
+        repeat(8) {attempt ->
+            val target=node.fetchSemanticsNode()
+            val container=scroll.fetchSemanticsNode()
+            val range=container.config[SemanticsProperties.VerticalScrollAxisRange]
+            val before=range.value()
+            val viewport=container.boundsInRoot
+            val delta=(target.positionInRoot.y-viewport.top-viewport.height*.25f)
+                .coerceIn(-before,(range.maxValue()-before).coerceAtLeast(0f))
+            if(abs(delta)<1f) {node.assertIsDisplayed();return}
+            checkpoint("scroll: $text attempt $attempt from $before by $delta")
+            scroll.performSemanticsAction(SemanticsActions.ScrollBy) {
+                assertTrue("ScrollBy rejected $text",it(0f,delta))
+            }
+            frame()
+            val after=scroll.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
+            assertTrue("Scrolling $text stalled with the manual clock: $before -> $after",abs(after-before)>.5f)
+        }
+        fail("Could not center $text after 8 clock-driven scrolls")
     }
     private fun assertPaintedText(text:String) {
         val node=compose.onNodeWithText(text).assertIsDisplayed()
