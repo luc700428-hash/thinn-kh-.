@@ -12,6 +12,7 @@ android {
         applicationId = "io.atmos.weather"
         minSdk = 31
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.gradleProperty("THINN_VERSION_CODE").orNull?.toIntOrNull() ?: 25000000
         versionName = providers.gradleProperty("THINN_VERSION_NAME").orNull ?: "25.0.0"
         // Git commit identifier injected by the CI, so installed builds can be audited.
@@ -77,4 +78,9 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.04.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

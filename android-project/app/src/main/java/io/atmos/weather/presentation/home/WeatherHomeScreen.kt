@@ -2,7 +2,6 @@ package io.atmos.weather.presentation.home
 import io.atmos.weather.ui.IOSActivityIndicator as CircularProgressIndicator
 import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
-import io.atmos.weather.ui.thinnBackdropSource
 import io.atmos.weather.ui.appleBouncingScroll
 import io.atmos.weather.ui.thinnBackdrop
 import io.atmos.weather.ui.weatherCollisionSurface
@@ -241,6 +240,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val fromEarthquakeNotification = remember { (context as? android.app.Activity)?.intent?.getBooleanExtra("open_earthquake_center",false) == true }
     var earthquakePageOpen by remember { mutableStateOf(false) }
     val mainPager = rememberPagerState(initialPage = if (fromEarthquakeNotification) 1 else 0, pageCount = { 4 })
+    val weatherScrollState = rememberScrollState()
     val mainPagerScope = rememberCoroutineScope()
     fun showMainTab(index: Int) {
         mainPagerScope.launch { mainPager.animateScrollToPage(index.coerceIn(0,3)) }
@@ -505,8 +505,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     ) {
     io.atmos.weather.ui.GlassAppTheme {
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
+        val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
-            io.atmos.weather.ui.LocalThinnBackdrop provides backdrop,
+            io.atmos.weather.ui.LocalThinnBackdrop provides sceneBackdrop,
             io.atmos.weather.ui.TkCardWeatherStrength provides (if(renderedSnow) ((snapshot?.snowfallCm ?: .1).toFloat()/1.5f).coerceIn(.25f,1f) else if(heavyRain) 1f else .5f),
             io.atmos.weather.ui.TkCardWeatherMood provides when {
                 renderedSnow -> io.atmos.weather.ui.TkPrecipitationMood.SNOW
@@ -515,10 +516,15 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             }
         ) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow)))) {
-            // Avoid a large offscreen blur layer during scrolling: gradient already supplies depth.
+            // Independent scene -> page capture -> dock. No control samples a
+            // layer which contains itself, including during deferred RenderNode draws.
+            io.atmos.weather.ui.ThinnBackdropCapture(sceneBackdrop,Modifier.matchParentSize()) {
+                Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))))
+            }
+            io.atmos.weather.ui.ThinnBackdropCapture(backdrop,Modifier.fillMaxSize()) {
             HorizontalPager(
                 state = mainPager,
-                modifier = Modifier.fillMaxSize().thinnBackdropSource(backdrop)
+                modifier = Modifier.fillMaxSize()
                     .background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))),
                 beyondViewportPageCount = 0,
                 userScrollEnabled = !locationOpen && !settingsOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen
@@ -544,8 +550,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides weatherBackdrop) {
                 io.atmos.weather.ui.RainCollisionScene(rainIntensity,((snapshot?.windKmh ?: 0.0)*
                     -kotlin.math.sin(Math.toRadians((snapshot?.windDirectionDeg ?: 270).toDouble()))).toFloat(),Modifier.fillMaxSize()) {
-                    Box(Modifier.matchParentSize().thinnBackdropSource(weatherBackdrop)
-                        .background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow)))) {
+                    io.atmos.weather.ui.ThinnBackdropCapture(weatherBackdrop,Modifier.matchParentSize()) {
+                    Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))))
                     // Full-screen background layer. It never captures gestures.
                     SkyEffects(demoCondition ?: snapshot?.condition, isNight,
                         heavyRain || demoCondition == WeatherCondition.THUNDERSTORM,
@@ -558,7 +564,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // Keep location, temperature, cards, loading and errors above
                     // the background, independently of whether weather data loads.
                     Column(Modifier.fillMaxSize().zIndex(1f)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(weatherScrollState,overscrollEffect=null)
                         .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=176.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically,
                     horizontalArrangement=Arrangement.SpaceBetween) {
@@ -937,6 +943,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onDetailVisibility = {settingsDetailOpen=it})
             } // when(page)
             } // HorizontalPager
+            } // page capture; foreground remains a normal Compose layout
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
             state.searchExecuted,state.searchError,state.locationFeedback,onLocate=onLocate,
             onQuery=viewModel::search,
@@ -1198,10 +1205,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (earthquakePageOpen) {
             EarthquakeCenterPage(onClose={earthquakePageOpen=false})
         }
-        if(!settingsDetailOpen && !settingsOpen && !updatePageOpen && !weatherAlarmOpen) AppGlassNavigation(
-            selected = mainPager.currentPage,
+        if(!settingsDetailOpen && !settingsOpen && !updatePageOpen && !weatherAlarmOpen) CompositionLocalProvider(
+            io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) { AppGlassNavigation(
+            selected = mainPager.targetPage,
             onSelect = { settingsOpen=false; showMainTab(it) },
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp))
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp)) }
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
             title={Text(info.first)},text={Text(info.second)}) }
@@ -1288,7 +1296,8 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
                 scope.launch { horizontalShift.snapTo((horizontalShift.value+dragAmount*.64f).coerceIn(-52f,52f)) }
             }
         } else Modifier)
-        .thinnBackdrop(reducedMotion,io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
+        .clip(shape)
+        .thinnBackdrop(io.atmos.weather.ui.rememberAppleReduceTransparency(),io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
         .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface,shape)
         .border(1.dp,Color.White.copy(alpha=.27f),shape)
     ) {

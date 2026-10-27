@@ -1,6 +1,5 @@
 package io.atmos.weather.update
 import io.atmos.weather.ui.appleBouncingScroll
-import io.atmos.weather.ui.thinnBackdropSource
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassButton as Button
@@ -201,9 +200,11 @@ fun AppUpdatePage(onClose: () -> Unit) {
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) {
             val palette=MaterialTheme.colorScheme
-            Column(Modifier.fillMaxSize().graphicsLayer {translationX=(1f-pageProgress)*size.width}
-                .thinnBackdropSource(backdrop).background(palette.background)
-                .statusBarsPadding().navigationBarsPadding()) {
+            Box(Modifier.fillMaxSize().graphicsLayer {translationX=(1f-pageProgress)*size.width}) {
+            io.atmos.weather.ui.ThinnBackdropCapture(backdrop,Modifier.matchParentSize()) {
+                Box(Modifier.matchParentSize().background(palette.background))
+            }
+            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
                 Box(Modifier.fillMaxWidth().height(64.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
                     io.atmos.weather.ui.IOS27RoundControl("‹",onClick={closeUpdatePage()},
                         modifier=Modifier.align(Alignment.CenterStart),fill=palette.surface,foreground=palette.onSurface)
@@ -261,6 +262,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     }
                     Spacer(Modifier.height(24.dp))
                 }
+            }
             }
         }
     }

@@ -6,6 +6,7 @@ import io.atmos.weather.ui.HighRefreshWindow
 class ThinnApplication:Application() {
     override fun onCreate() {
         super.onCreate()
+        CrashDiagnostics.install(this)
         registerActivityLifecycleCallbacks(object:ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity:Activity,state:Bundle?) {HighRefreshWindow.apply(activity.window,activity.window.decorView)}
             override fun onActivityResumed(activity:Activity) {activity.window.decorView.post {HighRefreshWindow.apply(activity.window,activity.window.decorView)}}

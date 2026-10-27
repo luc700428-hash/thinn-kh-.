@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         CrashDiagnostics.install(this)
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            CrashDiagnostics.collectPreviousExit(applicationContext)
             io.atmos.weather.voice.NaturalVoiceHub.retire(this@MainActivity)
         }
         // Lock-screen activation is governed by OS notification policy. Do not

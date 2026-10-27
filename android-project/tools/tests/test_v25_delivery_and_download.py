@@ -1,6 +1,6 @@
 """Exercise upload integrity/three-way merge, plus native service wiring contracts."""
 from pathlib import Path
-import hashlib,importlib.util,json,subprocess,tempfile,unittest
+import hashlib,importlib.util,json,shutil,subprocess,tempfile,unittest
 ROOT=Path(__file__).resolve().parents[3]
 BASE=ROOT/'android-project/app/src/main/java/io/atmos/weather'
 def module(name,file):
@@ -29,6 +29,32 @@ class IntegrityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             r=Path(d);self.fixture(r);p=r/'source/a.txt';p.unlink();p.symlink_to('/etc/hosts')
             with self.assertRaisesRegex(ValueError,'Missing'):verify.verify(r)
+class DeltaPreflightTests(unittest.TestCase):
+    def run_check(self,root,kind='delta',corrupt=False):
+        for name in ('UPLOAD.sh','verify_package.py'):
+            shutil.copy2(ROOT/'delivery-tools'/name,root/name)
+        payload=root/'UPDATE.patch';payload.write_bytes(b'patch fixture')
+        (root/'PACKAGE_MANIFEST.json').write_text(json.dumps({'schema':1,'snapshot_kind':kind,
+            'files':[{'path':'UPDATE.patch','sha256':digest(b'patch fixture')}]}))
+        if corrupt:payload.write_bytes(b'changed after packaging')
+        return subprocess.run(['bash',str(root/'UPLOAD.sh'),'--check'],capture_output=True,text=True)
+    def test_small_delta_checks_without_a_full_source_snapshot_or_github(self):
+        with tempfile.TemporaryDirectory() as d:
+            result=self.run_check(Path(d))
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertIn('--check 沒有登入、推送',result.stdout)
+            self.assertNotIn('回歸檢查通過',result.stdout)
+    def test_corrupt_delta_stops_before_authentication(self):
+        with tempfile.TemporaryDirectory() as d:
+            result=self.run_check(Path(d),corrupt=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('integrity mismatch',result.stderr)
+    def test_unknown_snapshot_kind_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            result=self.run_check(Path(d),kind='unknown')
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('無法辨識更新包格式',result.stderr)
+
 class ApplyTests(unittest.TestCase):
     def fixture(self,r,conflict=False):
         upstream=r/'remote.git';git(r,'init','--bare','--initial-branch=main',str(upstream))

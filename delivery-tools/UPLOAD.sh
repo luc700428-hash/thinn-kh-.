@@ -19,9 +19,17 @@ for cmd in "${required[@]}"; do
   fi
 done
 python3 "$package_root/verify_package.py" "$package_root"
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$package_root/source/android-project/tools/tests" -p 'test_*.py'
+snapshot_kind="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("snapshot_kind","full"))' "$package_root/PACKAGE_MANIFEST.json")"
+if [[ "$snapshot_kind" == full ]]; then
+  PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$package_root/source/android-project/tools/tests" -p 'test_*.py'
+elif [[ "$snapshot_kind" == delta ]]; then
+  echo '精簡修復包已驗證；套用至完整工程後執行全部回歸檢查。'
+else
+  echo '無法辨識更新包格式。' >&2
+  exit 1
+fi
 if [[ "$mode" == --check ]]; then
-  echo '更新包與回歸檢查通過；--check 沒有登入、推送或啟動遠端建置。'
+  echo '更新包完整性檢查通過；--check 沒有登入、推送或啟動遠端建置。'
   exit 0
 fi
 if ! gh auth status --hostname github.com >/dev/null 2>&1; then
@@ -47,7 +55,9 @@ if ! git -C "$checkout" diff --cached --quiet; then
     account_id="$(gh api user --jq .id)"
     git -C "$checkout" config user.email "$account_id+$account_login@users.noreply.github.com"
   fi
-  git -C "$checkout" commit -m 'feat(v25): unify iOS controls and upgrade weather wake, widgets and island' -m 'Update-Package-ID: thinn-khi-v25-ios-upgrade-20261027'
+  subject="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("commit_subject","feat(v25): unify iOS controls and upgrade weather wake, widgets and island"))' "$package_root/PACKAGE_MANIFEST.json")"
+  package_id="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["package_id"])' "$package_root/PACKAGE_MANIFEST.json")"
+  git -C "$checkout" commit -m "$subject" -m "Update-Package-ID: $package_id"
   # Normal push only: another main update cannot be silently overwritten.
   if ! git -C "$checkout" push origin HEAD:main; then
     echo "尚未啟動建置。程式保留於 $checkout；若 GitHub 提示 workflow 權限，請執行 gh auth refresh -h github.com -s workflow 後重跑本腳本。" >&2

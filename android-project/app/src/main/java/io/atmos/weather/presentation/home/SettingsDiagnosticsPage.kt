@@ -86,6 +86,15 @@ fun SettingsDiagnosticsPage(onClose:()->Unit) {
                     clipboard.setPrimaryClip(android.content.ClipData.newPlainText("thinn-khì 崩潰紀錄",crash))
                 }) { Text("複製崩潰紀錄（方便修復工具／設定頁）",fontSize=14.sp) }
             }
+            val graphics=io.atmos.weather.CrashDiagnostics.graphics(ctx)
+            if(!graphics.isNullOrBlank()) {
+                Text("玻璃效果已使用相容繪製",fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                Text("上次繪製異常已保留在本機，可複製提供修復。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
+                OutlinedButton(onClick={
+                    val clipboard=ctx.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("thinn-khì 繪製紀錄",graphics))
+                }) { Text("複製繪製紀錄",fontSize=14.sp) }
+            }
             Text("音效受到靜音、勿擾及各通知通道設定影響；焦點通知由裝置廠商決定。",
                 color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {

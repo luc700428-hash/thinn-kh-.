@@ -38,7 +38,11 @@ class LatestPhysicsContract(unittest.TestCase):
     def test_liquid_effect_samples_background_with_safe_fallback(self):
         s=src('ui/LiquidOpticsEngine.kt');host=src('ui/ThinnBackdrop.kt')
         for term in ('RuntimeShader','scene.eval(uv)','createRuntimeShaderEffect','focus','strength'):self.assertIn(term,s)
-        self.assertIn('Build.VERSION.SDK_INT>=33',host);self.assertIn('!source.recording',host)
+        self.assertIn('Build.VERSION.SDK_INT>=33',host)
+        self.assertIn('source in LocalBackdropAncestors.current',host)
+        self.assertIn('ancestors+source',host)
+        self.assertIn('clipRect(sample.left,sample.top,sample.right,sample.bottom)',host)
+        self.assertIn('glass.clip=true',host)
         self.assertIn('appearance.glassFrost',host);self.assertIn('appearance.edgeLight',host)
         self.assertIn('input!==lastInput',s)
     def test_storms_have_direction_timestamps_and_separate_id(self):
