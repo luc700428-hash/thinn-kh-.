@@ -13,7 +13,7 @@ class WakePaletteAssets(unittest.TestCase):
     def test_eight_added_palettes_resolve_four_complete_scores(self):
         m=self.manifest
         self.assertEqual(len(m['added_themes']),8)
-        self.assertEqual(m['total_selectable_themes'],14)
+        self.assertEqual(m['total_selectable_themes'],20)
         expected={(t,v) for t in m['added_themes'] for v in ('neutral','clear','rain','snow')}
         self.assertEqual(expected,{(a['theme'],a['variant']) for a in m['assets']})
         self.assertEqual(len(m['assets']),32)

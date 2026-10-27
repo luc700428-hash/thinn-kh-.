@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 
 CLASS = 'io.atmos.weather.ui.RenderingRegressionTest'
 EXPECTED = {
+    'preferenceChoicesExposeOneSelectionInBothAppearances',
     'bubbleSliderIsTransparentAndKeepsDragAndAccessibilityValues',
     'glassSamplingCannotPaintOverItsForegroundSiblings',
     'deferredChildRecordingCannotSampleItsOwnAncestor',

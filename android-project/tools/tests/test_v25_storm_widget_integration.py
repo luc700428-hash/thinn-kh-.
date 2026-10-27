@@ -18,8 +18,8 @@ class V25StormWidgetIntegration(unittest.TestCase):
         self.assertIn('kilometers(',src)
     def test_original_weather_character_fifteen_state_fallback(self):
         widget=(ROOT/'widgets/AtmosWidgets.kt').read_text()
-        self.assertIn('data.condition',widget)
-        self.assertIn('IslandIconClassifier.choose(',widget)
-        self.assertIn('fontSize=(size*scale).sp',widget)
-        self.assertIn('data.age',widget)
+        self.assertIn('d.condition',widget)
+        self.assertIn('WidgetWeatherArt.render(',widget)
+        self.assertIn('fontSize=s.plan.sp(size).sp',widget)
+        self.assertIn('d.age',widget)
 if __name__=='__main__': unittest.main()

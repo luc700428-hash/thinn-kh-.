@@ -195,7 +195,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val appDensity = LocalDensity.current
     LaunchedEffect(appearance) {
         appearance.persist(context)
-        delay(800L) // avoid redrawing 25 widgets on every drag frame
+        delay(800L) // avoid redrawing 27 widgets on every drag frame
         WidgetSync.refreshAll(context)
     }
     val uriHandler = LocalUriHandler.current
@@ -314,7 +314,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             }
         }
     }
-    var weatherAlarmOpen by remember { mutableStateOf(false) }
+    val fromClockWidget=remember {(context as? android.app.Activity)?.intent?.getBooleanExtra("open_weather_alarms",false)==true}
+    var weatherAlarmOpen by remember { mutableStateOf(fromClockWidget) }
+    LaunchedEffect(fromClockWidget) {
+        if(fromClockWidget)(context as? android.app.Activity)?.intent?.removeExtra("open_weather_alarms")
+    }
     LaunchedEffect(fromUpdateNotification) { if (fromUpdateNotification) (context as? android.app.Activity)?.intent?.removeExtra("open_update_center") }
     // Android predictive-back / gesture returns to the previous UI layer,
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
@@ -985,17 +989,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     "${(appearance.fontScale*100).roundToInt()}%") {appearance=appearance.copy(fontScale=it)}
                 AppearanceSlider("字體粗細",appearance.fontWeight,100f..900f,
                     "${appearance.fontWeight.roundToInt()}") {appearance=appearance.copy(fontWeight=it)}
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                    listOf("系統","襯線","等寬","手寫").forEachIndexed { index,title ->
-                        val chosen=index==appearance.fontChoice
-                        Box(Modifier.weight(1f).clip(RoundedCornerShape(999.dp))
-                            .background(White.copy(alpha=if(chosen) .23f else .07f))
-                            .clickable {appearance=appearance.copy(fontChoice=index)}
-                            .padding(vertical=11.dp),contentAlignment=Alignment.Center) {
-                            Text(title,color=White,fontSize=14.sp)
-                        }
-                    }
-                }
+                io.atmos.weather.ui.GlassChoiceGroup(listOf("系統","襯線","等寬","手寫"),
+                    appearance.fontChoice,{appearance=appearance.copy(fontChoice=it)})
                 Spacer(Modifier.height(10.dp))
                         }
                         "通知" -> {

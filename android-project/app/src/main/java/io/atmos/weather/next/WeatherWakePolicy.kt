@@ -3,7 +3,8 @@ import kotlin.math.cos
 object WeatherWakePolicy {
  val originalThemes=setOf("dawn","rain","wood","water","fire","metal")
  val paletteThemes=setOf("guitar","flute","rhodes","kalimba","strings","musicbox","synth","groove")
- val themes=originalThemes+paletteThemes
+ val popThemes=setOf("citypop","tropical","indiepop","rnb","futurepop","daybreak")
+ val themes=originalThemes+paletteThemes+popThemes
  fun paletteArrangement(scene:WeatherScene?):String=when(scene){
   WeatherScene.SUNNY->"clear"
   WeatherScene.DRIZZLE,WeatherScene.LIGHT_RAIN,WeatherScene.MODERATE_RAIN,WeatherScene.HEAVY_RAIN,

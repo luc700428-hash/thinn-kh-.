@@ -147,7 +147,7 @@ def generate():
      sample_rate=SR,frames=len(pcm),seconds=len(pcm)/SR,peak_dbfs=float(20*np.log10(np.max(abs(samples))+1e-12)),
      rms_dbfs=float(20*np.log10(np.sqrt(np.mean(samples*samples))+1e-12)),loop_jump_pcm=abs(int(pcm[-1])-int(pcm[0]))))
   print('Composed:',name,p['label'],flush=True)
- manifest=dict(schema=1,added_themes=list(PROFILES),total_selectable_themes=14,variants=list(VARIANTS),
+ manifest=dict(schema=1,added_themes=list(PROFILES),total_selectable_themes=20,variants=list(VARIANTS),
    ambience_scene_count=14,profiles={k:{x:v for x,v in p.items() if x!='motif'} for k,p in PROFILES.items()},
    authorship='Original procedural compositions and instrument-inspired synthesis; no sampled music',
    human_listening_or_wake_efficacy_verified=False,assets=records)

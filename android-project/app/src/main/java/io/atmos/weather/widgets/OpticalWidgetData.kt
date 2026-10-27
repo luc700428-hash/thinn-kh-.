@@ -9,7 +9,7 @@ import org.json.JSONArray
 import java.time.*
 import java.time.format.DateTimeFormatter
 
-data class WidgetHour(val time:String,val temperature:String,val rain:String,val code:Int?)
+data class WidgetHour(val time:String,val temperature:String,val rain:String,val code:Int?,val day:Boolean=true)
 data class OpticalWidgetData(val city:String,val temperature:String,val condition:WeatherCondition,val day:Boolean,val stamp:Long,
  val age:WidgetPresentationRules.Freshness,val rain:String,val highLow:String,val humidity:String,val wind:String,val air:String,val uv:String,
  val hours:List<WidgetHour>,val alarm:String,val alarmAt:Long?,val task:String,val alert:String,val alertDetail:String,val alertRecent:Boolean){
@@ -18,7 +18,7 @@ data class OpticalWidgetData(val city:String,val temperature:String,val conditio
    val p=context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE);val now=System.currentTimeMillis();val stamp=p.getLong("widget_time",0);val age=WidgetPresentationRules.freshness(minOf(stamp,p.getLong("widget_observed_time",stamp)),now)
    val available=age==WidgetPresentationRules.Freshness.FRESH||age==WidgetPresentationRules.Freshness.CACHED
    val zone=runCatching{ZoneId.of(p.getString("widget_zone",null))}.getOrDefault(ZoneId.systemDefault());val fmt=DateTimeFormatter.ofPattern("HH:mm")
-   val hours=runCatching{val a=JSONArray(p.getString("widget_hours","[]"));(0 until a.length()).mapNotNull{i->val h=a.getJSONObject(i);val at=h.optLong("at");if(at<now-30*60_000L||at>now+36*60*60_000L)null else WidgetHour(Instant.ofEpochMilli(at).atZone(zone).format(fmt),h.optDouble("temp",Double.NaN).let{if(it.isFinite())"${it.toInt()}°" else "—"},h.optInt("rain",-1).let{if(it in 0..100)"$it%" else "—"},h.optInt("code",-1).takeIf{it>=0})}.take(4)}.getOrDefault(emptyList())
+   val hours=runCatching{val a=JSONArray(p.getString("widget_hours","[]"));(0 until a.length()).mapNotNull{i->val h=a.getJSONObject(i);val at=h.optLong("at");if(at<now-30*60_000L||at>now+36*60*60_000L)null else WidgetHour(Instant.ofEpochMilli(at).atZone(zone).format(fmt),h.optDouble("temp",Double.NaN).let{if(it.isFinite())"${it.toInt()}°" else "—"},h.optInt("rain",-1).let{if(it in 0..100)"$it%" else "—"},h.optInt("code",-1).takeIf{it>=0},h.optBoolean("day",p.getBoolean("widget_day",true)))}.take(6)}.getOrDefault(emptyList())
    val alarm=WeatherAlarmStore.load(context).filter{it.enabled}.mapNotNull{a->WeatherAlarmTime.next(a,ZonedDateTime.now())?.let{it to a}}.minByOrNull{it.first}
    val task=TaskStore.load(context).filter{!it.completed&&it.dueMillis()>=now}.minByOrNull{it.dueMillis()}
    val push=context.getSharedPreferences("thinn_push_widget",Context.MODE_PRIVATE);val issued=push.getLong("issued",0);val recent=issued>0&&now-issued in 0..3_600_000L

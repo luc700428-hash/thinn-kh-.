@@ -8,7 +8,15 @@ import io.atmos.weather.domain.visual.sceneFor
 object WidgetSnapshotStore {
     fun publish(context:Context, weather:WeatherSnapshot) {
         val scene=sceneFor(weather)
-        val hours=org.json.JSONArray().apply{weather.nextHours.take(12).forEach{h->put(org.json.JSONObject().apply{put("at",h.at.toEpochMilli());put("temp",h.temperatureC);put("rain",h.precipitationProbabilityPct?:-1);put("code",h.weatherCode?:-1)})}}
+        val zone=runCatching{java.time.ZoneId.of(weather.timeZoneId)}.getOrDefault(java.time.ZoneId.systemDefault())
+        val rise=weather.sunrise?.atZone(zone)?.toLocalTime()
+        val set=weather.sunset?.atZone(zone)?.toLocalTime()
+        val hours=org.json.JSONArray().apply{weather.nextHours.take(12).forEach{h->put(org.json.JSONObject().apply{
+            put("at",h.at.toEpochMilli());put("temp",h.temperatureC);put("rain",h.precipitationProbabilityPct?:-1);put("code",h.weatherCode?:-1)
+            // The day's observed solar window is reused for the short forecast strip.
+            val local=h.at.atZone(zone).toLocalTime()
+            put("day",if(rise!=null&&set!=null&&rise<set)local>=rise&&local<set else weather.isDay)
+        })}}
         context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE).edit()
             .putString("widget_city",weather.city.name)
             .putString("widget_city_id",weather.city.id)

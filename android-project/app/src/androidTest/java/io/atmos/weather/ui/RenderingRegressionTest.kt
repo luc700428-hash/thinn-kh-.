@@ -8,6 +8,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -25,6 +28,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.espresso.IdlingPolicies
@@ -64,6 +69,42 @@ class RenderingRegressionTest {
         Log.i("ThinnUiRegression",stage)
         val dir=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
         File(dir,"progress.txt").appendText("${Instant.now()} $stage\n")
+    }
+
+    @Test(timeout=120_000) fun preferenceChoicesExposeOneSelectionInBothAppearances() {
+        val selected=mutableIntStateOf(1)
+        val dark=mutableStateOf(false)
+        compose.setContent {
+            ThinnAppTheme {
+                MaterialTheme(colorScheme=if(dark.value)darkColorScheme() else lightColorScheme()) {
+                    CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density,1.5f)) {
+                        Column(Modifier.width(320.dp)) {
+                            GlassChoiceGroup(listOf("怕冷","一般","怕熱"),selected.intValue,{selected.intValue=it})
+                        }
+                    }
+                }
+            }
+        }
+        for(appearance in listOf(false,true)) {
+            compose.runOnIdle {dark.value=appearance;selected.intValue=1};frame()
+            compose.onNodeWithText("一般").assertIsSelected()
+            compose.onNodeWithText("怕冷").assertIsNotSelected()
+            compose.onNodeWithText("怕熱").performClick();frame()
+            compose.onNodeWithText("怕熱").assertIsSelected()
+            compose.onAllNodes(isSelected()).assertCountEquals(1)
+            val active=compose.onNodeWithText("怕熱").captureToImage().toPixelMap()
+            val inactive=compose.onNodeWithText("一般").captureToImage().toPixelMap()
+            fun blueFraction(p:androidx.compose.ui.graphics.PixelMap):Float {
+                var blue=0
+                for(y in 0 until p.height)for(x in 0 until p.width) {
+                    val c=p[x,y];if(c.blue>c.red+.25f&&c.blue>c.green+.1f)blue++
+                }
+                return blue.toFloat()/(p.width*p.height)
+            }
+            assertTrue("Selected choice lost its clear blue fill",blueFraction(active)>.35f)
+            assertTrue("Unselected choice still looked selected",blueFraction(inactive)<.08f)
+        }
+        checkpoint("preference choices: passed light and dark, 150% text")
     }
 
     @Test(timeout=120_000) fun bubbleSliderIsTransparentAndKeepsDragAndAccessibilityValues() {

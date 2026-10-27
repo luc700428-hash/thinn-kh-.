@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -67,12 +68,12 @@ fun IOSSegmentedControl(labels:List<String>,selected:Int,onSelect:(Int)->Unit,mo
             if(reduce)tween(0) else spring(response.damping,response.stiffness),label="分段控制滑動")
         Box(Modifier.padding(4.dp).offset(x=position).width(cell).fillMaxHeight()
             .clip(RoundedCornerShape(9999.dp)).thinnBackdrop(rememberAppleReduceTransparency(),9999.dp)
-            .background(palette.surface).thinnSpecularEdge(9999.dp))
-        Row(Modifier.fillMaxSize().padding(4.dp)) {
+            .background(Color(0xFF0866CC)).thinnSpecularEdge(9999.dp))
+        Row(Modifier.fillMaxSize().padding(4.dp).selectableGroup()) {
             labels.forEachIndexed { index,label ->
                 Box(Modifier.weight(1f).fillMaxHeight().iosJellyPress().selectable(
                     selected=index==selected,role=Role.Tab,onClick={onSelect(index)}),contentAlignment=Alignment.Center) {
-                    Text(label,color=palette.onSurface,fontSize=14.sp,fontWeight=if(index==selected)FontWeight.SemiBold else FontWeight.Normal)
+                    Text(label,color=if(index==selected)Color.White else palette.onSurface,fontSize=14.sp,fontWeight=if(index==selected)FontWeight.SemiBold else FontWeight.Normal)
                 }
             }
         }

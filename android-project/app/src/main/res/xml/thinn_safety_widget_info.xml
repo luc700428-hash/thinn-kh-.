@@ -4,4 +4,4 @@
  android:targetCellWidth="3" android:targetCellHeight="2"
  android:minResizeWidth="140dp" android:minResizeHeight="90dp"
  android:resizeMode="horizontal|vertical" android:widgetCategory="home_screen"
- android:updatePeriodMillis="0" android:previewLayout="@layout/widget_loading" android:initialLayout="@layout/widget_loading" />
+ android:updatePeriodMillis="0" android:previewImage="@drawable/widget_safety_preview" android:description="@string/widget_safety_description" android:initialLayout="@layout/widget_loading" />

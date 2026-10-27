@@ -15,9 +15,9 @@ class IOSUpgradeRulesTest {
  @Test fun monthChangesAndLeapYearsStayValid(){assertEquals(LocalDate.of(2026,2,28),DrumWheelRules.date(2026,2,31));assertEquals(LocalDate.of(2028,2,29),DrumWheelRules.date(2028,2,31));assertEquals(LocalDate.of(1900,2,28),DrumWheelRules.date(1900,2,29))}
  @Test fun noonAndMidnightAreCorrect(){assertEquals(0,DrumWheelRules.hour24(12,false));assertEquals(12,DrumWheelRules.hour24(12,true));assertEquals(13,DrumWheelRules.hour24(1,true))}
  @Test fun everyThemeResolvesAllWeatherArrangements(){
-  assertEquals(14,WeatherWakePolicy.themes.size)
+  assertEquals(20,WeatherWakePolicy.themes.size)
   for(t in WeatherWakePolicy.originalThemes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${s.name.lowercase()}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}
-  for(t in WeatherWakePolicy.paletteThemes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${WeatherWakePolicy.paletteArrangement(s)}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}
+  for(t in WeatherWakePolicy.paletteThemes+WeatherWakePolicy.popThemes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${WeatherWakePolicy.paletteArrangement(s)}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}
   assertEquals("snow",WeatherWakePolicy.paletteArrangement(WeatherScene.HEAVY_SNOW))
   assertEquals("rain",WeatherWakePolicy.paletteArrangement(WeatherScene.SEVERE_THUNDERSTORM))
   assertEquals("neutral",WeatherWakePolicy.paletteArrangement(null))

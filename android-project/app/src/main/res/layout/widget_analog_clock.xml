@@ -1,0 +1,4 @@
+<AnalogClock xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_analog" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:dial="@drawable/widget_clock_dial" android:hand_hour="@drawable/widget_clock_hour"
+    android:hand_minute="@drawable/widget_clock_minute" android:contentDescription="本機指針時鐘" />

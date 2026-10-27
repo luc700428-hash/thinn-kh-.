@@ -133,28 +133,14 @@ fun LifestyleAiSettingsPage(onClose: () -> Unit) {
         Text("穿搭個人偏好 · 完全在手機運作", color=textColor, fontSize=18.sp, fontWeight=FontWeight.Bold)
         Spacer(Modifier.height(7.dp))
         Text("溫感敏感度", color=detailColor, fontSize=15.sp)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-            TemperatureComfort.entries.forEach { choice ->
-                val selected = comfort == choice
-                OutlinedButton(onClick={comfort=choice}, modifier=Modifier.weight(1f),
-                    colors=ButtonDefaults.outlinedButtonColors(containerColor=if(selected) Color.White.copy(alpha=.25f) else Color.Transparent),
-                    contentPadding=PaddingValues(horizontal=3.dp, vertical=6.dp)) {
-                    Text(choice.label, color=textColor, fontSize=14.sp)
-                }
-            }
-        }
+        io.atmos.weather.ui.GlassChoiceGroup(TemperatureComfort.entries.map{it.label},
+            TemperatureComfort.entries.indexOf(comfort),{comfort=TemperatureComfort.entries[it]})
         Spacer(Modifier.height(9.dp))
         Text("穿搭風格", color=detailColor, fontSize=15.sp)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-            ClothingStyle.entries.forEach { choice ->
-                val selected = style == choice
-                OutlinedButton(onClick={style=choice}, modifier=Modifier.weight(1f),
-                    colors=ButtonDefaults.outlinedButtonColors(containerColor=if(selected) Color.White.copy(alpha=.25f) else Color.Transparent),
-                    contentPadding=PaddingValues(horizontal=3.dp, vertical=6.dp)) {
-                    Text(choice.label, color=textColor, fontSize=14.sp)
-                }
-            }
-        }
+        io.atmos.weather.ui.GlassChoiceGroup(ClothingStyle.entries.map{it.label},
+            ClothingStyle.entries.indexOf(style),{style=ClothingStyle.entries[it]})
+        Text("目前選擇：${comfort.label} · ${style.label}",color=textColor,fontSize=14.sp,
+            modifier=Modifier.padding(top=8.dp))
         Spacer(Modifier.height(9.dp))
         Text("未來六小時降雨機率達 ${umbrellaThreshold.toInt()}% 提醒帶傘", color=textColor, fontSize=15.sp)
         Slider(value=umbrellaThreshold, onValueChange={umbrellaThreshold=it}, valueRange=20f..90f,
