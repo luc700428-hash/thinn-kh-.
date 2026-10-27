@@ -1,18 +1,40 @@
 package io.atmos.weather.ui
 
+import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.app.Activity
+import android.hardware.display.DisplayManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.view.View
+import android.view.ViewGroup
 import android.view.Window
+import android.view.WindowManager
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.*
 
-/** A request, never a promise: display hardware, battery/thermal/OEM policy remain authoritative. */
+/** Hardware, battery/thermal policy and the launcher remain authoritative. No synthetic FPS. */
 internal object HighRefreshWindow {
+    private fun update(params:WindowManager.LayoutParams,chosen:RefreshRatePolicy.Mode?):Boolean {
+        val hz=chosen?.hz?:RefreshRatePolicy.TARGET_HZ;val mode=chosen?.id?:0
+        if(params.preferredRefreshRate==hz&&params.preferredDisplayModeId==mode)return false
+        params.preferredRefreshRate=hz;params.preferredDisplayModeId=mode;return true
+    }
+    private fun requestViews(view:View) {
+        if(Build.VERSION.SDK_INT>=36&&view is ViewGroup) {
+            view.propagateRequestedFrameRate(RefreshRatePolicy.TARGET_HZ,true)
+        } else if(Build.VERSION.SDK_INT>=35) {
+            view.setRequestedFrameRate(RefreshRatePolicy.TARGET_HZ)
+            if(view is ViewGroup)for(i in 0 until view.childCount)requestViews(view.getChildAt(i))
+        }
+    }
     fun apply(window:Window?,view:View) {
         val display=view.display
         @Suppress("DEPRECATION")
@@ -21,16 +43,33 @@ internal object HighRefreshWindow {
             RefreshRatePolicy.Mode(it.modeId,it.physicalWidth,it.physicalHeight,it.refreshRate)
         },active.physicalWidth,active.physicalHeight) else null
         window?.let {
-            it.attributes=it.attributes.apply {
-                preferredRefreshRate=chosen?.hz ?: RefreshRatePolicy.TARGET_HZ
-                if(chosen!=null)preferredDisplayModeId=chosen.id
-            }
+            val params=it.attributes
+            if(update(params,chosen))it.attributes=params
             if(Build.VERSION.SDK_INT>=35) {
                 it.setFrameRatePowerSavingsBalanced(false)
                 it.setFrameRateBoostOnTouchEnabled(true)
             }
         }
-        if(Build.VERSION.SDK_INT>=35) view.setRequestedFrameRate(RefreshRatePolicy.TARGET_HZ)
+        // Popup has its own WindowManager root, separate from the Activity window.
+        val root=view.rootView
+        val popupParams=root.layoutParams as? WindowManager.LayoutParams
+        if(root!==window?.decorView&&root.isAttachedToWindow&&popupParams!=null&&update(popupParams,chosen)) {
+            runCatching{(view.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).updateViewLayout(root,popupParams)}
+        }
+        requestViews(view)
+    }
+    /** SurfaceView renderers vote separately; use the same target as every app window. */
+    fun bindSurface(view:SurfaceView) {
+        view.holder.addCallback(object:SurfaceHolder.Callback {
+            private fun request(holder:SurfaceHolder) {
+                if(holder.surface.isValid)runCatching{holder.surface.setFrameRate(RefreshRatePolicy.TARGET_HZ,
+                    Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,Surface.CHANGE_FRAME_RATE_ONLY_IF_SEAMLESS)}
+                apply(view.context.activity()?.window,view)
+            }
+            override fun surfaceCreated(holder:SurfaceHolder)=request(holder)
+            override fun surfaceChanged(holder:SurfaceHolder,format:Int,width:Int,height:Int)=request(holder)
+            override fun surfaceDestroyed(holder:SurfaceHolder)=Unit
+        })
     }
 }
 private fun Context.activity():Activity?=when(this) {
@@ -41,18 +80,55 @@ private fun Context.activity():Activity?=when(this) {
 @Composable internal fun HighRefreshHost() {
     val view=LocalView.current
     DisposableEffect(view) {
-        val window=(view.parent as? DialogWindowProvider)?.window ?: view.context.activity()?.window
+        val window=(view.parent as? DialogWindowProvider)?.window?:view.context.activity()?.window
         fun request(){HighRefreshWindow.apply(window,view)}
         request()
         val listener=object:View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v:View){request()}
             override fun onViewDetachedFromWindow(v:View)=Unit
         }
+        val manager=view.context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val displayListener=object:DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId:Int)=Unit
+            override fun onDisplayRemoved(displayId:Int)=Unit
+            override fun onDisplayChanged(displayId:Int){if(view.isAttachedToWindow&&view.display?.displayId==displayId)request()}
+        }
         view.addOnAttachStateChangeListener(listener)
-        onDispose {view.removeOnAttachStateChangeListener(listener)}
+        manager.registerDisplayListener(displayListener,Handler(Looper.getMainLooper()))
+        onDispose {view.removeOnAttachStateChangeListener(listener);manager.unregisterDisplayListener(displayListener)}
     }
 }
-/** Common dialog host so alarm/editor/update/map sheets vote for the same refresh rate. */
+@Composable internal fun rememberDisplayRefreshRate():Float? {
+    val view=LocalView.current
+    fun read()=view.display?.refreshRate?.takeIf{it.isFinite()&&it>0}
+    var hz by remember(view){mutableStateOf(read())}
+    DisposableEffect(view) {
+        val manager=view.context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val callback=object:DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId:Int){hz=read()}
+            override fun onDisplayRemoved(displayId:Int){hz=read()}
+            override fun onDisplayChanged(displayId:Int){if(view.display?.displayId==displayId)hz=read()}
+        }
+        val attachment=object:View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v:View){hz=read()}
+            override fun onViewDetachedFromWindow(v:View)=Unit
+        }
+        view.addOnAttachStateChangeListener(attachment)
+        manager.registerDisplayListener(callback,Handler(Looper.getMainLooper()))
+        view.post{hz=read()}
+        onDispose{manager.unregisterDisplayListener(callback);view.removeOnAttachStateChangeListener(attachment)}
+    }
+    return hz
+}
+/** App windows, sheets and popup menus share one refresh-rate preference. */
 @Composable fun ThinnDialog(onDismissRequest:()->Unit,properties:DialogProperties=DialogProperties(),content:@Composable ()->Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest,properties=properties) {HighRefreshHost();content()}
+    Dialog(onDismissRequest,properties=properties){HighRefreshHost();content()}
+}
+@Composable fun ThinnPopup(alignment:Alignment=Alignment.TopStart,offset:IntOffset=IntOffset.Zero,
+    onDismissRequest:(()->Unit)?=null,properties:PopupProperties=PopupProperties(),content:@Composable ()->Unit) {
+    Popup(alignment,offset,onDismissRequest,properties){HighRefreshHost();content()}
+}
+@Composable fun ThinnPopup(popupPositionProvider:PopupPositionProvider,onDismissRequest:(()->Unit)?=null,
+    properties:PopupProperties=PopupProperties(),content:@Composable ()->Unit) {
+    Popup(popupPositionProvider,onDismissRequest,properties){HighRefreshHost();content()}
 }

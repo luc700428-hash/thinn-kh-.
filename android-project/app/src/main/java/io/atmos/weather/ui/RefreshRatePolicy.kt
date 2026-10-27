@@ -3,7 +3,7 @@ package io.atmos.weather.ui
 import kotlin.math.abs
 
 internal object RefreshRatePolicy {
-    const val TARGET_HZ=120f
+    const val TARGET_HZ=144f
     data class Mode(val id:Int,val width:Int,val height:Int,val hz:Float)
     fun choose(modes:List<Mode>,width:Int,height:Int):Mode? {
         val same=modes.filter {it.width==width && it.height==height && it.hz.isFinite() && it.hz>0}

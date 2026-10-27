@@ -35,7 +35,9 @@ import kotlin.math.*
 @Composable fun NativeRadarViewer(latitude:Double,longitude:Double,onClose:()->Unit) {
     val uri=LocalUriHandler.current
     val context=LocalContext.current;val density=LocalDensity.current.density
-    val palette=MaterialTheme.colorScheme;val lifecycle=LocalLifecycleOwner.current
+    val palette=MaterialTheme.colorScheme
+    val dark=palette.background.luminance()<.4f
+    val lifecycle=LocalLifecycleOwner.current
     var camera by remember(latitude,longitude){mutableStateOf(RadarCamera(latitude,longitude,6.5).normalized())}
     var size by remember{mutableStateOf(IntSize.Zero)}
     var frames by remember{mutableStateOf<List<RadarFrame>>(emptyList())}
@@ -52,44 +54,47 @@ import kotlin.math.*
     LaunchedEffect(lifecycle) {lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
         while(isActive){delay(300000);attempt++}
     }}
-    LaunchedEffect(playing,frames,lifecycle,reduce) {
-        if(playing&&!reduce&&frames.isNotEmpty())lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while(isActive){delay(1100);index=(index+1)%frames.size}
-        }
-    }
     val frame=frames.getOrNull(index)
-    val tiles=remember(camera,size,density){RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density)}
+    val baseTiles=remember(camera,size,density){RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,RadarTilePolicy.BASE_MAX_ZOOM)}
+    val radarTiles=remember(camera,size,density){RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density)}
     var base by remember{mutableStateOf<Map<RadarTile,ImageBitmap>>(emptyMap())}
     var echoes by remember{mutableStateOf<Map<RadarTile,ImageBitmap>>(emptyMap())}
     var loadedFrame by remember{mutableStateOf<String?>(null)}
-    var fetching by remember{mutableStateOf(false)}
-    var tileFailure by remember{mutableStateOf(false)}
-    LaunchedEffect(tiles,frame?.path) {
-        fetching=true;delay(120)
-        supervisorScope {
-            val b=async {tiles.map{tile->async {tile to RadarRepository.image(context,null,tile)?.asImageBitmap()}}.awaitAll().mapNotNull{(k,v)->v?.let{k to it}}.toMap()}
-            val e=async {if(frame==null)emptyMap() else tiles.map{tile->async {tile to RadarRepository.image(context,frame,tile)?.asImageBitmap()}}.awaitAll().mapNotNull{(k,v)->v?.let{k to it}}.toMap()}
-            base=b.await();echoes=e.await();loadedFrame=frame?.path;tileFailure=base.size<tiles.size||(frame!=null&&echoes.size<tiles.size);fetching=false
+    var baseFetching by remember{mutableStateOf(false)};var radarFetching by remember{mutableStateOf(false)}
+    var baseFailure by remember{mutableStateOf(false)};var radarFailure by remember{mutableStateOf(false)}
+    var tileRetry by remember{mutableIntStateOf(0)}
+    LaunchedEffect(baseTiles,tileRetry) {
+        baseFetching=true
+        try {
+            delay(100)
+            base=supervisorScope{baseTiles.map{tile->async {tile to RadarRepository.image(context,null,tile)?.asImageBitmap()}}.awaitAll().mapNotNull{(k,v)->v?.let{k to it}}.toMap()}
+            baseFailure=base.size<baseTiles.size
+        } finally{baseFetching=false}
+    }
+    LaunchedEffect(radarTiles,frame?.path,tileRetry) {
+        radarFetching=true
+        try {
+            delay(100)
+            echoes=supervisorScope{if(frame==null)emptyMap() else radarTiles.map{tile->async {tile to RadarRepository.image(context,frame,tile)?.asImageBitmap()}}.awaitAll().mapNotNull{(k,v)->v?.let{k to it}}.toMap()}
+            loadedFrame=frame?.path;radarFailure=frame!=null&&echoes.size<radarTiles.size
+        } finally{radarFetching=false}
+    }
+    LaunchedEffect(playing,frames,lifecycle,reduce) {
+        if(playing&&!reduce&&frames.isNotEmpty())lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while(isActive){delay(1100);if(!radarFetching&&loadedFrame==frames.getOrNull(index)?.path)index=(index+1)%frames.size}
         }
     }
+    val fetching=baseFetching||radarFetching
+    val tileFailure=baseFailure||radarFailure
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         IOSSettingsHeader("降雨雷達",onClose)
         Text(status,color=palette.onSurfaceVariant,modifier=Modifier.padding(horizontal=18.dp),fontSize=14.sp)
         Box(Modifier.fillMaxWidth().weight(1f).padding(12.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
-            .background(Color(0xFF17334B)).onSizeChanged{size=it}) {
+            .background(if(dark)RadarMapStyle.darkBackground else RadarMapStyle.lightBackground).onSizeChanged{size=it}) {
             Canvas(Modifier.fillMaxSize().pointerInput(density) {
                 detectTransformGestures {centroid,pan,zoom,_->camera=camera.zoomAt(zoom,centroid.x,centroid.y,size.width.toFloat(),size.height.toFloat(),density).pan(pan.x,pan.y,density)}
             }) {
-                fun paint(images:Map<RadarTile,ImageBitmap>,alpha:Float) {
-                    images.forEach {(tile,img)->
-                        val tileSize=(256*density*2.0.pow(camera.zoom-tile.z)).toFloat()
-                        val world=camera.world(density)
-                        val x=(tile.column*tileSize-RadarProjection.x(camera.longitude)*world+size.width/2).toFloat()
-                        val y=(tile.y*tileSize-RadarProjection.y(camera.latitude)*world+size.height/2).toFloat()
-                        drawImage(img,dstOffset=IntOffset(x.roundToInt(),y.roundToInt()),dstSize=IntSize(ceil(tileSize).toInt(),ceil(tileSize).toInt()),alpha=alpha,filterQuality=FilterQuality.Low)
-                    }
-                }
-                paint(base,1f);if(loadedFrame==frame?.path)paint(echoes,opacity)
+                drawRadarLayers(camera,density,base,if(loadedFrame==frame?.path)echoes else emptyMap(),opacity,dark)
                 val w=camera.world(density)
                 val dx=((RadarProjection.x(longitude)-RadarProjection.x(camera.longitude)+1.5)%1-.5)*w
                 val point=Offset((size.width/2+dx).toFloat(),(size.height/2+(RadarProjection.y(latitude)-RadarProjection.y(camera.latitude))*w).toFloat())
@@ -97,7 +102,7 @@ import kotlin.math.*
                 drawCircle(Color(0xFF147BE2),5.dp.toPx(),point)
             }
             Column(Modifier.align(Alignment.TopEnd).padding(9.dp)) {
-                GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom+.5).coerceAtMost(7.0))}){androidx.compose.material3.Icon(Icons.Rounded.Add,"放大")}
+                GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom+.5).coerceAtMost(RadarTilePolicy.CAMERA_MAX_ZOOM))}){androidx.compose.material3.Icon(Icons.Rounded.Add,"放大")}
                 Spacer(Modifier.height(7.dp))
                 GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom-.5).coerceAtLeast(2.0))}){androidx.compose.material3.Icon(Icons.Rounded.Remove,"縮小")}
                 Spacer(Modifier.height(7.dp))
@@ -109,13 +114,14 @@ import kotlin.math.*
         }
         Column(Modifier.padding(horizontal=16.dp)) {
             val time=frame?.let{Instant.ofEpochSecond(it.time).atZone(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))}?:"尚無時間資料"
+            if(camera.zoom>8.0)Text("底圖持續放大；回波細節已達資料來源上限",color=palette.onSurfaceVariant,fontSize=14.sp)
             Text("圖層時間 $time（台灣時間）",color=palette.onSurface,fontSize=15.sp)
             Row(verticalAlignment=Alignment.CenterVertically) {
                 GlassIconButton({playing=false;index=(index-1).coerceAtLeast(0)},enabled=frames.isNotEmpty()){androidx.compose.material3.Icon(Icons.Rounded.SkipPrevious,"前一張")}
                 GlassIconButton({playing=!playing},enabled=frames.isNotEmpty()&&!reduce){androidx.compose.material3.Icon(if(playing)Icons.Rounded.Pause else Icons.Rounded.PlayArrow,if(playing)"暫停回波動畫" else "播放回波動畫")}
                 GlassSlider(index.toFloat(),{playing=false;index=it.roundToInt().coerceIn(0,frames.lastIndex.coerceAtLeast(0))},Modifier.weight(1f),valueRange=0f..frames.lastIndex.coerceAtLeast(1).toFloat(),steps=(frames.size-2).coerceAtLeast(0),enabled=frames.isNotEmpty())
                 GlassIconButton({playing=false;index=(index+1).coerceAtMost(frames.lastIndex.coerceAtLeast(0))},enabled=frames.isNotEmpty()){androidx.compose.material3.Icon(Icons.Rounded.SkipNext,"後一張")}
-                GlassIconButton({attempt++}){androidx.compose.material3.Icon(Icons.Rounded.Refresh,"重新讀取雷達")}
+                GlassIconButton({attempt++;tileRetry++}){androidx.compose.material3.Icon(Icons.Rounded.Refresh,"重新讀取雷達")}
             }
             Row(verticalAlignment=Alignment.CenterVertically){Text("回波透明度",color=palette.onSurfaceVariant,fontSize=14.sp);GlassSlider(opacity,{opacity=it},Modifier.weight(1f),valueRange=.2f..1f)}
             Text("Weather data by RainViewer ↗",color=palette.primary,fontSize=14.sp,modifier=Modifier.clickable{uri.openUri("https://www.rainviewer.com")}.padding(vertical=4.dp))

@@ -44,13 +44,12 @@ object RadarRepository {
         catch(e:Exception){timeline?.takeIf{now-it.fetchedAt<3600000}?.copy(cached=true)?:throw e}
     }
     suspend fun image(context:Context,frame:RadarFrame?,tile:RadarTile):Bitmap? {
-        val key=(frame?.path?:"base")+"/${tile.z}/${tile.x}/${tile.y}"
+        val key=RadarTilePolicy.imageKey(frame,tile)
         synchronized(images){images.get(key)}?.let{return it}
         return gate.withPermit {withContext(Dispatchers.IO){
             synchronized(images){images.get(key)}?.let{return@withContext it}
             try {
-                val url=if(frame==null)"https://tile.openstreetmap.org/${tile.z}/${tile.x}/${tile.y}.png" else
-                    "https://tilecache.rainviewer.com${frame.path}/256/${tile.z}/${tile.x}/${tile.y}/2/1_1.png"
+                val url=RadarTilePolicy.imageUrl(frame,tile)
                 // On-demand only. Cache base tiles >=7 days and radar frames for 3 hours;
                 // a playback loop never repeatedly downloads the same frame's tiles.
                 val digest=java.security.MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).joinToString(""){"%02x".format(it)}

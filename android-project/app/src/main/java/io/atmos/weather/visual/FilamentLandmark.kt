@@ -40,6 +40,7 @@ fun FilamentLandmark(modelAsset:String, modifier:Modifier=Modifier, fallback:@Co
             key(modelAsset) {
                 AndroidView(factory={ context ->
                     SurfaceView(context).also { surface ->
+                        io.atmos.weather.ui.HighRefreshWindow.bindSurface(surface)
                         try {
                             // Filament official Android sample requires native library initialization.
                             Utils.init()

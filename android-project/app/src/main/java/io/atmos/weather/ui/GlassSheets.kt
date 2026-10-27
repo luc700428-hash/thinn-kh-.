@@ -141,7 +141,7 @@ fun GlassDivider(modifier:Modifier=Modifier,color:Color=Color.White.copy(alpha=.
 @Composable
 fun GlassDropdownMenu(expanded:Boolean,onDismissRequest:()->Unit,
     content:@Composable ColumnScope.()->Unit) {
-    if(expanded) androidx.compose.ui.window.Popup(
+    if(expanded) ThinnPopup(
         alignment=Alignment.TopStart,
         onDismissRequest=onDismissRequest,
         properties=androidx.compose.ui.window.PopupProperties(focusable=true)

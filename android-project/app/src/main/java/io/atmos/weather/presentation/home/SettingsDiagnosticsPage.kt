@@ -36,8 +36,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SettingsDiagnosticsPage(onClose:()->Unit) {
     val ctx=LocalContext.current
-    val windowView=androidx.compose.ui.platform.LocalView.current
-    val displayHz=windowView.display?.refreshRate
+    val displayHz=io.atmos.weather.ui.rememberDisplayRefreshRate()
 
     val prefs=remember(ctx){ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)}
     var refreshKey by remember { mutableIntStateOf(0) }
@@ -63,7 +62,7 @@ fun SettingsDiagnosticsPage(onClose:()->Unit) {
     ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.fillMaxWidth().heightIn(max=720.dp).appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=20.dp).padding(bottom=30.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("動畫目標 120 Hz · 螢幕目前 ${displayHz?.let {"%.0f".format(it)} ?: "未取得"} Hz",color=MaterialTheme.colorScheme.onSurface,fontSize=14.sp)
+            Text("動畫目標 144 Hz · 螢幕目前 ${displayHz?.let {"%.0f".format(it)} ?: "未取得"} Hz",color=MaterialTheme.colorScheme.onSurface,fontSize=14.sp)
             Text("螢幕更新率不等於實際繪製 FPS；省電、溫控與手機設定仍有最終控制權。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
             io.atmos.weather.ui.IOSSettingsHeader("設定健康檢查",onClose)
             Text("讀取系統實際授權與背景工作狀態。顯示 ENQUEUED 只代表已排程，不保證準時通知。",

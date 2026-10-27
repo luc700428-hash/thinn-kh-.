@@ -19,7 +19,7 @@ class SourceContractTests(unittest.TestCase):
         page=(JAVA/'ui/RadarHistoryDialog.kt').read_text()
         self.assertIn('NativeRadarViewer(latitude,longitude,onClose)',page)
         self.assertNotIn('WebView(',page)
-        network=(JAVA/'radar/RadarRepository.kt').read_text()
+        network=(JAVA/'radar/RadarRepository.kt').read_text()+(JAVA/'radar/RadarProjection.kt').read_text()
         self.assertIn('api.rainviewer.com/public/weather-maps.json',network)
         self.assertIn('https://tilecache.rainviewer.com',network)
         self.assertIn('instanceFollowRedirects=false',network)

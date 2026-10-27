@@ -33,7 +33,7 @@ class UnifiedWiringTests(unittest.TestCase):
         self.assertIn('OpticalWidgetData.read(',
                       (SRC/'widgets/AtmosWidgets.kt').read_text())
         self.assertIn('NativeRadarViewer(latitude,longitude,onClose)',(SRC/'ui/RadarHistoryDialog.kt').read_text())
-        self.assertIn('GlassIconButton({attempt++})',(SRC/'radar/NativeRadarViewer.kt').read_text())
+        self.assertIn('GlassIconButton({attempt++;tileRetry++})',(SRC/'radar/NativeRadarViewer.kt').read_text())
     def test_manual_official_ota_retain_signed_upgrade_checks(self):
         workflow=(SRC.parents[7]/'.github/workflows/build-apk.yml').read_text()
         self.assertIn('Publish official OTA GitHub Release',workflow)

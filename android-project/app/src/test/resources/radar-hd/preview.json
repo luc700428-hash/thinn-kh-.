@@ -1,0 +1,34 @@
+{
+  "fixture": true,
+  "description": "Single user-requested map preview, not current displayed weather.",
+  "downloaded_at": "2026-10-27T17:11:59.526605+00:00",
+  "camera": {
+    "latitude": 25.04579224030344,
+    "longitude": 121.5966796875,
+    "zoom": 12
+  },
+  "frame": {
+    "time": 1793121000,
+    "path": "/v2/radar/f853fe4778aa"
+  },
+  "sources": [
+    {
+      "file": "base.png",
+      "url": "https://tile.openstreetmap.org/12/3431/1753.png",
+      "z": 12,
+      "x": 3431,
+      "y": 1753,
+      "credit": "© OpenStreetMap contributors; ODbL data, rendered tiles CC BY-SA 2.0",
+      "sha256": "d51941d83659d4b4c6d8a362cddd03b140f7916a9879b4d1b5cd9dc96ff6c4ec"
+    },
+    {
+      "file": "echo.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/f853fe4778aa/512/7/107/54/2/0_1.png",
+      "z": 7,
+      "x": 107,
+      "y": 54,
+      "credit": "Weather data by RainViewer",
+      "sha256": "37ad37e4d240c0e8501649467f0370e6951eb9018fda4327b9648f7eab9230aa"
+    }
+  ]
+}

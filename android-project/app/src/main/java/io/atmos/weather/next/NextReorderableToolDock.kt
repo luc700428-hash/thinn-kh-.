@@ -55,7 +55,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import io.atmos.weather.ui.AppleLiquidDockPaint
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
+import io.atmos.weather.ui.ThinnPopup as Popup
 import androidx.compose.ui.window.PopupProperties
 
 /** Stable IDs ensure drag ordering can be saved across configuration changes. */
