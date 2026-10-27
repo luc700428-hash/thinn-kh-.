@@ -4,6 +4,9 @@ import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
 import io.atmos.weather.ui.appleBouncingScroll
 import io.atmos.weather.ui.thinnBackdrop
+import io.atmos.weather.ui.LocalWeatherCardPalette
+import io.atmos.weather.ui.WeatherCardPalettes
+import io.atmos.weather.ui.rememberWeatherCardPalette
 import io.atmos.weather.ui.weatherCollisionSurface
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
@@ -547,7 +550,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     io.atmos.weather.next.WeatherScene.SEVERE_THUNDERSTORM->1f
                     else->0f
                 }
-                CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides weatherBackdrop) {
+                val weatherCards=rememberWeatherCardPalette()
+                CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides weatherBackdrop,
+                    LocalWeatherCardPalette provides weatherCards) {
                 io.atmos.weather.ui.RainCollisionScene(rainIntensity,((snapshot?.windKmh ?: 0.0)*
                     -kotlin.math.sin(Math.toRadians((snapshot?.windDirectionDeg ?: 270).toDouble()))).toFloat(),Modifier.fillMaxSize()) {
                     io.atmos.weather.ui.ThinnBackdropCapture(weatherBackdrop,Modifier.matchParentSize()) {
@@ -602,7 +607,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 ) {
                     Column(Modifier.fillMaxWidth().padding(top=12.dp)
                         .clip(RoundedCornerShape(19.dp))
-                        .background(Color(0xFF355D7A).copy(alpha=.78f))
+                        .background(weatherCards.brush)
                         .border(1.dp,White.copy(alpha=.36f),RoundedCornerShape(19.dp))
                         .padding(13.dp)) {
                         Text(if(demoRemaining > 0) "模擬天氣演示中 · 剩餘 $demoRemaining 秒" else "10 秒天氣示範已結束",
@@ -626,7 +631,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
                 androidx.compose.animation.AnimatedVisibility(visible=refreshText != null) {
                     Text(refreshText.orEmpty(), modifier=Modifier.fillMaxWidth()
-                        .padding(top=10.dp).background(White.copy(alpha=.13f),RoundedCornerShape(14.dp))
+                        .padding(top=10.dp).background(weatherCards.fill,RoundedCornerShape(14.dp))
                         .padding(horizontal=12.dp, vertical=8.dp),color=White,fontSize=15.sp,textAlign=TextAlign.Center)
                 }
                 Spacer(Modifier.height(28.dp))
@@ -664,7 +669,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Spacer(Modifier.height(18.dp))
                     Column(Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(24.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xFF6D1F32),Color(0xFF2B253B))))
+                        .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFF9E9C).copy(alpha=.65f),RoundedCornerShape(24.dp))
                         .clickable { typhoonPageOpen=true }
                         .padding(17.dp)) {
@@ -706,7 +711,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 if (officialStormActive || verifiedTyphoonWarning!=null) {
                     Spacer(Modifier.height(20.dp))
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF17405D),Color(0xFF1F5675))))
+                        .background(weatherCards.brush)
                         .border(1.dp, Color(0xFF94D7EE).copy(alpha=.56f), RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
                         .padding(horizontal=17.dp, vertical=18.dp), verticalAlignment=Alignment.CenterVertically) {
@@ -738,7 +743,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // NEXT_INTEGRATED_TYPOON_NEUTRAL_ENTRY: ordinary navigation, not an emergency alert.
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF183C57),Color(0xFF214860))))
+                        .background(weatherCards.brush)
                         .border(1.dp,Color(0xFFB1E3F5).copy(alpha=.35f),RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
                         .padding(horizontal=17.dp,vertical=15.dp),
@@ -758,7 +763,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // red home card. Never describe third-party data as CWA-issued.
                 recentEarthquake?.let { report ->
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(21.dp))
-                        .background(Color(0xFF923439).copy(alpha=.86f))
+                        .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFB6B2).copy(alpha=.7f),RoundedCornerShape(21.dp))
                         .padding(15.dp)) {
                         Row(verticalAlignment=Alignment.CenterVertically) {
@@ -795,7 +800,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 state.officialHazards.forEach { hazard ->
                     Column(Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF763941),Color(0xFF4C2B45))))
+                        .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFBCAC).copy(alpha=.72f),RoundedCornerShape(20.dp))
                         .clickable { uriHandler.openUri(io.atmos.weather.alerts.CwaCountyHazardFeed.OFFICIAL_URL) }
                         .padding(16.dp)) {
@@ -820,7 +825,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }.take(2)
                 recentCwaNotices.forEach { notice ->
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xB2A43B47),Color(0xB16A2B3C))))
+                        .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFB4AE).copy(alpha=.64f),RoundedCornerShape(22.dp))
                         .clickable { uriHandler.openUri(notice.link) }.padding(17.dp)) {
                         Text("中央氣象署 · ${notice.title}",color=White,
@@ -974,7 +979,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         }
                         "外觀" -> {
                 Text("字體與閱讀",fontSize=19.sp,color=White,fontWeight=FontWeight.SemiBold)
-                Text("文字最低維持清晰可讀大小，支援 100–150% 調整；首頁與其他頁面共用新版字階。部分特殊地圖圖例仍需要實機確認。",color=TextSoft,fontSize=14.sp)
+                Text("調整文字大小、粗細與字體。文字大小支援 100–150%，變更會立即套用。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(10.dp))
                 AppearanceSlider("字體大小",appearance.fontScale,1f..1.5f,
                     "${(appearance.fontScale*100).roundToInt()}%") {appearance=appearance.copy(fontScale=it)}
@@ -1235,7 +1240,7 @@ private fun AppearanceSlider(label: String, current: Float, range: ClosedFloatin
     display: String, onChange: (Float)->Unit) {
     Spacer(Modifier.height(10.dp))
     val denom=(range.endInclusive-range.start).coerceAtLeast(.001f)
-    GlassTrackingSlider(label,((current-range.start)/denom).coerceIn(0f,1f)) {
+    GlassTrackingSlider(label,((current-range.start)/denom).coerceIn(0f,1f),display) {
         onChange(range.start + it*denom)
     }
 }
@@ -1298,7 +1303,7 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
         } else Modifier)
         .clip(shape)
         .thinnBackdrop(io.atmos.weather.ui.rememberAppleReduceTransparency(),io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
-        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface,shape)
+        .background(LocalWeatherCardPalette.current?.brush?:io.atmos.weather.ui.ThinnOpticalMaterial.surface,shape)
         .border(1.dp,Color.White.copy(alpha=.27f),shape)
     ) {
         // Specular sheen follows the direction of a drag; it is not a false claim of live wallpaper blur.
@@ -1322,7 +1327,7 @@ private fun MetricCard(title: String, value: String, subtitle: String,
                        modifier: Modifier=Modifier, onClick:()->Unit) {
     val appearance=LocalAppearance.current
     Box(modifier.weatherCollisionSurface(io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
-        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface,RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
+        .background(LocalWeatherCardPalette.current?.brush?:io.atmos.weather.ui.ThinnOpticalMaterial.surface,RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .border(1.dp,White.copy(alpha=.19f+appearance.edgeLight*.26f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .clickable(onClick=onClick)) {
         Column(Modifier.padding(17.dp)) {
@@ -1452,7 +1457,7 @@ private fun LocationFeedbackBanner(status: LocationFeedback, onRetry: () -> Unit
     Row(
         Modifier.fillMaxWidth().padding(top=10.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (status.phase == LocationPhase.ERROR || status.phase == LocationPhase.DENIED ||
+            .background(LocalWeatherCardPalette.current?.fill ?: if (status.phase == LocationPhase.ERROR || status.phase == LocationPhase.DENIED ||
                 status.phase == LocationPhase.DISABLED) Color(0xFF82432E).copy(alpha=.80f)
                 else White.copy(alpha=.16f))
             .padding(horizontal=12.dp, vertical=13.dp),
@@ -1797,7 +1802,7 @@ private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
                             fontWeight = FontWeight.SemiBold, lineHeight = 35.sp,
                             maxLines = 2)
                         Spacer(Modifier.height(3.dp))
-                        Text(fact.note, color = Color(0xFFBED6E5), fontSize = 14.sp,
+                        Text(fact.note, color = Color(0xFFDBEAF5), fontSize = 14.sp,
                             lineHeight = 20.sp, maxLines = 2)
                     }
                 }
@@ -1830,7 +1835,7 @@ private fun AirQualityInsightCard(snapshot: WeatherSnapshot) {
     val status = remember(snapshot.usAqi, snapshot.pm25) { airQualityBadge(snapshot.usAqi, snapshot.pm25) }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = .10f))
+            .background(if(LocalWeatherCardPalette.current!=null)Color.Transparent else Color.White.copy(alpha = .10f))
             .border(1.dp, Color.White.copy(alpha = .18f), RoundedCornerShape(24.dp))
             .padding(16.dp)
     ) {
@@ -1868,7 +1873,7 @@ private fun VisibilityInsightCard(snapshot: WeatherSnapshot, hazy: Boolean) {
     val status = remember(snapshot.visibilityM, snapshot.condition, hazy) { visibilityBadge(snapshot.visibilityM, snapshot.condition, hazy) }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = .10f))
+            .background(if(LocalWeatherCardPalette.current!=null)Color.Transparent else Color.White.copy(alpha = .10f))
             .border(1.dp, Color.White.copy(alpha = .18f), RoundedCornerShape(24.dp))
             .padding(16.dp)
     ) {

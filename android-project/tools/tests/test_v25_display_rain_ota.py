@@ -32,7 +32,7 @@ class LatestPhysicsContract(unittest.TestCase):
         self.assertIn('setRequestedFrameRate',src('ui/HighRefreshWindow.kt'))
     def test_radar_foregrounds_have_body_text_contrast_in_both_modes(self):
         radar=src('ui/RadarThreeHourCard.kt')
-        self.assertIn('val ink=MaterialTheme.colorScheme.onSurface',radar);self.assertIn('color=muted',radar)
+        self.assertIn('val ink=cards?.ink?:MaterialTheme.colorScheme.onSurface',radar);self.assertIn('color=muted',radar)
         for ink,bg in [('000000','FFFFFF'),('4B5563','D4E4ED'),('FFFFFF','1C1C1E'),('C7D4E0','1C1C1E'),('8A4300','D4E4ED')]:
             self.assertGreaterEqual(contrast(ink,bg),4.5,(ink,bg))
     def test_liquid_effect_samples_background_with_safe_fallback(self):

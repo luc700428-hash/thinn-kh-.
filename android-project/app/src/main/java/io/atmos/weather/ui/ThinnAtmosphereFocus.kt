@@ -55,7 +55,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
     }
     val shape = RoundedCornerShape(ThinnDesignTokens.radiusCard)
     Column(Modifier.fillMaxWidth().clip(shape)
-        .background(if(opaque) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
+        .background(LocalWeatherCardPalette.current?.brush ?: if(opaque) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
         .border(1.dp, ThinnOpticalMaterial.rim, shape)
         .semantics { contentDescription = "${location} 的天氣光景、風速與濕度資訊" }) {
         Box(Modifier.fillMaxWidth().height(170.dp)) {

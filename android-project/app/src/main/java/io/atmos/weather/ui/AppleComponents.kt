@@ -79,7 +79,7 @@ fun AppleGlassCard(
             Box(Modifier.matchParentSize().blur(blurSigma), content = backdrop)
         }
         Box(Modifier.matchParentSize().background(
-            if (!darkSurface) Brush.linearGradient(listOf(
+            LocalWeatherCardPalette.current?.brush ?: if (!darkSurface) Brush.linearGradient(listOf(
                 if(opaque) Color.White else Color.White.copy(alpha=.68f),
                 if(opaque) Color.White else Color.White.copy(alpha=.68f)))
             else if (opaque) Brush.linearGradient(listOf(Color(0xFF1C1C1E), Color(0xFF1C1C1E)))

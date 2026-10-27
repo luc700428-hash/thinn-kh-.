@@ -34,13 +34,15 @@ fun ThinnAtmospherePanel(
             .getBoolean("reduce_transparency", false)
     }
     val shape = RoundedCornerShape(ThinnDesignTokens.radiusCard)
+    val cards=LocalWeatherCardPalette.current
+    val glow=cards?.accent?:accent
     Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnBackdrop(reduceTransparency,ThinnDesignTokens.radiusCard)
-        .background(if(reduceTransparency) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
+        .background(cards?.brush ?: if(reduceTransparency) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
         .border(1.dp, ThinnOpticalMaterial.rim, shape)) {
         if(!reduceTransparency) Canvas(Modifier.matchParentSize()) {
             val center=Offset(size.width * .84f, size.height * .04f)
             val radius=size.width * .76f
-            drawCircle(Brush.radialGradient(listOf(accent.copy(alpha=.19f),accent.copy(alpha=.055f),Color.Transparent),
+            drawCircle(Brush.radialGradient(listOf(glow.copy(alpha=.11f),glow.copy(alpha=.035f),Color.Transparent),
                 center=center,radius=radius),radius=radius,center=center)
             for(i in 0..2) {
                 drawCircle(Color.White.copy(alpha=.065f-i*.014f),

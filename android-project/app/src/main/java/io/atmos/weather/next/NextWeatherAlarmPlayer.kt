@@ -6,7 +6,7 @@ import android.os.Looper
 import android.os.SystemClock
 import io.atmos.weather.alarm.AlarmWeatherReading
 import io.atmos.weather.alarm.WeatherAlarmNarration
-/** All six user themes use the alarm volume stream and bounded, sample-accurate PCM loops. */
+/** Fourteen musical palettes share the alarm stream, gentle rise and sample-accurate loops. */
 class NextWeatherAlarmPlayer private constructor(private val melody:NextLoopTrack,private val ambience:NextLoopTrack?,private val scene:WeatherScene?,private val preview:Boolean){
  companion object{
   fun scene(context:Context,reading:AlarmWeatherReading?):WeatherScene?{
@@ -25,7 +25,7 @@ class NextWeatherAlarmPlayer private constructor(private val melody:NextLoopTrac
  }
  private val handler=Handler(Looper.getMainLooper());private var started=SystemClock.elapsedRealtime();private var duck=1f;private var closed=false
  private fun volume(){val gain=if(preview).75f else WeatherWakePolicy.gain(SystemClock.elapsedRealtime()-started);melody.volume(gain*duck*.88f);ambience?.volume(gain*duck*WeatherWakePolicy.ambienceGain(scene))}
- private val fade=object:Runnable{override fun run(){if(closed)return;if(preview&&SystemClock.elapsedRealtime()-started>=12_000){close();return};volume();handler.postDelayed(this,if(SystemClock.elapsedRealtime()-started<18_000)80L else 250L)}}
+ private val fade=object:Runnable{override fun run(){if(closed)return;if(preview&&SystemClock.elapsedRealtime()-started>=20_000){close();return};volume();handler.postDelayed(this,if(SystemClock.elapsedRealtime()-started<18_000)80L else 250L)}}
  private fun begin(){started=SystemClock.elapsedRealtime();fade.run()}
  val isPlaying get()=!closed&&melody.isPlaying
  fun setMasterVolume(value:Float){duck=value.coerceIn(0f,1f);if(!closed)volume()}

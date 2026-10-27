@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.atmos.weather.domain.model.WeatherSnapshot
+import io.atmos.weather.ui.LocalWeatherCardPalette
 import kotlin.math.roundToInt
 
 private val white=Color.White
@@ -43,7 +44,7 @@ private val dim=Color.White.copy(alpha=.70f)
 @Composable
 fun WeatherDial(title:String, value:String, description:String, fraction:Float, tint:Color, modifier:Modifier=Modifier) {
     val shape=RoundedCornerShape(24.dp)
-    Column(modifier.fillMaxSize().background(white.copy(alpha=.10f),shape)
+    Column(modifier.fillMaxSize().background(LocalWeatherCardPalette.current?.fill?:white.copy(alpha=.10f),shape)
         .border(1.dp,white.copy(alpha=.15f),shape).padding(15.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             val graphic = when {

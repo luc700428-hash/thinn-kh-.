@@ -25,8 +25,8 @@ class ResultTests(unittest.TestCase):
             (root/'TEST-device.xml').write_text(text)
             return results.verify(root)
 
-    def test_requires_all_three_real_passing_results(self):
-        self.assertEqual(self.check_report(report(results.EXPECTED)), 3)
+    def test_requires_every_real_passing_result(self):
+        self.assertEqual(self.check_report(report(results.EXPECTED)), len(results.EXPECTED))
 
     def test_rejects_partial_or_empty_reports(self):
         for names in ([], sorted(results.EXPECTED)[:2]):
@@ -107,7 +107,7 @@ if mode=='success':
         process, _, _, evidence = self.run_fixture('success')
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(evidence['exit-code.txt'], b'0\n')
-        self.assertIn('3/3 passed', process.stdout)
+        self.assertIn(f'{len(results.EXPECTED)}/{len(results.EXPECTED)} passed', process.stdout)
 
     def test_physical_device_is_refused_before_test_or_log_clear(self):
         process, trace, ran, _ = self.run_fixture('success', qemu='0')

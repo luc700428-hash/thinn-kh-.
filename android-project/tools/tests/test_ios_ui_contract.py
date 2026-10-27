@@ -64,7 +64,7 @@ class IOSUIContractTests(unittest.TestCase):
         self.assertIn('ensureActive()',self.source('update/AppUpdater.kt'))
 
     def test_accessible_core_controls(self):
-        controls=self.source('ui/GlassControls.kt')
+        controls=self.source('ui/GlassControls.kt')+self.source('ui/LiquidBubbleSlider.kt')
         self.assertIn('Modifier.toggleable(',controls)
         self.assertIn('Role.Switch',controls)
         self.assertIn('setProgress {',controls)

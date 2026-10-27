@@ -14,7 +14,16 @@ class IOSUpgradeRulesTest {
  @Test fun invalidNumericMotionDoesNotCorruptSelection(){assertEquals(5,DrumWheelRules.move(5,0f,Float.NaN,60,true).value)}
  @Test fun monthChangesAndLeapYearsStayValid(){assertEquals(LocalDate.of(2026,2,28),DrumWheelRules.date(2026,2,31));assertEquals(LocalDate.of(2028,2,29),DrumWheelRules.date(2028,2,31));assertEquals(LocalDate.of(1900,2,28),DrumWheelRules.date(1900,2,29))}
  @Test fun noonAndMidnightAreCorrect(){assertEquals(0,DrumWheelRules.hour24(12,false));assertEquals(12,DrumWheelRules.hour24(12,true));assertEquals(13,DrumWheelRules.hour24(1,true))}
- @Test fun everyThemeResolvesAllWeatherArrangements(){assertEquals(6,WeatherWakePolicy.themes.size);for(t in WeatherWakePolicy.themes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${s.name.lowercase()}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}}
+ @Test fun everyThemeResolvesAllWeatherArrangements(){
+  assertEquals(14,WeatherWakePolicy.themes.size)
+  for(t in WeatherWakePolicy.originalThemes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${s.name.lowercase()}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}
+  for(t in WeatherWakePolicy.paletteThemes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${WeatherWakePolicy.paletteArrangement(s)}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}
+  assertEquals("snow",WeatherWakePolicy.paletteArrangement(WeatherScene.HEAVY_SNOW))
+  assertEquals("rain",WeatherWakePolicy.paletteArrangement(WeatherScene.SEVERE_THUNDERSTORM))
+  assertEquals("neutral",WeatherWakePolicy.paletteArrangement(null))
+  assertNull(WeatherScenes.musicAsset("../../invalid",WeatherScene.SUNNY))
+ }
+
  @Test fun denseFogSurvivesCachedClassification(){assertEquals(WeatherScene.DENSE_FOG,WeatherScenes.fromCachedName("FOG",45,100.0));assertEquals(WeatherScene.FOG,WeatherScenes.fromCachedName("FOG",45,null))}
  @Test fun personalAudioNeverGetsOverwritten(){assertNull(WeatherWakePolicy.theme("content://my/song"));assertNull(WeatherWakePolicy.theme("thinn://alarm/../../other"));assertEquals("dawn",WeatherWakePolicy.theme(null))}
  @Test fun wakeEnvelopeRisesAndStaysBounded(){var before=0f;for(t in 0L..18_000L step 100){val gain=WeatherWakePolicy.gain(t);assertTrue(gain>=before);before=gain};for(t in 18_000L..600_000L step 113)assertTrue(WeatherWakePolicy.gain(t) in .92f..1f);assertEquals(.18f,WeatherWakePolicy.gain(-100),.0001f)}

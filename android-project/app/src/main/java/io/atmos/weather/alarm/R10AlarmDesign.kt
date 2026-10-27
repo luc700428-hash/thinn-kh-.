@@ -72,6 +72,14 @@ object R10AlarmTones {
     const val prefix="thinn://alarm/"
     data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color)
     val choices=listOf(
+        Choice("guitar","晨光吉他","木吉他撥弦 · 94 BPM",Color(0xFFFFD7A0),Color(0xFF9D6454)),
+        Choice("flute","竹林笛語","竹笛三拍 · 88 BPM",Color(0xFF9CD8B7),Color(0xFF347B75)),
+        Choice("rhodes","雨窗爵士","電鋼琴與刷鼓 · 76 BPM",Color(0xFFB2C4E7),Color(0xFF4E618F)),
+        Choice("kalimba","雨滴拇指琴","交錯六拍 · 102 BPM",Color(0xFF9ADDDC),Color(0xFF357D9E)),
+        Choice("strings","山嵐弦樂","弦樂三拍 · 82 BPM",Color(0xFFC9B8DD),Color(0xFF76618D)),
+        Choice("musicbox","星露八音盒","晶亮八音盒 · 108 BPM",Color(0xFFECC1DC),Color(0xFF91649F)),
+        Choice("synth","極光合成","空氣合成器 · 84 BPM",Color(0xFF9BDCD5),Color(0xFF536FC1)),
+        Choice("groove","晴日律動","撥奏與輕鼓 · 118 BPM",Color(0xFFF6C18B),Color(0xFFC16670)),
         Choice("dawn","晨光序曲","鋼琴旋律 · 14 種天氣編曲",Color(0xFFEF7AB0),Color(0xFF9D428F)),
         Choice("rain","雨光節拍","柔鋼琴與明確節拍 · 天氣自適應",Color(0xFF90EFF3),Color(0xFF258FC1)),
         Choice("wood","森間晨行","木琴與撥弦 · 天氣自適應",Color(0xFF74D1B9),Color(0xFF286E69)),
@@ -88,7 +96,16 @@ object R10AlarmTones {
         }
         val rainy=reliable?.condition in setOf("RAIN","THUNDERSTORM","HAIL","SLEET","FREEZING_RAIN","SNOW","DRIZZLE","HEAVY_RAIN")
         val clear=reliable?.condition in setOf("CLEAR","MOSTLY_CLEAR","PARTLY_CLOUDY","SUNNY","FAIR")
+        val snowy=reliable?.condition in setOf("SNOW","SLEET")
         return when(id) {
+            "guitar" -> if(snowy) R.raw.thinn_alarm_guitar_snow else if(rainy) R.raw.thinn_alarm_guitar_rain else if(clear) R.raw.thinn_alarm_guitar_clear else R.raw.thinn_alarm_guitar
+            "flute" -> if(snowy) R.raw.thinn_alarm_flute_snow else if(rainy) R.raw.thinn_alarm_flute_rain else if(clear) R.raw.thinn_alarm_flute_clear else R.raw.thinn_alarm_flute
+            "rhodes" -> if(snowy) R.raw.thinn_alarm_rhodes_snow else if(rainy) R.raw.thinn_alarm_rhodes_rain else if(clear) R.raw.thinn_alarm_rhodes_clear else R.raw.thinn_alarm_rhodes
+            "kalimba" -> if(snowy) R.raw.thinn_alarm_kalimba_snow else if(rainy) R.raw.thinn_alarm_kalimba_rain else if(clear) R.raw.thinn_alarm_kalimba_clear else R.raw.thinn_alarm_kalimba
+            "strings" -> if(snowy) R.raw.thinn_alarm_strings_snow else if(rainy) R.raw.thinn_alarm_strings_rain else if(clear) R.raw.thinn_alarm_strings_clear else R.raw.thinn_alarm_strings
+            "musicbox" -> if(snowy) R.raw.thinn_alarm_musicbox_snow else if(rainy) R.raw.thinn_alarm_musicbox_rain else if(clear) R.raw.thinn_alarm_musicbox_clear else R.raw.thinn_alarm_musicbox
+            "synth" -> if(snowy) R.raw.thinn_alarm_synth_snow else if(rainy) R.raw.thinn_alarm_synth_rain else if(clear) R.raw.thinn_alarm_synth_clear else R.raw.thinn_alarm_synth
+            "groove" -> if(snowy) R.raw.thinn_alarm_groove_snow else if(rainy) R.raw.thinn_alarm_groove_rain else if(clear) R.raw.thinn_alarm_groove_clear else R.raw.thinn_alarm_groove
             "dawn" -> if(rainy) R.raw.thinn_alarm_dawn_rain else if(clear) R.raw.thinn_alarm_dawn_clear else R.raw.thinn_alarm_dawn
             "rain" -> if(rainy) R.raw.thinn_alarm_rain_rain else if(clear) R.raw.thinn_alarm_rain_clear else R.raw.thinn_alarm_rain
             "wood" -> if(rainy) R.raw.thinn_alarm_wood_rain else if(clear) R.raw.thinn_alarm_wood_clear else R.raw.thinn_alarm_wood
@@ -151,7 +168,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     var snoozeMinutes by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.snoozeMinutes?:9) }
     var chooseSnoozeMinutes by remember {mutableStateOf(false)}
     val focusManager=androidx.compose.ui.platform.LocalFocusManager.current
-    var uri by rememberSaveable(initial?.id) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+"dawn") }
+    var uri by rememberSaveable(initial?.id) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+(if(initial==null)"guitar" else "dawn")) }
     var choosing by remember { mutableStateOf(false) }
     var sheetShown by remember {mutableStateOf(false)}
     var closingSheet by remember {mutableStateOf(false)}
@@ -323,15 +340,15 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                 io.atmos.weather.ui.IOS27RoundControl("✓",onClick={preview?.release();preview=null;weatherPreview?.close();onChoose(active)},fill=amber,foreground=Color.White)
             }
             // Weather speech remains removed; the rebuilt suite uses melody and nature.
-            Text("專屬自然系鈴聲",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text("六款全新旋律，依有效天氣切換 14 種編曲與自然聲景。點選試聽 12 秒；資料過期時播放中性版本。",
+            Text("天氣旋律收藏",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold)
+            Text("新增 8 種音色，共 14 款旋律。吉他、笛、爵士、弦樂與電子拍，搭配有效天氣的自然聲景；點選即可試聽。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 R10AlarmTones.choices.chunked(2).forEach {row ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         row.forEach {choice->
                             val chosen=active==R10AlarmTones.prefix+choice.id
-                            Column(Modifier.weight(1f).height(176.dp).iosJellyPress().clip(RoundedCornerShape(22.dp))
+                            Column(Modifier.weight(1f).heightIn(min=184.dp).iosJellyPress().clip(RoundedCornerShape(22.dp))
                                 .background(Brush.linearGradient(listOf(choice.upper,choice.lower)))
                                 .border(if(chosen) 2.dp else 1.dp,if(chosen) Color.White else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
                                 .clickable {
@@ -384,6 +401,34 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
         val c=Offset(size.width*.54f,size.height*.50f)
         val r=size.minDimension*.30f
         when(id) {
+            "guitar" -> {
+                drawOval(Color.White.copy(alpha=.30f),c-Offset(r*.68f,r*.45f),androidx.compose.ui.geometry.Size(r*1.36f,r*1.35f))
+                drawCircle(Color.White.copy(alpha=.74f),r*.21f,c+Offset(0f,r*.15f))
+                for(i in -2..2)drawLine(Color.White.copy(alpha=.76f),c+Offset(i*r*.08f,-r),c+Offset(i*r*.08f,r*.75f),.7.dp.toPx())
+            }
+            "flute","kalimba" -> {
+                for(i in 0..5){val x=c.x-r*.8f+i*r*.32f;val h=r*(.85f+(i%3)*.24f)
+                    drawLine(Color.White.copy(alpha=.80f),Offset(x,c.y-h/2),Offset(x,c.y+h/2),if(id=="flute")5.dp.toPx() else 2.8.dp.toPx(),androidx.compose.ui.graphics.StrokeCap.Round)}
+            }
+            "rhodes" -> {
+                for(i in 0..6){val x=c.x-r+i*r*.29f
+                    drawRoundRect(Color.White.copy(alpha=.84f),Offset(x,c.y-r*.54f),androidx.compose.ui.geometry.Size(r*.24f,r*1.2f),androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
+                    if(i%3!=0)drawRect(Color(0xFF45597E),Offset(x-r*.045f,c.y-r*.54f),androidx.compose.ui.geometry.Size(r*.15f,r*.65f))}
+            }
+            "strings","synth" -> {
+                for(i in 0..4){val path=Path();for(j in 0..40){val x=c.x-r+j*r/20;val y=c.y+(i-2)*r*.30f+kotlin.math.sin(j*.16f+i*.5f)*r*.28f
+                    if(j==0)path.moveTo(x,y) else path.lineTo(x,y)}
+                    drawPath(path,Color.White.copy(alpha=.38f+i*.11f),style=Stroke(1.6.dp.toPx()))}
+            }
+            "musicbox" -> {
+                for(i in 0..7){val a=i*Math.PI/4;val point=c+Offset(kotlin.math.cos(a).toFloat()*r,kotlin.math.sin(a).toFloat()*r)
+                    drawLine(Color.White.copy(alpha=.80f),c,point,1.6.dp.toPx());drawCircle(Color.White.copy(alpha=.80f),r*.095f,point)}
+                drawCircle(Color.White.copy(alpha=.22f),r*.65f,c)
+            }
+            "groove" -> {
+                for(i in 0..7){val h=r*(.45f+((i*7)%5)*.30f);val x=c.x-r+i*r*.29f
+                    drawLine(Color.White.copy(alpha=.83f),Offset(x,c.y-h/2),Offset(x,c.y+h/2),4.dp.toPx(),androidx.compose.ui.graphics.StrokeCap.Round)}
+            }
             "dawn","fire" -> {
                 drawCircle(Color(0xFFFFF0AE).copy(alpha=.24f),r*1.28f,c)
                 drawCircle(Color(0xFFFFF5C8).copy(alpha=.95f),r*.74f,c)

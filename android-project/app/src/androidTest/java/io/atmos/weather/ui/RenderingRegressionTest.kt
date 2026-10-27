@@ -4,11 +4,15 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -60,6 +64,45 @@ class RenderingRegressionTest {
         Log.i("ThinnUiRegression",stage)
         val dir=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
         File(dir,"progress.txt").appendText("${Instant.now()} $stage\n")
+    }
+
+    @Test(timeout=120_000) fun bubbleSliderIsTransparentAndKeepsDragAndAccessibilityValues() {
+        checkpoint("bubble: compose transparent lens")
+        val value=mutableFloatStateOf(50f)
+        compose.setContent {
+            ThinnAppTheme {
+                Box(Modifier.width(320.dp).height(60.dp).testTag("bubble-background")) {
+                    Canvas(Modifier.matchParentSize()) {
+                        drawRect(Color.Magenta,size=Size(size.width/2,size.height))
+                        drawRect(Color.Green,topLeft=Offset(size.width/2,0f),size=Size(size.width/2,size.height))
+                    }
+                    GlassSlider(value.floatValue,{value.floatValue=it},Modifier.align(Alignment.Center).testTag("bubble-slider"),
+                        valueRange=0f..100f,steps=99)
+                }
+            }
+        }
+        frame()
+        val slider=compose.onNodeWithTag("bubble-slider")
+        slider.performSemanticsAction(SemanticsActions.SetProgress){assertTrue(it(37.4f))}
+        frame();assertEquals(37f,value.floatValue,0f)
+        slider.performTouchInput {
+            down(center)
+            moveTo(Offset(width*.96f,centerY),delayMillis=300)
+            up()
+        }
+        frame();assertTrue("Slider drag did not reach the end of its range",value.floatValue>=90f)
+        slider.performSemanticsAction(SemanticsActions.SetProgress){it(50f)}
+        frame()
+        val image=compose.onNodeWithTag("bubble-background").captureToImage()
+        val pixels=image.toPixelMap()
+        val left=pixels[(pixels.width*152/320),(pixels.height*22/60)]
+        val right=pixels[(pixels.width*168/320),(pixels.height*22/60)]
+        assertTrue("Bubble hid the magenta scene behind an opaque fill",left.red>left.green+.25f)
+        assertTrue("Bubble hid the green scene behind an opaque fill",right.green>right.red+.25f)
+        val directory=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
+        File(directory,"bubble-transparency.png").outputStream().use {image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
+        assertNull(CrashDiagnostics.graphics(context))
+        checkpoint("bubble: passed")
     }
 
     @Test(timeout=120_000) fun glassSamplingCannotPaintOverItsForegroundSiblings() {

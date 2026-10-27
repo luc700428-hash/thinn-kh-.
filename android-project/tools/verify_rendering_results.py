@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Require real passing device results for all three rendering regressions."""
+"""Require real passing device results for every rendering regression."""
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 
 CLASS = 'io.atmos.weather.ui.RenderingRegressionTest'
 EXPECTED = {
+    'bubbleSliderIsTransparentAndKeepsDragAndAccessibilityValues',
     'glassSamplingCannotPaintOverItsForegroundSiblings',
     'deferredChildRecordingCannotSampleItsOwnAncestor',
     'weatherScrollAndRepeatedSettingsNavigationKeepVisibleText',
@@ -32,6 +33,6 @@ def verify(root):
 
 if __name__ == '__main__':
     try:
-        print(f'Android rendering regression: {verify(sys.argv[1])}/3 passed, none skipped.')
+        print(f'Android rendering regression: {verify(sys.argv[1])}/{len(EXPECTED)} passed, none skipped.')
     except (ValueError, OSError, ET.ParseError) as error:
         raise SystemExit(f'Android UI evidence rejected: {error}')

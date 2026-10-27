@@ -29,10 +29,11 @@ import java.util.Locale
 /** Radar observation + 3-hour weather MODEL comparison. Neither is mislabelled as nowcasting. */
 @Composable
 fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
-    val ink=MaterialTheme.colorScheme.onSurface
-    val muted=if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF4B5563) else Color(0xFFC7D4E0)
-    val blue=MaterialTheme.colorScheme.primary
-    val warning=if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF8A4300) else Color(0xFFFFD6A8)
+    val cards=LocalWeatherCardPalette.current
+    val ink=cards?.ink?:MaterialTheme.colorScheme.onSurface
+    val muted=cards?.secondary?:if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF4B5563) else Color(0xFFC7D4E0)
+    val blue=cards?.accent?:MaterialTheme.colorScheme.primary
+    val warning=if(cards!=null)Color(0xFFFFD6A8) else if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF8A4300) else Color(0xFFFFD6A8)
     val lat=weather.city.coordinate.latitude
     val lon=weather.city.coordinate.longitude
     val supported=CwaRadarObservation.coverage(lat,lon)
@@ -112,5 +113,7 @@ fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
         Spacer(Modifier.height(5.dp))
         Text("雷達為歷史觀測；未來三小時是數值預報，並非衛星預測雲圖。",fontSize=14.sp,color=muted)
     }
-    if (showHistory) RadarHistoryDialog(onClose={showHistory=false})
+    if (showHistory) CompositionLocalProvider(LocalWeatherCardPalette provides null) {
+        RadarHistoryDialog(onClose={showHistory=false})
+    }
 }

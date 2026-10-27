@@ -38,8 +38,8 @@ import io.atmos.weather.haptics.LocalHapticEngine
 import io.atmos.weather.presentation.home.WeatherAppearance
 import kotlin.math.roundToInt
 
-private val ink:Color @Composable get()=MaterialTheme.colorScheme.onSurface
-private val soft:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
+private val ink:Color @Composable get()=LocalWeatherCardPalette.current?.ink?:MaterialTheme.colorScheme.onSurface
+private val soft:Color @Composable get()=LocalWeatherCardPalette.current?.secondary?:MaterialTheme.colorScheme.onSurfaceVariant
 private val outline=Color.White.copy(alpha=.28f)
 
 /** Content surfaces deliberately remain calm; only floating controls use the glass lens.
@@ -88,12 +88,12 @@ fun GlassToggle(label:String,description:String,value:Boolean,change:(Boolean)->
 }
 
 @Composable
-fun GlassTrackingSlider(title:String,value:Float,change:(Float)->Unit) {
+fun GlassTrackingSlider(title:String,value:Float,valueLabel:String?=null,change:(Float)->Unit) {
     val bounded=value.coerceIn(0f,1f)
     Column(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=8.dp)) {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
             Text(title,color=ink,fontSize=15.sp)
-            Text("${(bounded*100f).roundToInt()}%",color=soft,fontSize=15.sp)
+            Text(valueLabel?:"${(bounded*100f).roundToInt()}%",color=soft,fontSize=15.sp)
         }
         GlassSlider(bounded,change,modifier=Modifier.fillMaxWidth()
             .semantics { contentDescription=title })

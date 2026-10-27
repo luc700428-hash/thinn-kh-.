@@ -23,7 +23,7 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('javaScriptCanOpenWindowsAutomatically = false',page)
         self.assertIn('allowFileAccess = false',page)
     def test_a11y_controls_not_canvas_only(self):
-        controls=(JAVA/'ui/GlassControls.kt').read_text()
+        controls=(JAVA/'ui/GlassControls.kt').read_text()+(JAVA/'ui/LiquidBubbleSlider.kt').read_text()
         self.assertIn('Modifier.toggleable(',controls)
         self.assertIn('Role.Switch',controls)
         self.assertIn('setProgress {',controls)

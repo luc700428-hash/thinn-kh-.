@@ -200,101 +200,10 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
     }
 }
 
-/** Capsule track and a large optical thumb; full range & accessibility semantics are kept. */
+/** Shared clear bubble lens, adhering water tail and iridescent edge. */
 @Composable
 fun GlassSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier=Modifier,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f, steps:Int=0,
     onValueChangeFinished:(()->Unit)?=null, colors:SliderColors?=null,enabled:Boolean=true) {
-    val opaque=rememberAppleReduceTransparency()
-    val response=iosMotionResponse()
-    val haptics=LocalHapticEngine.current
-    val context=LocalContext.current
-    val reduce=rememberAppleReduceMotion()
-    val low=valueRange.start
-    val span=(valueRange.endInclusive-low).takeIf { it>0f } ?: 1f
-    val fraction=((value-low)/span).coerceIn(0f,1f)
-    val currentFraction by rememberUpdatedState(fraction)
-    var tracking by remember { mutableStateOf(false) }
-    val smooth by animateFloatAsState(fraction,animationSpec=tween(if(reduce || tracking) 0 else 115),label="膠囊滑桿進度")
-    val change by rememberUpdatedState(onValueChange)
-    val finish by rememberUpdatedState(onValueChangeFinished)
-    fun quantized(proposed:Float):Float {
-        val f=((proposed-low)/span).coerceIn(0f,1f)
-        val detents=(steps+1).coerceAtLeast(1)
-        return low+span*if(steps>0) (f*detents).roundToInt().toFloat()/detents else f
-    }
-    BoxWithConstraints(modifier.fillMaxWidth().heightIn(min=48.dp)
-        .then(if(enabled) Modifier
-            .pointerInput(low,span,steps) {
-                val halfThumb=27.dp.toPx()
-                fun mapped(x:Float)=quantized(low+span*((x-halfThumb)/(size.width-2f*halfThumb).coerceAtLeast(1f)).coerceIn(0f,1f))
-                detectTapGestures { offset ->
-                    change(mapped(offset.x))
-                    haptics?.play(HapticEngine.Event.TAP)
-                    finish?.invoke()
-                }
-            }
-            .pointerInput(low,span,steps) {
-                val halfThumb=27.dp.toPx()
-                var grabOffset=0f
-                detectHorizontalDragGestures(
-                    onDragStart={position ->
-                        tracking=true
-                        val center=halfThumb+(size.width-2*halfThumb)*currentFraction
-                        grabOffset=(position.x-center).takeIf {kotlin.math.abs(it)<=halfThumb} ?: 0f
-                    },
-                    onDragCancel={tracking=false;finish?.invoke()},
-                    onDragEnd={tracking=false;haptics?.play(HapticEngine.Event.RELEASE);finish?.invoke()},
-                    onHorizontalDrag={changePointer,_->
-                        change(quantized(low+span*((changePointer.position.x-grabOffset-halfThumb)/(size.width-2f*halfThumb).coerceAtLeast(1f)).coerceIn(0f,1f)))
-                        changePointer.consume()
-                    }
-                )
-            } else Modifier)
-        .semantics {
-            progressBarRangeInfo=androidx.compose.ui.semantics.ProgressBarRangeInfo(
-                value.coerceIn(valueRange.start,valueRange.endInclusive),valueRange,steps)
-            if(enabled) setProgress { proposed ->
-                change(quantized(proposed))
-                finish?.invoke()
-                true
-            }
-        },contentAlignment=Alignment.CenterStart) {
-        val thumbWidth=54.dp
-        val thumbHeight=34.dp
-        val travel=(maxWidth-thumbWidth).coerceAtLeast(0.dp)
-        val trackWidth=(maxWidth-thumbWidth).coerceAtLeast(0.dp)
-        val extension by animateFloatAsState(if(tracking && !reduce)1.12f else 1f,
-            if(reduce)tween(0) else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="光學滑塊形變")
-        val dark=androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f
-        val blue=colors?.activeTrackColor ?: if(dark)Color(0xFF0A84FF) else Color(0xFF007AFF)
-        val gray=colors?.inactiveTrackColor ?: if(dark)Color(0xFF48484A) else Color(0xFFD1D1D6)
-        val transparency=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
-            .getBoolean("reduce_transparency",false)
-        Box(Modifier.padding(horizontal=thumbWidth/2).fillMaxWidth().height(5.dp).clip(CircleShape)
-            .background(gray.copy(alpha=if(enabled) .65f else .3f)))
-        Box(Modifier.offset(x=thumbWidth/2).width(trackWidth*smooth).height(5.dp)
-            .clip(CircleShape).background(blue.copy(alpha=if(enabled)1f else .3f)))
-        Box(Modifier.offset(x=travel*smooth).size(thumbWidth,thumbHeight)
-            .graphicsLayer {scaleX=extension;scaleY=if(tracking && !reduce)1.03f else 1f;alpha=if(enabled)1f else .45f}
-            .shadow(if(tracking)14.dp else 8.dp,CircleShape,ambientColor=Color.Black.copy(alpha=.22f),spotColor=Color.Black.copy(alpha=.24f))
-            .clip(CircleShape)
-            .thinnBackdrop(transparency,999.dp,currentFraction)
-            // Foreground track caustics remain sharp over the guarded background sample.
-            .background(if(transparency)Brush.linearGradient(listOf(Color(0xFFF2F2F7),Color(0xFFE5E5EA)))
-                else Brush.linearGradient(listOf(Color.White.copy(alpha=if(dark).34f else .72f),
-                    Color.White.copy(alpha=if(dark).09f else .22f),Color.White.copy(alpha=if(dark).24f else .56f))))
-            .drawWithContent {
-                drawContent()
-                // Refracted section of the track bends and widens inside the transparent lens.
-                val cy=size.height/2
-                drawLine(blue.copy(alpha=.80f),Offset(2.dp.toPx(),cy),Offset(size.width*.50f,cy),
-                    7.dp.toPx(),StrokeCap.Round)
-                drawOval(Brush.radialGradient(listOf(Color.White.copy(alpha=.40f),Color.Transparent),
-                    center=Offset(size.width*.28f,size.height*.18f),radius=size.width*.5f),
-                    Offset(2.dp.toPx(),1.dp.toPx()),Size(size.width-4.dp.toPx(),size.height*.54f))
-                drawRoundRect(Brush.linearGradient(listOf(Color.White.copy(alpha=.92f),Color.White.copy(alpha=.12f),
-                    Color.White.copy(alpha=.55f))),cornerRadius=CornerRadius(size.height/2),style=Stroke(.75.dp.toPx()))
-            }.thinnSpecularEdge(999.dp))
-    }
+    LiquidBubbleSlider(value,onValueChange,modifier,valueRange,steps,onValueChangeFinished,colors,enabled)
 }
