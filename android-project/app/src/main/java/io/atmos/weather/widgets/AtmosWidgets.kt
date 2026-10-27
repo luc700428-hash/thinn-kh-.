@@ -45,8 +45,8 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     val size=LocalSize.current
     val prefs=context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
     val plan=WidgetLayoutPlan.create(size.width.value,size.height.value,prefs.getFloat("v4_fontscale",1f),context.resources.configuration.fontScale)
-    val family=when(variant){25->5;26->6;else->variant/5}
-    val index=when(variant){25->0;26->3;else->variant%5}
+    val family=when(variant){25->5;26->6;27->7;else->variant/5}
+    val index=when(variant){25->0;26->3;27->if(data.day)0 else 1;else->variant%5}
     val alert=data.alertRecent&&(family==4||family==5)
     val palette=WidgetGlassRenderer.palette(index,alert)
     val style=WidgetStyle(plan,palette,prefs.getFloat("v4_fontweight",400f)>=620f)
@@ -65,7 +65,8 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     Box(GlanceModifier.fillMaxSize().cornerRadius(28.dp).clickable(actionStartActivity(open))) {
         Image(ImageProvider(bitmap),null,GlanceModifier.fillMaxSize(),ContentScale.FillBounds)
         Column(GlanceModifier.fillMaxSize().padding(plan.padding.dp)) {
-            if(plan.strip) CompactWidget(context,family,data,style,animated)
+            if(family==7) BuddyContent(context,data,style,animated)
+            else if(plan.strip) CompactWidget(context,family,data,style,animated)
             else when(family) {
                 1->ForecastWidget(context,data,style)
                 2->DigitalClockWidget(context,data,style,animated)
@@ -80,12 +81,54 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
         }
     }
 }
+@Composable private fun BuddyContent(context:Context,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean) {
+    val p=s.plan
+    if(p.strip) {
+        Row(GlanceModifier.fillMaxSize(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+            BuddyScene(context,d,minOf(p.innerHeight,p.innerWidth*.43f),motion)
+            Spacer(GlanceModifier.width(5.dp))
+            Column(GlanceModifier.defaultWeight(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+                WText(d.city,s,s.soft,minOf(p.city,p.innerHeight*.26f))
+                WText(d.temperature,s,s.ink,minOf(30f,p.innerHeight*.51f),true)
+                if(p.innerWidth>170f)WText(d.description(),s,s.soft,p.caption)
+            }
+        }
+    } else if(p.wide) {
+        Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+            BuddyScene(context,d,minOf(p.innerHeight-(if(p.showFooter)27f else 0f),p.innerWidth*.48f,205f),motion)
+            Spacer(GlanceModifier.width(8.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                WText(d.city,s,s.ink,p.city,true);Spacer(GlanceModifier.height(5.dp))
+                WText(d.temperature,s,s.ink,minOf(p.hero,44f),true)
+                WText(d.description(),s,s.soft,p.body)
+                if(p.height>=200f){Spacer(GlanceModifier.height(7.dp));LiveClock(context,s,24f,false,p.innerWidth*.46f)}
+                if(p.height>=280f&&p.height<330f){Spacer(GlanceModifier.height(7.dp));WText(d.highLow,s,s.soft,p.caption,lines=2)}
+            }
+        }
+        if(p.height>=330f){Spacer(GlanceModifier.height(10.dp));HourlyRow(context,d,s);Spacer(GlanceModifier.height(4.dp));WText(d.highLow,s,s.soft,p.caption)}
+    } else {
+        Header(d,s)
+        if(p.height>=260f) {
+            Box(GlanceModifier.fillMaxWidth(),contentAlignment=Alignment.Center){BuddyScene(context,d,minOf(p.innerWidth,p.innerHeight*.49f,165f),motion)}
+            Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+                WText(d.temperature,s,s.ink,minOf(43f,p.hero),true);Spacer(GlanceModifier.width(7.dp));WText(d.description(),s,s.soft,p.body)
+            }
+            Spacer(GlanceModifier.height(6.dp));LiveClock(context,s,26f,false)
+        } else {
+            Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+                BuddyScene(context,d,minOf(p.innerWidth*.58f,p.innerHeight*.62f),motion)
+                WText(d.temperature,s,s.ink,minOf(32f,p.hero),true,GlanceModifier.defaultWeight())
+            }
+            WText(d.description(),s,s.soft,p.body)
+        }
+    }
+}
 @Composable private fun CompactWidget(context:Context,family:Int,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean) {
     val p=s.plan
     if((family==2||family==6)&&p.innerWidth<150f) {
         Column(GlanceModifier.fillMaxSize(),verticalAlignment=Alignment.Vertical.CenterVertically) {
             LiveClock(context,s,minOf(30f,p.innerHeight*.52f),false)
-            WText("${d.temperature} · ${d.condition.label()}",s,s.soft,minOf(p.caption,p.innerHeight*.24f))
+            WText("${d.temperature} · ${d.description()}",s,s.soft,minOf(p.caption,p.innerHeight*.24f))
         }
         return
     }
@@ -96,14 +139,14 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
         Column(GlanceModifier.defaultWeight(),verticalAlignment=Alignment.Vertical.CenterVertically) {
             if(family==2||family==6) {
                 LiveClock(context,s,minOf(32f,p.innerHeight*.54f),false,p.innerWidth-icon-8f)
-                WText("${d.temperature}  ${d.condition.label()}",s,s.soft,minOf(p.caption,p.innerHeight*.24f))
+                WText("${d.temperature}  ${d.description()}",s,s.soft,minOf(p.caption,p.innerHeight*.24f))
             } else if((family==4||family==5)&&d.alertRecent) {
                 WText("最新地震",s,s.soft,p.caption);WText(d.alert,s,s.ink,p.body,true)
             } else {
                 WText(d.city,s,s.soft,minOf(p.city,p.innerHeight*.27f))
                 Row(verticalAlignment=Alignment.Vertical.Bottom) {
                     WText(d.temperature,s,s.ink,minOf(p.hero,(p.innerWidth-icon-8f)/(d.temperature.length*.60f)))
-                    if(p.innerWidth>=240f) {Spacer(GlanceModifier.width(8.dp));WText(d.condition.label(),s,s.soft,p.body)}
+                    if(p.innerWidth>=240f) {Spacer(GlanceModifier.width(8.dp));WText(d.description(),s,s.soft,p.body)}
                 }
             }
         }
@@ -123,7 +166,7 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
         Column(GlanceModifier.defaultWeight()) {
             WText(d.temperature,s,s.ink,temperatureSize)
-            if(!compact)WText(d.condition.label(),s,s.soft,p.body)
+            if(!compact)WText(d.description(),s,s.soft,p.body)
         }
         WeatherGlyph(context,d.condition,d.day,glyph,motion)
     }
@@ -138,7 +181,7 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
 @Composable private fun ForecastWidget(context:Context,d:OpticalWidgetData,s:WidgetStyle) {
     val p=s.plan
     Header(d,s,"逐時天氣");Spacer(GlanceModifier.height(5.dp))
-    WText("${d.temperature}  ${d.condition.label()}",s,s.soft,p.body)
+    WText("${d.temperature}  ${d.description()}",s,s.soft,p.body)
     Spacer(GlanceModifier.height(if(p.height>=210f)14.dp else 7.dp));HourlyRow(context,d,s)
     if(p.height>=310f) {Spacer(GlanceModifier.height(14.dp));StatRow(listOf("降雨" to d.rain,"風速" to d.wind),s)}
 }
@@ -162,7 +205,7 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     Spacer(GlanceModifier.height(7.dp))
     Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
         WeatherGlyph(context,d.condition,d.day,28f,motion);Spacer(GlanceModifier.width(5.dp))
-        WText("${d.temperature}  ${d.condition.label()}",s,s.ink,p.body)
+        WText("${d.temperature}  ${d.description()}",s,s.ink,p.body)
     }
     if(p.height>=235f) {Spacer(GlanceModifier.height(12.dp));WText("下一個鬧鐘",s,s.soft,p.caption);WText(d.alarm,s,s.ink,p.body,true)}
     val base=d.alarmAt?.let{WidgetPresentationRules.countdownBase(it,System.currentTimeMillis(),SystemClock.elapsedRealtime())}
@@ -210,14 +253,14 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
                 WText(d.city,s,s.ink,p.city,true)
                 LiveClock(context,s,minOf(if(p.height<220f)32f else 42f,p.innerWidth*.14f),p.height>=220f)
                 Spacer(GlanceModifier.height(8.dp));WeatherGlyph(context,d.condition,d.day,if(p.height<220f)24f else 32f,motion)
-                WText("${d.temperature}  ${d.condition.label()}",s,s.ink,p.body)
+                WText("${d.temperature}  ${d.description()}",s,s.ink,p.body)
             }
         }
         if(p.height>=410f) {Spacer(GlanceModifier.height(12.dp));HourlyRow(context,d,s)}
     } else {
         WText(d.city,s,s.ink,p.city,true);Spacer(GlanceModifier.height(5.dp))
         Box(GlanceModifier.fillMaxWidth(),contentAlignment=Alignment.Center) {AnalogFace(context,p.dial.coerceAtMost(220f))}
-        Spacer(GlanceModifier.height(5.dp));WText("${d.temperature}  ${d.condition.label()}",s,s.ink,p.body)
+        Spacer(GlanceModifier.height(5.dp));WText("${d.temperature}  ${d.description()}",s,s.ink,p.body)
     }
 }
 @Composable private fun LiveClock(context:Context,s:WidgetStyle,size:Float,date:Boolean,availableWidth:Float=s.plan.innerWidth) {
@@ -263,3 +306,5 @@ internal fun WeatherCondition.label()=when(this) {
     WeatherCondition.HAZE->"霾";WeatherCondition.DUST,WeatherCondition.DUST_STORM->"揚塵";WeatherCondition.RAIN->"降雨";WeatherCondition.SNOW->"下雪"
     WeatherCondition.THUNDERSTORM->"雷雨";WeatherCondition.SLEET->"雨夾雪";WeatherCondition.FREEZING_RAIN->"凍雨";WeatherCondition.HAIL->"冰雹";else->"等待同步"
 }
+
+internal fun OpticalWidgetData.description()=io.atmos.weather.domain.model.WeatherDescriptions.label(condition,weatherCode,null,day)

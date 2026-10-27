@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +34,9 @@ import kotlinx.coroutines.withContext
     GlassToggle("顯示資料時間","保留快取及過期狀態",stamp){stamp=it;changed("widget_show_updated",it)};GlassDivider()
     GlassToggle("顯示即將到來的事項","天氣時鐘版面中的下一個私人事項",agenda){agenda=it;changed("widget_show_agenda",it)}
    }
-   Text("長按桌面加入小工具，可選即時天氣、逐時預報、天氣時鐘、氣象數據與安心資訊，以及五種配色。調整大小會改變資訊密度。",color=palette.onSurfaceVariant,fontSize=14.sp)
+   Text("長按桌面加入小工具，可選即時天氣、逐時預報、天氣時鐘、氣象數據與安心資訊，以及五種配色與 Q 版天氣夥伴。調整大小會改變資訊密度。",color=palette.onSurfaceVariant,fontSize=14.sp)
+   Text("Q 版夥伴會依天氣與日夜變換角色。漂浮與光暈由桌面播放，眨眼、視線依每次更新變化；雨滴與落地水花共用時間軸。實際動畫流暢度由桌面程式管理。",color=palette.onSurfaceVariant,fontSize=14.sp)
+   GlassButton(onClick={WidgetSync.refreshCached(ctx)},modifier=Modifier.fillMaxWidth()){Text("讓天氣夥伴換個表情")}
    GlassButton(onClick={WidgetSync.request(ctx)},modifier=Modifier.fillMaxWidth()){Text("同步桌面天氣")}
    Text("小米超級島",color=palette.onSurfaceVariant,fontSize=14.sp)
    IOSV25SettingsGroup{GlassToggle("鬧鐘與天氣詳細資訊","僅附加有效天氣快取，保留真實標籤及操作",weather){weather=it;p.edit().putBoolean("island_weather_details",it).apply()}}

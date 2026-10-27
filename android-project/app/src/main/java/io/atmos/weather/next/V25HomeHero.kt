@@ -11,7 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -59,8 +59,8 @@ fun V25HomeHero(
             else listOf(Color(0xC8406177),Color(0x9D233D55),Color(0xC61A2A3E))))
         .border(1.dp,Color.White.copy(alpha=if(reduceTransparency) .15f else .4f),radius),
         horizontalAlignment=Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().height(226.dp),contentAlignment=Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxWidth().heightIn(min=226.dp).padding(vertical=12.dp),contentAlignment=Alignment.Center) {
+            Canvas(Modifier.matchParentSize()) {
                 if(!reduceTransparency) {
                     drawCircle(brush=Brush.radialGradient(
                         colors=listOf(glow.copy(alpha=.36f*phase),glow.copy(alpha=.08f),Color.Transparent),

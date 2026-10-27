@@ -29,7 +29,8 @@ class R3FiveUserReports(unittest.TestCase):
 
     def test_crash_diagnostics_from_weather_screen(self):
         self.assertIn('CrashDiagnostics.install(this)',source('MainActivity.kt'))
-        self.assertIn('CrashDiagnostics.last(context)',source('presentation/home/WeatherHomeScreen.kt'))
+        self.assertNotIn('CrashDiagnostics.last(context)',source('presentation/home/WeatherHomeScreen.kt'))
+        self.assertIn('CrashDiagnostics.last(ctx)',source('presentation/home/SettingsDiagnosticsPage.kt'))
         self.assertIn('複製崩潰紀錄',source('presentation/home/SettingsDiagnosticsPage.kt'))
 
     def test_detection_toggles_not_forced_disabled(self):

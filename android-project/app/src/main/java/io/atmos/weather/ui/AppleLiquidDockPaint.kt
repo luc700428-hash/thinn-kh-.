@@ -35,7 +35,7 @@ fun BoxScope.AppleLiquidDockPaint(
         animationSpec=if(dragging || reduceMotion)snap() else spring(dampingRatio=.82f,stiffness=280f),
         label="dock-continuous-position")
     val tail by animateFloatAsState(location,animationSpec=if(reduceMotion)snap()
-        else spring(dampingRatio=.78f,stiffness=110f),label="dock-equal-liquid-tail")
+        else spring(dampingRatio=.88f,stiffness=62f),label="dock-equal-liquid-tail")
     val light=MaterialTheme.colorScheme.background.red>.5f
     Canvas(modifier.matchParentSize().onSizeChanged {widthPx=it.width}) {
         val shape=DockLiquidGeometry.shape(size.width,size.height,density,tabCount,location,
@@ -63,9 +63,11 @@ fun BoxScope.AppleLiquidDockPaint(
             }
         }
         clipRect {
-            drawPath(liquid,if(light)Color(0xFFE1E1E8).copy(alpha=.66f) else Color(0xFF9A9AA0).copy(alpha=.32f))
+            drawPath(liquid,if(light)Color.White.copy(alpha=.19f) else Color.White.copy(alpha=.10f))
             drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=if(light).45f else .17f),
                 Color.Transparent,Color.White.copy(alpha=.07f)),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)))
+            val rainbow=Brush.sweepGradient(listOf(Color(0x887BDFFF),Color(0x667F91FF),Color(0x77EBA9DB),Color(0x66FFE1A8),Color(0x887BDFFF)),Offset((x+tx)/2,y))
+            drawPath(liquid,rainbow,style=Stroke(.85.dp.toPx()))
             drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=.65f),
                 Color.White.copy(alpha=.15f),Color.Transparent),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)),style=Stroke(.65.dp.toPx()))
         }

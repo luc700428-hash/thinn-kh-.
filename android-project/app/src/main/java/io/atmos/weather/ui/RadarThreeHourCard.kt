@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material3.Text
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,7 +28,7 @@ import java.util.Locale
 
 /** Radar observation + 3-hour weather MODEL comparison. Neither is mislabelled as nowcasting. */
 @Composable
-fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
+fun RadarThreeHourCard(weather:WeatherSnapshot) {
     val cards=LocalWeatherCardPalette.current
     val ink=cards?.ink?:MaterialTheme.colorScheme.onSurface
     val muted=cards?.secondary?:if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF4B5563) else Color(0xFFC7D4E0)
@@ -75,10 +75,10 @@ fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
             Spacer(Modifier.height(8.dp))
             val age=(System.currentTimeMillis()-observation.fetchedAt)/60000
             Text("中央氣象署雷達實際觀測圖 · ${if(age<15)"已取得近期圖資" else "快取 ${age} 分鐘前"}",fontSize=14.sp,color=ink)
-            Text("藍色標記為選擇的城市位置；雷達回波不等於地面降雨量。",fontSize=14.sp,color=muted)
+            Text("藍色標記為選擇城市的示意位置；雷達回波不等於地面降雨量。",fontSize=14.sp,color=muted)
         } else {
             Text(when {
-                !supported -> "目前選取地點超出臺灣雷達圖範圍，僅提供氣象預報。"
+                !supported -> "選取地點超出中央氣象署雷達圖範圍，可開啟下方的 App 內雷達。"
                 !attempted -> "正在讀取中央氣象署雷達觀測圖…"
                 else -> "暫時無法取得雷達圖資；預報仍可獨立使用。"
             },fontSize=14.sp,color=warning)
@@ -107,13 +107,11 @@ fun RadarThreeHourCard(weather:WeatherSnapshot,openCwaRadar:()->Unit) {
             }
         }
         Spacer(Modifier.height(10.dp))
-        GlassAction("歷史 2 小時降雨雷達", "RainViewer 實況圖層、時間軸，每 5 分鐘檢查",onClick={showHistory=true})
-        Spacer(Modifier.height(8.dp))
-        GlassAction("開啟中央氣象署資料", "官方雷達觀測來源與原始時間",onClick=openCwaRadar)
+        GlassAction("在 App 內操作降雨雷達", "近 2 小時回波 · 縮放、拖曳與播放",onClick={showHistory=true})
         Spacer(Modifier.height(5.dp))
         Text("雷達為歷史觀測；未來三小時是數值預報，並非衛星預測雲圖。",fontSize=14.sp,color=muted)
     }
     if (showHistory) CompositionLocalProvider(LocalWeatherCardPalette provides null) {
-        RadarHistoryDialog(onClose={showHistory=false})
+        RadarHistoryDialog(onClose={showHistory=false},latitude=lat,longitude=lon)
     }
 }

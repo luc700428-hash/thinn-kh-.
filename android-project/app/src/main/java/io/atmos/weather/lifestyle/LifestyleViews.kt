@@ -6,6 +6,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import io.atmos.weather.ui.AppText as Text
 import io.atmos.weather.ui.GlassSlider as Slider
 import io.atmos.weather.ui.GlassSwitch as Switch
 import io.atmos.weather.ui.GlassButton as Button

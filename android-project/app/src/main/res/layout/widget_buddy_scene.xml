@@ -1,0 +1,6 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/buddy_root" android:layout_width="match_parent" android:layout_height="match_parent" android:clipChildren="false">
+ <ViewFlipper android:id="@+id/buddy_float" android:layout_width="match_parent" android:layout_height="match_parent" android:autoStart="true" android:flipInterval="4200" android:inAnimation="@anim/widget_buddy_float" android:outAnimation="@anim/widget_buddy_hide" android:clipChildren="false"/>
+ <ViewFlipper android:id="@+id/buddy_rain" android:layout_width="match_parent" android:layout_height="match_parent" android:autoStart="true" android:flipInterval="50"/>
+ <ViewFlipper android:id="@+id/buddy_ground" android:layout_width="match_parent" android:layout_height="match_parent" android:autoStart="true" android:flipInterval="50"/>
+ <ImageView android:id="@+id/buddy_still" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitCenter" android:visibility="gone"/>
+</FrameLayout>

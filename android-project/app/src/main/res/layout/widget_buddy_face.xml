@@ -1,0 +1,4 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
+ <ImageView android:id="@+id/buddy_body" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitCenter"/>
+ <ViewFlipper android:id="@+id/buddy_eyes" android:layout_width="match_parent" android:layout_height="match_parent" android:autoStart="true" android:flipInterval="300"/>
+</FrameLayout>

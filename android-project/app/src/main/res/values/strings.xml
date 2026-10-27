@@ -28,4 +28,5 @@
 <string name="widget_24_description">thinn-khì · 天氣與安心 · 暖沙金</string>
 <string name="widget_precision_description">thinn-khì · 光曜指針時鐘與天氣</string>
 <string name="widget_safety_description">thinn-khì · 安心天氣與地震</string>
+    <string name="widget_buddy_description">thinn-khì Q 版天氣夥伴</string>
 </resources>

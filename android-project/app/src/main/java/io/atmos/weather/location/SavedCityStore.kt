@@ -20,7 +20,7 @@ object SavedCityStore {
                 val lat=c.optDouble("lat",Double.NaN)
                 val lon=c.optDouble("lon",Double.NaN)
                 if(id.isBlank() || name.isBlank() || !lat.isFinite() || !lon.isFinite()) null
-                else WeatherCity(id,name,GeoPoint(lat,lon))
+                else LocationLabels.city(WeatherCity(id,name,GeoPoint(lat,lon)))
             }.distinctBy { it.id }.take(30)
         }.getOrDefault(emptyList())
     }

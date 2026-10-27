@@ -57,6 +57,10 @@
             android:exported="false">
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
         </service>
+        <receiver android:name=".widgets.WeatherBuddyWidgetReceiver" android:exported="true" android:label="@string/widget_buddy_description">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/thinn_buddy_widget_info" />
+        </receiver>
         <receiver android:name=".widgets.PrecisionClockWidgetReceiver" android:exported="true" android:label="@string/widget_precision_description">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/thinn_precision_clock_info" />

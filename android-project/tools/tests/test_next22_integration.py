@@ -30,7 +30,7 @@ class NextIntegratedSafety(unittest.TestCase):
         self.assertIn('notice.summary.ifBlank',s)
         self.assertIn('WeatherCardPalettes.alert.brush',s)
         self.assertNotIn('近 24 小時官方 RSS 公告；是否仍有效請核對官方資訊',s)
-        self.assertIn('LaunchedEffect(query)',s)
+        self.assertIn('LaunchedEffect(query)',(HOME.parents[2]/'ui/CitySearchSheet.kt').read_text())
 
     def test_manual_official_ota_does_not_falsely_verify_22_items(self):
         g=json.loads(GATE.read_text(encoding='utf-8'))

@@ -7,7 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.runtime.*
@@ -170,25 +170,8 @@ fun InteractiveForecast(
 }
 
 /** WMO code interpretation. These labels refer to forecast conditions, not warnings. */
-fun hourlyWeatherName(code: Int?, hour: Int): String = when(code) {
-    0 -> if(hour < 6 || hour >= 18) "晴朗夜晚" else "晴天"
-    1 -> if(hour < 6 || hour >= 18) "夜間晴時多雲" else "晴時多雲"
-    2 -> "局部多雲"
-    3 -> "陰天"
-    45,48 -> "起霧"
-    51,53,55,56,57 -> "毛毛雨"
-    61,66 -> "小雨"
-    63 -> "中雨"
-    65,67,82 -> "大雨"
-    80 -> "短暫小雨"
-    81 -> "短暫中雨"
-    71,77,85 -> "小雪"
-    73 -> "中雪"
-    75,86 -> "大雪"
-    95 -> "雷雨"
-    96,99 -> "強雷雨"
-    else -> "天氣變化"
-}
+fun hourlyWeatherName(code:Int?,hour:Int):String = io.atmos.weather.domain.model.WeatherDescriptions.fromCode(code,hour in 6..17)?:"天氣資料不足"
+
 fun weatherVector(code:Int?,hour:Int):androidx.compose.ui.graphics.vector.ImageVector = when(code) {
     0,1 -> if(hour < 6 || hour >= 18) Icons.Rounded.NightsStay else Icons.Rounded.WbSunny
     2,3 -> Icons.Rounded.Cloud

@@ -94,9 +94,14 @@ private val thinnShapes = Shapes(
     extraLarge=RoundedCornerShape(28.dp)
 )
 
+private val LocalReadingBaseDensity=androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.ui.unit.Density?> {null}
+
 @Composable
 fun ThinnAppTheme(content:@Composable ()->Unit) {
     HighRefreshHost()
+    val reading=rememberAppAppearance()
+    val baseDensity=LocalReadingBaseDensity.current?:androidx.compose.ui.platform.LocalDensity.current
+
     // Theme tokens never rewrite weather-data-driven sky colors or domain state.
     // Existing feature screens still hardcode white foreground; keep dark until
     // all light-screen text/colors pass contrast and device regression tests.
@@ -120,7 +125,11 @@ fun ThinnAppTheme(content:@Composable ()->Unit) {
         typography=thinnTypography, shapes=thinnShapes) {
         // Compose Foundation >=1.8: remove Android stretch/glow globally.
         // Add our own rubber-band effect ONLY to appropriate scroll surfaces.
-        CompositionLocalProvider(LocalOverscrollFactory provides null,
+        CompositionLocalProvider(
+            LocalReadingBaseDensity provides baseDensity,
+            io.atmos.weather.presentation.home.LocalAppearance provides reading,
+            androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density,baseDensity.fontScale*reading.fontScale),
+            LocalOverscrollFactory provides null,
             androidx.compose.foundation.LocalIndication provides IOSPressIndication) {
             androidx.compose.material3.ProvideTextStyle(value=thinnTypography.bodyMedium) { content() }
         }

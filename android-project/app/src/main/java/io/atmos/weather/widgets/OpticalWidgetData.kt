@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 data class WidgetHour(val time:String,val temperature:String,val rain:String,val code:Int?,val day:Boolean=true)
 data class OpticalWidgetData(val city:String,val temperature:String,val condition:WeatherCondition,val day:Boolean,val stamp:Long,
  val age:WidgetPresentationRules.Freshness,val rain:String,val highLow:String,val humidity:String,val wind:String,val air:String,val uv:String,
- val hours:List<WidgetHour>,val alarm:String,val alarmAt:Long?,val task:String,val alert:String,val alertDetail:String,val alertRecent:Boolean){
+ val hours:List<WidgetHour>,val alarm:String,val alarmAt:Long?,val task:String,val alert:String,val alertDetail:String,val alertRecent:Boolean,val weatherCode:Int?=null){
  companion object{
   fun read(context:Context):OpticalWidgetData{
    val p=context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE);val now=System.currentTimeMillis();val stamp=p.getLong("widget_time",0);val age=WidgetPresentationRules.freshness(minOf(stamp,p.getLong("widget_observed_time",stamp)),now)
@@ -27,7 +27,7 @@ data class OpticalWidgetData(val city:String,val temperature:String,val conditio
     if(available)runCatching{WeatherCondition.valueOf(p.getString("widget_condition","UNKNOWN")?:"UNKNOWN")}.getOrDefault(WeatherCondition.UNKNOWN) else WeatherCondition.UNKNOWN,p.getBoolean("widget_day",true),stamp,age,int("widget_rain","%"),
     if(available&&p.contains("widget_high"))"最高 ${p.getInt("widget_high",0)}°  最低 ${p.getInt("widget_low",0)}°" else "高低溫尚未同步",int("widget_humidity","%"),p.getFloat("widget_wind",-1f).let{if(available&&it>=0)"%.1f m/s".format(it) else "—"},int("widget_air",""),p.getFloat("widget_uv",-1f).let{if(available&&it>=0)"%.1f".format(it) else "—"},if(available)hours else emptyList(),
     alarm?.let{it.first.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))+" · "+it.second.title}?:"尚未設定鬧鐘",alarm?.first?.toEpochMilli(),task?.let{"${it.month}/${it.day} ${"%02d:%02d".format(it.hour,it.minute)} · ${it.title}"}?:"沒有即將到來的事項",
-    if(recent)push.getString("title","最近地震報告")?:"最近地震報告" else "尚無近期地震推播",if(recent)push.getString("detail","")?:"" else "請以官方災防告警為準",recent)
+    if(recent)push.getString("title","最近地震報告")?:"最近地震報告" else "尚無近期地震推播",if(recent)push.getString("detail","")?:"" else "請以官方災防告警為準",recent,if(available)p.getInt("widget_weather_code",-1).takeIf{it>=0} else null)
   }
  }
 }

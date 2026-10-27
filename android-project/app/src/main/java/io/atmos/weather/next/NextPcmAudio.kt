@@ -97,7 +97,7 @@ internal class NextAmbienceController(private val context:Context) {
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var track: NextLoopTrack? = null
     private var incomingTrack: NextLoopTrack? = null
-    private var scene: WeatherScene? = null
+    private var scene: String? = null
     private var enabled = false
     private var active = false
     private var level = .15f
@@ -107,12 +107,12 @@ internal class NextAmbienceController(private val context:Context) {
     fun foreground(on:Boolean) {
         active=on
         if(closed)return
-        if(!on || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
+        if(!on) {
             track?.pause();incomingTrack?.pause()
             runCatching{thunder?.release()};thunder=null
         } else if(enabled) {track?.resume();incomingTrack?.resume()}
     }
-    suspend fun configure(next:WeatherScene?, on:Boolean, volume:Float) = lock.withLock {
+    suspend fun configure(next:String?, on:Boolean, volume:Float) = lock.withLock {
         if(closed)return@withLock
         enabled=on
         level=volume.coerceIn(0f,.55f)
@@ -122,18 +122,18 @@ internal class NextAmbienceController(private val context:Context) {
             foreground(active)
             return@withLock
         }
-        val incoming=NextLoopTrack.open(context,WeatherScenes.ambienceAsset(next),AudioAttributes.USAGE_MEDIA)
+        val incoming=NextLoopTrack.open(context,next,AudioAttributes.USAGE_MEDIA)
             ?: return@withLock
         incomingTrack=incoming
         val old=track
-        val playing=active && audio.ringerMode == AudioManager.RINGER_MODE_NORMAL
+        val playing=active
         if(playing) incoming.start(0f)
         try {
             // 1.12 seconds; cos/sin are equal-power instead of linear loudness dipping.
             repeat(28) { i ->
                 if(closed)return@withLock
                 val p=(i+1)/28f
-                val to=if(active && enabled && audio.ringerMode == AudioManager.RINGER_MODE_NORMAL) level else 0f
+                val to=if(active && enabled) level else 0f
                 incoming.volume((to*sin(p*Math.PI/2).toFloat()).coerceIn(0f,1f))
                 old?.volume((to*cos(p*Math.PI/2).toFloat()).coerceIn(0f,1f))
                 delay(40)
@@ -145,14 +145,14 @@ internal class NextAmbienceController(private val context:Context) {
             } else {
                 old?.close()
                 track=incoming;incomingTrack=null;scene=next
-                val audible=active && enabled && audio.ringerMode == AudioManager.RINGER_MODE_NORMAL
+                val audible=active && enabled
                 incoming.volume(if(audible)level else 0f)
                 if(!audible)incoming.pause()
             }
         }
     }
     fun thunderCue() {
-        if(closed || !active || !enabled || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        if(closed || !active || !enabled) return
         runCatching { thunder?.release() }
         thunder = MediaPlayer.create(context,R.raw.thunder_strike)?.apply {
             setVolume((level*.45f).coerceIn(0f,.24f),(level*.45f).coerceIn(0f,.24f))
@@ -170,16 +170,12 @@ internal class NextAmbienceController(private val context:Context) {
 
 @Composable
 fun NextWeatherAmbience(condition:WeatherCondition?,enabled:Boolean,volume:Float,
-                        weatherCode:Int?=null, visibilityM:Double?=null, thunderCue:Int=0) {
+                        weatherCode:Int?=null, visibilityM:Double?=null, thunderCue:Int=0,isNight:Boolean=false) {
     val context=LocalContext.current
     val owner=LocalLifecycleOwner.current
     val controller=remember(context){NextAmbienceController(context)}
     val scene=WeatherScenes.classify(condition,weatherCode,visibilityM)
-    // Unclassified conditions (overcast/unknown) continue using the original ambient audio,
-    // not misleading sunny audio and never silence an already supported scene.
-    if(scene == null) {
-        WeatherAudio(condition,enabled,volume,weatherCode,thunderCue)
-    }
+    val path=AmbientSoundPolicy.path(condition,scene,isNight)
     DisposableEffect(controller,owner) {
         val listener=LifecycleEventObserver {_,event ->
             if(event==Lifecycle.Event.ON_START) controller.foreground(true)
@@ -189,7 +185,7 @@ fun NextWeatherAmbience(condition:WeatherCondition?,enabled:Boolean,volume:Float
         controller.foreground(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         onDispose {owner.lifecycle.removeObserver(listener);controller.close()}
     }
-    LaunchedEffect(controller,scene,enabled,volume) {controller.configure(scene,enabled && scene!=null,volume)}
+    LaunchedEffect(controller,path,enabled,volume) {controller.configure(path,enabled && path!=null,volume)}
     LaunchedEffect(controller,thunderCue) {
         if(thunderCue > 0 && enabled && scene in listOf(WeatherScene.THUNDERSTORM,WeatherScene.SEVERE_THUNDERSTORM))
             controller.thunderCue()

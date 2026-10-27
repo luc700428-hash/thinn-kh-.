@@ -36,7 +36,7 @@ object WidgetSync {
             AtmosWidget10(), AtmosWidget11(), AtmosWidget12(), AtmosWidget13(), AtmosWidget14(),
             AtmosWidget15(), AtmosWidget16(), AtmosWidget17(), AtmosWidget18(), AtmosWidget19(),
             AtmosWidget20(), AtmosWidget21(), AtmosWidget22(), AtmosWidget23(), AtmosWidget24(),
-            SafetyWidget(),PrecisionClockWidget()
+            SafetyWidget(),PrecisionClockWidget(),WeatherBuddyWidget()
         )
         for(widget in widgets) {
             try{ widget.updateAll(context) }

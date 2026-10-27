@@ -126,7 +126,7 @@ fun GlassOutlinedTextField(value:String,onValueChange:(String)->Unit,
         .background(if(dark){if(focused)Color(0xFF333337) else Color(0xFF252528)} else Color(0xFFE9E9EE)).thinnSpecularEdge(18.dp).padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
         leadingIcon?.let{it();Spacer(Modifier.width(10.dp))}
         BasicTextField(value=value,onValueChange=onValueChange,singleLine=singleLine,keyboardOptions=keyboardOptions,keyboardActions=keyboardActions,
-            textStyle=TextStyle(color=fieldInk,fontSize=17.sp),cursorBrush=SolidColor(Color(0xFF0A84FF)),modifier=Modifier.weight(1f).onFocusChanged{focused=it.isFocused},
+            textStyle=TextStyle(color=fieldInk,fontSize=17.sp,fontFamily=io.atmos.weather.presentation.home.LocalAppearance.current.family,fontWeight=androidx.compose.ui.text.font.FontWeight(io.atmos.weather.presentation.home.LocalAppearance.current.fontWeight.toInt().coerceIn(100,900))),cursorBrush=SolidColor(Color(0xFF0A84FF)),modifier=Modifier.weight(1f).onFocusChanged{focused=it.isFocused},
             decorationBox={inner->Box{if(value.isEmpty())(placeholder?:label)?.invoke();inner()}})
     }
 

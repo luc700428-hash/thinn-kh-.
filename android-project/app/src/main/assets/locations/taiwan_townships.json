@@ -1,0 +1,6275 @@
+{
+  "schema": 1,
+  "generated": "2026-10-27",
+  "note": "Representative township coordinates, not user GPS or exact street addresses.",
+  "sources": [
+    {
+      "name": "National Land Surveying and Mapping Center: county/township names",
+      "url": "https://api.nlsc.gov.tw/other/ListCounty"
+    },
+    {
+      "name": "GeoNames: representative coordinates and aliases",
+      "url": "https://download.geonames.org/export/dump/TW.zip",
+      "license": "CC BY 4.0",
+      "attribution": "GeoNames.org"
+    }
+  ],
+  "places": [
+    {
+      "id": "tw-town-A01",
+      "name": "台灣 · 臺北市 · 松山區",
+      "lat": 25.05,
+      "lon": 121.55,
+      "aliases": [
+        "Songshan District",
+        "Songshan",
+        "Songshan Chyu",
+        "Songshan Cyu",
+        "Songshan Qu",
+        "Sung-shan",
+        "Sung-shan Ch'u",
+        "Sung-shan Ch’ü",
+        "song shan qu",
+        "松山區"
+      ]
+    },
+    {
+      "id": "tw-town-A02",
+      "name": "台灣 · 臺北市 · 大安區",
+      "lat": 25.03333,
+      "lon": 121.53333,
+      "aliases": [
+        "Daan District",
+        "Da'an Chyu",
+        "Da'an Qu",
+        "Da-an Cyu",
+        "Daan",
+        "Da’an Qu",
+        "Ta-an",
+        "Ta-an Ch'u",
+        "Ta-an Ch’ü",
+        "da an qu",
+        "大安區"
+      ]
+    },
+    {
+      "id": "tw-town-A03",
+      "name": "台灣 · 臺北市 · 中正區",
+      "lat": 25.04097,
+      "lon": 121.51634,
+      "aliases": [
+        "Zhongzheng District",
+        "Ch'eng-chung Ch'u",
+        "Chung-cheng",
+        "Chung-cheng Ch'u",
+        "Chung-cheng Ch’ü",
+        "Ch’eng-chung Ch’ü",
+        "Jhongjheng Cyu",
+        "Zhongzheng",
+        "Zhongzheng Qu",
+        "zhong zheng qu",
+        "中正區"
+      ]
+    },
+    {
+      "id": "tw-town-A05",
+      "name": "台灣 · 臺北市 · 萬華區",
+      "lat": 25.02937,
+      "lon": 121.49735,
+      "aliases": [
+        "Wanhua District",
+        "Wanhua",
+        "wan hua qu",
+        "萬華區"
+      ]
+    },
+    {
+      "id": "tw-town-A09",
+      "name": "台灣 · 臺北市 · 大同區",
+      "lat": 25.06609,
+      "lon": 121.51551,
+      "aliases": [
+        "Datong District",
+        "Datong",
+        "Datong Cyu",
+        "Datong Qu",
+        "Ta-t'ung",
+        "Ta-t'ung Ch'u",
+        "Ta-t’ung",
+        "Ta-t’ung Ch’ü",
+        "da tong qu",
+        "大同區"
+      ]
+    },
+    {
+      "id": "tw-town-A10",
+      "name": "台灣 · 臺北市 · 中山區",
+      "lat": 25.06667,
+      "lon": 121.53333,
+      "aliases": [
+        "Zhongshan District",
+        "Chung-shan",
+        "Chung-shan Ch'u",
+        "Chung-shan Ch’ü",
+        "Jhongshan Cyu",
+        "Zhongshan",
+        "Zhongshan Qu",
+        "zhong shan qu",
+        "中山區"
+      ]
+    },
+    {
+      "id": "tw-town-A11",
+      "name": "台灣 · 臺北市 · 文山區",
+      "lat": 25.0,
+      "lon": 121.55,
+      "aliases": [
+        "Wenshan District",
+        "Chin-mei-ch'u",
+        "Chin-mei-ch’ü",
+        "Ching-mei Ch'u",
+        "Ching-mei Ch’ü",
+        "Wen-shan",
+        "Wen-shan Ch'u",
+        "Wen-shan Ch’ü",
+        "Wenshan",
+        "Wenshan Qu",
+        "Wunshan Cyu",
+        "wen shan qu",
+        "文山區"
+      ]
+    },
+    {
+      "id": "tw-town-A13",
+      "name": "台灣 · 臺北市 · 南港區",
+      "lat": 25.03333,
+      "lon": 121.6,
+      "aliases": [
+        "Nangang District",
+        "Nan-kang",
+        "Nan-kang Ch'u",
+        "Nan-kang Ch’ü",
+        "Nangang",
+        "Nangang Chyu",
+        "Nangang Cyu",
+        "Nangang Qu",
+        "nan gang qu",
+        "南港區"
+      ]
+    },
+    {
+      "id": "tw-town-A14",
+      "name": "台灣 · 臺北市 · 內湖區",
+      "lat": 25.08333,
+      "lon": 121.58333,
+      "aliases": [
+        "Neihu District",
+        "Nei-hu",
+        "Nei-hu Ch'u",
+        "Nei-hu Ch’ü",
+        "Neihu",
+        "Neihu Cyu",
+        "Neihu Qu",
+        "nei hu qu",
+        "內湖區"
+      ]
+    },
+    {
+      "id": "tw-town-A15",
+      "name": "台灣 · 臺北市 · 士林區",
+      "lat": 25.13333,
+      "lon": 121.55,
+      "aliases": [
+        "Shilin District",
+        "Shih-lin",
+        "Shih-lin Ch'u",
+        "Shih-lin Ch’ü",
+        "Shihlin Cyu",
+        "Shilin",
+        "Shilin Qu",
+        "shi lin qu",
+        "士林區"
+      ]
+    },
+    {
+      "id": "tw-town-A16",
+      "name": "台灣 · 臺北市 · 北投區",
+      "lat": 25.15,
+      "lon": 121.51667,
+      "aliases": [
+        "Beitou District",
+        "Beitou",
+        "Beitou Cyu",
+        "Beitou Qu",
+        "Pei-t'ou",
+        "Pei-t'ou Ch'u",
+        "Pei-t’ou",
+        "Pei-t’ou Ch’ü",
+        "bei tou qu",
+        "北投區"
+      ]
+    },
+    {
+      "id": "tw-town-A17",
+      "name": "台灣 · 臺北市 · 信義區",
+      "lat": 25.03042,
+      "lon": 121.56336,
+      "aliases": [
+        "Xinyi District",
+        "Hsin-i",
+        "Sinyi",
+        "Sinyi Chyu",
+        "Sinyi Cyu",
+        "Xinyi",
+        "Xinyi Qu",
+        "xin yi",
+        "xin yi qu",
+        "信義",
+        "信義區"
+      ]
+    },
+    {
+      "id": "tw-town-B01",
+      "name": "台灣 · 臺中市 · 中區",
+      "lat": 24.1418,
+      "lon": 120.68053,
+      "aliases": [
+        "Zhong District",
+        "Zhong",
+        "zhong qu",
+        "中區"
+      ]
+    },
+    {
+      "id": "tw-town-B02",
+      "name": "台灣 · 臺中市 · 東區",
+      "lat": 24.13743,
+      "lon": 120.69703,
+      "aliases": [
+        "E. District",
+        "East",
+        "dong qu",
+        "東區"
+      ]
+    },
+    {
+      "id": "tw-town-B03",
+      "name": "台灣 · 臺中市 · 南區",
+      "lat": 24.12118,
+      "lon": 120.66465,
+      "aliases": [
+        "S. District",
+        "South",
+        "South District",
+        "nan qu",
+        "南區"
+      ]
+    },
+    {
+      "id": "tw-town-B04",
+      "name": "台灣 · 臺中市 · 西區",
+      "lat": 24.14392,
+      "lon": 120.66467,
+      "aliases": [
+        "W. District",
+        "West",
+        "xi qu",
+        "西區"
+      ]
+    },
+    {
+      "id": "tw-town-B05",
+      "name": "台灣 · 臺中市 · 北區",
+      "lat": 24.15878,
+      "lon": 120.68075,
+      "aliases": [
+        "N. District",
+        "North",
+        "bei qu",
+        "北區"
+      ]
+    },
+    {
+      "id": "tw-town-B06",
+      "name": "台灣 · 臺中市 · 西屯區",
+      "lat": 24.17432,
+      "lon": 120.62576,
+      "aliases": [
+        "Xitun District",
+        "Hsi-an Li",
+        "Hsi-t'un",
+        "Hsi-t'un Li",
+        "Hsi-t’un",
+        "Hsi-t’un Li",
+        "Situn Li",
+        "Xitun",
+        "Xitun Li",
+        "xi tun li",
+        "xi tun qu",
+        "西屯區",
+        "西屯里"
+      ]
+    },
+    {
+      "id": "tw-town-B07",
+      "name": "台灣 · 臺中市 · 南屯區",
+      "lat": 24.14157,
+      "lon": 120.61795,
+      "aliases": [
+        "Nantun District",
+        "Nantun",
+        "nan tun qu",
+        "南屯區"
+      ]
+    },
+    {
+      "id": "tw-town-B08",
+      "name": "台灣 · 臺中市 · 北屯區",
+      "lat": 24.1841,
+      "lon": 120.7362,
+      "aliases": [
+        "Beitun District",
+        "Beitun",
+        "bei tun qu",
+        "北屯區"
+      ]
+    },
+    {
+      "id": "tw-town-B09",
+      "name": "台灣 · 臺中市 · 豐原區",
+      "lat": 24.25,
+      "lon": 120.73333,
+      "aliases": [
+        "Fengyuan District",
+        "Feng-yuan",
+        "Feng-yuan Chen",
+        "Feng-yuan Shih",
+        "Feng-yüan",
+        "Feng-yüan Chen",
+        "Feng-yüan Shih",
+        "Fengyuan",
+        "Fengyuan Shi",
+        "Fongyuan Shih",
+        "feng yuan qu",
+        "feng yuan shi",
+        "豐原區",
+        "豐原市"
+      ]
+    },
+    {
+      "id": "tw-town-B10",
+      "name": "台灣 · 臺中市 · 東勢區",
+      "lat": 24.25028,
+      "lon": 120.83333,
+      "aliases": [
+        "Dongshi District",
+        "Dongshi",
+        "Dongshi Zhen",
+        "Dongshih Jhen",
+        "Tung-shih",
+        "Tung-shih Chen",
+        "dong shi qu",
+        "dong shi zhen",
+        "東勢區",
+        "東勢鎭"
+      ]
+    },
+    {
+      "id": "tw-town-B11",
+      "name": "台灣 · 臺中市 · 大甲區",
+      "lat": 24.36194,
+      "lon": 120.62833,
+      "aliases": [
+        "Dajia District",
+        "Dajia",
+        "Dajia Jhen",
+        "Dajia Zhen",
+        "Ta-chia",
+        "Ta-chia Chen",
+        "da jia qu",
+        "da jia zhen",
+        "大甲區",
+        "大甲鎭"
+      ]
+    },
+    {
+      "id": "tw-town-B12",
+      "name": "台灣 · 臺中市 · 清水區",
+      "lat": 24.27361,
+      "lon": 120.58,
+      "aliases": [
+        "Qingshui District",
+        "Ch'ing-shui",
+        "Ch'ing-shui Chen",
+        "Ch’ing-shui",
+        "Ch’ing-shui Chen",
+        "Cingshuei Jhen",
+        "Qingshui",
+        "Qingshui Zhen",
+        "qing shui qu",
+        "qing shui zhen",
+        "清水區",
+        "清水鎭"
+      ]
+    },
+    {
+      "id": "tw-town-B13",
+      "name": "台灣 · 臺中市 · 沙鹿區",
+      "lat": 24.23722,
+      "lon": 120.56028,
+      "aliases": [
+        "Shalu District",
+        "Sha-lu",
+        "Sha-lu Chen",
+        "Shalu",
+        "Shalu Jhen",
+        "Shalu Zhen",
+        "sha lu qu",
+        "sha lu zhen",
+        "沙鹿區",
+        "沙鹿鎮"
+      ]
+    },
+    {
+      "id": "tw-town-B14",
+      "name": "台灣 · 臺中市 · 梧棲區",
+      "lat": 24.25639,
+      "lon": 120.53194,
+      "aliases": [
+        "Wuqi District",
+        "Wu-ch'i",
+        "Wu-ch'i Chen",
+        "Wu-ch’i",
+        "Wu-ch’i Chen",
+        "Wuci Jhen",
+        "Wuqi",
+        "Wuqi Zhen",
+        "wu qi qu",
+        "wu qi zhen",
+        "梧棲區",
+        "梧棲鎮"
+      ]
+    },
+    {
+      "id": "tw-town-B15",
+      "name": "台灣 · 臺中市 · 后里區",
+      "lat": 24.31667,
+      "lon": 120.7,
+      "aliases": [
+        "Houli District",
+        "Hou-li",
+        "Hou-li Hsiang",
+        "Houli",
+        "Houli Siang",
+        "Houli Xiang",
+        "hou li qu",
+        "hou li xiang",
+        "后里區",
+        "后里鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B16",
+      "name": "台灣 · 臺中市 · 神岡區",
+      "lat": 24.26667,
+      "lon": 120.66667,
+      "aliases": [
+        "Shengang District",
+        "Shen-kang",
+        "Shen-kang Hsiang",
+        "Shengang",
+        "Shengang Siang",
+        "Shengang Xiang",
+        "shen gang qu",
+        "shen gang xiang",
+        "神岡區",
+        "神岡鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B17",
+      "name": "台灣 · 臺中市 · 潭子區",
+      "lat": 24.21611,
+      "lon": 120.70611,
+      "aliases": [
+        "Tanzi District",
+        "T'an-tzu",
+        "T'an-tzu Hsiang",
+        "Tanzi",
+        "Tanzi Xiang",
+        "Tanzih Siang",
+        "T’an-tzu",
+        "T’an-tzu Hsiang",
+        "tan zi qu",
+        "tan zi xiang",
+        "潭子區",
+        "潭子鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B18",
+      "name": "台灣 · 臺中市 · 大雅區",
+      "lat": 24.22417,
+      "lon": 120.64778,
+      "aliases": [
+        "Daya District",
+        "Daya",
+        "Daya Siang",
+        "Daya Xiang",
+        "Ta-ya",
+        "Ta-ya Hsiang",
+        "da ya qu",
+        "da ya xiang",
+        "大雅區",
+        "大雅鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B19",
+      "name": "台灣 · 臺中市 · 新社區",
+      "lat": 24.18333,
+      "lon": 120.81667,
+      "aliases": [
+        "Xinshe District",
+        "Hsin-she",
+        "Hsin-she Hsiang",
+        "Sinshe Siang",
+        "Xinshe",
+        "Xinshe Xiang",
+        "xin she qu",
+        "xin she xiang",
+        "新社區",
+        "新社鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B20",
+      "name": "台灣 · 臺中市 · 石岡區",
+      "lat": 24.26667,
+      "lon": 120.78333,
+      "aliases": [
+        "Shigang District",
+        "Shigang",
+        "Shigang Xiang",
+        "Shih-kang",
+        "Shih-kang Hsiang",
+        "Shihgang Siang",
+        "shi gang qu",
+        "shi gang xiang",
+        "石岡區",
+        "石岡鄕"
+      ]
+    },
+    {
+      "id": "tw-town-B21",
+      "name": "台灣 · 臺中市 · 外埔區",
+      "lat": 24.33333,
+      "lon": 120.65,
+      "aliases": [
+        "Waipu District",
+        "Wai-pu",
+        "Wai-pu Hsiang",
+        "Waibu Siang",
+        "Waibu Xiang",
+        "Waipu",
+        "wai bu qu",
+        "wai bu xiang",
+        "外埔區",
+        "外埔鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B22",
+      "name": "台灣 · 臺中市 · 大安區",
+      "lat": 24.36667,
+      "lon": 120.58333,
+      "aliases": [
+        "Daan District",
+        "Da'an Siang",
+        "Da'an Xiang",
+        "Daan",
+        "Da’an Siang",
+        "Da’an Xiang",
+        "Ta-an",
+        "Ta-an Hsiang",
+        "da an qu",
+        "da an xiang",
+        "大安區",
+        "大安鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B23",
+      "name": "台灣 · 臺中市 · 烏日區",
+      "lat": 24.08333,
+      "lon": 120.61667,
+      "aliases": [
+        "Wuri District",
+        "Wu-jih",
+        "Wu-jih Hsiang",
+        "Wuri",
+        "Wuri Xiang",
+        "Wurih Siang",
+        "wu ri qu",
+        "wu ri xiang",
+        "烏日區",
+        "烏日鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B24",
+      "name": "台灣 · 臺中市 · 大肚區",
+      "lat": 24.15139,
+      "lon": 120.54639,
+      "aliases": [
+        "Dadu District",
+        "Dadu",
+        "Dadu Siang",
+        "Dadu Xiang",
+        "Ta-tu",
+        "Ta-tu Hsiang",
+        "da du qu",
+        "da du xiang",
+        "大肚區",
+        "大肚鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B25",
+      "name": "台灣 · 臺中市 · 龍井區",
+      "lat": 24.19444,
+      "lon": 120.54639,
+      "aliases": [
+        "Longjing District",
+        "Longjing",
+        "Longjing Siang",
+        "Longjing Xiang",
+        "Lung-Ching",
+        "Lung-Ching Hsiang",
+        "long jing qu",
+        "long jing xiang",
+        "龍井區",
+        "龍井鄉"
+      ]
+    },
+    {
+      "id": "tw-town-B26",
+      "name": "台灣 · 臺中市 · 霧峰區",
+      "lat": 24.05,
+      "lon": 120.71667,
+      "aliases": [
+        "Wufeng District",
+        "Wu-feng",
+        "Wu-feng Hsiang",
+        "Wufeng",
+        "Wufeng Xiang",
+        "Wufong Siang",
+        "wu feng qu",
+        "霧峰區"
+      ]
+    },
+    {
+      "id": "tw-town-B27",
+      "name": "台灣 · 臺中市 · 太平區",
+      "lat": 24.11667,
+      "lon": 120.76667,
+      "aliases": [
+        "Taiping District",
+        "T'ai-p'ing",
+        "T'ai-p'ing Hsiang",
+        "T'ai-p'ing Shih",
+        "Taiping",
+        "Taiping Shi",
+        "Taiping Shih",
+        "T’ai-p’ing",
+        "T’ai-p’ing Hsiang",
+        "T’ai-p’ing Shih",
+        "tai ping qu",
+        "tai ping shi",
+        "太平區",
+        "太平市"
+      ]
+    },
+    {
+      "id": "tw-town-B28",
+      "name": "台灣 · 臺中市 · 大里區",
+      "lat": 24.09833,
+      "lon": 120.68583,
+      "aliases": [
+        "Dali District",
+        "Dali",
+        "Dali Shi",
+        "Ta-li",
+        "Ta-li Hsiang",
+        "Ta-li Shih",
+        "Tali Shih",
+        "da li qu",
+        "da li shi",
+        "大里區",
+        "大里市"
+      ]
+    },
+    {
+      "id": "tw-town-B29",
+      "name": "台灣 · 臺中市 · 和平區",
+      "lat": 24.28333,
+      "lon": 121.16667,
+      "aliases": [
+        "Heping District",
+        "Heping",
+        "Heping Siang",
+        "Heping Xiang",
+        "Ho-p'ing",
+        "Ho-p'ing Hsiang",
+        "Ho-p’ing",
+        "Ho-p’ing Hsiang",
+        "he ping qu",
+        "he ping xiang",
+        "和平區",
+        "和平鄉"
+      ]
+    },
+    {
+      "id": "tw-town-C01",
+      "name": "台灣 · 基隆市 · 中正區",
+      "lat": 25.14223,
+      "lon": 121.76762,
+      "aliases": [
+        "Zhongzheng District",
+        "Chung-cheng Chu",
+        "Chung-cheng Chü",
+        "Zhongzheng",
+        "Zhongzheng Qu",
+        "zhong zheng qu",
+        "中正區"
+      ]
+    },
+    {
+      "id": "tw-town-C02",
+      "name": "台灣 · 基隆市 · 七堵區",
+      "lat": 25.10972,
+      "lon": 121.68365,
+      "aliases": [
+        "Qidu District",
+        "Qidu",
+        "qi du qu",
+        "七堵區"
+      ]
+    },
+    {
+      "id": "tw-town-C03",
+      "name": "台灣 · 基隆市 · 暖暖區",
+      "lat": 25.08103,
+      "lon": 121.74476,
+      "aliases": [
+        "Nuannuan District",
+        "Nuannuan",
+        "nuan nuan qu",
+        "暖暖區"
+      ]
+    },
+    {
+      "id": "tw-town-C04",
+      "name": "台灣 · 基隆市 · 仁愛區",
+      "lat": 25.12,
+      "lon": 121.74333,
+      "aliases": [
+        "Renai District",
+        "Renai",
+        "ren ai qu",
+        "仁愛區"
+      ]
+    },
+    {
+      "id": "tw-town-C05",
+      "name": "台灣 · 基隆市 · 中山區",
+      "lat": 25.15009,
+      "lon": 121.7329,
+      "aliases": [
+        "Zhongshan District",
+        "Zhongshan",
+        "zhong shan qu",
+        "中山區"
+      ]
+    },
+    {
+      "id": "tw-town-C06",
+      "name": "台灣 · 基隆市 · 安樂區",
+      "lat": 25.14847,
+      "lon": 121.69998,
+      "aliases": [
+        "Anle District",
+        "Anle",
+        "an le qu",
+        "安樂區"
+      ]
+    },
+    {
+      "id": "tw-town-C07",
+      "name": "台灣 · 基隆市 · 信義區",
+      "lat": 25.12586,
+      "lon": 121.77263,
+      "aliases": [
+        "Xinyi District",
+        "Xinyi",
+        "xin yi qu",
+        "信義區"
+      ]
+    },
+    {
+      "id": "tw-town-D01",
+      "name": "台灣 · 臺南市 · 東區",
+      "lat": 22.98189,
+      "lon": 120.22819,
+      "aliases": [
+        "E. District",
+        "East",
+        "dong qu",
+        "東區"
+      ]
+    },
+    {
+      "id": "tw-town-D02",
+      "name": "台灣 · 臺南市 · 南區",
+      "lat": 22.95574,
+      "lon": 120.18993,
+      "aliases": [
+        "S. District",
+        "South",
+        "nan qu",
+        "南區"
+      ]
+    },
+    {
+      "id": "tw-town-D04",
+      "name": "台灣 · 臺南市 · 北區",
+      "lat": 23.01011,
+      "lon": 120.20592,
+      "aliases": [
+        "N. District",
+        "North",
+        "bei qu",
+        "北區"
+      ]
+    },
+    {
+      "id": "tw-town-D06",
+      "name": "台灣 · 臺南市 · 安南區",
+      "lat": 23.04877,
+      "lon": 120.1526,
+      "aliases": [
+        "Annan District",
+        "Annan",
+        "an nan qu",
+        "安南區"
+      ]
+    },
+    {
+      "id": "tw-town-D07",
+      "name": "台灣 · 臺南市 · 安平區",
+      "lat": 22.9898,
+      "lon": 120.16422,
+      "aliases": [
+        "Anping District",
+        "Anping",
+        "an ping qu",
+        "安平區"
+      ]
+    },
+    {
+      "id": "tw-town-D08",
+      "name": "台灣 · 臺南市 · 中西區",
+      "lat": 22.99528,
+      "lon": 120.19355,
+      "aliases": [
+        "Zhongxi District",
+        "West Central District",
+        "Zhongxi",
+        "zhong xi qu",
+        "中西區"
+      ]
+    },
+    {
+      "id": "tw-town-D09",
+      "name": "台灣 · 臺南市 · 新營區",
+      "lat": 23.3,
+      "lon": 120.28333,
+      "aliases": [
+        "Xinying District",
+        "Hsin-ying",
+        "Hsin-ying Chen",
+        "Hsin-ying Shih",
+        "Sinying Shih",
+        "Xinying",
+        "Xinying Shi",
+        "xin ying qu",
+        "xin ying shi",
+        "新營區",
+        "新營市"
+      ]
+    },
+    {
+      "id": "tw-town-D10",
+      "name": "台灣 · 臺南市 · 鹽水區",
+      "lat": 23.3,
+      "lon": 120.233,
+      "aliases": [
+        "Yanshui District",
+        "Yanshuei Jhen",
+        "Yanshui",
+        "Yanshui Zhen",
+        "Yen-shui",
+        "Yen-shui Chen",
+        "yan shui qu",
+        "yan shui zhen",
+        "鹽水區",
+        "鹽水鎮"
+      ]
+    },
+    {
+      "id": "tw-town-D11",
+      "name": "台灣 · 臺南市 · 柳營區",
+      "lat": 23.28333,
+      "lon": 120.35,
+      "aliases": [
+        "Liuying District",
+        "Liouying Siang",
+        "Liu-ying",
+        "Liu-ying Hsiang",
+        "Liuying",
+        "Liuying Xiang",
+        "liu ying qu",
+        "liu ying xiang",
+        "柳營區",
+        "柳營鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D12",
+      "name": "台灣 · 臺南市 · 白河區",
+      "lat": 23.36667,
+      "lon": 120.45,
+      "aliases": [
+        "Baihe District",
+        "Baihe",
+        "Baihe Jhen",
+        "Baihe Zhen",
+        "Pai-ho",
+        "Pai-ho Chen",
+        "bai he qu",
+        "bai he zhen",
+        "白河區",
+        "白河鎮"
+      ]
+    },
+    {
+      "id": "tw-town-D13",
+      "name": "台灣 · 臺南市 · 後壁區",
+      "lat": 23.36667,
+      "lon": 120.35,
+      "aliases": [
+        "Houbi District",
+        "Hou-pi",
+        "Hou-pi Hsiang",
+        "Houbi",
+        "Houbi Siang",
+        "Houbi Xiang",
+        "hou bi qu",
+        "hou bi xiang",
+        "後壁區",
+        "後壁鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D14",
+      "name": "台灣 · 臺南市 · 東山區",
+      "lat": 23.28333,
+      "lon": 120.43333,
+      "aliases": [
+        "Dongshan District",
+        "Dongshan",
+        "Dongshan Siang",
+        "Dongshan Xiang",
+        "Tung-shan",
+        "Tung-shan Hsiang",
+        "dong shan qu",
+        "dong shan xiang",
+        "東山區",
+        "東山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D15",
+      "name": "台灣 · 臺南市 · 麻豆區",
+      "lat": 23.2,
+      "lon": 120.23333,
+      "aliases": [
+        "Madou District",
+        "Ma-tou",
+        "Ma-tou Chen",
+        "Madou",
+        "Madou Jhen",
+        "Madou Zhen",
+        "ma dou qu",
+        "ma dou zhen",
+        "麻豆區",
+        "麻豆鎮"
+      ]
+    },
+    {
+      "id": "tw-town-D16",
+      "name": "台灣 · 臺南市 · 下營區",
+      "lat": 23.23333,
+      "lon": 120.26667,
+      "aliases": [
+        "Xiaying District",
+        "Hsia-ying",
+        "Hsia-ying Hsiang",
+        "Siaying Siang",
+        "Xiaying",
+        "Xiaying Xiang",
+        "xia ying qu",
+        "xia ying xiang",
+        "下營區",
+        "下營鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D17",
+      "name": "台灣 · 臺南市 · 六甲區",
+      "lat": 23.21667,
+      "lon": 120.36667,
+      "aliases": [
+        "Liujia District",
+        "Lioujia Siang",
+        "Liu-chia",
+        "Liu-chia Hsiang",
+        "Liujia",
+        "Liujia Xiang",
+        "liu jia qu",
+        "liu jia xiang",
+        "六甲區",
+        "六甲鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D18",
+      "name": "台灣 · 臺南市 · 官田區",
+      "lat": 23.2,
+      "lon": 120.33333,
+      "aliases": [
+        "Guantian District",
+        "Guantian",
+        "Guantian Siang",
+        "Guantian Xiang",
+        "Kuan-t'ien",
+        "Kuan-t'ien Hsiang",
+        "Kuan-t’ien",
+        "Kuan-t’ien Hsiang",
+        "guan tian qu",
+        "guan tian xiang",
+        "官田區",
+        "官田鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D19",
+      "name": "台灣 · 臺南市 · 大內區",
+      "lat": 23.15,
+      "lon": 120.38333,
+      "aliases": [
+        "Danei District",
+        "Danei",
+        "Danei Siang",
+        "Danei Xiang",
+        "Ta-nei",
+        "Ta-nei Hsiang",
+        "da nei qu",
+        "da nei xiang",
+        "大內區",
+        "大內鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D20",
+      "name": "台灣 · 臺南市 · 佳里區",
+      "lat": 23.16667,
+      "lon": 120.18333,
+      "aliases": [
+        "Jiali District",
+        "Chia-li",
+        "Chia-li Chen",
+        "Jiali",
+        "Jiali Jhen",
+        "Jiali Zhen",
+        "jia li qu",
+        "jia li zhen",
+        "佳裏鎮",
+        "佳里區"
+      ]
+    },
+    {
+      "id": "tw-town-D21",
+      "name": "台灣 · 臺南市 · 西港區",
+      "lat": 23.13333,
+      "lon": 120.2,
+      "aliases": [
+        "Xigang District",
+        "Hsi-kang",
+        "Hsi-kang Hsiang",
+        "Sigang Siang",
+        "Xigang",
+        "Xigang Xiang",
+        "xi gang qu",
+        "xi gang xiang",
+        "西港區",
+        "西港鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D22",
+      "name": "台灣 · 臺南市 · 七股區",
+      "lat": 23.13333,
+      "lon": 120.11667,
+      "aliases": [
+        "Qigu District",
+        "Ch'i-ku",
+        "Ch'i-ku Hsiang",
+        "Ch’i-ku",
+        "Ch’i-ku Hsiang",
+        "Cigu Siang",
+        "Qigu",
+        "Qigu Xiang",
+        "qi gu qu",
+        "qi gu xiang",
+        "七股區",
+        "七股鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D23",
+      "name": "台灣 · 臺南市 · 將軍區",
+      "lat": 23.2,
+      "lon": 120.11667,
+      "aliases": [
+        "Jiangjun District",
+        "Chiang-chun",
+        "Chiang-chun Hsiang",
+        "Chiang-chün",
+        "Chiang-chün Hsiang",
+        "Jiangjun",
+        "Jiangjun Xiang",
+        "Jiangjyun Siang",
+        "jiang jun qu",
+        "jiang jun xiang",
+        "將軍區",
+        "將軍鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D24",
+      "name": "台灣 · 臺南市 · 北門區",
+      "lat": 23.28333,
+      "lon": 120.13333,
+      "aliases": [
+        "Beimen District",
+        "Beimen",
+        "Beimen Xiang",
+        "Beimensiang",
+        "Pei-men",
+        "Pei-men Hsiang",
+        "bei men qu",
+        "bei men xiang",
+        "北門區",
+        "北門鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D25",
+      "name": "台灣 · 臺南市 · 學甲區",
+      "lat": 23.25,
+      "lon": 120.18333,
+      "aliases": [
+        "Xuejia District",
+        "Hsueh-chia",
+        "Hsueh-chia Chen",
+        "Hsueh-chia Hsiang",
+        "Hsüeh-chia",
+        "Hsüeh-chia Chen",
+        "Hsüeh-chia Hsiang",
+        "Syuejia Jhen",
+        "Xuejia",
+        "Xuejia Zhen",
+        "xue jia qu",
+        "xue jia zhen",
+        "學甲區",
+        "學甲鎮"
+      ]
+    },
+    {
+      "id": "tw-town-D26",
+      "name": "台灣 · 臺南市 · 新化區",
+      "lat": 23.03333,
+      "lon": 120.33333,
+      "aliases": [
+        "Xinhua District",
+        "Hsin-hua",
+        "Hsin-hua Chen",
+        "Sinhua Jhen",
+        "Xinhua",
+        "Xinhua Zhen",
+        "xin hua qu",
+        "xin hua zhen",
+        "新化區",
+        "新化鎮"
+      ]
+    },
+    {
+      "id": "tw-town-D27",
+      "name": "台灣 · 臺南市 · 善化區",
+      "lat": 23.15,
+      "lon": 120.28333,
+      "aliases": [
+        "Shanhua District",
+        "Shan-hua",
+        "Shan-hua Chen",
+        "Shanhua",
+        "Shanhua Jhen",
+        "Shanhua Zhen",
+        "shan hua qu",
+        "shan hua zhen",
+        "善化區",
+        "善化鎮"
+      ]
+    },
+    {
+      "id": "tw-town-D28",
+      "name": "台灣 · 臺南市 · 新市區",
+      "lat": 23.08333,
+      "lon": 120.26667,
+      "aliases": [
+        "Xinshi District",
+        "Hsin-shih",
+        "Hsin-shih Hsiang",
+        "Sinshih Siang",
+        "Xinshi",
+        "Xinshi Xiang",
+        "xin shi qu",
+        "xin shi xiang",
+        "新市區",
+        "新市鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D29",
+      "name": "台灣 · 臺南市 · 安定區",
+      "lat": 23.09568,
+      "lon": 120.22236,
+      "aliases": [
+        "Anding District",
+        "An-ting",
+        "An-ting Hsiang",
+        "Anding",
+        "Anding Siang",
+        "Anding Xiang",
+        "an ding qu",
+        "安定區"
+      ]
+    },
+    {
+      "id": "tw-town-D30",
+      "name": "台灣 · 臺南市 · 山上區",
+      "lat": 23.1,
+      "lon": 120.36667,
+      "aliases": [
+        "Shanshang District",
+        "Shan-shang",
+        "Shan-shang Hsiang",
+        "Shanshang",
+        "Shanshang Siang",
+        "Shanshang Xiang",
+        "shan shang qu",
+        "shan shang xiang",
+        "山上區",
+        "山上鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D31",
+      "name": "台灣 · 臺南市 · 左鎮區",
+      "lat": 23.03333,
+      "lon": 120.4,
+      "aliases": [
+        "Zuozhen District",
+        "Tso-chen",
+        "Tso-chen Hsiang",
+        "Zuojhen Siang",
+        "Zuozhen",
+        "Zuozhen Xiang",
+        "zuo zhen qu",
+        "zuo zhen xiang",
+        "左鎮區",
+        "左鎮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D32",
+      "name": "台灣 · 臺南市 · 仁德區",
+      "lat": 22.95,
+      "lon": 120.23333,
+      "aliases": [
+        "Rende District",
+        "Jen-te",
+        "Jen-te Hsiang",
+        "Rende",
+        "Rende Siang",
+        "Rende Xiang",
+        "ren de qu",
+        "ren de xiang",
+        "仁德區",
+        "仁德鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D33",
+      "name": "台灣 · 臺南市 · 歸仁區",
+      "lat": 22.95,
+      "lon": 120.28333,
+      "aliases": [
+        "Guiren District",
+        "Gueiren Siang",
+        "Guiren",
+        "Guiren Xiang",
+        "Kuei-jen",
+        "Kuei-jen Hsiang",
+        "gui ren qu",
+        "gui ren xiang",
+        "歸仁區",
+        "歸仁鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D34",
+      "name": "台灣 · 臺南市 · 關廟區",
+      "lat": 22.95824,
+      "lon": 120.33171,
+      "aliases": [
+        "Guanmiao District",
+        "Guanmiao",
+        "Guanmiao Siang",
+        "Guanmiao Xiang",
+        "Kuan-miao",
+        "Kuan-miao Hsiang",
+        "guan miao qu",
+        "guan miao xiang",
+        "關廟區",
+        "關廟鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D35",
+      "name": "台灣 · 臺南市 · 龍崎區",
+      "lat": 22.96667,
+      "lon": 120.38333,
+      "aliases": [
+        "Longqi District",
+        "Longci Siang",
+        "Longqi",
+        "Longqi Xiang",
+        "Lung-ch'i",
+        "Lung-ch'i Hsiang",
+        "Lung-ch’i",
+        "Lung-ch’i Hsiang",
+        "long qi qu",
+        "long qi xiang",
+        "龍崎區",
+        "龍崎鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D36",
+      "name": "台灣 · 臺南市 · 玉井區",
+      "lat": 23.11667,
+      "lon": 120.46667,
+      "aliases": [
+        "Yujing District",
+        "Yu-ching",
+        "Yu-ching Hsiang",
+        "Yujing",
+        "Yujing Siang",
+        "Yujing Xiang",
+        "Yü-ching",
+        "Yü-ching Hsiang",
+        "yu jing qu",
+        "yu jing xiang",
+        "玉井區",
+        "玉井鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D37",
+      "name": "台灣 · 臺南市 · 楠西區",
+      "lat": 23.18333,
+      "lon": 120.51667,
+      "aliases": [
+        "Nanxi District",
+        "Nan-hsi",
+        "Nan-hsi Hsiang",
+        "Nansi Siang",
+        "Nanxi",
+        "Nanxi Xiang",
+        "nan xi qu",
+        "nan xi xiang",
+        "楠西區",
+        "楠西鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D38",
+      "name": "台灣 · 臺南市 · 南化區",
+      "lat": 23.11667,
+      "lon": 120.55,
+      "aliases": [
+        "Nanhua District",
+        "Nan-hua",
+        "Nan-hua Hsiang",
+        "Nanhua",
+        "Nanhua Siang",
+        "Nanhua Xiang",
+        "nan hua qu",
+        "nan hua xiang",
+        "南化區",
+        "南化鄉"
+      ]
+    },
+    {
+      "id": "tw-town-D39",
+      "name": "台灣 · 臺南市 · 永康區",
+      "lat": 23.03333,
+      "lon": 120.25,
+      "aliases": [
+        "Yongkang District",
+        "Yongkang",
+        "Yongkang Siang",
+        "Yongkang Xiang",
+        "Yung-k'ang",
+        "Yung-k'ang Hsiang",
+        "Yung-k’ang",
+        "Yung-k’ang Hsiang",
+        "yong kang qu",
+        "yong kang xiang",
+        "永康區",
+        "永康鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E01",
+      "name": "台灣 · 高雄市 · 鹽埕區",
+      "lat": 22.62394,
+      "lon": 120.28442,
+      "aliases": [
+        "Yancheng District",
+        "Yancheng",
+        "yan cheng qu",
+        "鹽埕區"
+      ]
+    },
+    {
+      "id": "tw-town-E02",
+      "name": "台灣 · 高雄市 · 鼓山區",
+      "lat": 22.64813,
+      "lon": 120.27408,
+      "aliases": [
+        "Gushan District",
+        "Gushan",
+        "gu shan qu",
+        "鼓山區"
+      ]
+    },
+    {
+      "id": "tw-town-E03",
+      "name": "台灣 · 高雄市 · 左營區",
+      "lat": 22.68502,
+      "lon": 120.29201,
+      "aliases": [
+        "Zuoying District",
+        "Zuoying",
+        "zuo ying qu",
+        "左營區"
+      ]
+    },
+    {
+      "id": "tw-town-E04",
+      "name": "台灣 · 高雄市 · 楠梓區",
+      "lat": 22.7208,
+      "lon": 120.30037,
+      "aliases": [
+        "Nanzi District",
+        "Nanzi",
+        "nan zi qu",
+        "楠梓區"
+      ]
+    },
+    {
+      "id": "tw-town-E05",
+      "name": "台灣 · 高雄市 · 三民區",
+      "lat": 22.64992,
+      "lon": 120.31789,
+      "aliases": [
+        "Sanmin District",
+        "Sanmin",
+        "san min qu",
+        "三民區"
+      ]
+    },
+    {
+      "id": "tw-town-E06",
+      "name": "台灣 · 高雄市 · 新興區",
+      "lat": 22.62997,
+      "lon": 120.30672,
+      "aliases": [
+        "Xinxing District",
+        "Xinxing",
+        "xin xing qu",
+        "新興區"
+      ]
+    },
+    {
+      "id": "tw-town-E07",
+      "name": "台灣 · 高雄市 · 前金區",
+      "lat": 22.6271,
+      "lon": 120.29449,
+      "aliases": [
+        "Qianjin District",
+        "Qianjin",
+        "qian jin qu",
+        "前金區"
+      ]
+    },
+    {
+      "id": "tw-town-E08",
+      "name": "台灣 · 高雄市 · 苓雅區",
+      "lat": 22.6234,
+      "lon": 120.32015,
+      "aliases": [
+        "Lingya District",
+        "Lingya",
+        "ling ya qu",
+        "苓雅區"
+      ]
+    },
+    {
+      "id": "tw-town-E09",
+      "name": "台灣 · 高雄市 · 前鎮區",
+      "lat": 22.5924,
+      "lon": 120.31246,
+      "aliases": [
+        "Qianzhen District",
+        "Qianzhen",
+        "qian zhen qu",
+        "前鎮區"
+      ]
+    },
+    {
+      "id": "tw-town-E10",
+      "name": "台灣 · 高雄市 · 旗津區",
+      "lat": 22.58292,
+      "lon": 120.28908,
+      "aliases": [
+        "Qijin District",
+        "Qijin",
+        "qi jin qu",
+        "旗津區"
+      ]
+    },
+    {
+      "id": "tw-town-E11",
+      "name": "台灣 · 高雄市 · 小港區",
+      "lat": 22.55,
+      "lon": 120.35,
+      "aliases": [
+        "Xiaogang District",
+        "Hsiao-kang",
+        "Hsiao-kang Ch'u",
+        "Hsiao-kang Ch’ü",
+        "Hsiao-kang Hsiang",
+        "Siaogang Cyu",
+        "Xiaogang",
+        "Xiaogang Qu",
+        "xiao gang qu",
+        "小港區"
+      ]
+    },
+    {
+      "id": "tw-town-E12",
+      "name": "台灣 · 高雄市 · 鳳山區",
+      "lat": 22.61667,
+      "lon": 120.35,
+      "aliases": [
+        "Fengshan District",
+        "Feng-shan",
+        "Feng-shan Chen",
+        "Feng-shan Shih",
+        "Fengshan",
+        "Fengshan Shi",
+        "Fongshan Shih",
+        "feng shan qu",
+        "feng shan shi",
+        "鳳山區",
+        "鳳山市"
+      ]
+    },
+    {
+      "id": "tw-town-E13",
+      "name": "台灣 · 高雄市 · 林園區",
+      "lat": 22.51667,
+      "lon": 120.38333,
+      "aliases": [
+        "Linyuan District",
+        "Lin-yuan",
+        "Lin-yuan Hsiang",
+        "Lin-yüan",
+        "Lin-yüan Hsiang",
+        "Linyuan",
+        "Linyuan Siang",
+        "Linyuan Xiang",
+        "lin yuan qu",
+        "lin yuan xiang",
+        "林園區",
+        "林園鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E14",
+      "name": "台灣 · 高雄市 · 大寮區",
+      "lat": 22.58333,
+      "lon": 120.4,
+      "aliases": [
+        "Daliao District",
+        "Daliao",
+        "Daliao Siang",
+        "Daliao Xiang",
+        "Ta-liao",
+        "Ta-liao Hsiang",
+        "da liao qu",
+        "da liao xiang",
+        "大寮區",
+        "大寮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E15",
+      "name": "台灣 · 高雄市 · 大樹區",
+      "lat": 22.71667,
+      "lon": 120.41667,
+      "aliases": [
+        "Dashu District",
+        "Dashu",
+        "Dashu Siang",
+        "Dashu Xiang",
+        "Ta-shu",
+        "Ta-shu Hsiang",
+        "da shu qu",
+        "da shu xiang",
+        "大樹區",
+        "大樹鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E16",
+      "name": "台灣 · 高雄市 · 大社區",
+      "lat": 22.75,
+      "lon": 120.36667,
+      "aliases": [
+        "Dashe District",
+        "Dashe",
+        "Dashe Siang",
+        "Dashe Xiang",
+        "Ta-she",
+        "Ta-she Hsiang",
+        "da she qu",
+        "da she xiang",
+        "大社區",
+        "大社鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E17",
+      "name": "台灣 · 高雄市 · 仁武區",
+      "lat": 22.7,
+      "lon": 120.35,
+      "aliases": [
+        "Renwu District",
+        "Jen-wu",
+        "Jen-wu Hsiang",
+        "Renwu",
+        "Renwu Siang",
+        "Renwu Xiang",
+        "ren wu qu",
+        "ren wu xiang",
+        "仁武區",
+        "仁武鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E18",
+      "name": "台灣 · 高雄市 · 鳥松區",
+      "lat": 22.66667,
+      "lon": 120.36667,
+      "aliases": [
+        "Niaosong District",
+        "Niao-sung",
+        "Niao-sung Hsiang",
+        "Niaosong",
+        "Niaosong Siang",
+        "Niaosong Xiang",
+        "Wu-sung Hsiang",
+        "niao song qu",
+        "niao song xiang",
+        "鳥松區",
+        "鳥松鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E19",
+      "name": "台灣 · 高雄市 · 岡山區",
+      "lat": 22.8,
+      "lon": 120.3,
+      "aliases": [
+        "Gangshan District",
+        "Gangshan",
+        "Gangshan Jhen",
+        "Gangshan Zhen",
+        "Kang-shan",
+        "Kang-shan Chen",
+        "gang shan qu",
+        "gang shan zhen",
+        "岡山區",
+        "岡山鎮"
+      ]
+    },
+    {
+      "id": "tw-town-E20",
+      "name": "台灣 · 高雄市 · 橋頭區",
+      "lat": 22.75,
+      "lon": 120.3,
+      "aliases": [
+        "Qiaotou District",
+        "Ch'iao-t'ou",
+        "Ch'iao-t'ou Hsiang",
+        "Ch’iao-t’ou",
+        "Ch’iao-t’ou Hsiang",
+        "Ciaotou Siang",
+        "Qiaotou",
+        "Qiaotou Xiang",
+        "qiao tou qu",
+        "qiao tou xiang",
+        "橋頭區",
+        "橋頭鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E21",
+      "name": "台灣 · 高雄市 · 燕巢區",
+      "lat": 22.8,
+      "lon": 120.36667,
+      "aliases": [
+        "Yanchao District",
+        "Yanchao",
+        "Yanchao Siang",
+        "Yanchao Xiang",
+        "Yen-ch'ao",
+        "Yen-ch'ao Hsiang",
+        "Yen-ch’ao",
+        "Yen-ch’ao Hsiang",
+        "yan chao qu",
+        "yan chao xiang",
+        "燕巢區",
+        "燕巢鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E22",
+      "name": "台灣 · 高雄市 · 田寮區",
+      "lat": 22.86667,
+      "lon": 120.38333,
+      "aliases": [
+        "Tianliao District",
+        "T'ien-liao",
+        "T'ien-liao Hsiang",
+        "Tianliao",
+        "Tianliao Siang",
+        "Tianliao Xiang",
+        "T’ien-liao",
+        "T’ien-liao Hsiang",
+        "tian liao qu",
+        "tian liao xiang",
+        "田寮區",
+        "田寮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E23",
+      "name": "台灣 · 高雄市 · 阿蓮區",
+      "lat": 22.86667,
+      "lon": 120.31667,
+      "aliases": [
+        "Alian District",
+        "A-lien",
+        "A-lien Hsiang",
+        "Alian",
+        "Alian Siang",
+        "Alian Xiang",
+        "a lian qu",
+        "a lian xiang",
+        "阿蓮區",
+        "阿蓮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E24",
+      "name": "台灣 · 高雄市 · 路竹區",
+      "lat": 22.85,
+      "lon": 120.26667,
+      "aliases": [
+        "Luzhu District",
+        "Lu-chu",
+        "Lu-chu Hsiang",
+        "Lujhu Siang",
+        "Luzhu",
+        "Luzhu Xiang",
+        "lu zhu qu",
+        "lu zhu xiang",
+        "路竹區",
+        "路竹鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E25",
+      "name": "台灣 · 高雄市 · 湖內區",
+      "lat": 22.9,
+      "lon": 120.21667,
+      "aliases": [
+        "Hunei District",
+        "Hu-nei",
+        "Hu-nei Hsiang",
+        "Hunei",
+        "Hunei Siang",
+        "Hunei Xiang",
+        "hu nei qu",
+        "hu nei xiang",
+        "湖內區",
+        "湖內鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E26",
+      "name": "台灣 · 高雄市 · 茄萣區",
+      "lat": 22.88535,
+      "lon": 120.19524,
+      "aliases": [
+        "Jiading District",
+        "Ch'ieh-ting",
+        "Ch'ieh-ting Hsiang",
+        "Ch’ieh-ting",
+        "Ch’ieh-ting Hsiang",
+        "Cieding Siang",
+        "Jiading",
+        "Qieding Xiang",
+        "jia ding qu",
+        "jia ding xiang",
+        "茄萣區",
+        "茄萣鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E27",
+      "name": "台灣 · 高雄市 · 永安區",
+      "lat": 22.81667,
+      "lon": 120.23333,
+      "aliases": [
+        "Yongan District",
+        "Yong'an Siang",
+        "Yong'an Xiang",
+        "Yongan",
+        "Yong’an Siang",
+        "Yong’an Xiang",
+        "Yung-an",
+        "Yung-an Hsiang",
+        "yong an qu",
+        "yong an xiang",
+        "永安區",
+        "永安鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E28",
+      "name": "台灣 · 高雄市 · 彌陀區",
+      "lat": 22.78333,
+      "lon": 120.23333,
+      "aliases": [
+        "Mituo District",
+        "Mi-t'o",
+        "Mi-t'o Hsiang",
+        "Mi-t’o",
+        "Mi-t’o Hsiang",
+        "Mituo",
+        "Mituo Siang",
+        "Mituo Xiang",
+        "mi tuo qu",
+        "mi tuo xiang",
+        "彌陀區",
+        "彌陀鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E29",
+      "name": "台灣 · 高雄市 · 梓官區",
+      "lat": 22.75,
+      "lon": 120.25,
+      "aliases": [
+        "Ziguan District",
+        "Tzu-kuan",
+        "Tzu-kuan Hsiang",
+        "Ziguan",
+        "Ziguan Xiang",
+        "Zihguan Siang",
+        "zi guan qu",
+        "zi guan xiang",
+        "梓官區",
+        "梓官鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E30",
+      "name": "台灣 · 高雄市 · 旗山區",
+      "lat": 22.86667,
+      "lon": 120.46667,
+      "aliases": [
+        "Qishan District",
+        "Ch'i-shan",
+        "Ch'i-shan Chen",
+        "Ch’i-shan",
+        "Ch’i-shan Chen",
+        "Cishan Jhen",
+        "Qishan",
+        "Qishan Zhen",
+        "qi shan qu",
+        "qi shan zhen",
+        "旗山區",
+        "旗山鎮"
+      ]
+    },
+    {
+      "id": "tw-town-E31",
+      "name": "台灣 · 高雄市 · 美濃區",
+      "lat": 22.9,
+      "lon": 120.55,
+      "aliases": [
+        "Meinong District",
+        "Mei-nung",
+        "Mei-nung Chen",
+        "Meinong",
+        "Meinong Jhen",
+        "Meinong Zhen",
+        "mei nong qu",
+        "mei nong zhen",
+        "美濃區",
+        "美濃鎮"
+      ]
+    },
+    {
+      "id": "tw-town-E32",
+      "name": "台灣 · 高雄市 · 六龜區",
+      "lat": 23.01667,
+      "lon": 120.65,
+      "aliases": [
+        "Liugui District",
+        "Liouguei Siang",
+        "Liu-kuei",
+        "Liu-kuei Hsiang",
+        "Liugui",
+        "Liugui Xiang",
+        "liu gui qu",
+        "liu gui xiang",
+        "六龜區",
+        "六龜鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E33",
+      "name": "台灣 · 高雄市 · 甲仙區",
+      "lat": 23.11667,
+      "lon": 120.61667,
+      "aliases": [
+        "Jiaxian District",
+        "Chia-hsien",
+        "Chia-hsien Hsiang",
+        "Jiasian Siang",
+        "Jiaxian",
+        "Jiaxian Xiang",
+        "jia xian qu",
+        "jia xian xiang",
+        "甲仙區",
+        "甲仙鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E34",
+      "name": "台灣 · 高雄市 · 杉林區",
+      "lat": 23.0,
+      "lon": 120.55,
+      "aliases": [
+        "Shanlin District",
+        "Shan-lin",
+        "Shan-lin Hsiang",
+        "Shanlin",
+        "Shanlin Siang",
+        "Shanlin Xiang",
+        "shan lin qu",
+        "shan lin xiang",
+        "杉林區",
+        "杉林鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E35",
+      "name": "台灣 · 高雄市 · 內門區",
+      "lat": 22.96667,
+      "lon": 120.46667,
+      "aliases": [
+        "Neimen District",
+        "Nei-men",
+        "Nei-men Hsiang",
+        "Neimen",
+        "Neimen Siang",
+        "Neimen Xiang",
+        "nei men qu",
+        "nei men xiang",
+        "內門區",
+        "内門鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E36",
+      "name": "台灣 · 高雄市 · 茂林區",
+      "lat": 22.92005,
+      "lon": 120.75237,
+      "aliases": [
+        "Maolin District",
+        "Maolin",
+        "mao lin qu",
+        "茂林區"
+      ]
+    },
+    {
+      "id": "tw-town-E37",
+      "name": "台灣 · 高雄市 · 桃源區",
+      "lat": 23.2,
+      "lon": 120.83333,
+      "aliases": [
+        "Taoyuan District",
+        "T'ao-yuan",
+        "T'ao-yuan Hsiang",
+        "Taoyuan",
+        "Taoyuan Siang",
+        "Taoyuan Xiang",
+        "T’ao-yüan",
+        "T’ao-yüan Hsiang",
+        "tao yuan qu",
+        "tao yuan xiang",
+        "桃源區",
+        "桃源鄉"
+      ]
+    },
+    {
+      "id": "tw-town-E38",
+      "name": "台灣 · 高雄市 · 那瑪夏區",
+      "lat": 23.26342,
+      "lon": 120.72108,
+      "aliases": [
+        "Namaxia District",
+        "Namaxia",
+        "na ma xia qu",
+        "那瑪夏區"
+      ]
+    },
+    {
+      "id": "tw-town-F01",
+      "name": "台灣 · 新北市 · 新莊區",
+      "lat": 25.03333,
+      "lon": 121.45,
+      "aliases": [
+        "Xinzhuang District",
+        "Hsin-chuang",
+        "Hsin-chuang Chen",
+        "Hsin-chuang Shih",
+        "Sinjhuang Shih",
+        "Xinzhuang",
+        "Xinzhuang Qu",
+        "Xinzhuang Shi",
+        "Xīnzhuāng Qū",
+        "xin zhuang qu",
+        "xin zhuang shi",
+        "新莊區",
+        "新莊市"
+      ]
+    },
+    {
+      "id": "tw-town-F02",
+      "name": "台灣 · 新北市 · 林口區",
+      "lat": 25.1,
+      "lon": 121.35,
+      "aliases": [
+        "Linkou District",
+        "Lin-k'ou",
+        "Lin-k'ou Hsiang",
+        "Lin-k’ou",
+        "Lin-k’ou Hsiang",
+        "Linkou",
+        "Linkou Siang",
+        "Linkou Xiang",
+        "lin kou qu",
+        "lin kou xiang",
+        "林口區",
+        "林口鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F03",
+      "name": "台灣 · 新北市 · 五股區",
+      "lat": 25.1,
+      "lon": 121.43333,
+      "aliases": [
+        "Wugu District",
+        "Wu-ku",
+        "Wu-ku Hsiang",
+        "Wugu",
+        "Wugu Siang",
+        "Wugu Xiang",
+        "wu gu qu",
+        "wu gu xiang",
+        "五股區",
+        "五股鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F04",
+      "name": "台灣 · 新北市 · 蘆洲區",
+      "lat": 25.08333,
+      "lon": 121.46667,
+      "aliases": [
+        "Luzhou District",
+        "Lu-chou",
+        "Lu-chou Hsiang",
+        "Lu-chou Shih",
+        "Lujhou Shih",
+        "Luzhou",
+        "Luzhou Shi",
+        "lu zhou qu",
+        "lu zhou shi",
+        "蘆洲區",
+        "蘆洲市"
+      ]
+    },
+    {
+      "id": "tw-town-F05",
+      "name": "台灣 · 新北市 · 三重區",
+      "lat": 25.06667,
+      "lon": 121.48333,
+      "aliases": [
+        "Sanzhong District",
+        "San-ch'ung",
+        "San-ch'ung Chen",
+        "San-ch'ung Shih",
+        "San-ch’ung",
+        "San-ch’ung Chen",
+        "San-ch’ung Shih",
+        "Sanchong",
+        "Sanchong Shi",
+        "Sanchong Shih",
+        "Sanzhong",
+        "san zhong qu",
+        "san zhong shi",
+        "三重區",
+        "三重市"
+      ]
+    },
+    {
+      "id": "tw-town-F06",
+      "name": "台灣 · 新北市 · 泰山區",
+      "lat": 25.05,
+      "lon": 121.41667,
+      "aliases": [
+        "Taishan District",
+        "T'ai-shan",
+        "T'ai-shan Hsiang",
+        "Taishan",
+        "Taishan Siang",
+        "Taishan Xiang",
+        "T’ai-shan",
+        "T’ai-shan Hsiang",
+        "tai shan qu",
+        "tai shan xiang",
+        "泰山區",
+        "泰山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F07",
+      "name": "台灣 · 新北市 · 新店區",
+      "lat": 24.93333,
+      "lon": 121.51667,
+      "aliases": [
+        "Xindian District",
+        "Hsin-tien",
+        "Hsin-tien Chen",
+        "Hsin-tien Shih",
+        "Hsintien",
+        "Shinten",
+        "Sindian",
+        "Sindian Shih",
+        "Sintien",
+        "Xindian",
+        "Xindian Shi",
+        "xin dian qu",
+        "xin dian shi",
+        "新店區",
+        "新店市"
+      ]
+    },
+    {
+      "id": "tw-town-F08",
+      "name": "台灣 · 新北市 · 石碇區",
+      "lat": 24.95,
+      "lon": 121.63333,
+      "aliases": [
+        "Shiding District",
+        "Shiding",
+        "Shiding Xiang",
+        "Shih-ting",
+        "Shih-ting Hsiang",
+        "Shihding Siang",
+        "shi ding qu",
+        "shi ding xiang",
+        "石碇區",
+        "石碇鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F09",
+      "name": "台灣 · 新北市 · 深坑區",
+      "lat": 25.0,
+      "lon": 121.61667,
+      "aliases": [
+        "Shenkeng District",
+        "Shen-k'eng",
+        "Shen-k'eng Hsiang",
+        "Shen-k’eng",
+        "Shen-k’eng Hsiang",
+        "Shenkeng",
+        "Shenkeng Siang",
+        "Shenkeng Xiang",
+        "shen keng qu",
+        "shen keng xiang",
+        "深坑區",
+        "深坑鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F10",
+      "name": "台灣 · 新北市 · 坪林區",
+      "lat": 24.91667,
+      "lon": 121.71667,
+      "aliases": [
+        "Pinglin District",
+        "P'ing-lin",
+        "P'ing-lin Hsiang",
+        "Pinglin",
+        "Pinglin Siang",
+        "Pinglin Xiang",
+        "P’ing-lin",
+        "P’ing-lin Hsiang",
+        "ping lin qu",
+        "ping lin xiang",
+        "坪林區",
+        "坪林鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F11",
+      "name": "台灣 · 新北市 · 烏來區",
+      "lat": 24.8,
+      "lon": 121.53333,
+      "aliases": [
+        "Wulai District",
+        "Wu-lai",
+        "Wu-lai Hsiang",
+        "Wulai",
+        "Wulai Siang",
+        "Wulai Xiang",
+        "wu lai qu",
+        "wu lai xiang",
+        "烏來區",
+        "烏來鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F14",
+      "name": "台灣 · 新北市 · 板橋區",
+      "lat": 25.01667,
+      "lon": 121.45,
+      "aliases": [
+        "Banqiao District",
+        "Banciao Shih",
+        "Banqiao",
+        "Banqiao Shi",
+        "Pan-ch'iao",
+        "Pan-ch'iao Chen",
+        "Pan-ch'iao Shih",
+        "Pan-ch’iao",
+        "Pan-ch’iao Chen",
+        "Pan-ch’iao Shih",
+        "ban qiao qu",
+        "ban qiao shi",
+        "板橋區",
+        "板橋市"
+      ]
+    },
+    {
+      "id": "tw-town-F15",
+      "name": "台灣 · 新北市 · 三峽區",
+      "lat": 24.88333,
+      "lon": 121.4,
+      "aliases": [
+        "Sanxia District",
+        "San-hsia",
+        "San-hsia Chen",
+        "Sansia Jhen",
+        "Sanxia",
+        "Sanxia Zhen",
+        "san xia qu",
+        "san xia zhen",
+        "三峽區",
+        "三峽鎮"
+      ]
+    },
+    {
+      "id": "tw-town-F16",
+      "name": "台灣 · 新北市 · 鶯歌區",
+      "lat": 24.95,
+      "lon": 121.33333,
+      "aliases": [
+        "Yingge District",
+        "Ying-ko",
+        "Ying-ko Chen",
+        "Yingge",
+        "Yingge Jhen",
+        "Yingge Zhen",
+        "ying ge qu",
+        "ying ge zhen",
+        "鶯歌區",
+        "鶯歌鎮"
+      ]
+    },
+    {
+      "id": "tw-town-F17",
+      "name": "台灣 · 新北市 · 樹林區",
+      "lat": 24.98333,
+      "lon": 121.4,
+      "aliases": [
+        "Shulin District",
+        "Shu-lin",
+        "Shu-lin Chen",
+        "Shu-lin Shih",
+        "Shulin",
+        "Shulin Shi",
+        "Shulin Shih",
+        "shu lin qu",
+        "shu lin shi",
+        "樹林區",
+        "樹林市"
+      ]
+    },
+    {
+      "id": "tw-town-F18",
+      "name": "台灣 · 新北市 · 中和區",
+      "lat": 25.0,
+      "lon": 121.48333,
+      "aliases": [
+        "Zhonghe District",
+        "Chung-ho",
+        "Chung-ho Hsiang",
+        "Chung-ho Shih",
+        "Jhonghe",
+        "Jhonghe District",
+        "Jhonghe Shih",
+        "Zhonghe",
+        "Zhonghe Shi",
+        "zhong he",
+        "zhong he qu",
+        "zhong he shi",
+        "中和",
+        "中和區",
+        "中和市"
+      ]
+    },
+    {
+      "id": "tw-town-F19",
+      "name": "台灣 · 新北市 · 土城區",
+      "lat": 24.96667,
+      "lon": 121.43333,
+      "aliases": [
+        "Tucheng District",
+        "T'u-ch'eng",
+        "T'u-ch'eng Hsiang",
+        "T'u-ch'eng Shih",
+        "Tucheng",
+        "Tucheng Shi",
+        "Tucheng Shih",
+        "T’u-ch’eng",
+        "T’u-ch’eng Hsiang",
+        "T’u-ch’eng Shih",
+        "tu cheng fu",
+        "tu cheng qu",
+        "土城區",
+        "土城巿"
+      ]
+    },
+    {
+      "id": "tw-town-F21",
+      "name": "台灣 · 新北市 · 瑞芳區",
+      "lat": 25.1,
+      "lon": 121.81667,
+      "aliases": [
+        "Ruifang District",
+        "Jui-fang",
+        "Jui-fang Chen",
+        "Rueifang Jhen",
+        "Ruifang",
+        "Ruifang Zhen",
+        "rui fang qu",
+        "rui fang zhen",
+        "瑞芳區",
+        "瑞芳鎭"
+      ]
+    },
+    {
+      "id": "tw-town-F22",
+      "name": "台灣 · 新北市 · 平溪區",
+      "lat": 25.03333,
+      "lon": 121.75,
+      "aliases": [
+        "Pingxi District",
+        "P'ing-hsi",
+        "P'ing-hsi Hsiang",
+        "Pingsi Siang",
+        "Pingxi",
+        "Pingxi Xiang",
+        "P’ing-hsi",
+        "P’ing-hsi Hsiang",
+        "ping xi qu",
+        "ping xi xiang",
+        "平溪區",
+        "平溪鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F23",
+      "name": "台灣 · 新北市 · 雙溪區",
+      "lat": 25.0,
+      "lon": 121.81667,
+      "aliases": [
+        "Shuangxi District",
+        "Shuang-hsi",
+        "Shuang-hsi Hsiang",
+        "Shuangsi Siang",
+        "Shuangxi",
+        "Shuangxi Xiang",
+        "shuang xi qu",
+        "shuang xi xiang",
+        "雙溪區",
+        "雙溪鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F24",
+      "name": "台灣 · 新北市 · 貢寮區",
+      "lat": 25.03333,
+      "lon": 121.91667,
+      "aliases": [
+        "Gongliao District",
+        "Gongliao",
+        "Gongliao Siang",
+        "Gongliao Xiang",
+        "Kung-liao",
+        "Kung-liao Hsiang",
+        "gong liao qu",
+        "gong liao xiang",
+        "貢寮區",
+        "貢寮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F25",
+      "name": "台灣 · 新北市 · 金山區",
+      "lat": 25.21667,
+      "lon": 121.6,
+      "aliases": [
+        "Jinshan District",
+        "Chin-shan",
+        "Chin-shan Hsiang",
+        "Czinshan'",
+        "Jinshan",
+        "Jinshan Siang",
+        "Jinshan Xiang",
+        "jin shan qu",
+        "jin shan xiang",
+        "Цзиншань",
+        "金山區",
+        "金山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F26",
+      "name": "台灣 · 新北市 · 萬里區",
+      "lat": 25.18333,
+      "lon": 121.63333,
+      "aliases": [
+        "Wanli District",
+        "Wan-li",
+        "Wan-li Hsiang",
+        "Wanli",
+        "Wanli Siang",
+        "Wanli Xiang",
+        "wan li qu",
+        "wan li xiang",
+        "萬里區",
+        "萬里鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F27",
+      "name": "台灣 · 新北市 · 淡水區",
+      "lat": 25.2,
+      "lon": 121.45,
+      "aliases": [
+        "Danshui District",
+        "Danshuei Jhen",
+        "Danshui",
+        "Danshui Zhen",
+        "Tamsui",
+        "Tan-shui",
+        "Tan-shui Chen",
+        "dan shui qu",
+        "dan shui zhen",
+        "淡水區",
+        "淡水鎮"
+      ]
+    },
+    {
+      "id": "tw-town-F28",
+      "name": "台灣 · 新北市 · 汐止區",
+      "lat": 25.08333,
+      "lon": 121.65,
+      "aliases": [
+        "Xizhi District",
+        "Hsi-chih",
+        "Hsi-chih Chen",
+        "Hsi-chih Shih",
+        "Sijhih Shih",
+        "Xizhi",
+        "Xizhi Shi",
+        "xi zhi qu",
+        "xi zhi shi",
+        "汐止區",
+        "汐止市"
+      ]
+    },
+    {
+      "id": "tw-town-F30",
+      "name": "台灣 · 新北市 · 三芝區",
+      "lat": 25.23333,
+      "lon": 121.51667,
+      "aliases": [
+        "Sanzhi District",
+        "San-chih",
+        "San-chih Hsiang",
+        "Sanjhih Siang",
+        "Sanzhi",
+        "Sanzhi Xiang",
+        "san zhi qu",
+        "san zhi xiang",
+        "三芝區",
+        "三芝鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F31",
+      "name": "台灣 · 新北市 · 石門區",
+      "lat": 25.26667,
+      "lon": 121.56667,
+      "aliases": [
+        "Shimen District",
+        "Shih-men",
+        "Shih-men Hsiang",
+        "Shihmen Siang",
+        "Shimen",
+        "Shimen Xiang",
+        "shi men qu",
+        "shi men xiang",
+        "石門區",
+        "石門鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F32",
+      "name": "台灣 · 新北市 · 八里區",
+      "lat": 25.15,
+      "lon": 121.4,
+      "aliases": [
+        "Bali District",
+        "Bali",
+        "Bali Siang",
+        "Bali Xiang",
+        "Pa-li",
+        "Pa-li Hsiang",
+        "ba li qu",
+        "ba li xiang",
+        "八里區",
+        "八里鄉"
+      ]
+    },
+    {
+      "id": "tw-town-F33",
+      "name": "台灣 · 新北市 · 永和區",
+      "lat": 25.00897,
+      "lon": 121.52007,
+      "aliases": [
+        "Yonghe District",
+        "Yonghe",
+        "Yonghe Shi",
+        "Yonghe Shih",
+        "Yung-ho",
+        "Yung-ho Chen",
+        "Yung-ho Shih",
+        "yong he",
+        "yong he qu",
+        "yong he shi",
+        "永和",
+        "永和區",
+        "永和市"
+      ]
+    },
+    {
+      "id": "tw-town-G01",
+      "name": "台灣 · 宜蘭縣 · 宜蘭市",
+      "lat": 24.75032,
+      "lon": 121.75692,
+      "aliases": [
+        "Yilan City",
+        "Yilan",
+        "yi lan shi",
+        "宜蘭市"
+      ]
+    },
+    {
+      "id": "tw-town-G02",
+      "name": "台灣 · 宜蘭縣 · 頭城鎮",
+      "lat": 24.9,
+      "lon": 121.85,
+      "aliases": [
+        "Toucheng Township",
+        "T'ou-ch'eng",
+        "T'ou-ch'eng Chen",
+        "Toucheng",
+        "Toucheng Jhen",
+        "Toucheng Zhen",
+        "T’ou-ch’eng",
+        "T’ou-ch’eng Chen",
+        "tou cheng zhen",
+        "頭城鎮"
+      ]
+    },
+    {
+      "id": "tw-town-G03",
+      "name": "台灣 · 宜蘭縣 · 礁溪鄉",
+      "lat": 24.81667,
+      "lon": 121.73333,
+      "aliases": [
+        "Jiaoxi Township",
+        "Chiao-hsi",
+        "Chiao-hsi Hsiang",
+        "Jiaosi Siang",
+        "Jiaoxi",
+        "Jiaoxi Xiang",
+        "jiao xi xiang",
+        "礁溪鄉"
+      ]
+    },
+    {
+      "id": "tw-town-G04",
+      "name": "台灣 · 宜蘭縣 · 壯圍鄉",
+      "lat": 24.76667,
+      "lon": 121.8,
+      "aliases": [
+        "Zhuangwei Township",
+        "Chuang-wei",
+        "Chuang-wei Hsiang",
+        "Jhuangwei Siang",
+        "Zhuangwei",
+        "Zhuangwei Xiang",
+        "zhuang wei xiang",
+        "壯圍鄉"
+      ]
+    },
+    {
+      "id": "tw-town-G05",
+      "name": "台灣 · 宜蘭縣 · 員山鄉",
+      "lat": 24.75,
+      "lon": 121.68333,
+      "aliases": [
+        "Yuanshan Township",
+        "Yuan-shan",
+        "Yuan-shan Hsiang",
+        "Yuanshan",
+        "Yuanshan Siang",
+        "Yuanshan Xiang",
+        "Yüan-shan",
+        "Yüan-shan Hsiang",
+        "yuan shan xiang",
+        "員山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-G06",
+      "name": "台灣 · 宜蘭縣 · 羅東鎮",
+      "lat": 24.68333,
+      "lon": 121.76667,
+      "aliases": [
+        "Luodong Township",
+        "Lo-tung",
+        "Lo-tung Chen",
+        "Luodong",
+        "Luodong Jhen",
+        "Luodong Zhen",
+        "luo dong zhen",
+        "羅東鎮"
+      ]
+    },
+    {
+      "id": "tw-town-G07",
+      "name": "台灣 · 宜蘭縣 · 五結鄉",
+      "lat": 24.68333,
+      "lon": 121.8,
+      "aliases": [
+        "Wujie Township",
+        "Wu-chieh",
+        "Wu-chieh Hsiang",
+        "Wujie",
+        "Wujie Siang",
+        "Wujie Xiang",
+        "wu jie xiang",
+        "五結鄉"
+      ]
+    },
+    {
+      "id": "tw-town-G08",
+      "name": "台灣 · 宜蘭縣 · 冬山鄉",
+      "lat": 24.65,
+      "lon": 121.75,
+      "aliases": [
+        "Dongshan Township",
+        "Dongshan",
+        "Dongshan Siang",
+        "Dongshan Xiang",
+        "Tung-shan",
+        "Tung-shan Hsiang",
+        "dong shan xiang",
+        "冬山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-G09",
+      "name": "台灣 · 宜蘭縣 · 蘇澳鎮",
+      "lat": 24.59162,
+      "lon": 121.85331,
+      "aliases": [
+        "Suao Township",
+        "Su'ao Jhen",
+        "Su'ao Zhen",
+        "Su-ao",
+        "Su-ao Chen",
+        "Suao",
+        "Su’ao Jhen",
+        "Su’ao Zhen",
+        "su ao zhen",
+        "蘇澳鎮"
+      ]
+    },
+    {
+      "id": "tw-town-G10",
+      "name": "台灣 · 宜蘭縣 · 三星鄉",
+      "lat": 24.68333,
+      "lon": 121.65,
+      "aliases": [
+        "Sanxing Township",
+        "San-hsing",
+        "San-hsing Hsiang",
+        "Sansing Siang",
+        "Sanxing",
+        "Sanxing Xiang",
+        "san xing xiang",
+        "三星鄉"
+      ]
+    },
+    {
+      "id": "tw-town-G11",
+      "name": "台灣 · 宜蘭縣 · 大同鄉",
+      "lat": 24.55,
+      "lon": 121.5,
+      "aliases": [
+        "Datong Township",
+        "Datong",
+        "Datong Siang",
+        "Datong Xiang",
+        "Ta-t'ung",
+        "Ta-t'ung Hsiang",
+        "Ta-t’ung",
+        "Ta-t’ung Hsiang",
+        "da tong xiang",
+        "大同鄉"
+      ]
+    },
+    {
+      "id": "tw-town-G12",
+      "name": "台灣 · 宜蘭縣 · 南澳鄉",
+      "lat": 24.46667,
+      "lon": 121.65,
+      "aliases": [
+        "Nanao Township",
+        "Nan'ao Siang",
+        "Nan'ao Xiang",
+        "Nan-ao",
+        "Nan-ao Hsiang",
+        "Nanao",
+        "Nan’ao Siang",
+        "Nan’ao Xiang",
+        "nan ao xiang",
+        "南澳鄉"
+      ]
+    },
+    {
+      "id": "tw-town-H01",
+      "name": "台灣 · 桃園市 · 桃園區",
+      "lat": 25.0005,
+      "lon": 121.29966,
+      "aliases": [
+        "Taoyuan District",
+        "Taoyuan",
+        "tao yuan qu",
+        "桃園區"
+      ]
+    },
+    {
+      "id": "tw-town-H02",
+      "name": "台灣 · 桃園市 · 大溪區",
+      "lat": 24.86667,
+      "lon": 121.28333,
+      "aliases": [
+        "Daxi District",
+        "Dasi Jhen",
+        "Daxi",
+        "Daxi Zhen",
+        "Ta-hsi",
+        "Ta-hsi Chen",
+        "da xi qu",
+        "da xi zhen",
+        "大溪區",
+        "大溪鎮"
+      ]
+    },
+    {
+      "id": "tw-town-H03",
+      "name": "台灣 · 桃園市 · 中壢區",
+      "lat": 24.98333,
+      "lon": 121.2,
+      "aliases": [
+        "Zhongli District",
+        "Chung Li",
+        "Chung-li",
+        "Chung-li Chen",
+        "Chung-li Shih",
+        "Chungli",
+        "Jhongli",
+        "Jhongli Shih",
+        "Jongli",
+        "Jung-li",
+        "Jungli",
+        "Zhong-Li",
+        "Zhongli",
+        "Zhongli Shi",
+        "zhong li qu",
+        "zhong li shi",
+        "中壢區",
+        "中壢市"
+      ]
+    },
+    {
+      "id": "tw-town-H04",
+      "name": "台灣 · 桃園市 · 楊梅區",
+      "lat": 24.91667,
+      "lon": 121.11667,
+      "aliases": [
+        "Yangmei District",
+        "Yang-mei",
+        "Yang-mei Chen",
+        "Yangmei",
+        "Yangmei Jhen",
+        "Yangmei Zhen",
+        "yang mei qu",
+        "yang mei zhen",
+        "楊梅區",
+        "楊梅鎮"
+      ]
+    },
+    {
+      "id": "tw-town-H05",
+      "name": "台灣 · 桃園市 · 蘆竹區",
+      "lat": 25.06667,
+      "lon": 121.28333,
+      "aliases": [
+        "Luzhu District",
+        "Lu-chu",
+        "Lu-chu Hsiang",
+        "Lujhu Siang",
+        "Luzhu",
+        "Luzhu Xiang",
+        "lu zhu qu",
+        "lu zhu xiang",
+        "蘆竹區",
+        "蘆竹鄉"
+      ]
+    },
+    {
+      "id": "tw-town-H06",
+      "name": "台灣 · 桃園市 · 大園區",
+      "lat": 25.06667,
+      "lon": 121.2,
+      "aliases": [
+        "Dayuan District",
+        "Dayuan",
+        "Dayuan Siang",
+        "Dayuan Xiang",
+        "Ta-yuan",
+        "Ta-yuan Hsiang",
+        "Ta-yüan",
+        "Ta-yüan Hsiang",
+        "da yuan qu",
+        "da yuan xiang",
+        "大園區",
+        "大園鄉"
+      ]
+    },
+    {
+      "id": "tw-town-H07",
+      "name": "台灣 · 桃園市 · 龜山區",
+      "lat": 25.03333,
+      "lon": 121.35,
+      "aliases": [
+        "Guishan District",
+        "Gueishan Siang",
+        "Guishan",
+        "Guishan Xiang",
+        "Kuei-shan",
+        "Kuei-shan Hsiang",
+        "gui shan qu",
+        "gui shan xiang",
+        "龜山區",
+        "龜山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-H08",
+      "name": "台灣 · 桃園市 · 八德區",
+      "lat": 24.95,
+      "lon": 121.28333,
+      "aliases": [
+        "Bade District",
+        "Bade",
+        "Bade Shi",
+        "Bade Shih",
+        "Pa-ta Hsiang",
+        "Pa-te",
+        "Pa-te Hsiang",
+        "Pa-te Shih",
+        "ba de qu",
+        "ba de shi",
+        "八德區",
+        "八德市"
+      ]
+    },
+    {
+      "id": "tw-town-H09",
+      "name": "台灣 · 桃園市 · 龍潭區",
+      "lat": 24.86667,
+      "lon": 121.2,
+      "aliases": [
+        "Longtan District",
+        "Longtan",
+        "Longtan Siang",
+        "Longtan Xiang",
+        "Lung-t'an",
+        "Lung-t'an Hsiang",
+        "Lung-t’an",
+        "Lung-t’an Hsiang",
+        "long tan qu",
+        "long tan xiang",
+        "龍潭區",
+        "龍潭鄉"
+      ]
+    },
+    {
+      "id": "tw-town-H10",
+      "name": "台灣 · 桃園市 · 平鎮區",
+      "lat": 24.93333,
+      "lon": 121.21667,
+      "aliases": [
+        "Pingzhen District",
+        "P'ing-chen",
+        "P'ing-chen Hsing",
+        "P'ing-chen Shih",
+        "Pingjhen Shih",
+        "Pingzhen",
+        "Pingzhen Shi",
+        "P’ing-chen",
+        "P’ing-chen Hsing",
+        "P’ing-chen Shih",
+        "ping zhen qu",
+        "ping zhen shi",
+        "平鎮區",
+        "平鎮市"
+      ]
+    },
+    {
+      "id": "tw-town-H11",
+      "name": "台灣 · 桃園市 · 新屋區",
+      "lat": 24.98333,
+      "lon": 121.06667,
+      "aliases": [
+        "Xinwu District",
+        "Hsin-wu",
+        "Hsin-wu Hsiang",
+        "Sinwu Siang",
+        "Xinwu",
+        "Xinwu Xiang",
+        "xin wu qu",
+        "xin wu xiang",
+        "新屋區",
+        "新屋鄉"
+      ]
+    },
+    {
+      "id": "tw-town-H12",
+      "name": "台灣 · 桃園市 · 觀音區",
+      "lat": 25.03333,
+      "lon": 121.11667,
+      "aliases": [
+        "Guanyin District",
+        "Guanyin",
+        "Guanyin Siang",
+        "Guanyin Xiang",
+        "Kuan-yin",
+        "Kuan-yin Hsiang",
+        "guan yin qu",
+        "guan yin xiang",
+        "觀音區",
+        "觀音鄉"
+      ]
+    },
+    {
+      "id": "tw-town-H13",
+      "name": "台灣 · 桃園市 · 復興區",
+      "lat": 24.71667,
+      "lon": 121.36667,
+      "aliases": [
+        "Fuxing District",
+        "Fu-hsing",
+        "Fu-hsing Hsiang",
+        "Fusing Siang",
+        "Fuxing",
+        "Fuxing Xiang",
+        "fu xing qu",
+        "fu xing xiang",
+        "復興區",
+        "復興鄉"
+      ]
+    },
+    {
+      "id": "tw-town-I01",
+      "name": "台灣 · 嘉義市 · 東區",
+      "lat": 23.498,
+      "lon": 120.46456,
+      "aliases": [
+        "E. District",
+        "Dong Qu",
+        "East",
+        "Tung Ch'u",
+        "Tung Ch’ü",
+        "dong qu",
+        "東區"
+      ]
+    },
+    {
+      "id": "tw-town-I02",
+      "name": "台灣 · 嘉義市 · 西區",
+      "lat": 23.47957,
+      "lon": 120.42488,
+      "aliases": [
+        "W. District",
+        "West",
+        "xi qu",
+        "西區"
+      ]
+    },
+    {
+      "id": "tw-town-J02",
+      "name": "台灣 · 新竹縣 · 竹東鎮",
+      "lat": 24.73333,
+      "lon": 121.08333,
+      "aliases": [
+        "Zhudong Township",
+        "Chu-tung",
+        "Chu-tung Chen",
+        "Jhudong Jhen",
+        "Zhudong",
+        "Zhudong Zhen",
+        "zhu dong zhen",
+        "竹東鎮"
+      ]
+    },
+    {
+      "id": "tw-town-J03",
+      "name": "台灣 · 新竹縣 · 關西鎮",
+      "lat": 24.78333,
+      "lon": 121.18333,
+      "aliases": [
+        "Guanxi Township",
+        "Guansi Jhen",
+        "Guanxi",
+        "Guanxi Zhen",
+        "Kuan-hsi",
+        "Kuan-hsi Chen",
+        "guan xi zhen",
+        "關西鎮"
+      ]
+    },
+    {
+      "id": "tw-town-J04",
+      "name": "台灣 · 新竹縣 · 新埔鎮",
+      "lat": 24.85,
+      "lon": 121.08333,
+      "aliases": [
+        "Xinpu Township",
+        "Hsin-pu",
+        "Hsin-pu Chen",
+        "Sinbu Jhen",
+        "Xinbu Zhen",
+        "Xinpu",
+        "xin bu zhen",
+        "新埔鎮"
+      ]
+    },
+    {
+      "id": "tw-town-J05",
+      "name": "台灣 · 新竹縣 · 竹北市",
+      "lat": 24.83333,
+      "lon": 121.0,
+      "aliases": [
+        "Zhubei City",
+        "Chu-pei",
+        "Chu-pei Hsiang",
+        "Chu-pei Shih",
+        "Jhubei Shih",
+        "Zhubei",
+        "Zhubei Shi",
+        "zhu bei shi",
+        "竹北市"
+      ]
+    },
+    {
+      "id": "tw-town-J06",
+      "name": "台灣 · 新竹縣 · 湖口鄉",
+      "lat": 24.88333,
+      "lon": 121.05,
+      "aliases": [
+        "Hukou Township",
+        "Hu-k'ou",
+        "Hu-k'ou Hsiang",
+        "Hu-k’ou",
+        "Hu-k’ou Hsiang",
+        "Hukou",
+        "Hukou Siang",
+        "Hukou Xiang",
+        "hu kou xiang",
+        "湖口鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J08",
+      "name": "台灣 · 新竹縣 · 橫山鄉",
+      "lat": 24.71667,
+      "lon": 121.13333,
+      "aliases": [
+        "Hengshan Township",
+        "Heng-shan",
+        "Heng-shan Hsiang",
+        "Hengshan",
+        "Hengshan Siang",
+        "Hengshan Xiang",
+        "heng shan xiang",
+        "橫山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J09",
+      "name": "台灣 · 新竹縣 · 新豐鄉",
+      "lat": 24.9,
+      "lon": 120.98333,
+      "aliases": [
+        "Xinfeng Township",
+        "Hsin-feng",
+        "Hsin-feng Hsiang",
+        "Sinfong Siang",
+        "Xinfeng",
+        "Xinfeng Xiang",
+        "xin feng xiang",
+        "新豐鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J10",
+      "name": "台灣 · 新竹縣 · 芎林鄉",
+      "lat": 24.76667,
+      "lon": 121.1,
+      "aliases": [
+        "Qionglin Township",
+        "Hsiung-lin",
+        "Hsiung-lin Hsiang",
+        "Qionglin",
+        "Syonglin Siang",
+        "Xionglin Xiang",
+        "qiong lin xiang",
+        "芎林鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J11",
+      "name": "台灣 · 新竹縣 · 寶山鄉",
+      "lat": 24.73333,
+      "lon": 121.0,
+      "aliases": [
+        "Baoshan Township",
+        "Baoshan",
+        "Baoshan Siang",
+        "Baoshan Xiang",
+        "Pao-shan",
+        "Pao-shan Hsiang",
+        "bao shan xiang",
+        "寶山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J12",
+      "name": "台灣 · 新竹縣 · 北埔鄉",
+      "lat": 24.68333,
+      "lon": 121.06667,
+      "aliases": [
+        "Beipu Township",
+        "Beibu Siang",
+        "Beibu Xiang",
+        "Beipu",
+        "Pei-pu",
+        "Pei-pu Hsiang",
+        "bei bu xiang",
+        "北埔鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J13",
+      "name": "台灣 · 新竹縣 · 峨眉鄉",
+      "lat": 24.68333,
+      "lon": 121.0,
+      "aliases": [
+        "Emei Township",
+        "Emei",
+        "Emei Siang",
+        "Emei Xiang",
+        "O-mei",
+        "O-mei Hsiang",
+        "e mei xiang",
+        "峨眉鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J14",
+      "name": "台灣 · 新竹縣 · 尖石鄉",
+      "lat": 24.61667,
+      "lon": 121.26667,
+      "aliases": [
+        "Jianshi Township",
+        "Chien-shih",
+        "Chien-shih Hsiang",
+        "Jianshi",
+        "Jianshi Xiang",
+        "Jianshih Siang",
+        "jian shi xiang",
+        "尖石鄉"
+      ]
+    },
+    {
+      "id": "tw-town-J15",
+      "name": "台灣 · 新竹縣 · 五峰鄉",
+      "lat": 24.58333,
+      "lon": 121.13333,
+      "aliases": [
+        "Wufeng Township",
+        "Wu-feng",
+        "Wu-feng Hsiang",
+        "Wufeng",
+        "Wufeng Xiang",
+        "Wufong Siang",
+        "wu feng xiang",
+        "五峰鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K01",
+      "name": "台灣 · 苗栗縣 · 苗栗市",
+      "lat": 24.56393,
+      "lon": 120.81122,
+      "aliases": [
+        "Miaoli City",
+        "Miaoli",
+        "miao li shi",
+        "苗栗市"
+      ]
+    },
+    {
+      "id": "tw-town-K02",
+      "name": "台灣 · 苗栗縣 · 苑裡鎮",
+      "lat": 24.41667,
+      "lon": 120.68333,
+      "aliases": [
+        "Yuanli Township",
+        "Yuan-li",
+        "Yuan-li Chen",
+        "Yuanli",
+        "Yuanli Jhen",
+        "Yuanli Zhen",
+        "Yüan-li",
+        "Yüan-li Chen",
+        "yuan li zhen",
+        "苑裡鎭",
+        "苑裡鎮"
+      ]
+    },
+    {
+      "id": "tw-town-K03",
+      "name": "台灣 · 苗栗縣 · 通霄鎮",
+      "lat": 24.48333,
+      "lon": 120.7,
+      "aliases": [
+        "Tongxiao Township",
+        "T'ung-hsiao",
+        "T'ung-hsiao Chen",
+        "Tongsiao Jhen",
+        "Tongxiao",
+        "Tongxiao Zhen",
+        "T’ung-hsiao",
+        "T’ung-hsiao Chen",
+        "tong xiao zhen",
+        "通霄鎭",
+        "通霄鎮"
+      ]
+    },
+    {
+      "id": "tw-town-K04",
+      "name": "台灣 · 苗栗縣 · 公館鄉",
+      "lat": 24.5,
+      "lon": 120.83333,
+      "aliases": [
+        "Gongguan Township",
+        "Gongguan",
+        "Gongguan Siang",
+        "Gongguan Xiang",
+        "Kung-kuan",
+        "Kung-kuan Hsiang",
+        "gong guan xiang",
+        "公館鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K05",
+      "name": "台灣 · 苗栗縣 · 銅鑼鄉",
+      "lat": 24.46667,
+      "lon": 120.8,
+      "aliases": [
+        "Tongluo Township",
+        "T'ung-lo",
+        "T'ung-lo Hsiang",
+        "Tongluo",
+        "Tongluo Siang",
+        "Tongluo Xiang",
+        "T’ung-lo",
+        "T’ung-lo Hsiang",
+        "tong luo xiang",
+        "銅鑼鄉",
+        "銅鑼鄕"
+      ]
+    },
+    {
+      "id": "tw-town-K06",
+      "name": "台灣 · 苗栗縣 · 三義鄉",
+      "lat": 24.38333,
+      "lon": 120.76667,
+      "aliases": [
+        "Sanyi Township",
+        "San-i",
+        "San-i Hsiang",
+        "Sanyi",
+        "Sanyi Siang",
+        "Sanyi Xiang",
+        "san yi xiang",
+        "三義鄉",
+        "三義鄕"
+      ]
+    },
+    {
+      "id": "tw-town-K07",
+      "name": "台灣 · 苗栗縣 · 西湖鄉",
+      "lat": 24.55,
+      "lon": 120.76667,
+      "aliases": [
+        "Xihu Township",
+        "Hsi-hu",
+        "Hsi-hu Hsiang",
+        "Sihu Siang",
+        "Xihu",
+        "Xihu Xiang",
+        "xi hu xiang",
+        "西湖鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K08",
+      "name": "台灣 · 苗栗縣 · 頭屋鄉",
+      "lat": 24.56667,
+      "lon": 120.86667,
+      "aliases": [
+        "Touwu Township",
+        "T'ou-wu",
+        "T'ou-wu Hsiang",
+        "Touwu",
+        "Touwu Siang",
+        "Touwu Xiang",
+        "T’ou-wu",
+        "T’ou-wu Hsiang",
+        "tou wu xiang",
+        "頭屋鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K09",
+      "name": "台灣 · 苗栗縣 · 竹南鎮",
+      "lat": 24.7,
+      "lon": 120.86667,
+      "aliases": [
+        "Zhunan Township",
+        "Chu-nan",
+        "Chu-nan Chen",
+        "Jhunan Jhen",
+        "Zhunan",
+        "Zhunan Zhen",
+        "zhu nan zhen",
+        "竹南鎮"
+      ]
+    },
+    {
+      "id": "tw-town-K10",
+      "name": "台灣 · 苗栗縣 · 頭份市",
+      "lat": 24.68333,
+      "lon": 120.91667,
+      "aliases": [
+        "Toufen City",
+        "T'ou-fen",
+        "T'ou-fen Chen",
+        "Toufen",
+        "Toufen Jhen",
+        "Toufen Township",
+        "Toufen Zhen",
+        "T’ou-fen",
+        "T’ou-fen Chen",
+        "tou fen shi",
+        "tou fen zhen",
+        "頭份市",
+        "頭份鎮"
+      ]
+    },
+    {
+      "id": "tw-town-K11",
+      "name": "台灣 · 苗栗縣 · 造橋鄉",
+      "lat": 24.63333,
+      "lon": 120.86667,
+      "aliases": [
+        "Zaoqiao Township",
+        "Tsao-ch'iao",
+        "Tsao-ch'iao Hsiang",
+        "Tsao-ch’iao",
+        "Tsao-ch’iao Hsiang",
+        "Zaociao Siang",
+        "Zaoqiao",
+        "Zaoqiao Xiang",
+        "zao qiao xiang",
+        "造橋鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K12",
+      "name": "台灣 · 苗栗縣 · 後龍鎮",
+      "lat": 24.61667,
+      "lon": 120.76667,
+      "aliases": [
+        "Houlong Township",
+        "Hou-lung",
+        "Hou-lung Chen",
+        "Houlong",
+        "Houlong Jhen",
+        "Houlong Zhen",
+        "hou long zhen",
+        "後龍鎮"
+      ]
+    },
+    {
+      "id": "tw-town-K13",
+      "name": "台灣 · 苗栗縣 · 三灣鄉",
+      "lat": 24.63333,
+      "lon": 120.93333,
+      "aliases": [
+        "Sanwan Township",
+        "San-wan",
+        "San-wan Hsiang",
+        "Sanwan",
+        "Sanwan Siang",
+        "Sanwan Xiang",
+        "san wan xiang",
+        "三灣鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K14",
+      "name": "台灣 · 苗栗縣 · 南庄鄉",
+      "lat": 24.56667,
+      "lon": 121.01667,
+      "aliases": [
+        "Nanzhuang Township",
+        "Nan-chuang",
+        "Nan-chuang Hsiang",
+        "Nanjhuang Siang",
+        "Nanzhuang",
+        "Nanzhuang Xiang",
+        "nan zhuang xiang",
+        "南庄鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K15",
+      "name": "台灣 · 苗栗縣 · 大湖鄉",
+      "lat": 24.4,
+      "lon": 120.85,
+      "aliases": [
+        "Dahu Township",
+        "Dahu",
+        "Dahu Siang",
+        "Dahu Xiang",
+        "Ta-hu",
+        "Ta-hu Hsiang",
+        "da hu xiang",
+        "大湖鄉",
+        "大湖鄕"
+      ]
+    },
+    {
+      "id": "tw-town-K16",
+      "name": "台灣 · 苗栗縣 · 卓蘭鎮",
+      "lat": 24.33333,
+      "lon": 120.85,
+      "aliases": [
+        "Zhuolan Township",
+        "Cho-lan",
+        "Cho-lan Chen",
+        "Jhuolan Jhen",
+        "Zhuolan",
+        "Zhuolan Zhen",
+        "zhuo lan zhen",
+        "卓蘭鎭",
+        "卓蘭鎮"
+      ]
+    },
+    {
+      "id": "tw-town-K17",
+      "name": "台灣 · 苗栗縣 · 獅潭鄉",
+      "lat": 24.53333,
+      "lon": 120.91667,
+      "aliases": [
+        "Shitan Township",
+        "Shih-t'an",
+        "Shih-t'an Hsiang",
+        "Shih-t’an",
+        "Shih-t’an Hsiang",
+        "Shihtan Siang",
+        "Shitan",
+        "Shitan Xiang",
+        "shi tan xiang",
+        "獅潭鄉"
+      ]
+    },
+    {
+      "id": "tw-town-K18",
+      "name": "台灣 · 苗栗縣 · 泰安鄉",
+      "lat": 24.41667,
+      "lon": 121.06667,
+      "aliases": [
+        "Taian Township",
+        "T'ai-an",
+        "T'ai-an Hsiang",
+        "Tai'an Siang",
+        "Tai'an Xiang",
+        "Taian",
+        "Tai’an Siang",
+        "Tai’an Xiang",
+        "T’ai-an",
+        "T’ai-an Hsiang",
+        "tai an xiang",
+        "泰安鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M01",
+      "name": "台灣 · 南投縣 · 南投市",
+      "lat": 23.9218,
+      "lon": 120.67881,
+      "aliases": [
+        "Nantou City",
+        "Nantou",
+        "nan tou shi",
+        "南投市"
+      ]
+    },
+    {
+      "id": "tw-town-M02",
+      "name": "台灣 · 南投縣 · 埔里鎮",
+      "lat": 23.98333,
+      "lon": 120.93333,
+      "aliases": [
+        "Puli Township",
+        "P'u-li",
+        "P'u-li Chen",
+        "Puli",
+        "Puli Jhen",
+        "Puli Zhen",
+        "P’u-li",
+        "P’u-li Chen",
+        "bu li zhen",
+        "埔里鎮"
+      ]
+    },
+    {
+      "id": "tw-town-M03",
+      "name": "台灣 · 南投縣 · 草屯鎮",
+      "lat": 23.98333,
+      "lon": 120.73333,
+      "aliases": [
+        "Caotun Township",
+        "Caotun",
+        "Caotun Jhen",
+        "Caotun Zhen",
+        "Ts'ao-t'un",
+        "Ts'ao-t'un Chen",
+        "Ts’ao-t’un",
+        "Ts’ao-t’un Chen",
+        "cao tun zhen",
+        "草屯鎮",
+        "草屯镇"
+      ]
+    },
+    {
+      "id": "tw-town-M04",
+      "name": "台灣 · 南投縣 · 竹山鎮",
+      "lat": 23.71667,
+      "lon": 120.7,
+      "aliases": [
+        "Zhushan Township",
+        "Chu-shan",
+        "Chu-shan Chen",
+        "Jhushan Jhen",
+        "Zhushan",
+        "Zhushan Zhen",
+        "zhu shan zhen",
+        "竹山鎮"
+      ]
+    },
+    {
+      "id": "tw-town-M05",
+      "name": "台灣 · 南投縣 · 集集鎮",
+      "lat": 23.83333,
+      "lon": 120.78333,
+      "aliases": [
+        "Jiji Township",
+        "Chi-chi",
+        "Chi-chi Chen",
+        "Jiji",
+        "Jiji Jhen",
+        "Jiji Zhen",
+        "ji ji zhen",
+        "集集鎮"
+      ]
+    },
+    {
+      "id": "tw-town-M06",
+      "name": "台灣 · 南投縣 · 名間鄉",
+      "lat": 23.85,
+      "lon": 120.66667,
+      "aliases": [
+        "Mingjian Township",
+        "Ming-chien",
+        "Ming-chien Hsiang",
+        "Mingjian",
+        "Mingjian Siang",
+        "Mingjian Xiang",
+        "ming jian xiang",
+        "名間鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M07",
+      "name": "台灣 · 南投縣 · 鹿谷鄉",
+      "lat": 23.73333,
+      "lon": 120.76667,
+      "aliases": [
+        "Lugu Township",
+        "Lu-ku",
+        "Lu-ku Hsiang",
+        "Lugu",
+        "Lugu Siang",
+        "Lugu Xiang",
+        "lu gu xiang",
+        "鹿谷鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M08",
+      "name": "台灣 · 南投縣 · 中寮鄉",
+      "lat": 23.91667,
+      "lon": 120.78333,
+      "aliases": [
+        "Zhongliao Township",
+        "Chung-liao",
+        "Chung-liao Hsiang",
+        "Jhongliao Siang",
+        "Zhongliao",
+        "Zhongliao Xiang",
+        "zhong liao xiang",
+        "中寮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M09",
+      "name": "台灣 · 南投縣 · 魚池鄉",
+      "lat": 23.88333,
+      "lon": 120.91667,
+      "aliases": [
+        "Yuchi Township",
+        "Yu-ch'ih",
+        "Yu-ch'ih Hsiang",
+        "Yuchi",
+        "Yuchi Xiang",
+        "Yuchih Siang",
+        "Yü-ch’ih",
+        "Yü-ch’ih Hsiang",
+        "yu chi xiang",
+        "魚池鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M10",
+      "name": "台灣 · 南投縣 · 國姓鄉",
+      "lat": 24.01667,
+      "lon": 120.85,
+      "aliases": [
+        "Guoxing Township",
+        "Guosing Siang",
+        "Guoxing",
+        "Guoxing Xiang",
+        "Kuo-hsing",
+        "Kuo-hsing Hsiang",
+        "guo xing xiang",
+        "國姓鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M11",
+      "name": "台灣 · 南投縣 · 水里鄉",
+      "lat": 23.81667,
+      "lon": 120.85,
+      "aliases": [
+        "Shuili Township",
+        "Shueili Siang",
+        "Shui-li",
+        "Shui-li Hsiang",
+        "Shuili",
+        "Shuili Xiang",
+        "shui li xiang",
+        "水里鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M12",
+      "name": "台灣 · 南投縣 · 信義鄉",
+      "lat": 23.66667,
+      "lon": 121.01667,
+      "aliases": [
+        "Xinyi Township",
+        "Hsin-i",
+        "Hsin-i Hsiang",
+        "Sinyi Siang",
+        "Xinyi",
+        "Xinyi Xiang",
+        "xin yi xiang",
+        "信義鄉"
+      ]
+    },
+    {
+      "id": "tw-town-M13",
+      "name": "台灣 · 南投縣 · 仁愛鄉",
+      "lat": 24.02528,
+      "lon": 121.13111,
+      "aliases": [
+        "Renai Township",
+        "Jen-ai",
+        "Jen-ai Hsiang",
+        "Ren'ai Siang",
+        "Ren'ai Xiang",
+        "Renai",
+        "Ren’ai Siang",
+        "Ren’ai Xiang",
+        "Wu-she",
+        "ren ai xiang",
+        "仁愛鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N01",
+      "name": "台灣 · 彰化縣 · 彰化市",
+      "lat": 24.07611,
+      "lon": 120.54111,
+      "aliases": [
+        "Zhanghua City",
+        "Chang-hua",
+        "Chang-hua Shih",
+        "Jhanghua Shih",
+        "Zhanghua",
+        "Zhanghua Shi",
+        "zhang hua shi",
+        "彰化市"
+      ]
+    },
+    {
+      "id": "tw-town-N02",
+      "name": "台灣 · 彰化縣 · 鹿港鎮",
+      "lat": 24.08333,
+      "lon": 120.45,
+      "aliases": [
+        "Lugang Township",
+        "Lu-kang",
+        "Lu-kang Chen",
+        "Lugang",
+        "Lugang Jhen",
+        "Lugang Zhen",
+        "lu gang zhen",
+        "鹿港鎮"
+      ]
+    },
+    {
+      "id": "tw-town-N03",
+      "name": "台灣 · 彰化縣 · 和美鎮",
+      "lat": 24.11222,
+      "lon": 120.4975,
+      "aliases": [
+        "Hemei Township",
+        "Hemei",
+        "Hemei Jhen",
+        "Hemei Zhen",
+        "Ho-mei",
+        "Ho-mei Chen",
+        "he mei zhen",
+        "和美鎭",
+        "和美鎮"
+      ]
+    },
+    {
+      "id": "tw-town-N04",
+      "name": "台灣 · 彰化縣 · 北斗鎮",
+      "lat": 23.86667,
+      "lon": 120.53333,
+      "aliases": [
+        "Beidou Township",
+        "Beidou",
+        "Beidou Jhen",
+        "Beidou Zhen",
+        "Pei-tou",
+        "Pei-tou Chen",
+        "bei dou zhen",
+        "北斗鎮"
+      ]
+    },
+    {
+      "id": "tw-town-N05",
+      "name": "台灣 · 彰化縣 · 員林市",
+      "lat": 23.95,
+      "lon": 120.58333,
+      "aliases": [
+        "Yuanlin City",
+        "Yuan-lin",
+        "Yuan-lin Chen",
+        "Yuanlin",
+        "Yuanlin Jhen",
+        "Yuanlin Zhen",
+        "Yüan-lin",
+        "Yüan-lin Chen",
+        "yuan lin shi",
+        "yuan lin zhen",
+        "員林市",
+        "員林鎮"
+      ]
+    },
+    {
+      "id": "tw-town-N06",
+      "name": "台灣 · 彰化縣 · 溪湖鎮",
+      "lat": 23.95,
+      "lon": 120.48333,
+      "aliases": [
+        "Xihu Township",
+        "Hsi-hu",
+        "Hsi-hu Chen",
+        "Sihu Jhen",
+        "Xihu",
+        "Xihu Zhen",
+        "xi hu zhen",
+        "溪湖鎭",
+        "溪湖鎮"
+      ]
+    },
+    {
+      "id": "tw-town-N07",
+      "name": "台灣 · 彰化縣 · 田中鎮",
+      "lat": 23.85,
+      "lon": 120.58333,
+      "aliases": [
+        "Tianzhong Township",
+        "T'ien-chung",
+        "T'ien-chung Chen",
+        "Tianjhong Jhen",
+        "Tianzhong",
+        "Tianzhong Zhen",
+        "T’ien-chung",
+        "T’ien-chung Chen",
+        "tian zhong zhen",
+        "田中鎮"
+      ]
+    },
+    {
+      "id": "tw-town-N08",
+      "name": "台灣 · 彰化縣 · 二林鎮",
+      "lat": 23.91667,
+      "lon": 120.4,
+      "aliases": [
+        "Erlin Township",
+        "Erh-lin",
+        "Erh-lin Chen",
+        "Erlin",
+        "Erlin Jhen",
+        "Erlin Zhen",
+        "er lin zhen",
+        "二林鎭",
+        "二林鎮"
+      ]
+    },
+    {
+      "id": "tw-town-N09",
+      "name": "台灣 · 彰化縣 · 線西鄉",
+      "lat": 24.1375,
+      "lon": 120.46917,
+      "aliases": [
+        "Xianxi Township",
+        "Hsien-hsi",
+        "Hsien-hsi Hsiang",
+        "Siansi Siang",
+        "Xianxi",
+        "Xianxi Xiang",
+        "xian xi xiang",
+        "線西鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N10",
+      "name": "台灣 · 彰化縣 · 伸港鄉",
+      "lat": 24.17194,
+      "lon": 120.49,
+      "aliases": [
+        "Shengang Township",
+        "Shen-kang",
+        "Shen-kang Hsiang",
+        "Shengang",
+        "Shengang Siang",
+        "Shengang Xiang",
+        "shen gang xiang",
+        "伸港鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N11",
+      "name": "台灣 · 彰化縣 · 福興鄉",
+      "lat": 24.03333,
+      "lon": 120.43333,
+      "aliases": [
+        "Fuxing Township",
+        "Fu-hsing",
+        "Fu-hsing Hsiang",
+        "Fusing Siang",
+        "Fuxing",
+        "Fuxing Xiang",
+        "fu xing xiang",
+        "福興鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N12",
+      "name": "台灣 · 彰化縣 · 秀水鄉",
+      "lat": 24.03333,
+      "lon": 120.5,
+      "aliases": [
+        "Xiushui Township",
+        "Hsiu-shui",
+        "Hsiu-shui Hsiang",
+        "Sioushuei Siang",
+        "Xiushui",
+        "Xiushui Xiang",
+        "xiu shui xiang",
+        "秀水鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N13",
+      "name": "台灣 · 彰化縣 · 花壇鄉",
+      "lat": 24.03333,
+      "lon": 120.55,
+      "aliases": [
+        "Huatan Township",
+        "Hua-t'an",
+        "Hua-t'an Hsiang",
+        "Hua-t’an",
+        "Hua-t’an Hsiang",
+        "Huatan",
+        "Huatan Siang",
+        "Huatan Xiang",
+        "hua tan xiang",
+        "花壇鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N14",
+      "name": "台灣 · 彰化縣 · 芬園鄉",
+      "lat": 24.01667,
+      "lon": 120.61667,
+      "aliases": [
+        "Fenyuan Township",
+        "Fen-yuan",
+        "Fen-yuan Hsiang",
+        "Fen-yüan",
+        "Fen-yüan Hsiang",
+        "Fenyuan",
+        "Fenyuan Siang",
+        "Fenyuan Xiang",
+        "fen yuan xiang",
+        "芬園鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N15",
+      "name": "台灣 · 彰化縣 · 大村鄉",
+      "lat": 24.0,
+      "lon": 120.55,
+      "aliases": [
+        "Dacun Township",
+        "Dacun",
+        "Dacun Siang",
+        "Dacun Xiang",
+        "Ta-ts'un",
+        "Ta-ts'un Hsiang",
+        "Ta-ts’un",
+        "Ta-ts’un Hsiang",
+        "da cun xiang",
+        "大村鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N16",
+      "name": "台灣 · 彰化縣 · 埔鹽鄉",
+      "lat": 23.98333,
+      "lon": 120.45,
+      "aliases": [
+        "Puyan Township",
+        "Buyan Siang",
+        "Buyan Xiang",
+        "Pu-yen",
+        "Pu-yen Hsiang",
+        "Puyan",
+        "bu yan xiang",
+        "埔鹽鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N17",
+      "name": "台灣 · 彰化縣 · 埔心鄉",
+      "lat": 23.96667,
+      "lon": 120.53333,
+      "aliases": [
+        "Puxin Township",
+        "Busin Siang",
+        "Buxin Xiang",
+        "Pu-hsin",
+        "Pu-hsin Chen",
+        "Pu-hsin Hsiang",
+        "Pusin",
+        "Pusin Township",
+        "Puxin",
+        "bu xin xiang",
+        "埔心鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N18",
+      "name": "台灣 · 彰化縣 · 永靖鄉",
+      "lat": 23.93333,
+      "lon": 120.53333,
+      "aliases": [
+        "Yongjing Township",
+        "Yongjing",
+        "Yongjing Siang",
+        "Yongjing Xiang",
+        "Yung-ching",
+        "Yung-ching Hsiang",
+        "yong jing xiang",
+        "永靖鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N19",
+      "name": "台灣 · 彰化縣 · 社頭鄉",
+      "lat": 23.91667,
+      "lon": 120.6,
+      "aliases": [
+        "Shetou Township",
+        "She-t'ou",
+        "She-t'ou Hsiang",
+        "She-t’ou",
+        "She-t’ou Hsiang",
+        "Shetou",
+        "Shetou Siang",
+        "Shetou Xiang",
+        "she tou xiang",
+        "社頭鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N20",
+      "name": "台灣 · 彰化縣 · 二水鄉",
+      "lat": 23.81667,
+      "lon": 120.61667,
+      "aliases": [
+        "Ershui Township",
+        "Erh-shui",
+        "Erh-shui Hsiang",
+        "Ershuei Siang",
+        "Ershui",
+        "Ershui Xiang",
+        "er shui xiang",
+        "二水鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N21",
+      "name": "台灣 · 彰化縣 · 田尾鄉",
+      "lat": 23.9,
+      "lon": 120.51667,
+      "aliases": [
+        "Tianwei Township",
+        "T'ien-wei",
+        "T'ien-wei Hsiang",
+        "Tianwei",
+        "Tianwei Siang",
+        "Tianwei Xiang",
+        "T’ien-wei",
+        "T’ien-wei Hsiang",
+        "tian wei xiang",
+        "田尾鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N22",
+      "name": "台灣 · 彰化縣 · 埤頭鄉",
+      "lat": 23.88333,
+      "lon": 120.46667,
+      "aliases": [
+        "Bitou Township",
+        "Bitou",
+        "P'i-t'ou",
+        "P'i-t'ou Hsiang",
+        "Pitou Siang",
+        "Pitou Xiang",
+        "P’i-t’ou",
+        "P’i-t’ou Hsiang",
+        "pi tou xiang",
+        "埤頭鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N23",
+      "name": "台灣 · 彰化縣 · 芳苑鄉",
+      "lat": 23.96667,
+      "lon": 120.35,
+      "aliases": [
+        "Fangyuan Township",
+        "Fang-yuan",
+        "Fang-yuan Hsiang",
+        "Fang-yüan",
+        "Fang-yüan Hsiang",
+        "Fangyuan",
+        "Fangyuan Siang",
+        "Fangyuan Xiang",
+        "fang yuan xiang",
+        "芳苑鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N24",
+      "name": "台灣 · 彰化縣 · 大城鄉",
+      "lat": 23.86667,
+      "lon": 120.31667,
+      "aliases": [
+        "Dacheng Township",
+        "Dacheng",
+        "Dacheng Siang",
+        "Dacheng Xiang",
+        "Ta Hsiang",
+        "Ta-ch'eng",
+        "Ta-ch'eng Hsiang",
+        "Ta-ch’eng",
+        "Ta-ch’eng Hsiang",
+        "da cheng xiang",
+        "大城鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N25",
+      "name": "台灣 · 彰化縣 · 竹塘鄉",
+      "lat": 23.86667,
+      "lon": 120.4,
+      "aliases": [
+        "Zhutang Township",
+        "Chu-t'ang",
+        "Chu-t'ang Hsiang",
+        "Chu-t’ang",
+        "Chu-t’ang Hsiang",
+        "Jhutang Siang",
+        "Zhutang",
+        "Zhutang Xiang",
+        "zhu tang xiang",
+        "竹塘鄉"
+      ]
+    },
+    {
+      "id": "tw-town-N26",
+      "name": "台灣 · 彰化縣 · 溪州鄉",
+      "lat": 23.83333,
+      "lon": 120.51667,
+      "aliases": [
+        "Xizhou Township",
+        "Hsi-chou",
+        "Hsi-chou Hsiang",
+        "Sijhou Siang",
+        "Xizhou",
+        "Xizhou Xiang",
+        "xi zhou xiang",
+        "溪州鄉"
+      ]
+    },
+    {
+      "id": "tw-town-O01",
+      "name": "台灣 · 新竹市 · 東區",
+      "lat": 24.78988,
+      "lon": 120.99182,
+      "aliases": [
+        "E. District",
+        "East",
+        "dong qu",
+        "東區"
+      ]
+    },
+    {
+      "id": "tw-town-O02",
+      "name": "台灣 · 新竹市 · 北區",
+      "lat": 24.81641,
+      "lon": 120.94934,
+      "aliases": [
+        "N. District",
+        "Bei Qu",
+        "North",
+        "Pei Ch'u",
+        "Pei Ch’ü",
+        "bei qu",
+        "北區"
+      ]
+    },
+    {
+      "id": "tw-town-O03",
+      "name": "台灣 · 新竹市 · 香山區",
+      "lat": 24.78333,
+      "lon": 120.93333,
+      "aliases": [
+        "Xiangshan District",
+        "Hsiang-shan",
+        "Hsiang-shan Ch'u",
+        "Hsiang-shan Ch’ü",
+        "Hsiang-shan Hsiang",
+        "Siangshan",
+        "Xiangshan",
+        "Xiangshan Qu",
+        "xiang shan qu",
+        "香山區"
+      ]
+    },
+    {
+      "id": "tw-town-P01",
+      "name": "台灣 · 雲林縣 · 斗六市",
+      "lat": 23.71639,
+      "lon": 120.55028,
+      "aliases": [
+        "Douliu City",
+        "Douliou Shih",
+        "Douliu",
+        "Douliu Shi",
+        "Tou-liu",
+        "Tou-liu Chen",
+        "Tou-liu Shih",
+        "dou liu fu",
+        "dou liu shi",
+        "斗六巿",
+        "斗六市"
+      ]
+    },
+    {
+      "id": "tw-town-P02",
+      "name": "台灣 · 雲林縣 · 斗南鎮",
+      "lat": 23.68333,
+      "lon": 120.48333,
+      "aliases": [
+        "Dounan Township",
+        "Dounan",
+        "Dounan Jhen",
+        "Dounan Zhen",
+        "Tou-nan",
+        "Tou-nan Chen",
+        "dou nan zhen",
+        "斗南鎭",
+        "斗南鎮"
+      ]
+    },
+    {
+      "id": "tw-town-P03",
+      "name": "台灣 · 雲林縣 · 虎尾鎮",
+      "lat": 23.71667,
+      "lon": 120.43333,
+      "aliases": [
+        "Huwei Township",
+        "Hu-wei",
+        "Hu-wei Chen",
+        "Huwei",
+        "Huwei Jhen",
+        "Huwei Zhen",
+        "hu wei zhen",
+        "虎尾鎮"
+      ]
+    },
+    {
+      "id": "tw-town-P04",
+      "name": "台灣 · 雲林縣 · 西螺鎮",
+      "lat": 23.78333,
+      "lon": 120.45,
+      "aliases": [
+        "Xiluo Township",
+        "Hsi-lo",
+        "Hsi-lo Chen",
+        "Siluo Jhen",
+        "Xiluo",
+        "Xiluo Zhen",
+        "xi luo zhen",
+        "西螺鎭",
+        "西螺鎮"
+      ]
+    },
+    {
+      "id": "tw-town-P05",
+      "name": "台灣 · 雲林縣 · 土庫鎮",
+      "lat": 23.7,
+      "lon": 120.35,
+      "aliases": [
+        "Tuku Township",
+        "T'u-k'u",
+        "T'u-k'u Chen",
+        "Tuku",
+        "Tuku Jhen",
+        "Tuku Zhen",
+        "T’u-k’u",
+        "T’u-k’u Chen",
+        "tu ku zhen",
+        "土庫鎭",
+        "土庫鎮"
+      ]
+    },
+    {
+      "id": "tw-town-P06",
+      "name": "台灣 · 雲林縣 · 北港鎮",
+      "lat": 23.6,
+      "lon": 120.28333,
+      "aliases": [
+        "Beigang Township",
+        "Beigang",
+        "Beigang Jhen",
+        "Beigang Zhen",
+        "Pei-kang",
+        "Pei-kang Chen",
+        "bei gang zhen",
+        "北港鎮"
+      ]
+    },
+    {
+      "id": "tw-town-P07",
+      "name": "台灣 · 雲林縣 · 古坑鄉",
+      "lat": 23.65,
+      "lon": 120.58333,
+      "aliases": [
+        "Gukeng Township",
+        "Gukeng",
+        "Gukeng Siang",
+        "Gukeng Xiang",
+        "Ku-k'eng",
+        "Ku-k'eng Hsiang",
+        "Ku-k’eng",
+        "Ku-k’eng Hsiang",
+        "gu keng xiang",
+        "古坑鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P08",
+      "name": "台灣 · 雲林縣 · 大埤鄉",
+      "lat": 23.65,
+      "lon": 120.41667,
+      "aliases": [
+        "Dabi Township",
+        "Dabi",
+        "Dapi Siang",
+        "Dapi Xiang",
+        "Ta-p'i",
+        "Ta-p'i Hsiang",
+        "Ta-p’i",
+        "Ta-p’i Hsiang",
+        "da pi xiang",
+        "大埤鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P09",
+      "name": "台灣 · 雲林縣 · 莿桐鄉",
+      "lat": 23.76667,
+      "lon": 120.53333,
+      "aliases": [
+        "Citong Township",
+        "Cihtong Siang",
+        "Citong",
+        "Citong Xiang",
+        "Tz'u-t'ung",
+        "Tz'u-t'ung Hsiang",
+        "Tz’u-t’ung",
+        "Tz’u-t’ung Hsiang",
+        "ci tong xiang",
+        "莿桐鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P10",
+      "name": "台灣 · 雲林縣 · 林內鄉",
+      "lat": 23.75,
+      "lon": 120.61667,
+      "aliases": [
+        "Linnei Township",
+        "Lin-nei",
+        "Lin-nei Hsiang",
+        "Linnei",
+        "Linnei Siang",
+        "Linnei Xiang",
+        "lin nei xiang",
+        "林內鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P11",
+      "name": "台灣 · 雲林縣 · 二崙鄉",
+      "lat": 23.78333,
+      "lon": 120.4,
+      "aliases": [
+        "Erlun Township",
+        "Erh-lun",
+        "Erh-lun Hsiang",
+        "Erlun",
+        "Erlun Siang",
+        "Erlun Xiang",
+        "er lun xiang",
+        "二崙鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P12",
+      "name": "台灣 · 雲林縣 · 崙背鄉",
+      "lat": 23.78333,
+      "lon": 120.33333,
+      "aliases": [
+        "Lunbei Township",
+        "Lun-pei",
+        "Lun-pei Hsiang",
+        "Lunbei",
+        "Lunbei Siang",
+        "Lunbei Xiang",
+        "lun bei xiang",
+        "崙背鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P13",
+      "name": "台灣 · 雲林縣 · 麥寮鄉",
+      "lat": 23.78333,
+      "lon": 120.25,
+      "aliases": [
+        "Mailiao Township",
+        "Mai-liao",
+        "Mai-liao Hsiang",
+        "Mailiao",
+        "Mailiao Siang",
+        "Mailiao Xiang",
+        "mai liao xiang",
+        "麥寮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P14",
+      "name": "台灣 · 雲林縣 · 東勢鄉",
+      "lat": 23.7,
+      "lon": 120.25,
+      "aliases": [
+        "Dongshi Township",
+        "Dongshi",
+        "Dongshi Xiang",
+        "Dongshih Siang",
+        "Tung-shih",
+        "Tung-shih Hsiang",
+        "dong shi xiang",
+        "東勢鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P15",
+      "name": "台灣 · 雲林縣 · 褒忠鄉",
+      "lat": 23.71667,
+      "lon": 120.3,
+      "aliases": [
+        "Baozhong Township",
+        "Baojhong Siang",
+        "Baozhong",
+        "Baozhong Xiang",
+        "Pao-chung",
+        "Pao-chung Hsiang",
+        "bao zhong xiang",
+        "褒忠鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P16",
+      "name": "台灣 · 雲林縣 · 臺西鄉",
+      "lat": 23.71667,
+      "lon": 120.2,
+      "aliases": [
+        "Taixi Township",
+        "T'ai-hsi",
+        "T'ai-hsi Hsiang",
+        "Taisi Siang",
+        "Taixi",
+        "Taixi Xiang",
+        "T’ai-hsi",
+        "T’ai-hsi Hsiang",
+        "tai xi xiang",
+        "臺西鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P17",
+      "name": "台灣 · 雲林縣 · 元長鄉",
+      "lat": 23.65,
+      "lon": 120.31667,
+      "aliases": [
+        "Yuanchang Township",
+        "Yuan-ch'ang",
+        "Yuan-ch'ang Hsiang",
+        "Yuanchang",
+        "Yuanchang Siang",
+        "Yuanchang Xiang",
+        "Yüan-ch’ang",
+        "Yüan-ch’ang Hsiang",
+        "yuan zhang xiang",
+        "元長鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P18",
+      "name": "台灣 · 雲林縣 · 四湖鄉",
+      "lat": 23.65,
+      "lon": 120.2,
+      "aliases": [
+        "Sihu Township",
+        "Sihhu Siang",
+        "Sihu",
+        "Sihu Xiang",
+        "Ssu-hu",
+        "Ssu-hu Hsiang",
+        "si hu xiang",
+        "四湖鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P19",
+      "name": "台灣 · 雲林縣 · 口湖鄉",
+      "lat": 23.58333,
+      "lon": 120.16667,
+      "aliases": [
+        "Kouhu Township",
+        "K'ou-hu",
+        "K'ou-hu Hsiang",
+        "Kouhu",
+        "Kouhu Siang",
+        "Kouhu Xiang",
+        "K’ou-hu",
+        "K’ou-hu Hsiang",
+        "kou hu xiang",
+        "口湖鄉"
+      ]
+    },
+    {
+      "id": "tw-town-P20",
+      "name": "台灣 · 雲林縣 · 水林鄉",
+      "lat": 23.56667,
+      "lon": 120.23333,
+      "aliases": [
+        "Shuilin Township",
+        "Shueilin Siang",
+        "Shui-lin",
+        "Shui-lin Hsiang",
+        "Shuilin",
+        "Shuilin Xiang",
+        "shui lin xiang",
+        "水林鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q02",
+      "name": "台灣 · 嘉義縣 · 朴子市",
+      "lat": 23.45,
+      "lon": 120.25,
+      "aliases": [
+        "Puzi City",
+        "P'o-tzu",
+        "P'o-tzu Chen",
+        "P'o-tzu Shih",
+        "Pozi Shi",
+        "Pozih Shih",
+        "Puzi",
+        "P’o-tzu",
+        "P’o-tzu Chen",
+        "P’o-tzu Shih",
+        "pu zi shi",
+        "朴子市"
+      ]
+    },
+    {
+      "id": "tw-town-Q03",
+      "name": "台灣 · 嘉義縣 · 布袋鎮",
+      "lat": 23.38333,
+      "lon": 120.18333,
+      "aliases": [
+        "Budai Township",
+        "Budai",
+        "Budai Jhen",
+        "Budai Zhen",
+        "Pu-tai",
+        "Pu-tai Chen",
+        "bu dai zhen",
+        "布袋鎮"
+      ]
+    },
+    {
+      "id": "tw-town-Q04",
+      "name": "台灣 · 嘉義縣 · 大林鎮",
+      "lat": 23.6,
+      "lon": 120.48333,
+      "aliases": [
+        "Dalin Township",
+        "Dalin",
+        "Dalin Jhen",
+        "Dalin Zhen",
+        "Ta-lin",
+        "Ta-lin Chen",
+        "da lin zhen",
+        "大林鎭",
+        "大林鎮"
+      ]
+    },
+    {
+      "id": "tw-town-Q05",
+      "name": "台灣 · 嘉義縣 · 民雄鄉",
+      "lat": 23.55,
+      "lon": 120.45,
+      "aliases": [
+        "Minxueng Township",
+        "Min-hsiung",
+        "Min-hsiung Hsiang",
+        "Minsiong Siang",
+        "Minxiong Xiang",
+        "Minxueng",
+        "min xiong xiang",
+        "民雄鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q06",
+      "name": "台灣 · 嘉義縣 · 溪口鄉",
+      "lat": 23.6,
+      "lon": 120.4,
+      "aliases": [
+        "Xikou Township",
+        "Hsi-k'ou",
+        "Hsi-k'ou Hsiang",
+        "Hsi-k’ou",
+        "Hsi-k’ou Hsiang",
+        "Sikou Siang",
+        "Xikou",
+        "Xikou Xiang",
+        "xi kou xiang",
+        "溪口鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q07",
+      "name": "台灣 · 嘉義縣 · 新港鄉",
+      "lat": 23.55,
+      "lon": 120.35,
+      "aliases": [
+        "Xingang Township",
+        "Hsin-kang",
+        "Hsin-kang Hsiang",
+        "Singang Siang",
+        "Xingang",
+        "Xingang Xiang",
+        "xin gang xiang",
+        "新港鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q08",
+      "name": "台灣 · 嘉義縣 · 六腳鄉",
+      "lat": 23.51667,
+      "lon": 120.26667,
+      "aliases": [
+        "Liujiao Township",
+        "Lioujiao Siang",
+        "Liu-chiao",
+        "Liu-chiao Hsiang",
+        "Liujiao",
+        "Liujiao Xiang",
+        "liu jiao xiang",
+        "六腳鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q09",
+      "name": "台灣 · 嘉義縣 · 東石鄉",
+      "lat": 23.46667,
+      "lon": 120.18333,
+      "aliases": [
+        "Dongshi Township",
+        "Dongshi",
+        "Dongshi Xiang",
+        "Dongshih Siang",
+        "Tung-shih",
+        "Tung-shih Hsiang",
+        "dong shi xiang",
+        "東石鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q10",
+      "name": "台灣 · 嘉義縣 · 義竹鄉",
+      "lat": 23.36667,
+      "lon": 120.21667,
+      "aliases": [
+        "Yizhu Township",
+        "I-chu",
+        "I-chu Hsiang",
+        "Yijhusiang",
+        "Yizhu",
+        "Yizhu Xiang",
+        "yi zhu xiang",
+        "義竹鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q11",
+      "name": "台灣 · 嘉義縣 · 鹿草鄉",
+      "lat": 23.4,
+      "lon": 120.3,
+      "aliases": [
+        "Lucao Township",
+        "Lu-ts'ao",
+        "Lu-ts'ao Hsiang",
+        "Lu-ts’ao",
+        "Lu-ts’ao Hsiang",
+        "Lucao",
+        "Lucao Siang",
+        "Lucao Xiang",
+        "lu cao xiang",
+        "鹿草鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q12",
+      "name": "台灣 · 嘉義縣 · 太保市",
+      "lat": 23.48333,
+      "lon": 120.33333,
+      "aliases": [
+        "Taibao City",
+        "T'ai-pao",
+        "T'ai-pao Hsiang",
+        "T'ai-pao Shih",
+        "Taibao",
+        "Taibao Shi",
+        "Taibao Shih",
+        "T’ai-pao",
+        "T’ai-pao Hsiang",
+        "T’ai-pao Shih",
+        "tai bao shi",
+        "太保市"
+      ]
+    },
+    {
+      "id": "tw-town-Q13",
+      "name": "台灣 · 嘉義縣 · 水上鄉",
+      "lat": 23.43333,
+      "lon": 120.41667,
+      "aliases": [
+        "Shuishang Township",
+        "Shueishang Siang",
+        "Shui-shang",
+        "Shui-shang Hsiang",
+        "Shuishang",
+        "Shuishang Xiang",
+        "shui shang xiang",
+        "水上鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q14",
+      "name": "台灣 · 嘉義縣 · 中埔鄉",
+      "lat": 23.4,
+      "lon": 120.53333,
+      "aliases": [
+        "Zhongpu Township",
+        "Chung-pu",
+        "Chung-pu Hsiang",
+        "Jhongbu Siang",
+        "Zhongbu Xiang",
+        "Zhongpu",
+        "zhong bu xiang",
+        "中埔鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q15",
+      "name": "台灣 · 嘉義縣 · 竹崎鄉",
+      "lat": 23.51667,
+      "lon": 120.58333,
+      "aliases": [
+        "Zhuqi Township",
+        "Chu-ch'i",
+        "Chu-ch'i Hsiang",
+        "Chu-ch’i",
+        "Chu-ch’i Hsiang",
+        "Jhuci Siang",
+        "Zhuqi",
+        "Zhuqi Xiang",
+        "zhu qi xiang",
+        "竹崎鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q16",
+      "name": "台灣 · 嘉義縣 · 梅山鄉",
+      "lat": 23.55,
+      "lon": 120.63333,
+      "aliases": [
+        "Meishan Township",
+        "Mei-shan",
+        "Mei-shan Hsiang",
+        "Meishan",
+        "Meishan Siang",
+        "Meishan Xiang",
+        "mei shan xiang",
+        "梅山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q17",
+      "name": "台灣 · 嘉義縣 · 番路鄉",
+      "lat": 23.43333,
+      "lon": 120.6,
+      "aliases": [
+        "Fanlu Township",
+        "Fan-lu",
+        "Fan-lu Hsiang",
+        "Fanlu",
+        "Fanlu Siang",
+        "Fanlu Xiang",
+        "fan lu xiang",
+        "番路鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q18",
+      "name": "台灣 · 嘉義縣 · 大埔鄉",
+      "lat": 23.3,
+      "lon": 120.58333,
+      "aliases": [
+        "Dapu Township",
+        "Dabu Siang",
+        "Dabu Xiang",
+        "Dapu",
+        "Ta-pu",
+        "Ta-pu Hsiang",
+        "da bu xiang",
+        "大埔鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Q20",
+      "name": "台灣 · 嘉義縣 · 阿里山鄉",
+      "lat": 23.44091,
+      "lon": 120.75965,
+      "aliases": [
+        "Alishan Township",
+        "Alishan",
+        "a li shan xiang",
+        "阿里山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T01",
+      "name": "台灣 · 屏東縣 · 屏東市",
+      "lat": 22.66484,
+      "lon": 120.48,
+      "aliases": [
+        "Pingtung City",
+        "Pingtung",
+        "ping dong shi",
+        "屏東市"
+      ]
+    },
+    {
+      "id": "tw-town-T02",
+      "name": "台灣 · 屏東縣 · 潮州鎮",
+      "lat": 22.53333,
+      "lon": 120.55,
+      "aliases": [
+        "Chaozhou Township",
+        "Ch'ao-chou",
+        "Ch'ao-chou Chen",
+        "Chaojhou Jhen",
+        "Chaozhou",
+        "Chaozhou Zhen",
+        "Ch’ao-chou",
+        "Ch’ao-chou Chen",
+        "chao zhou zhen",
+        "潮州鎭",
+        "潮州鎮"
+      ]
+    },
+    {
+      "id": "tw-town-T03",
+      "name": "台灣 · 屏東縣 · 東港鎮",
+      "lat": 22.46667,
+      "lon": 120.46667,
+      "aliases": [
+        "Donggang Township",
+        "Donggang",
+        "Donggang Jhen",
+        "Donggang Zhen",
+        "Tung-kang",
+        "Tung-kang Chen",
+        "dong gang zhen",
+        "東港鎮"
+      ]
+    },
+    {
+      "id": "tw-town-T04",
+      "name": "台灣 · 屏東縣 · 恆春鎮",
+      "lat": 22.0,
+      "lon": 120.75,
+      "aliases": [
+        "Hengchun Township",
+        "Heng-ch'un",
+        "Heng-ch'un Chen",
+        "Heng-ch’un",
+        "Heng-ch’un Chen",
+        "Hengchun",
+        "Hengchun Jhen",
+        "Hengchun Zhen",
+        "heng chun zhen",
+        "恆春鎮"
+      ]
+    },
+    {
+      "id": "tw-town-T05",
+      "name": "台灣 · 屏東縣 · 萬丹鄉",
+      "lat": 22.58333,
+      "lon": 120.46667,
+      "aliases": [
+        "Wandan Township",
+        "Wan-tan",
+        "Wan-tan Hsiang",
+        "Wandan",
+        "Wandan Siang",
+        "Wandan Xiang",
+        "wan dan xiang",
+        "萬丹鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T06",
+      "name": "台灣 · 屏東縣 · 長治鄉",
+      "lat": 22.7,
+      "lon": 120.55,
+      "aliases": [
+        "Changzhi Township",
+        "Ch'ang-chih",
+        "Ch'ang-chih Hsiang",
+        "Changjhih Siang",
+        "Changzhi",
+        "Changzhi Xiang",
+        "Ch’ang-chih",
+        "Ch’ang-chih Hsiang",
+        "zhang zhi xiang",
+        "長治鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T07",
+      "name": "台灣 · 屏東縣 · 麟洛鄉",
+      "lat": 22.65188,
+      "lon": 120.5292,
+      "aliases": [
+        "Linluo Township",
+        "Lin-lo Hsiang",
+        "Linluo",
+        "Linluo Siang",
+        "Linluo Xiang",
+        "lin luo xiang",
+        "麟洛鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T08",
+      "name": "台灣 · 屏東縣 · 九如鄉",
+      "lat": 22.73333,
+      "lon": 120.48333,
+      "aliases": [
+        "Jiuru Township",
+        "Chiu-ju",
+        "Chiu-ju Hsiang",
+        "Jiouru Siang",
+        "Jiuru",
+        "Jiuru Xiang",
+        "jiu ru xiang",
+        "九如鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T09",
+      "name": "台灣 · 屏東縣 · 里港鄉",
+      "lat": 22.8,
+      "lon": 120.5,
+      "aliases": [
+        "Ligang Township",
+        "Li-kang",
+        "Li-kang Hsiang",
+        "Ligang",
+        "Ligang Siang",
+        "Ligang Xiang",
+        "li gang xiang",
+        "里港鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T10",
+      "name": "台灣 · 屏東縣 · 鹽埔鄉",
+      "lat": 22.73333,
+      "lon": 120.56667,
+      "aliases": [
+        "Yanpu Township",
+        "Yanbu Siang",
+        "Yanbu Xiang",
+        "Yanpu",
+        "Yen-pu",
+        "Yen-pu Hsiang",
+        "yan bu xiang",
+        "鹽埔鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T11",
+      "name": "台灣 · 屏東縣 · 高樹鄉",
+      "lat": 22.8,
+      "lon": 120.58333,
+      "aliases": [
+        "Gaoshu Township",
+        "Gaoshu",
+        "Gaoshu Siang",
+        "Gaoshu Xiang",
+        "Kao-shu",
+        "Kao-shu Hsiang",
+        "gao shu xiang",
+        "高樹鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T12",
+      "name": "台灣 · 屏東縣 · 萬巒鄉",
+      "lat": 22.58333,
+      "lon": 120.58333,
+      "aliases": [
+        "Wanluan Township",
+        "Wan-luan",
+        "Wan-luan Hsiang",
+        "Wanluan",
+        "Wanluan Siang",
+        "Wanluan Xiang",
+        "wan luan xiang",
+        "萬巒鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T13",
+      "name": "台灣 · 屏東縣 · 內埔鄉",
+      "lat": 22.66667,
+      "lon": 120.58333,
+      "aliases": [
+        "Neipu Township",
+        "Nei-pu",
+        "Nei-pu Hsiang",
+        "Neipu",
+        "Neipu Siang",
+        "Neipu Xiang",
+        "nei bu xiang",
+        "內埔鄉",
+        "内埔鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T14",
+      "name": "台灣 · 屏東縣 · 竹田鄉",
+      "lat": 22.59404,
+      "lon": 120.5341,
+      "aliases": [
+        "Zhutian Township",
+        "Chu-t'ien",
+        "Chu-t'ien Hsiang",
+        "Chu-t’ien",
+        "Chu-t’ien Hsiang",
+        "Jhutian Siang",
+        "Zhutian",
+        "Zhutian Xiang",
+        "zhu tian xiang",
+        "竹田鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T15",
+      "name": "台灣 · 屏東縣 · 新埤鄉",
+      "lat": 22.48333,
+      "lon": 120.58333,
+      "aliases": [
+        "Xinbi Township",
+        "Hsin-p'i",
+        "Hsin-p'i Hsiang",
+        "Hsin-p’i",
+        "Hsin-p’i Hsiang",
+        "Sinpi Siang",
+        "Xinbi",
+        "Xinpi Xiang",
+        "xin pi xiang",
+        "新埤鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T16",
+      "name": "台灣 · 屏東縣 · 枋寮鄉",
+      "lat": 22.4,
+      "lon": 120.6,
+      "aliases": [
+        "Fangliao Township",
+        "Fang-liao",
+        "Fang-liao Hsiang",
+        "Fangliao",
+        "Fangliao Siang",
+        "Fangliao Xiang",
+        "fang liao xiang",
+        "枋寮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T17",
+      "name": "台灣 · 屏東縣 · 新園鄉",
+      "lat": 22.51667,
+      "lon": 120.45,
+      "aliases": [
+        "Xinyuan Township",
+        "Hsin-yuan",
+        "Hsin-yuan Hsiang",
+        "Hsin-yüan",
+        "Hsin-yüan Hsiang",
+        "Sinyuan Siang",
+        "Xinyuan",
+        "Xinyuan Xiang",
+        "xin yuan xiang",
+        "新園鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T18",
+      "name": "台灣 · 屏東縣 · 崁頂鄉",
+      "lat": 22.51667,
+      "lon": 120.48333,
+      "aliases": [
+        "Kanding Township",
+        "K'an-ting",
+        "K'an-ting Hsiang",
+        "Kanding",
+        "Kanding Siang",
+        "Kanding Xiang",
+        "K’an-ting",
+        "K’an-ting Hsiang",
+        "kan ding xiang",
+        "崁頂鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T19",
+      "name": "台灣 · 屏東縣 · 林邊鄉",
+      "lat": 22.43547,
+      "lon": 120.51607,
+      "aliases": [
+        "Linbian Township",
+        "Lin-pien",
+        "Lin-pien Hsiang",
+        "Linbian",
+        "Linbian Siang",
+        "Linbian Xiang",
+        "lin bian xiang",
+        "林邊鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T20",
+      "name": "台灣 · 屏東縣 · 南州鄉",
+      "lat": 22.48333,
+      "lon": 120.51667,
+      "aliases": [
+        "Nanzhou Township",
+        "Nan-chou",
+        "Nan-chou Hsiang",
+        "Nanjhou Siang",
+        "Nanzhou",
+        "Nanzhou Xiang",
+        "nan zhou xiang",
+        "南州鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T21",
+      "name": "台灣 · 屏東縣 · 佳冬鄉",
+      "lat": 22.43333,
+      "lon": 120.53333,
+      "aliases": [
+        "Jiadong Township",
+        "Chia-tung",
+        "Chia-tung Hsiang",
+        "Jiadong",
+        "Jiadong Siang",
+        "Jiadong Xiang",
+        "jia dong xiang",
+        "佳冬鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T22",
+      "name": "台灣 · 屏東縣 · 琉球鄉",
+      "lat": 22.35,
+      "lon": 120.36667,
+      "aliases": [
+        "Liuqiu Township",
+        "Liouciou Siang",
+        "Liu-ch'iu",
+        "Liu-ch'iu Hsiang",
+        "Liu-ch’iu",
+        "Liu-ch’iu Hsiang",
+        "Liuqiu",
+        "Liuqiu Xiang",
+        "liu qiu xiang",
+        "琉球鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T23",
+      "name": "台灣 · 屏東縣 · 車城鄉",
+      "lat": 22.08333,
+      "lon": 120.75,
+      "aliases": [
+        "Checheng Township",
+        "Ch'e-ch'eng",
+        "Ch'e-ch'eng Hsing",
+        "Checheng",
+        "Checheng Siang",
+        "Checheng Xiang",
+        "Ch’e-ch’eng",
+        "Ch’e-ch’eng Hsing",
+        "che cheng xiang",
+        "車城鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T24",
+      "name": "台灣 · 屏東縣 · 滿州鄉",
+      "lat": 22.05,
+      "lon": 120.83333,
+      "aliases": [
+        "Manzhou Township",
+        "Man-chou",
+        "Man-chou Hsiang",
+        "Manjhou Siang",
+        "Manzhou",
+        "Manzhou Xiang",
+        "man zhou xiang",
+        "滿州鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T25",
+      "name": "台灣 · 屏東縣 · 枋山鄉",
+      "lat": 22.25629,
+      "lon": 120.65821,
+      "aliases": [
+        "Fangshan Township",
+        "Fang-shan",
+        "Fang-shan Hsiang",
+        "Fangshan",
+        "Fangshan Siang",
+        "Fangshan Xiang",
+        "fang shan xiang",
+        "枋山鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T26",
+      "name": "台灣 · 屏東縣 · 三地門鄉",
+      "lat": 22.8,
+      "lon": 120.68333,
+      "aliases": [
+        "Sandimen Township",
+        "San-ti Hsiang",
+        "San-ti-men",
+        "San-ti-men Hsiang",
+        "Sandimen",
+        "Sandimen Siang",
+        "Sandimen Xiang",
+        "san de men xiang",
+        "三地門鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T27",
+      "name": "台灣 · 屏東縣 · 霧臺鄉",
+      "lat": 22.76667,
+      "lon": 120.8,
+      "aliases": [
+        "Wutai Township",
+        "Wu-t'ai",
+        "Wu-t'ai Hsiang",
+        "Wu-t’ai",
+        "Wu-t’ai Hsiang",
+        "Wutai",
+        "Wutai Siang",
+        "Wutai Xiang",
+        "wu tai xiang",
+        "霧臺鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T28",
+      "name": "台灣 · 屏東縣 · 瑪家鄉",
+      "lat": 22.66667,
+      "lon": 120.68333,
+      "aliases": [
+        "Majia Township",
+        "Ma-chia",
+        "Ma-chia Hsiang",
+        "Majia",
+        "Majia Siang",
+        "Majia Xiang",
+        "ma jia xiang",
+        "瑪家鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T29",
+      "name": "台灣 · 屏東縣 · 泰武鄉",
+      "lat": 22.6,
+      "lon": 120.68333,
+      "aliases": [
+        "Taiwu Township",
+        "T'ai-wu",
+        "T'ai-wu Hsiang",
+        "Taiwu",
+        "Taiwu Siang",
+        "Taiwu Xiang",
+        "T’ai-wu",
+        "T’ai-wu Hsiang",
+        "tai wu xiang",
+        "泰武鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T30",
+      "name": "台灣 · 屏東縣 · 來義鄉",
+      "lat": 22.5,
+      "lon": 120.68333,
+      "aliases": [
+        "Laiyi Township",
+        "Lai-i",
+        "Lai-i Hsiang",
+        "Laiyi",
+        "Laiyi Siang",
+        "Laiyi Xiang",
+        "lai yi xiang",
+        "來義鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T31",
+      "name": "台灣 · 屏東縣 · 春日鄉",
+      "lat": 22.38333,
+      "lon": 120.7,
+      "aliases": [
+        "Chunri Township",
+        "Ch'un-jih",
+        "Ch'un-jih Hsiang",
+        "Chunri",
+        "Chunri Xiang",
+        "Chunrih Siang",
+        "Ch’un-jih",
+        "Ch’un-jih Hsiang",
+        "chun ri xiang",
+        "春日鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T32",
+      "name": "台灣 · 屏東縣 · 獅子鄉",
+      "lat": 22.23333,
+      "lon": 120.75,
+      "aliases": [
+        "Shizi Township",
+        "Shih-tzu",
+        "Shih-tzu Hsiang",
+        "Shihzih Siang",
+        "Shizi",
+        "Shizi Xiang",
+        "shi zi xiang",
+        "獅子鄉"
+      ]
+    },
+    {
+      "id": "tw-town-T33",
+      "name": "台灣 · 屏東縣 · 牡丹鄉",
+      "lat": 22.15,
+      "lon": 120.8,
+      "aliases": [
+        "Mudan Township",
+        "Mu-tan",
+        "Mu-tan Hsiang",
+        "Mudan",
+        "Mudan Siang",
+        "Mudan Xiang",
+        "mu dan xiang",
+        "牡丹鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U01",
+      "name": "台灣 · 花蓮縣 · 花蓮市",
+      "lat": 24.0,
+      "lon": 121.6,
+      "aliases": [
+        "Hualien City",
+        "Hua-lien",
+        "Hua-lien Shih",
+        "Hualian Shi",
+        "Hualian Shih",
+        "Hualien",
+        "hua lian shi",
+        "花蓮市"
+      ]
+    },
+    {
+      "id": "tw-town-U02",
+      "name": "台灣 · 花蓮縣 · 光復鄉",
+      "lat": 23.65,
+      "lon": 121.43333,
+      "aliases": [
+        "Guangfu Township",
+        "Guangfu",
+        "Kuang-fu",
+        "Kuang-fu Hsiang",
+        "Kuangfu Siang",
+        "Kuangfu Xiang",
+        "guang fu xiang",
+        "光復鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U03",
+      "name": "台灣 · 花蓮縣 · 玉里鎮",
+      "lat": 23.38333,
+      "lon": 121.35,
+      "aliases": [
+        "Yuli Township",
+        "Yu-li",
+        "Yu-li Chen",
+        "Yuli",
+        "Yuli Jhen",
+        "Yuli Zhen",
+        "Yü-li",
+        "Yü-li Chen",
+        "yu li zhen",
+        "玉里鎮"
+      ]
+    },
+    {
+      "id": "tw-town-U04",
+      "name": "台灣 · 花蓮縣 · 新城鄉",
+      "lat": 24.04333,
+      "lon": 121.60973,
+      "aliases": [
+        "Xincheng Township",
+        "Hsin-ch'eng",
+        "Hsin-ch'eng Hsiang",
+        "Hsin-ch’eng",
+        "Hsin-ch’eng Hsiang",
+        "Sincheng Siang",
+        "Xincheng",
+        "Xincheng Xiang",
+        "xin cheng xiang",
+        "新城鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U05",
+      "name": "台灣 · 花蓮縣 · 吉安鄉",
+      "lat": 23.95,
+      "lon": 121.56667,
+      "aliases": [
+        "Jian Township",
+        "Chi-an",
+        "Chi-an Hsiang",
+        "Ji'an Siang",
+        "Ji'an Xiang",
+        "Jian",
+        "Ji’an Siang",
+        "Ji’an Xiang",
+        "ji an xiang",
+        "吉安鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U06",
+      "name": "台灣 · 花蓮縣 · 壽豐鄉",
+      "lat": 23.83333,
+      "lon": 121.51667,
+      "aliases": [
+        "Shoufeng Township",
+        "Shou-feng",
+        "Shou-feng Hsiang",
+        "Shoufeng",
+        "Shoufeng Xiang",
+        "Shoufong Siang",
+        "shou feng xiang",
+        "壽豐鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U07",
+      "name": "台灣 · 花蓮縣 · 鳳林鎮",
+      "lat": 23.73333,
+      "lon": 121.45,
+      "aliases": [
+        "Fenglin Township",
+        "Feng-lin",
+        "Feng-lin Chen",
+        "Fenglin",
+        "Fenglin Zhen",
+        "Fonglin Jhen",
+        "feng lin zhen",
+        "鳳林鎮"
+      ]
+    },
+    {
+      "id": "tw-town-U08",
+      "name": "台灣 · 花蓮縣 · 豐濱鄉",
+      "lat": 23.58333,
+      "lon": 121.48333,
+      "aliases": [
+        "Fengbin Township",
+        "Feng-pin",
+        "Feng-pin Hsiang",
+        "Fengbin",
+        "Fengbin Xiang",
+        "Fongbin Siang",
+        "feng bin xiang",
+        "豐濱鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U09",
+      "name": "台灣 · 花蓮縣 · 瑞穗鄉",
+      "lat": 23.51667,
+      "lon": 121.4,
+      "aliases": [
+        "Ruisui Township",
+        "Jui-sui",
+        "Jui-sui Hsiang",
+        "Rueisuei Siang",
+        "Ruisui",
+        "Ruisui Xiang",
+        "rui sui xiang",
+        "瑞穗鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U10",
+      "name": "台灣 · 花蓮縣 · 富里鄉",
+      "lat": 23.21667,
+      "lon": 121.3,
+      "aliases": [
+        "Fuli Township",
+        "Fu-li",
+        "Fu-li Hsiang",
+        "Fuli",
+        "Fuli Siang",
+        "Fuli Xiang",
+        "fu li xiang",
+        "富里鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U11",
+      "name": "台灣 · 花蓮縣 · 秀林鄉",
+      "lat": 24.1,
+      "lon": 121.48333,
+      "aliases": [
+        "Xiulin Township",
+        "Hsiu-lin",
+        "Hsiu-lin Hsiang",
+        "Sioulin Siang",
+        "Xiulin",
+        "Xiulin Xiang",
+        "xiu lin xiang",
+        "秀林鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U12",
+      "name": "台灣 · 花蓮縣 · 萬榮鄉",
+      "lat": 23.73333,
+      "lon": 121.31667,
+      "aliases": [
+        "Wanrong Township",
+        "Wan-jung",
+        "Wan-jung Hsiang",
+        "Wangrong Siang",
+        "Wanrong",
+        "Wanrong Xiang",
+        "wan rong xiang",
+        "萬榮鄉"
+      ]
+    },
+    {
+      "id": "tw-town-U13",
+      "name": "台灣 · 花蓮縣 · 卓溪鄉",
+      "lat": 23.4,
+      "lon": 121.16667,
+      "aliases": [
+        "Zhuoxi Township",
+        "Cho-hsi",
+        "Cho-hsi Hsiang",
+        "Jhuosi Siang",
+        "Zhuoxi",
+        "Zhuoxi Xiang",
+        "zhuo xi xiang",
+        "卓溪鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V01",
+      "name": "台灣 · 臺東縣 · 臺東市",
+      "lat": 22.75,
+      "lon": 121.11667,
+      "aliases": [
+        "Taitung City",
+        "T'ai-tung",
+        "T'ai-tung Chen",
+        "T'ai-tung Shih",
+        "Taidong Shi",
+        "Taidong Shih",
+        "Taitung",
+        "T’ai-tung",
+        "T’ai-tung Chen",
+        "T’ai-tung Shih",
+        "tai dong shi",
+        "台東市",
+        "臺東市"
+      ]
+    },
+    {
+      "id": "tw-town-V02",
+      "name": "台灣 · 臺東縣 · 成功鎮",
+      "lat": 23.11667,
+      "lon": 121.35,
+      "aliases": [
+        "Chenggong Township",
+        "Ch'eng-kung",
+        "Ch'eng-kung Chen",
+        "Chenggong",
+        "Chenggong Jhen",
+        "Chenggong Zhen",
+        "Ch’eng-kung",
+        "Ch’eng-kung Chen",
+        "cheng gong zhen",
+        "成功鎮"
+      ]
+    },
+    {
+      "id": "tw-town-V03",
+      "name": "台灣 · 臺東縣 · 關山鎮",
+      "lat": 23.03778,
+      "lon": 121.17653,
+      "aliases": [
+        "Guanshan Township",
+        "Guanshan",
+        "guan shan zhen",
+        "關山鎮"
+      ]
+    },
+    {
+      "id": "tw-town-V04",
+      "name": "台灣 · 臺東縣 · 卑南鄉",
+      "lat": 22.76667,
+      "lon": 121.0,
+      "aliases": [
+        "Beinan Township",
+        "Beinan",
+        "Beinan Siang",
+        "Beinan Xiang",
+        "Pei-nan",
+        "Pei-nan Hsiang",
+        "bei nan xiang",
+        "卑南鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V05",
+      "name": "台灣 · 臺東縣 · 大武鄉",
+      "lat": 22.4,
+      "lon": 120.88333,
+      "aliases": [
+        "Dawu Township",
+        "Dawu",
+        "Dawu Siang",
+        "Dawu Xiang",
+        "Ta-wu",
+        "Ta-wu Hsiang",
+        "da wu xiang",
+        "大武鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V06",
+      "name": "台灣 · 臺東縣 · 太麻里鄉",
+      "lat": 22.58333,
+      "lon": 120.98333,
+      "aliases": [
+        "Taimali Township",
+        "T'ai-ma-li",
+        "T'ai-ma-li Hsiang",
+        "Taimali",
+        "Taimali Siang",
+        "Taimali Xiang",
+        "T’ai-ma-li",
+        "T’ai-ma-li Hsiang",
+        "tai ma li xiang",
+        "太麻里鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V07",
+      "name": "台灣 · 臺東縣 · 東河鄉",
+      "lat": 22.98333,
+      "lon": 121.25,
+      "aliases": [
+        "Donghe Township",
+        "Donghe",
+        "Donghe Siang",
+        "Donghe Xiang",
+        "Tung-ho",
+        "Tung-ho Hsiang",
+        "dong he xiang",
+        "東河鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V08",
+      "name": "台灣 · 臺東縣 · 長濱鄉",
+      "lat": 23.33333,
+      "lon": 121.41667,
+      "aliases": [
+        "Changbin Township",
+        "Ch'ang-pin",
+        "Ch'ang-pin Hsiang",
+        "Changbin",
+        "Changbin Siang",
+        "Changbin Xiang",
+        "Ch’ang-pin",
+        "Ch’ang-pin Hsiang",
+        "zhang bin xiang",
+        "長濱鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V09",
+      "name": "台灣 · 臺東縣 · 鹿野鄉",
+      "lat": 22.95,
+      "lon": 121.15,
+      "aliases": [
+        "Luye Township",
+        "Lu-yeh",
+        "Lu-yeh Hsiang",
+        "Luye",
+        "Luye Siang",
+        "Luye Xiang",
+        "lu ye xiang",
+        "鹿野鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V10",
+      "name": "台灣 · 臺東縣 · 池上鄉",
+      "lat": 23.1,
+      "lon": 121.21667,
+      "aliases": [
+        "Chishang Township",
+        "Ch'ih-shang",
+        "Ch'ih-shang Hsiang",
+        "Ch'ih-shang Hsing",
+        "Chihshang Siang",
+        "Chishang",
+        "Chishang Xiang",
+        "Ch’ih-shang",
+        "Ch’ih-shang Hsiang",
+        "Ch’ih-shang Hsing",
+        "chi shang xiang",
+        "池上鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V11",
+      "name": "台灣 · 臺東縣 · 綠島鄉",
+      "lat": 22.66667,
+      "lon": 121.48333,
+      "aliases": [
+        "Lvdao Township",
+        "Lu-tao",
+        "Lu-tao Hsiang",
+        "Ludao Xiang",
+        "Lvdao",
+        "Lyudao",
+        "Lyudao Siang",
+        "Lyudao Township",
+        "Lü-tao",
+        "Lü-tao Hsiang",
+        "Lüdao Xiang",
+        "lu dao",
+        "lu dao xiang",
+        "綠島鄉",
+        "綠島鄕",
+        "緑島",
+        "緑島郷"
+      ]
+    },
+    {
+      "id": "tw-town-V12",
+      "name": "台灣 · 臺東縣 · 延平鄉",
+      "lat": 22.9,
+      "lon": 120.98333,
+      "aliases": [
+        "Yanping Township",
+        "Yanping",
+        "Yanping Siang",
+        "Yanping Xiang",
+        "Yen-p'ing",
+        "Yen-p'ing Hsiang",
+        "Yen-p’ing",
+        "Yen-p’ing Hsiang",
+        "yan ping xiang",
+        "延平鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V13",
+      "name": "台灣 · 臺東縣 · 海端鄉",
+      "lat": 23.13333,
+      "lon": 121.03333,
+      "aliases": [
+        "Haiduan Township",
+        "Hai-tuan",
+        "Hai-tuan Hsiang",
+        "Haiduan",
+        "Haiduan Siang",
+        "Haiduan Xiang",
+        "hai duan xiang",
+        "hai rui xiang",
+        "海瑞鄉",
+        "海端鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V14",
+      "name": "台灣 · 臺東縣 · 達仁鄉",
+      "lat": 22.36667,
+      "lon": 120.81667,
+      "aliases": [
+        "Daren Township",
+        "Daren",
+        "Daren Siang",
+        "Daren Xiang",
+        "Ta-jen",
+        "Ta-jen Hsiang",
+        "da ren xiang",
+        "達仁鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V15",
+      "name": "台灣 · 臺東縣 · 金峰鄉",
+      "lat": 22.56667,
+      "lon": 120.85,
+      "aliases": [
+        "Jinfeng Township",
+        "Chin-feng",
+        "Chin-feng Hsiang",
+        "Jinfeng",
+        "Jinfeng Xiang",
+        "Jinfong Siang",
+        "jin feng xiang",
+        "金峰鄉"
+      ]
+    },
+    {
+      "id": "tw-town-V16",
+      "name": "台灣 · 臺東縣 · 蘭嶼鄉",
+      "lat": 22.04639,
+      "lon": 121.53833,
+      "aliases": [
+        "Lanyu Township",
+        "Lan-yu",
+        "Lan-yu Hsiang",
+        "Lan-yü",
+        "Lan-yü Hsiang",
+        "Lanyu",
+        "Lanyu Siang",
+        "Lanyu Xiang",
+        "lan yu xiang",
+        "蘭嶼鄉",
+        "蘭嶼鄕"
+      ]
+    },
+    {
+      "id": "tw-town-W01",
+      "name": "台灣 · 金門縣 · 金湖鎮",
+      "lat": 24.44322,
+      "lon": 118.41707,
+      "aliases": [
+        "Jinhu Township",
+        "Jinhu",
+        "jin hu zhen",
+        "金湖鎮"
+      ]
+    },
+    {
+      "id": "tw-town-W02",
+      "name": "台灣 · 金門縣 · 金沙鎮",
+      "lat": 24.48812,
+      "lon": 118.42041,
+      "aliases": [
+        "Jinsha Township",
+        "Jinsha",
+        "jin sha zhen",
+        "金沙鎮"
+      ]
+    },
+    {
+      "id": "tw-town-W03",
+      "name": "台灣 · 金門縣 · 金城鎮",
+      "lat": 24.4129,
+      "lon": 118.3134,
+      "aliases": [
+        "Jincheng Township",
+        "Jincheng",
+        "jin cheng zhen",
+        "金城鎮"
+      ]
+    },
+    {
+      "id": "tw-town-W04",
+      "name": "台灣 · 金門縣 · 金寧鄉",
+      "lat": 24.45714,
+      "lon": 118.32802,
+      "aliases": [
+        "Jinning Township",
+        "Jinning",
+        "jin ning xiang",
+        "金寧鄉"
+      ]
+    },
+    {
+      "id": "tw-town-W05",
+      "name": "台灣 · 金門縣 · 烈嶼鄉",
+      "lat": 24.42982,
+      "lon": 118.23714,
+      "aliases": [
+        "Lieyu Township",
+        "Lieyu",
+        "lie yu xiang",
+        "烈嶼鄉"
+      ]
+    },
+    {
+      "id": "tw-town-W06",
+      "name": "台灣 · 金門縣 · 烏坵鄉",
+      "lat": 24.99189,
+      "lon": 119.45263,
+      "aliases": [
+        "Wuchiou Township",
+        "Wuchiou",
+        "wu qiu xiang",
+        "烏坵鄉"
+      ]
+    },
+    {
+      "id": "tw-town-X01",
+      "name": "台灣 · 澎湖縣 · 馬公市",
+      "lat": 23.5634,
+      "lon": 119.58683,
+      "aliases": [
+        "Magong City",
+        "Ma-kung",
+        "Ma-kung Chen",
+        "Ma-kung Shih",
+        "Magong",
+        "Magong Shi",
+        "Magong Shih",
+        "ma gong shi",
+        "馬公市"
+      ]
+    },
+    {
+      "id": "tw-town-X02",
+      "name": "台灣 · 澎湖縣 · 湖西鄉",
+      "lat": 23.58333,
+      "lon": 119.63333,
+      "aliases": [
+        "Huxi Township",
+        "Hu-hsi",
+        "Hu-hsi Hsiang",
+        "Husi Siang",
+        "Huxi",
+        "Huxi Xiang",
+        "hu xi xiang",
+        "湖西鄉"
+      ]
+    },
+    {
+      "id": "tw-town-X03",
+      "name": "台灣 · 澎湖縣 · 白沙鄉",
+      "lat": 23.66667,
+      "lon": 119.58333,
+      "aliases": [
+        "Baisha Township",
+        "Baisha",
+        "Baisha Siang",
+        "Baisha Xiang",
+        "Pai-sha",
+        "Pai-sha Hsiang",
+        "bai sha xiang",
+        "白沙鄉"
+      ]
+    },
+    {
+      "id": "tw-town-X04",
+      "name": "台灣 · 澎湖縣 · 西嶼鄉",
+      "lat": 23.60867,
+      "lon": 119.51134,
+      "aliases": [
+        "Xiyu Township",
+        "Hsi-yu",
+        "Hsi-yu Hsiang",
+        "Hsi-yü",
+        "Hsi-yü Hsiang",
+        "Siyu Siang",
+        "Xiyu",
+        "Xiyu Xiang",
+        "xi yu xiang",
+        "西嶼鄉"
+      ]
+    },
+    {
+      "id": "tw-town-X05",
+      "name": "台灣 · 澎湖縣 · 望安鄉",
+      "lat": 23.35802,
+      "lon": 119.4973,
+      "aliases": [
+        "Wangan Township",
+        "Wang'an Siang",
+        "Wang'an Xiang",
+        "Wang-an",
+        "Wang-an Hsiang",
+        "Wangan",
+        "Wang’an Siang",
+        "Wang’an Xiang",
+        "wang an xiang",
+        "望安鄉"
+      ]
+    },
+    {
+      "id": "tw-town-X06",
+      "name": "台灣 · 澎湖縣 · 七美鄉",
+      "lat": 23.21137,
+      "lon": 119.43169,
+      "aliases": [
+        "Qimei Township",
+        "Ch'i-mei",
+        "Ch'i-mei Hsiang",
+        "Ch’i-mei",
+        "Ch’i-mei Hsiang",
+        "Cimei Siang",
+        "Qimei",
+        "Qimei Xiang",
+        "qi mei xiang",
+        "七美鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Z01",
+      "name": "台灣 · 連江縣 · 南竿鄉",
+      "lat": 26.14954,
+      "lon": 119.92821,
+      "aliases": [
+        "Nangan Township",
+        "Nan-kan Hsiang",
+        "Nangan",
+        "Nangan Xiang",
+        "nan gan xiang",
+        "南竿鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Z02",
+      "name": "台灣 · 連江縣 · 北竿鄉",
+      "lat": 26.23088,
+      "lon": 119.9898,
+      "aliases": [
+        "Beigan Township",
+        "Beigan",
+        "bei gan xiang",
+        "北竿鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Z03",
+      "name": "台灣 · 連江縣 · 莒光鄉",
+      "lat": 25.97518,
+      "lon": 119.93328,
+      "aliases": [
+        "Juguang Township",
+        "Juguang",
+        "ju guang xiang",
+        "莒光鄉"
+      ]
+    },
+    {
+      "id": "tw-town-Z04",
+      "name": "台灣 · 連江縣 · 東引鄉",
+      "lat": 26.36665,
+      "lon": 120.48912,
+      "aliases": [
+        "Dongyin Township",
+        "Dongyin",
+        "dong yin xiang",
+        "東引鄉"
+      ]
+    }
+  ]
+}

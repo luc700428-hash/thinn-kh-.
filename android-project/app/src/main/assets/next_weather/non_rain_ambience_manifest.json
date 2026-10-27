@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "description": "Original breeze, leaf, birds and crickets for non-rain weather.",
+  "human_listening_or_wake_efficacy_verified": false,
+  "assets": [
+    {
+      "path": "next_weather/ambience/sunny.wav",
+      "sha256": "96d78456553a95d08772901303ce0a4dd3ef132c5462329c06117fdc78329e96",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 529200,
+      "seconds": 12,
+      "peak_dbfs": -8.394,
+      "rms_dbfs": -22.151,
+      "loop_jump_pcm": 0,
+      "scene": "sunny",
+      "category": "ambience",
+      "authorship": "original procedural nature sound synthesis"
+    },
+    {
+      "path": "next_weather/ambience/clear_night.wav",
+      "sha256": "bc9c32f2fdc973b10a5ac6e1682f74332ef1a57e8fcd07eaf15300c57eda7ef6",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 529200,
+      "seconds": 12,
+      "peak_dbfs": -7.89,
+      "rms_dbfs": -22.151,
+      "loop_jump_pcm": 0,
+      "scene": "clear_night",
+      "category": "ambience",
+      "authorship": "original procedural nature sound synthesis"
+    },
+    {
+      "path": "next_weather/ambience/cloudy_day.wav",
+      "sha256": "1e739d3b661fe36cb1d0542886b12e6e24576c3a7de3565dbcbcf0f90ac16403",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 529200,
+      "seconds": 12,
+      "peak_dbfs": -8.207,
+      "rms_dbfs": -22.15,
+      "loop_jump_pcm": 0,
+      "scene": "cloudy_day",
+      "category": "ambience",
+      "authorship": "original procedural nature sound synthesis"
+    },
+    {
+      "path": "next_weather/ambience/cloudy_night.wav",
+      "sha256": "29515ac7861d63cc5a2ddf77949b17ccedecc2db2d406b718460fab0b589f0a2",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 529200,
+      "seconds": 12,
+      "peak_dbfs": -7.997,
+      "rms_dbfs": -22.152,
+      "loop_jump_pcm": 0,
+      "scene": "cloudy_night",
+      "category": "ambience",
+      "authorship": "original procedural nature sound synthesis"
+    }
+  ]
+}

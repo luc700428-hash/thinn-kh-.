@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
@@ -42,7 +43,7 @@ private fun lensPath(g:BubbleSliderGeometry.Lens):Path {
     return Path.combine(PathOperation.Union,Path.combine(PathOperation.Union,front,body(g.tail)),bridge)
 }
 
-/** The captured source contains only the track. The lens never samples its own ancestor. */
+/** Single-canvas clear lens; drag rendering does not allocate or sample GPU layers. */
 @Composable
 internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier,
     valueRange:ClosedFloatingPointRange<Float>,steps:Int,onValueChangeFinished:(()->Unit)?,colors:SliderColors?,enabled:Boolean) {
@@ -65,7 +66,6 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
     val active=colors?.activeTrackColor?:MaterialTheme.colorScheme.primary
     val inactive=colors?.inactiveTrackColor?:if(dark)Color(0xFF5A5A60) else Color(0xFFC7C7CC)
     val solid=MaterialTheme.colorScheme.surface
-    val track=rememberThinnBackdrop()
     fun quantized(v:Float)=BubbleSliderGeometry.quantize(v,low,high,steps)
     Box(modifier.fillMaxWidth().heightIn(min=48.dp)
         .graphicsLayer {alpha=if(enabled)1f else .42f}
@@ -91,25 +91,18 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
             progressBarRangeInfo=ProgressBarRangeInfo(low+(high-low)*fraction,low..high,steps.coerceIn(0,10_000))
             if(enabled)setProgress {proposed->change(quantized(proposed));finish?.invoke();true} else disabled()
         },contentAlignment=Alignment.Center) {
-        ThinnBackdropCapture(track,Modifier.matchParentSize()) {
-            Canvas(Modifier.matchParentSize()) {
-                val inset=(30.dp.toPx()).coerceAtMost(size.width/2)
-                val end=size.width-inset;val y=size.height/2
-                drawLine(inactive.copy(alpha=.60f),Offset(inset,y),Offset(end,y),4.dp.toPx(),StrokeCap.Round)
-                drawLine(active,Offset(inset,y),Offset(inset+(end-inset)*head.coerceIn(0f,1f),y),4.dp.toPx(),StrokeCap.Round)
-            }
-        }
-        val shape=remember(head,tail,lift,reduce) {object:Shape {
-            override fun createOutline(size:Size,layoutDirection:LayoutDirection,density:Density):Outline {
-                val g=BubbleSliderGeometry.lens(size.width,size.height,density.density,head,tail,lift,reduce)
-                return Outline.Generic(if(g==null)Path() else lensPath(g))
-            }
-        }}
-        CompositionLocalProvider(LocalThinnBackdrop provides track) {
-            Box(Modifier.matchParentSize().clip(shape).thinnBackdrop(opaque,999.dp,head.coerceIn(0f,1f))) {
-                Canvas(Modifier.matchParentSize()) {
+        Canvas(Modifier.matchParentSize()) {
                     val g=BubbleSliderGeometry.lens(size.width,size.height,density.density,head,tail,lift,reduce)?:return@Canvas
-                    val path=lensPath(g)
+                    val inset=30.dp.toPx().coerceAtMost(size.width/2)
+                    val end=size.width-inset
+                    drawLine(inactive.copy(alpha=.60f),Offset(inset,g.y),Offset(end,g.y),4.dp.toPx(),StrokeCap.Round)
+                    drawLine(active,Offset(inset,g.y),Offset(inset+(end-inset)*head.coerceIn(0f,1f),g.y),4.dp.toPx(),StrokeCap.Round)
+                    val path=try {lensPath(g)} catch(_:RuntimeException) {Path().apply {addRoundRect(RoundRect(g.head-g.width/2,g.y-g.height/2,g.head+g.width/2,g.y+g.height/2,CornerRadius(g.height/2)))}}
+                    // Refraction of the track is redrawn locally. No captured RenderNode,
+                    // mutable RuntimeShader or changing clip layer survives a drag frame.
+                    clipPath(path) {
+                        drawLine(active.copy(alpha=.30f),Offset(inset,g.y+1.5.dp.toPx()),Offset(inset+(end-inset)*head.coerceIn(0f,1f),g.y+1.5.dp.toPx()),6.dp.toPx(),StrokeCap.Round)
+                    }
                     // Clear body: the underlying track/background remain visible.
                     drawPath(path,if(opaque)solid else Color.White.copy(alpha=if(dark).065f else .035f))
                     val phase=head.coerceIn(0f,1f)*160f+lift*40f
@@ -123,8 +116,6 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
                     // Thin specular arc; no opaque blue fill or painted blue thumb.
                     drawArc(Color.White.copy(alpha=.50f),205f,85f,false,
                         Offset(g.head-g.width*.43f,g.y-g.height*.41f),Size(g.width*.86f,g.height*.82f),style=Stroke(.85.dp.toPx(),cap=StrokeCap.Round))
-                }
-            }
         }
     }
 }

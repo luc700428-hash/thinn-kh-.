@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -126,10 +127,10 @@ private fun CenteredTemperature(value: Int, appearance: WeatherAppearance) {
     var digitsWidthPx by remember { mutableIntStateOf(0) }
     Box(Modifier.fillMaxWidth().height(145.dp),contentAlignment=Alignment.Center) {
         Text("$value",style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"),
-            fontSize=(104f*appearance.fontScale).coerceIn(80f,126f).sp,lineHeight=133.sp,
-            fontWeight=FontWeight(appearance.fontWeight.roundToInt()),fontFamily=appearance.family,
+            fontSize=(104f).coerceIn(80f,126f).sp,lineHeight=133.sp,
+            fontWeight=FontWeight.Normal,fontFamily=appearance.family,
             color=White,textAlign=TextAlign.Center,onTextLayout={ digitsWidthPx=it.size.width })
-        Text("°",fontSize=(62f*appearance.fontScale).coerceIn(48f,78f).sp,
+        Text("°",fontSize=(62f).coerceIn(48f,78f).sp,
             fontWeight=FontWeight.Light,color=White,
             modifier=Modifier.graphicsLayer {
                 translationX=digitsWidthPx/2f+3.dp.toPx()
@@ -468,7 +469,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     NextWeatherAmbience(demoCondition ?: snapshot?.condition, soundOn || demoRemaining > 0,
         if(demoRemaining > 0) soundVolume.coerceAtLeast(.5f) else soundVolume,
         if (demoCondition == WeatherCondition.THUNDERSTORM) 95 else if (demoCondition == WeatherCondition.RAIN) 61 else snapshot?.weatherCode,
-        snapshot?.visibilityM, thunderCue + demoThunderCue)
+        snapshot?.visibilityM, thunderCue + demoThunderCue,isNight=snapshot?.isDay==false)
+    var nativeRadarOpen by remember {mutableStateOf(false)}
     var details by remember { mutableStateOf<Pair<String,String>?>(null) }
     var showLifestyleDetails by remember { mutableStateOf(false) }
     val reducedMotion = io.atmos.weather.ui.rememberAppleReduceMotion()
@@ -572,36 +574,23 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     }
                     // Keep location, temperature, cards, loading and errors above
                     // the background, independently of whether weather data loads.
+                    io.atmos.weather.ui.WeatherRefreshContainer(state.loading,{
+                        refreshRequested=true;refreshText="正在取得最新天氣…"
+                        hapticEngine.play(HapticEngine.Event.RELEASE)
+                        viewModel.onIntent(WeatherIntent.Refresh)
+                    },Modifier.fillMaxSize().zIndex(1f)) {
                     Column(Modifier.fillMaxSize().zIndex(1f)
                         .verticalScroll(weatherScrollState,overscrollEffect=null)
                         .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=176.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.SpaceBetween) {
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Image(painterResource(R.drawable.brand_symbol),"thinn-khì 透明品牌圖示",
-                            modifier=Modifier.size(37.dp))
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Image(painterResource(R.drawable.brand_symbol),"thinn-khì",Modifier.size(34.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Row(Modifier.weight(1f).heightIn(min=54.dp).clip(RoundedCornerShape(999.dp))
+                        .background(White.copy(alpha=.12f)).border(1.dp,White.copy(alpha=.32f),RoundedCornerShape(999.dp))
+                        .clickable {locationOpen=true}.padding(horizontal=18.dp,vertical=13.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Search,"搜尋城市",tint=White,modifier=Modifier.size(22.dp))
                         Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text("thinn-khì",color=White,fontFamily=appearance.family,fontWeight=FontWeight(appearance.fontWeight.roundToInt()),fontSize=(21f*appearance.fontScale).coerceIn(20f,29f).sp,letterSpacing=.4.sp)
-                            Text("現在的天氣",color=TextSoft,fontSize=14.sp)
-                        }
-                    }
-                    Row {
-                        if(io.atmos.weather.CrashDiagnostics.last(context)!=null) {
-                            HeaderButton(Icons.Rounded.BugReport,"檢視上次閃退紀錄") { diagnosticsOpen=true }
-                            Spacer(Modifier.width(6.dp))
-                        }
-                        HeaderButton(Icons.Rounded.Search,"搜尋城市") { locationOpen=true }
-                        Spacer(Modifier.width(8.dp))
-                        if (state.loading) {
-                            Box(Modifier.size(37.dp),contentAlignment=Alignment.Center) {
-                                CircularProgressIndicator(Modifier.size(22.dp),color=White,strokeWidth=2.dp)
-                            }
-                        } else HeaderButton(Icons.Rounded.Refresh,"更新資料") {
-                            refreshRequested = true
-                            refreshText = "正在取得最新天氣…"
-                            viewModel.onIntent(WeatherIntent.Refresh)
-                        }
+                        Text("搜尋城市、鄉鎮或地點",color=White.copy(alpha=.88f),fontSize=16.sp,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                 }
                 androidx.compose.animation.AnimatedVisibility(
@@ -645,7 +634,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Icon(Icons.Rounded.Place,null,tint=White.copy(alpha=.87f),modifier=Modifier.size(17.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(io.atmos.weather.location.LocationLabels.display(state.city.name),maxLines=2,
-                        overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis,color=White,fontSize=(23f*appearance.fontScale).coerceIn(21f,32f).sp,fontFamily=appearance.family,fontWeight=FontWeight(appearance.fontWeight.roundToInt()),textAlign=TextAlign.Center)
+                        overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis,color=White,fontSize=(23f).coerceIn(21f,32f).sp,fontFamily=appearance.family,fontWeight=FontWeight.Normal,textAlign=TextAlign.Center)
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Rounded.KeyboardArrowDown,null,tint=White,modifier=Modifier.size(18.dp))
                 }
@@ -654,7 +643,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     io.atmos.weather.next.V25HomeHero(
                         temperature=snapshot.temperatureC.roundToInt(),
                         condition=snapshot.condition.name,
-                        conditionLabel=if(heavyRain && !stormy) "強降雨" else snapshot.condition.label(),
+                        conditionLabel=WeatherDescriptions.current(snapshot),
                         high=snapshot.maxTempC?.roundToInt(),
                         low=snapshot.minTempC?.roundToInt(),
                         feelsLike=snapshot.feelsLikeC?.roundToInt(),
@@ -875,8 +864,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // Restore the existing native CWA radar card to the weather home.
                     // When imagery is unavailable, the original card shows an honest
                     // unavailable/coverage status instead of silently removing the map.
-                    RadarThreeHourCard(weather=snapshot,
-                        openCwaRadar={ uriHandler.openUri("https://qpeplus.cwa.gov.tw/") })
+                    RadarThreeHourCard(weather=snapshot)
                     Spacer(Modifier.height(15.dp))
                     WeatherIndicatorGrid(snapshot)
                     if(snapshot.temperatureC <= 6.0 && snapshot.condition in
@@ -918,6 +906,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Text("天氣是預測資訊，請以當地官方警報為準。",color=TextSoft,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                     } // forecast Column: always overlays the animation
+                    } // elastic pull-to-refresh
                 } // page Box: one measurable root for HorizontalPager
                 } // weather background material provider
             } // page 0
@@ -931,7 +920,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onTasks = { tasksOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
                 onTyphoons = { typhoonPageOpen = true },
-                onRadar = {uriHandler.openUri("https://qpeplus.cwa.gov.tw/")})
+                onRadar = {nativeRadarOpen=true})
             3 -> AppGlassSettingsPage(
                 appearance = appearance,
                 onAppearance = { appearance = it },
@@ -953,6 +942,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             } // when(page)
             } // HorizontalPager
             } // page capture; foreground remains a normal Compose layout
+        if(nativeRadarOpen) io.atmos.weather.ui.RadarHistoryDialog(onClose={nativeRadarOpen=false},latitude=state.city.coordinate.latitude,longitude=state.city.coordinate.longitude)
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
             state.searchExecuted,state.searchError,state.locationFeedback,onLocate=onLocate,
             onQuery=viewModel::search,
@@ -986,9 +976,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Text("調整文字大小、粗細與字體。文字大小支援 100–150%，變更會立即套用。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(10.dp))
                 AppearanceSlider("字體大小",appearance.fontScale,1f..1.5f,
-                    "${(appearance.fontScale*100).roundToInt()}%") {appearance=appearance.copy(fontScale=it)}
+                    "${(appearance.fontScale*100).roundToInt()}%",commitOnRelease=true) {appearance=appearance.copy(fontScale=it)}
                 AppearanceSlider("字體粗細",appearance.fontWeight,100f..900f,
-                    "${appearance.fontWeight.roundToInt()}") {appearance=appearance.copy(fontWeight=it)}
+                    "${appearance.fontWeight.roundToInt()}",commitOnRelease=true) {appearance=appearance.copy(fontWeight=it)}
                 io.atmos.weather.ui.GlassChoiceGroup(listOf("系統","襯線","等寬","手寫"),
                     appearance.fontChoice,{appearance=appearance.copy(fontChoice=it)})
                 Spacer(Modifier.height(10.dp))
@@ -1152,7 +1142,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(17.dp))
                 GlassCard(enableDrag=true) {
                     Text("thinn-khì · 即時預覽",fontSize=15.sp,fontFamily=appearance.family,
-                        fontWeight=FontWeight(appearance.fontWeight.roundToInt()),color=White)
+                        fontWeight=FontWeight.Normal,color=White)
                     Spacer(Modifier.height(6.dp))
                     Text("輕輕向左右拖曳這張卡片，感受回彈與玻璃高光變化。",color=TextSoft,fontSize=14.sp)
                 }
@@ -1232,11 +1222,15 @@ private fun HeaderButton(image: androidx.compose.ui.graphics.vector.ImageVector,
 
 @Composable
 private fun AppearanceSlider(label: String, current: Float, range: ClosedFloatingPointRange<Float>,
-    display: String, onChange: (Float)->Unit) {
+    display: String, commitOnRelease:Boolean=false,onChange: (Float)->Unit) {
     Spacer(Modifier.height(10.dp))
     val denom=(range.endInclusive-range.start).coerceAtLeast(.001f)
-    GlassTrackingSlider(label,((current-range.start)/denom).coerceIn(0f,1f),display) {
-        onChange(range.start + it*denom)
+    var draft by remember(current) {mutableFloatStateOf(current)}
+    val shown=if(commitOnRelease)if(range.endInclusive<=2f) "${(draft*100).roundToInt()}%" else "${draft.roundToInt()}" else display
+    GlassTrackingSlider(label,((draft-range.start)/denom).coerceIn(0f,1f),shown,
+        onFinished={if(commitOnRelease)onChange(draft)}) {
+        draft=range.start+it*denom
+        if(!commitOnRelease)onChange(draft)
     }
 }
 
@@ -1345,103 +1339,8 @@ private fun LocationSheet(selected: WeatherCity, saved: List<WeatherCity>, resul
     searching: Boolean, searchExecuted:Boolean,searchError:String?, locationFeedback: LocationFeedback,
     onLocate: ()->Unit, onQuery:(String)->Unit,onSelect:(WeatherCity)->Unit,
     onRemove:(String)->Unit,onClose:()->Unit) {
-    var query by remember { mutableStateOf("") }
-    var submittedQuery by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(query) {
-        val cleaned=query.trim()
-        if(cleaned.length>=2) {
-            kotlinx.coroutines.delay(380L)
-            submittedQuery=cleaned
-            onQuery(cleaned)
-        }
-    }
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF102A44),contentColor=White) {
-        Column(Modifier.fillMaxWidth().padding(horizontal=22.dp).padding(bottom=28.dp)) {
-            Text("地點與城市",fontSize=23.sp,fontWeight=FontWeight.Bold,color=White)
-            Spacer(Modifier.height(5.dp))
-            Text("首頁優先顯示 GPS 位置，可保存其他地點供切換查看",fontSize=14.sp,color=TextSoft)
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
-                horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value=query,onValueChange={query=it;submittedQuery=null},singleLine=true,
-                    keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),
-                    keyboardActions=KeyboardActions(onSearch={submittedQuery=query.trim();onQuery(query.trim())}),
-                    leadingIcon={Icon(Icons.Rounded.Search,null)},
-                    label={Text("搜尋鄉鎮、城市或國外地點")},modifier=Modifier.weight(1f),
-                    colors=OutlinedTextFieldDefaults.colors(focusedTextColor=White,unfocusedTextColor=White,
-                        focusedBorderColor=White.copy(alpha=.65f),unfocusedBorderColor=White.copy(alpha=.22f),
-                        focusedLabelColor=White,unfocusedLabelColor=TextSoft))
-                Button(onClick={submittedQuery=query.trim();onQuery(query.trim())},
-                    enabled=!searching,modifier=Modifier.height(54.dp),contentPadding=PaddingValues(horizontal=15.dp)) {
-                    Text("搜尋")
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                .background(White.copy(alpha=.14f))
-                .clickable(enabled=!locationFeedback.inProgress,onClick=onLocate).padding(15.dp),
-                verticalAlignment=Alignment.CenterVertically) {
-                if(locationFeedback.inProgress) CircularProgressIndicator(
-                    Modifier.size(22.dp),color=Color(0xFF9CE4FF),strokeWidth=2.dp)
-                else Icon(Icons.Rounded.MyLocation,null,tint=White)
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(if(locationFeedback.inProgress) "正在取得目前位置…" else "回到目前 GPS 位置",
-                        color=White,fontWeight=FontWeight.Medium)
-                    Text(if(locationFeedback.inProgress) "請稍候，定位完成後會自動更新天氣"
-                        else "自動辨識台灣 · 縣市 · 鄉鎮市區",color=TextSoft,fontSize=14.sp)
-                }
-            }
-            androidx.compose.animation.AnimatedVisibility(
-                visible = locationFeedback.phase != LocationPhase.IDLE,
-                enter = androidx.compose.animation.fadeIn(tween(180)) +
-                    androidx.compose.animation.expandVertically(tween(240)),
-                exit = androidx.compose.animation.fadeOut(tween(180))
-            ) {
-                LocationFeedbackBanner(locationFeedback, onRetry=onLocate)
-            }
-            if(searching) { Spacer(Modifier.height(12.dp));LinearProgressIndicator(Modifier.fillMaxWidth(),color=White) }
-            if(submittedQuery != null && (searchExecuted || searchError != null)) {
-                Spacer(Modifier.height(14.dp))
-                Text("搜尋結果",color=TextSoft,fontSize=14.sp)
-                if(searchError!=null) Text(searchError,color=Color(0xFFFFD094),fontSize=14.sp)
-                if(!searching && searchError==null && results.isEmpty())
-                    Text("沒有找到相符地點，可試試地區中文、英文或附近城市",color=TextSoft,fontSize=14.sp)
-                LazyColumn(modifier=Modifier.heightIn(max=220.dp)) {
-                    items(results,key={"search-${it.id}"}) { city ->
-                        Row(Modifier.fillMaxWidth().clickable{onSelect(city)}.padding(vertical=10.dp),
-                            verticalAlignment=Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Place,null,tint=TextSoft,modifier=Modifier.size(18.dp))
-                            Spacer(Modifier.width(9.dp))
-                            Text(city.name,color=White,modifier=Modifier.weight(1f),fontSize=15.sp,maxLines=2)
-                            Icon(Icons.Rounded.Add,null,tint=Color(0xFF8ED8FF))
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            Text("已儲存地點（最多 30 個）",color=TextSoft,fontSize=14.sp)
-            Spacer(Modifier.height(6.dp))
-            val cities=if(saved.isEmpty()) SampleCities.all.take(4) else saved
-            LazyColumn(modifier=Modifier.heightIn(max=250.dp)) {
-                items(cities,key={"saved-${it.id}"}) { city ->
-                    Row(Modifier.fillMaxWidth().padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Row(Modifier.weight(1f).clickable{onSelect(city)}.padding(vertical=5.dp),
-                            verticalAlignment=Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Place,null,tint=TextSoft,modifier=Modifier.size(17.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text(city.name,color=White,modifier=Modifier.weight(1f),fontSize=16.sp,maxLines=2)
-                            if(city.id==selected.id) Icon(Icons.Rounded.Check,null,tint=Color(0xFF83E3E5),modifier=Modifier.size(18.dp))
-                        }
-                        if(saved.any{it.id==city.id}) IconButton(onClick={onRemove(city.id)}) {
-                            Icon(Icons.Rounded.Close,"移除儲存地點",tint=TextSoft,modifier=Modifier.size(18.dp))
-                        }
-                    }
-                    HorizontalDivider(color=White.copy(alpha=.10f))
-                }
-            }
-        }
-    }
+    io.atmos.weather.ui.CitySearchSheet(selected,saved,results,searching,searchError,locationFeedback,
+        onLocate,onQuery,onSelect,onRemove,onClose)
 }
 
 /** Visible progress while GPS resolves; success and error are never silently swallowed. */

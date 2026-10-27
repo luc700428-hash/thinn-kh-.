@@ -51,16 +51,16 @@ class WidgetRenderingTest {
         context.getSharedPreferences("thinn_settings",0).edit().clear().putBoolean("reduce_motion",true).commit()
         Settings.System.putString(context.contentResolver,Settings.System.TIME_12_24,"24")
     }
-    @Test(timeout=180_000) fun allTwentySevenWidgetsHaveNewRenderedPreviews() {
-        for(variant in 0..26) {
-            val family=if(variant==25)5 else if(variant==26)6 else variant/5
+    @Test(timeout=180_000) fun allTwentyEightWidgetsHaveNewRenderedPreviews() {
+        for(variant in 0..27) {
+            val family=if(variant==25)5 else if(variant==26)6 else if(variant==27)7 else variant/5
             val width=if(family in 1..5)320 else 180
             render(variant,width,180,1f,"catalogue_${variant.toString().padStart(2,'0')}")
         }
     }
     @Test(timeout=240_000) fun everyFamilyFitsSmallWideTallAndLargeText() {
         val failures=mutableListOf<String>()
-        for(variant in listOf(0,5,10,15,20,25,26)) {
+        for(variant in listOf(0,5,10,15,20,25,26,27)) {
             for((width,height) in listOf(100 to 60,160 to 160,320 to 180,180 to 320,360 to 360)) {
                 for(scale in listOf(1f,1.5f)) {
                     try {render(variant,width,height,scale,"v${variant}_${width}x${height}_${(scale*100).toInt()}")}
@@ -97,6 +97,30 @@ class WidgetRenderingTest {
         render(10,320,180,1.5f,"system_large_digital")
         render(26,180,180,1.5f,"system_large_analog")
         render(20,320,180,1.5f,"system_large_alert",data.copy(alertRecent=true,alert="地震報告 · 測試資料",alertDetail="測試資料，不是即時警報"))
+    }
+    @Test fun buddyCharactersCoverDayNightRainAndUnknownWithoutLosingNativeAnimations() {
+        context.getSharedPreferences("thinn_settings",0).edit().putBoolean("reduce_motion",false).commit()
+        for((index,reading) in listOf(data.copy(condition=WeatherCondition.CLEAR),data.copy(condition=WeatherCondition.CLEAR,day=false),
+            data.copy(condition=WeatherCondition.RAIN),data.copy(condition=WeatherCondition.SNOW),data.copy(condition=WeatherCondition.UNKNOWN)).withIndex()) {
+            render(27,180,180,1f,"buddy_motion_$index",reading)
+            val remote=buddyRemote(context,reading,true,487)
+            val view=remote.apply(context,FrameLayout(context))
+            val float=view.findViewById<android.widget.ViewFlipper>(R.id.buddy_float)
+            assertEquals(1,float.childCount)
+            assertNotNull(float.inAnimation)
+            val eyes=view.findViewById<android.widget.ViewFlipper>(R.id.buddy_eyes)
+            assertEquals(24,eyes.childCount)
+            assertEquals(50,view.findViewById<android.widget.ViewFlipper>(R.id.buddy_rain).flipInterval)
+            val bitmaps=java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Bitmap,Boolean>())
+            fun collect(v:View){
+                if(v is android.widget.ImageView)(v.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap?.let{bitmaps.add(it)}
+                if(v is ViewGroup)for(i in 0 until v.childCount)collect(v.getChildAt(i))
+            }
+            collect(view);assertTrue("Buddy exceeded the RemoteViews bitmap budget",bitmaps.sumOf{it.allocationByteCount.toLong()}<4_000_000)
+            val face=float.currentView;eyes.displayedChild=9;float.showNext()
+            assertSame(face,float.currentView);assertEquals(9,eyes.displayedChild)
+        }
+        assertFalse(WeatherBuddyArt.still(WeatherBuddyArt.Kind.SUN,true,112).sameAs(WeatherBuddyArt.still(WeatherBuddyArt.Kind.MOON,false,112)))
     }
     private fun render(variant:Int,width:Int,height:Int,scale:Float,name:String,reading:OpticalWidgetData=data) {
         context.getSharedPreferences("thinn_settings",0).edit().putFloat("v4_fontscale",scale).commit()

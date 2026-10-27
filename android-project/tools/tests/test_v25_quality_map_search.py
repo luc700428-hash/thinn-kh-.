@@ -16,9 +16,10 @@ class V25MapSearchQuality(unittest.TestCase):
         self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',s)
     def test_saved_places_stay_searchable_without_api(self):
         s=(SRC/'presentation/home/WeatherViewModel.kt').read_text()
-        self.assertIn('SampleCities.all+mutableState.value.savedCities',s)
-        self.assertIn('TaiwanPlaceSearch.matches(name,it.name)',s)
-        self.assertIn('distinctBy { it.id }',s)
+        self.assertIn('val saved=mutableState.value.savedCities',s)
+        self.assertIn('OfflineCitySearch.search(context,q)',s)
+        self.assertIn('CitySearchRules.score(q,it.name)>0',s)
+        self.assertIn('CitySearchRules.distinct(',s)
     def test_no_auto_typhoon_forecast_modal(self):
         s=(SRC/'presentation/home/WeatherHomeScreen.kt').read_text()
         self.assertNotIn('nextOfficialStormPrompt',s)

@@ -17,7 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,14 +88,14 @@ fun GlassToggle(label:String,description:String,value:Boolean,change:(Boolean)->
 }
 
 @Composable
-fun GlassTrackingSlider(title:String,value:Float,valueLabel:String?=null,change:(Float)->Unit) {
+fun GlassTrackingSlider(title:String,value:Float,valueLabel:String?=null,onFinished:(()->Unit)?=null,change:(Float)->Unit) {
     val bounded=value.coerceIn(0f,1f)
     Column(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=8.dp)) {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
             Text(title,color=ink,fontSize=15.sp)
             Text(valueLabel?:"${(bounded*100f).roundToInt()}%",color=soft,fontSize=15.sp)
         }
-        GlassSlider(bounded,change,modifier=Modifier.fillMaxWidth()
+        GlassSlider(bounded,change,onValueChangeFinished=onFinished,modifier=Modifier.fillMaxWidth()
             .semantics { contentDescription=title })
     }
 }

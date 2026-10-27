@@ -22,7 +22,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalDensity
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import androidx.compose.material3.Text
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier

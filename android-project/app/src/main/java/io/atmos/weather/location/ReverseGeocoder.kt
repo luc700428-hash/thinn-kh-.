@@ -24,7 +24,7 @@ object ReverseGeocoder {
                 .firstOrNull {it.endsWith("縣") || it.endsWith("市")} ?: admin
             val district=sequenceOf(result.subLocality,result.locality,subAdmin)
                 .filterNotNull().firstOrNull {it!=county && it!="台灣" && it!="臺灣"}
-            val label = LocationLabels.name(countryCode, country, county, district)
+            val label = LocationLabels.name(countryCode, country, county, district,point)
             if (label == "未知地點") fallback else label
         } catch (_: Exception) { fallback }
     }

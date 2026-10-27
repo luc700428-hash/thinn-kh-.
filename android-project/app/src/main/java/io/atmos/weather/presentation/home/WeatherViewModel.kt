@@ -24,6 +24,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import io.atmos.weather.location.*
 
 sealed interface WeatherIntent {
     data class SelectCity(val city: WeatherCity) : WeatherIntent
@@ -76,7 +82,8 @@ class WeatherViewModel(
             else SampleCities.all.first()
         }
     }
-    private val mutableState = MutableStateFlow(WeatherUiState(city = startCity, savedCities=SavedCityStore.all(context)))
+    private val normalizedStartCity = LocationLabels.city(startCity)
+    private val mutableState = MutableStateFlow(WeatherUiState(city = normalizedStartCity, savedCities=SavedCityStore.all(context)))
     val uiState: StateFlow<WeatherUiState> = mutableState.asStateFlow()
     private var requestJob: Job? = null
     private var searchJob: Job? = null
@@ -106,7 +113,8 @@ class WeatherViewModel(
     }
     fun onIntent(intent: WeatherIntent) = when (intent) {
         is WeatherIntent.SelectCity -> {
-            val c = intent.city
+            val c = LocationLabels.city(intent.city)
+            RecentCityStore.record(context,c)
             val edit=prefs.edit()
             // Background alerts remain subscribed to the last actual GPS position.
             // Saved-city previews never silently replace the user's home location.
@@ -133,43 +141,26 @@ class WeatherViewModel(
     fun removeSavedCity(id:String) {
         mutableState.update{it.copy(savedCities=SavedCityStore.remove(context,id))}
     }
-    /** Debounced query or explicit search; preserve earlier saved locations. */
-    fun search(query: String) {
-        searchJob?.cancel()
-        if (query.trim().length < 2) {
-            mutableState.update { it.copy(searchResults=emptyList(),searching=false,
-                searchExecuted=true,searchError="請至少輸入兩個字") }
-            return
-        }
-        searchJob = viewModelScope.launch {
-            mutableState.update { it.copy(searching=true,searchExecuted=true,searchError=null,searchResults=emptyList()) }
-            try {
-                val name=query.trim().replace('臺','台')
-                val alternatives=listOf(query.trim(),name,
-                    name.substringAfterLast('·').trim(),
-                    name.removeSuffix("鄉").removeSuffix("鎮").removeSuffix("區").removeSuffix("市"))
-                    .filter { it.length >= 2 }.distinct().take(4)
-                val localCandidates=(SampleCities.all+mutableState.value.savedCities)
-                    .distinctBy { it.id }
-                    .filter { io.atmos.weather.location.TaiwanPlaceSearch.matches(name,it.name) }
-                val candidates=mutableListOf<WeatherCity>()
-                var apiSucceeded=false
-                for(term in alternatives) {
-                    try {
-                        val incoming=AppContainer.geoApi.search(term,count=40).results.orEmpty().map { it.asCity() }
-                        candidates.addAll(incoming)
-                        apiSucceeded=true
-                    } catch (cancel: CancellationException) { throw cancel }
-                      catch (_:Exception) { /* try another spelling; never invent locations */ }
-                    if(candidates.size>=30) break
-                }
-                val results=(localCandidates+candidates).distinctBy { it.id }.take(40)
-                mutableState.update {it.copy(searching=false,searchResults=results,
-                    searchError=if(!apiSucceeded && localCandidates.isEmpty())
-                        "目前無法連線搜尋地點，請稍後再試" else null)}
-            } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { mutableState.update { it.copy(searching=false,searchResults=emptyList(),
-                searchError="地點搜尋失敗，請確認網路後重試") } }
+    private var searchGeneration=0
+    /** Local results appear first; old network responses cannot replace a newer query. */
+    fun search(query:String) {
+        searchJob?.cancel();val generation=++searchGeneration
+        val q=query.trim()
+        if(q.isBlank()){mutableState.update{it.copy(searchResults=emptyList(),searching=false,searchExecuted=false,searchError=null)};return}
+        searchJob=viewModelScope.launch {
+            val saved=mutableState.value.savedCities
+            val local=withContext(Dispatchers.Default){CitySearchRules.distinct(
+                OfflineCitySearch.search(context,q)+(saved+RecentCityStore.read(context)).filter{CitySearchRules.score(q,it.name)>0})}
+            mutableState.update{it.copy(searchResults=local,searching=q.length>=2,searchExecuted=true,searchError=null)}
+            if(q.length<2||CitySearchRules.coordinate(q)!=null){mutableState.update{it.copy(searching=false)};return@launch}
+            var succeeded=false
+            val remote=supervisorScope {
+                val requests=listOf(async {withTimeoutOrNull(6500){runCatching{AppContainer.geoApi.search(q,count=40).results.orEmpty().mapNotNull{runCatching{it.asCity()}.getOrNull()}}.getOrNull()}},
+                    async {withTimeoutOrNull(6500){runCatching{AppContainer.geoApi.search(q.replace('臺','台'),count=30,countryCode="TW").results.orEmpty().mapNotNull{runCatching{it.asCity()}.getOrNull()}}.getOrNull()}})
+                requests.flatMap {it.await()?.also{succeeded=true}.orEmpty()}
+            }
+            if(generation==searchGeneration)mutableState.update{it.copy(searching=false,
+                searchResults=CitySearchRules.distinct(local+remote),searchError=if(!succeeded)"網路搜尋暫不可用，已保留本機地點" else null)}
         }
     }
     fun refreshWarnings() {
@@ -201,7 +192,9 @@ class WeatherViewModel(
         val city = mutableState.value.city
         requestJob = viewModelScope.launch {
             mutableState.update { it.copy(loading = true, error = null) }
-            when (val result = repository.load(city, force)) {
+            val result = repository.load(city, force)
+            if(mutableState.value.city.id!=city.id||mutableState.value.city.coordinate!=city.coordinate)return@launch
+            when (result) {
                 is WeatherLoadResult.Success -> {
                     mutableState.update {
                         it.copy(loading = false, weather = result.value, scene = sceneFor(result.value),

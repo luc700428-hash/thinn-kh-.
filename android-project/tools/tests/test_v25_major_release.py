@@ -25,9 +25,9 @@ class V25Release(unittest.TestCase):
         self.assertNotIn('nextOfficialStormPrompt',h)
         self.assertIn('TyphoonDirection.zh(it)',h)
         self.assertIn('notice.summary.ifBlank',h)
-        self.assertIn('LaunchedEffect(query)',h)
+        self.assertIn('LaunchedEffect(query)',(A/'ui/CitySearchSheet.kt').read_text())
     def test_multiple_city_lookup_variants(self):
         s=(A/'presentation/home/WeatherViewModel.kt').read_text()
-        self.assertIn('name.removeSuffix("鄉")',s)
-        self.assertIn('distinctBy { it.id }',s)
+        self.assertIn('OfflineCitySearch.search(context,q)',s)
+        self.assertIn('CitySearchRules.distinct(',s)
 if __name__=='__main__':unittest.main()

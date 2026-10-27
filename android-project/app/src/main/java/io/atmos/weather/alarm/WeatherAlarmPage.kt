@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.Text
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.material3.Icon
 import io.atmos.weather.ui.GlassIconButton as IconButton
 import io.atmos.weather.ui.GlassTextButton as TextButton

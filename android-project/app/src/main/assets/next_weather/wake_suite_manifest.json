@@ -1456,17 +1456,17 @@
     },
     {
       "path": "next_weather/ambience/sunny.wav",
-      "sha256": "3aaeacaa94f85e726813b6b6e02846574ce296806141297ad82dadd355a8bb5c",
+      "sha256": "96d78456553a95d08772901303ce0a4dd3ef132c5462329c06117fdc78329e96",
       "sample_rate": 44100,
       "channels": 1,
       "frames": 529200,
-      "seconds": 12.0,
-      "peak_dbfs": -11.689,
-      "rms_dbfs": -26.031,
+      "seconds": 12,
+      "peak_dbfs": -8.394,
+      "rms_dbfs": -22.151,
       "loop_jump_pcm": 0,
       "scene": "sunny",
       "category": "ambience",
-      "authorship": "original procedural weather soundscape"
+      "authorship": "original procedural nature sound synthesis"
     },
     {
       "path": "next_weather/ambience/drizzle.wav",

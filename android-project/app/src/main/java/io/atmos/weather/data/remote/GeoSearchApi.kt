@@ -13,7 +13,8 @@ interface GeoSearchApi {
         @Query("name") name: String,
         @Query("count") count: Int = 20,
         @Query("language") language: String = "zh",
-        @Query("format") format: String = "json"
+        @Query("format") format: String = "json",
+        @Query("countryCode") countryCode:String?=null
     ): GeoSearchResponse
 }
 data class GeoSearchResponse(val results: List<GeoResult>?)
@@ -26,5 +27,5 @@ data class GeoResult(
     @SerializedName("country_code") val countryCode: String?,
     @SerializedName("admin1") val admin: String?
 ) {
-    fun asCity() = WeatherCity("geo-$id", LocationLabels.name(countryCode, country, admin, name), GeoPoint(latitude, longitude))
+    fun asCity() = WeatherCity("geo-$id", LocationLabels.name(countryCode, country, admin, name,GeoPoint(latitude,longitude)), GeoPoint(latitude, longitude))
 }

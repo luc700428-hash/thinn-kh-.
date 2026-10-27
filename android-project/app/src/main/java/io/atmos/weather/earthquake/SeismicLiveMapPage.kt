@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -263,18 +264,15 @@ fun SeismicLiveMapPage(
                         Text("TREM-Net",fontSize=14.sp,color=muted)
                     }
                     Spacer(Modifier.height(12.dp))
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(999.dp)).background(palette.surfaceVariant)
-                        .padding(3.dp),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-                        listOf("綜合","測站","震央").forEach {mode ->
-                            val active=mode==layer
-                            Box(Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(999.dp))
-                                .background(if(active)palette.surface else Color.Transparent)
-                                .then(if(active)Modifier.thinnSpecularEdge(999.dp) else Modifier)
-                                .clickable {layer=mode;selected=null},contentAlignment=Alignment.Center) {
-                                Text(mode,color=if(active)iceBlue else muted,fontSize=14.sp,fontWeight=FontWeight.Medium)
-                            }
-                        }
-                    }
+                    io.atmos.weather.next.NextReorderableToolDock(
+                        actions=listOf(
+                            io.atmos.weather.next.NextToolAction("綜合","綜合",Icons.Rounded.Layers),
+                            io.atmos.weather.next.NextToolAction("測站","測站",Icons.Rounded.Sensors),
+                            io.atmos.weather.next.NextToolAction("震央","震央",Icons.Rounded.MyLocation)),
+                        selectedId=layer,onSelected={layer=it;selected=null},onOrderChanged={},
+                        modifier=Modifier.fillMaxWidth(),maxVisible=3,
+                        reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
+                        reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency())
                     Spacer(Modifier.height(12.dp))
                     Box(Modifier.fillMaxWidth().height(380.dp).clip(RoundedCornerShape(19.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xFF0A1D34),Color(0xFF152A41))))) {

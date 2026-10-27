@@ -1,0 +1,5 @@
+<set xmlns:android="http://schemas.android.com/apk/res/android" android:shareInterpolator="true" android:interpolator="@android:interpolator/accelerate_decelerate">
+ <translate android:fromYDelta="0" android:toYDelta="-4%" android:duration="1800" android:repeatCount="1" android:repeatMode="reverse"/>
+ <rotate android:fromDegrees="0" android:toDegrees="1.5" android:pivotX="50%" android:pivotY="50%" android:duration="1800" android:repeatCount="1" android:repeatMode="reverse"/>
+ <alpha android:fromAlpha="0.91" android:toAlpha="1" android:duration="1800" android:repeatCount="1" android:repeatMode="reverse"/>
+</set>

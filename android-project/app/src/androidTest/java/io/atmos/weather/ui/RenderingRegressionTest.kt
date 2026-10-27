@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.platform.LocalDensity
@@ -61,7 +62,7 @@ class RenderingRegressionTest {
         IdlingPolicies.setIdlingResourceTimeout(30,TimeUnit.SECONDS)
         context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).edit()
             .putBoolean("reduce_motion",false).putBoolean("reduce_transparency",false)
-            .putBoolean("sound_enabled",false).commit()
+            .putBoolean("sound_enabled",false).putFloat("v4_fontscale",1f).putFloat("v4_fontweight",400f).commit()
         context.getSharedPreferences("thinn_crash_diagnostics",Context.MODE_PRIVATE).edit().clear().commit()
     }
     private fun frame() {compose.mainClock.advanceTimeBy(650);compose.waitForIdle()}
@@ -244,6 +245,46 @@ class RenderingRegressionTest {
         File(dir,"weather-after-scroll-and-settings.png").outputStream().use {image.compress(Bitmap.CompressFormat.PNG,100,it)}
         assertNull(CrashDiagnostics.graphics(context))
         checkpoint("weather: passed")
+    }
+
+    @Test(timeout=120_000) fun rapidAlternatingSliderDragsSurviveRecomposition() {
+        val values=List(3){mutableFloatStateOf(.5f)}
+        compose.setContent {ThinnAppTheme {Column(Modifier.width(320.dp)) {
+            values.forEachIndexed {i,v->GlassSlider(v.floatValue,{v.floatValue=it},Modifier.testTag("stress-$i"))}
+            AppText("值 ${values[0].floatValue}")
+        }}}
+        frame()
+        repeat(60){i->
+            compose.onNodeWithTag("stress-${i%3}").performTouchInput {
+                val start=if(i%2==0).15f else .85f;val end=1-start
+                down(Offset(width*start,centerY))
+                for(step in 1..10)moveTo(Offset(width*(start+(end-start)*step/10f),centerY),delayMillis=16)
+                up()
+            }
+            compose.mainClock.advanceTimeBy(32)
+            assertTrue(values.all{it.floatValue.isFinite()&&it.floatValue in 0f..1f})
+        }
+        frame();assertNull(CrashDiagnostics.graphics(context))
+        checkpoint("sliders: 60 alternating fast drags passed")
+    }
+
+    @Test(timeout=120_000) fun textSizeAndWeightApplyOnceAcrossNestedThemes() {
+        var result:androidx.compose.ui.text.TextLayoutResult?=null
+        compose.setContent {ThinnAppTheme {GlassAppTheme {
+            AppText("字體設定真的會生效",fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Normal,
+                modifier=Modifier.testTag("reading-sample"),onTextLayout={result=it})
+        }}}
+        frame();val baseline=result!!.size.height
+        compose.runOnIdle {context.getSharedPreferences("thinn_settings",0).edit().putFloat("v4_fontscale",1.5f).putFloat("v4_fontweight",800f).commit()}
+        frame()
+        val enlarged=result!!
+        assertEquals(800,enlarged.layoutInput.style.fontWeight!!.weight)
+        assertTrue("Font scale was ignored",enlarged.size.height>baseline*1.3f)
+        assertTrue("Nested themes applied font scale twice",enlarged.size.height<baseline*1.7f)
+        compose.onNodeWithTag("reading-sample").assertIsDisplayed()
+        compose.runOnIdle {context.getSharedPreferences("thinn_settings",0).edit().putFloat("v4_fontscale",1f).putFloat("v4_fontweight",400f).commit()}
+        frame();assertEquals(baseline,result!!.size.height)
+        checkpoint("reading: global size and weight passed nested theme regression")
     }
 
     private fun centerWeatherText(text:String) {

@@ -163,11 +163,11 @@ private fun AlarmFullScreen(
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 AlarmOutlineIcon(Modifier.size(clockIconSize))
-                androidx.compose.material3.Text(label, fontSize = labelSize,maxLines=2,
+                io.atmos.weather.ui.AppText(label, fontSize = labelSize,maxLines=2,
                     color = Color(0xFFA1A1A6), fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.height(10.dp))
-            androidx.compose.material3.Text(
+            io.atmos.weather.ui.AppText(
                 timeText,
                 fontSize = clockSize,
                 letterSpacing = (-3).sp,
@@ -206,7 +206,7 @@ private fun AlarmFullScreen(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    androidx.compose.material3.Text("稍後提醒", color = Color.White,
+                    io.atmos.weather.ui.AppText("稍後提醒", color = Color.White,
                         fontSize = (buttonHeight.value*.25f).coerceIn(20f,24f).sp, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -247,7 +247,7 @@ private fun AlarmFullScreen(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                androidx.compose.material3.Text(
+                io.atmos.weather.ui.AppText(
                     "滑動來停止",
                     fontSize = 20.sp,
                     style=androidx.compose.ui.text.TextStyle(brush=Brush.linearGradient(

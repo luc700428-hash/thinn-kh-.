@@ -16,7 +16,8 @@ object LocationLabels {
         .replace(Regex("台灣(?:\\s*[,·/-]\\s*台灣)+"), "台灣")
         .trim(' ', ',', '·', '-', '/')
 
-    fun name(countryCode: String?, country: String?, region: String?, city: String?): String {
+    fun name(countryCode: String?, country: String?, region: String?, city: String?,point:GeoPoint?=null): String {
+        if(point!=null&&isDiaoyutai(point))return "台灣 · 釣魚台"
         val parts = listOfNotNull(region, city).map { clean(it) }
             .filter { it.isNotBlank() && it != "台灣" }.distinct()
         return if (isTaiwan(countryCode, country)) {
@@ -89,7 +90,7 @@ object LocationLabels {
     fun probablyTaiwan(point: GeoPoint): Boolean =
         point.latitude in 21.7..26.5 && point.longitude in 118.0..122.2
 
-    fun fallback(point: GeoPoint): String = if (probablyTaiwan(point)) {
+    fun fallback(point: GeoPoint): String = if(isDiaoyutai(point)) "台灣 · 釣魚台" else if (probablyTaiwan(point)) {
         val nearest = countyCenters.minByOrNull {
             val x = (it.second - point.latitude) * 111.0
             val y = (it.third - point.longitude) * 101.0
@@ -97,4 +98,10 @@ object LocationLabels {
         }
         "台灣 · ${nearest?.first ?: "目前位置"}"
     } else "目前位置 · ${"%.2f".format(java.util.Locale.US, point.latitude)}, ${"%.2f".format(java.util.Locale.US, point.longitude)}"
+    /** User-selected presentation policy, restricted to the island group coordinates. */
+    fun isDiaoyutai(p:GeoPoint)=
+        (p.latitude in 25.65..26.02&&p.longitude in 123.35..123.78)||
+        (p.latitude in 25.85..26.05&&p.longitude in 124.45..124.70)
+    fun city(c:io.atmos.weather.domain.model.WeatherCity)=c.copy(name=if(isDiaoyutai(c.coordinate))"台灣 · 釣魚台" else clean(c.name))
+
 }

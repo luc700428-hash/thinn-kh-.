@@ -72,6 +72,6 @@ class MajorV23Contract(unittest.TestCase):
         self.assertIn('訂閱成功不等於後端已部署',push)
     def test_release_notes_disclose_remaining_work(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()
-        for term in ['第 23 代','全臺','實機','Firebase','颱風','鬧鐘']:
+        for term in ['實機驗證','桌面程式管理','Q 版','降雨雷達','鬧鐘']:
             self.assertIn(term,notes)
 if __name__=='__main__': unittest.main()

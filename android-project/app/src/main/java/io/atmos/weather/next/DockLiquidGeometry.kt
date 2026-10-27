@@ -20,8 +20,8 @@ internal object DockLiquidGeometry {
         val headX=inset+(head.coerceIn(0f,count-1f)+.5f)*slot
         val tailX=inset+(tail.coerceIn(0f,count-1f)+.5f)*slot
         val pull=abs(headX-tailX)/slot
-        val adhesion=(1f-(pull-.92f).coerceAtLeast(0f)/.48f).coerceIn(0f,1f)
-        val neck=bodyHeight*.5f*(.76f-pull*.36f).coerceAtLeast(.10f)*adhesion
+        val adhesion=(1f-(pull-1.30f).coerceAtLeast(0f)/.70f).coerceIn(0f,1f)
+        val neck=bodyHeight*.5f*(.88f-pull*.24f).coerceAtLeast(.10f)*adhesion
         return DockLiquidShape(headX,tailX,bodyWidth,bodyHeight,height*.5f,neck,adhesion>.01f)
     }
 }
