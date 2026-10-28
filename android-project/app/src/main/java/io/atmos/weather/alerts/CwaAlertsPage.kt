@@ -21,10 +21,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import io.atmos.weather.ui.*
 import io.atmos.weather.ui.AppText as Text
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -35,22 +40,31 @@ import java.time.format.DateTimeFormatter
     var notices by remember{mutableStateOf(initialNotices)}
     var refresh by remember{mutableIntStateOf(0)}
     var loading by remember{mutableStateOf(true)}
+    var national by remember{mutableStateOf<CwaNationalWarnings?>(null)}
+    var clock by remember{mutableStateOf(Instant.now())}
+    var checked by remember{mutableStateOf(Instant.now())}
+    val lifecycle=LocalLifecycleOwner.current
     var selected by remember{mutableStateOf(initialTitle)}
     var officialPage by remember{mutableStateOf<String?>(null)}
     LaunchedEffect(refresh) {
         loading=true
         try {coroutineScope {
             val rss=async{CwaWarningFeed.fetchNational()}
+            val counties=async{CwaNationalWarningFeed.fetch(refresh>0)}
             result=CwaBulletins.fetch(refresh>0)
+            national=counties.await()
             val recent=rss.await();if(recent.checkSucceeded)notices=recent.warnings
-        }}finally{loading=false}
+        }}finally{loading=false;checked=Instant.now();clock=checked}
     }
+    LaunchedEffect(lifecycle){lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        while(isActive){clock=Instant.now();if(clock.epochSecond-checked.epochSecond>=300)refresh++;delay(30000)}
+    }}
     BackHandler(officialPage!=null||selected!=null){if(officialPage!=null)officialPage=null else selected=null}
     val root:@Composable ()->Unit={
         CwaAlertsContent(result,notices,initialHazards,loading,selected,
             onSelect={selected=it},onRetry={refresh++},onBack={if(selected!=null)selected=null else onClose()},
             onOfficial={title->officialPage=initialUrl?.takeIf{selected==initialTitle && CwaOfficialPages.allowed(it)}
-                ?:CwaOfficialPages.forTitle(title,notices)})
+                ?:CwaOfficialPages.forTitle(title,notices)},now=clock,national=national)
     }
     var retained by remember{mutableStateOf(CwaOfficialPages.overview)}
     officialPage?.let{retained=it}
@@ -61,7 +75,7 @@ import java.time.format.DateTimeFormatter
 
 @Composable internal fun CwaAlertsContent(result:CwaBulletinsResult?,notices:List<CwaWarning>,
     hazards:List<CwaCountyHazard>,loading:Boolean,selected:String?,onSelect:(String)->Unit,
-    onRetry:()->Unit,onBack:()->Unit,onOfficial:(String)->Unit,now:Instant=Instant.now()) {
+    onRetry:()->Unit,onBack:()->Unit,onOfficial:(String)->Unit,now:Instant=Instant.now(),national:CwaNationalWarnings?=null) {
     val p=MaterialTheme.colorScheme
     val date=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei"))
     val bulletin=result?.bulletins?.firstOrNull{selected==null || selected.contains(it.title)||it.title.contains(selected)}
@@ -74,6 +88,7 @@ import java.time.format.DateTimeFormatter
                 Text(if(result.cached)"更新未完成，顯示先前取得的公告；請核對有效時間。" else "官方公告尚未載入，請重試。未載入不代表沒有警報。",color=p.onSurface)
                 GlassTextButton(onRetry,enabled=!loading){Text("重新取得公告")}
             }
+            CwaWarningMapCard(CwaWarningMapState.build(national,result?.bulletins.orEmpty(),hazards,selected,now),selected)
             if(selected==null) {
                 result?.checkedAt?.let{Text("最後查詢 ${date.format(it)} · 臺灣時間",color=p.onSurfaceVariant,fontSize=14.sp)}
                 result?.bulletins.orEmpty().forEach {b->
@@ -96,7 +111,7 @@ import java.time.format.DateTimeFormatter
             } else {
                 val title=bulletin?.title?:selected
                 GlassSurface {
-                    Text(title,color=p.onSurface,fontSize=24.sp,fontWeight=FontWeight.Bold)
+                    Text(title,modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=24.sp,lineHeight=34.sp,fontWeight=FontWeight.Bold)
                     val header=hazards.firstOrNull{selected.contains(it.phenomenon)}
                     val issued=bulletin?.issuedAt?:header?.issuedAt
                     val expires=bulletin?.expiresAt?:header?.expiresAt

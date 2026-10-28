@@ -1,0 +1,20 @@
+[
+  {
+    "name": "cwa-counties.json",
+    "bytes": 3391,
+    "sha256": "fbf58bfd10c78ddd45f9b71203ffc010644a02d9e1dd1c4b25a40eae450da51c",
+    "url": "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0033-001?Authorization=rdec-key-123-45678-011121314&format=JSON"
+  },
+  {
+    "name": "cwa-bulletins.json",
+    "bytes": 1684,
+    "sha256": "e2d84bdc067f43bdfb689ef46c0514c73495de435d55fd273d271ba420912a4a",
+    "url": "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0033-002?Authorization=rdec-key-123-45678-011121314&format=JSON"
+  },
+  {
+    "name": "counties.zip",
+    "bytes": 3708666,
+    "sha256": "0c6fca34a92b92ef3e9a41957e403cb89e814bb64942ca7c7e51c746f913d49d",
+    "url": "https://maps.nlsc.gov.tw/download/%E7%B8%A3%E5%B8%82%E7%95%8C%E7%B7%9A%28TWD97%E7%B6%93%E7%B7%AF%E5%BA%A6%29.zip"
+  }
+]

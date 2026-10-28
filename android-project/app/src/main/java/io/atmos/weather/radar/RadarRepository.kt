@@ -17,6 +17,8 @@ data class RadarTimeline(val frames:List<RadarFrame>,val fetchedAt:Long,val cach
 object RadarRepository {
     private val mutex=Mutex();private var timeline:RadarTimeline?=null
     private val gate=Semaphore(4)
+    private val tileLocks=Array(32){Mutex()}
+    private val requestBudget=RadarRequestBudget()
     private var lastTrim=0L
     private fun trimCache(directory:java.io.File) = synchronized(this) {
         val now=System.currentTimeMillis();if(now-lastTrim<60000)return@synchronized
@@ -46,12 +48,12 @@ object RadarRepository {
     suspend fun image(context:Context,frame:RadarFrame?,tile:RadarTile):Bitmap? {
         val key=RadarTilePolicy.imageKey(frame,tile)
         synchronized(images){images.get(key)}?.let{return it}
-        return gate.withPermit {withContext(Dispatchers.IO){
+        return tileLocks[(key.hashCode() and Int.MAX_VALUE)%tileLocks.size].withLock {gate.withPermit {withContext(Dispatchers.IO){
             synchronized(images){images.get(key)}?.let{return@withContext it}
             try {
                 val url=RadarTilePolicy.imageUrl(frame,tile)
-                // On-demand only. Cache base tiles >=7 days and radar frames for 3 hours;
-                // a playback loop never repeatedly downloads the same frame's tiles.
+                // A viewport preloads the complete history once. Immutable frame paths share
+                // the same memory/disk cache across scrubbing, playback and foreground requests.
                 val digest=java.security.MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).joinToString(""){"%02x".format(it)}
                 val file=java.io.File(context.cacheDir,"radar-tiles/$digest.png")
                 val ttl=if(frame==null)7*86400000L else 3*3600000L
@@ -64,10 +66,12 @@ object RadarRepository {
                     }
                 }
                 currentCoroutineContext().ensureActive()
-                decodeTile(bytes)?.also{synchronized(images){images.put(key,it)}}
+                val image=decodeTile(bytes)
+                if(image==null)file.delete() else synchronized(images){images.put(key,image)}
+                image
             } catch(cancel:CancellationException){throw cancel}
             catch(_:Exception){null}
-        }}
+        }}}
     }
     internal fun decodeTile(bytes:ByteArray):Bitmap? {
         if(bytes.size !in 8..1500000)return null
@@ -77,6 +81,12 @@ object RadarRepository {
         return BitmapFactory.decodeByteArray(bytes,0,bytes.size)
     }
     private suspend fun request(url:String,limit:Int):ByteArray=withContext(Dispatchers.IO) {
+        if(URL(url).host.endsWith("rainviewer.com"))while(true) {
+            currentCoroutineContext().ensureActive()
+            val wait=requestBudget.reserve(android.os.SystemClock.elapsedRealtime())
+            if(wait==0L)break
+            delay(wait)
+        }
         val connection=(URL(url).openConnection() as HttpsURLConnection).apply {
             connectTimeout=7000;readTimeout=8000;instanceFollowRedirects=false
             setRequestProperty("User-Agent","thinn-khi/25 personal-weather-map (+https://github.com/luc700428-hash/thinn-kh-.)")

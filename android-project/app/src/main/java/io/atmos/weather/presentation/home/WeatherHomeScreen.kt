@@ -875,12 +875,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                 }
 
-                io.atmos.weather.ui.GlassSurface {
-                    io.atmos.weather.ui.GlassAction("中央氣象署警特報","完整公告、警戒地區與官方圖表") {
-                        alertTitle=null;alertUrl=null;alertsOpen=true
-                    }
-                    if(snapshot!=null) io.atmos.weather.ui.GlassAction("氣象詳解與外出時段","逐時比較、風與陣風、露點及空氣成分") {insightsOpen=true}
-                }
                 if (snapshot != null) {
                     // Weather always takes precedence over decor: show real six-hour facts
                     // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.

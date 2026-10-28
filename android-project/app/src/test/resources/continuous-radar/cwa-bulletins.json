@@ -1,0 +1,56 @@
+{
+ "cwaopendata": {
+  "@xmlns": "urn:cwa:gov:tw:cwacommon:0.1",
+  "identifier": "CWA-Weather_hazards_20261028222443",
+  "sender": "weather@cwa.gov.tw",
+  "sent": "2026-10-28T22:24:43+08:00",
+  "status": "Actual",
+  "scope": "Public",
+  "msgType": "Update",
+  "dataset": {
+   "datasetInfo": {
+    "datasetDescription": "陸上強風特報",
+    "datasetLanguage": "zh-TW",
+    "issueTime": "2026-10-28T22:22:00+08:00",
+    "validTime": {
+     "startTime": "2026-10-28T22:22:00+08:00",
+     "endTime": "2026-10-29T05:00:00+08:00"
+    },
+    "update": "2026-10-28T22:24:43+08:00"
+   },
+   "contents": {
+    "content": {
+     "contentLanguage": "zh-TW",
+     "contentText": "一、概述：東北風偏強，28日晚上至29日晨蘭嶼、屏東縣、澎湖縣局部地區有平均風6級以上或陣風8級以上發生的機率(黃色燈號)，請注意。\n\n二、注意(警戒)事項\n黃色燈號：注意！在戶外請小心因強風造成路樹、不堅固建築或定置物(如鐵皮屋、貨櫃及電線桿等)脫落或掉落；戶外工作者請注意安全；加強牢固戶外物品；行車減速慢行，留意大眾運輸延誤訊息。"
+    }
+   },
+   "hazardConditions": {
+    "hazards": {
+     "hazard": {
+      "info": {
+       "language": "zh-TW",
+       "phenomena": "陸上強風",
+       "significance": "特報",
+       "affectedAreas": {
+        "location": [
+         {
+          "locationName": "恆春半島"
+         },
+         {
+          "locationName": "屏東縣"
+         },
+         {
+          "locationName": "蘭嶼綠島"
+         },
+         {
+          "locationName": "澎湖縣"
+         }
+        ]
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

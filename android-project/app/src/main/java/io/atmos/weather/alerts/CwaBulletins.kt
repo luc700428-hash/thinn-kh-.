@@ -16,7 +16,7 @@ import javax.net.ssl.HttpsURLConnection
 
 /** Complete official W-C0033-002 text, unchanged; county headlines remain W-C0033-001. */
 data class CwaBulletin(val title:String,val text:String,val areas:List<String>,val issuedAt:Instant,
-    val startsAt:Instant?,val expiresAt:Instant?,val cancelled:Boolean=false) {
+    val startsAt:Instant?,val expiresAt:Instant?,val cancelled:Boolean=false,val updatedAt:Instant=issuedAt) {
     fun active(now:Instant)=!cancelled && startsAt?.let{!now.isBefore(it)}==true &&
         expiresAt?.let{now.isBefore(it)}==true
 }
@@ -71,7 +71,7 @@ object CwaBulletins {
             val areas=hazards.flatMap{h->objects(h.optJSONObject("info")?.optJSONObject("affectedAreas")?.opt("location"))}
                 .map{it.optString("locationName").trim()}.filter{it.isNotBlank()&&it!="null"}.distinct()
             CwaBulletin(title,texts.joinToString("\n\n").take(100_000),areas,issued,start,end,
-                root.optString("msgType").equals("Cancel",true)||listOf("解除","取消").any{it in title})
+                root.optString("msgType").equals("Cancel",true)||listOf("解除","取消").any{it in title},updatedAt=sent)
         }
     }
     suspend fun fetch(force:Boolean=false):CwaBulletinsResult=mutex.withLock {

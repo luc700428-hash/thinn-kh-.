@@ -1,40 +1,44 @@
 package io.atmos.weather.radar
-import android.content.Context
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.platform.LocalUriHandler
+
+import android.app.ActivityManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.MaterialTheme
-import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import io.atmos.weather.ui.*
+import io.atmos.weather.ui.AppText as Text
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.*
 
+private class RadarSceneMemory(var scene:RadarScene?=null)
+
 @Composable fun NativeRadarViewer(latitude:Double,longitude:Double,onClose:()->Unit) {
     val uri=LocalUriHandler.current
-    val context=LocalContext.current;val density=LocalDensity.current.density
+    val context=LocalContext.current.applicationContext;val density=LocalDensity.current.density
     val palette=MaterialTheme.colorScheme
     val dark=palette.background.luminance()<.4f
     AppSystemBars(dark)
@@ -43,56 +47,122 @@ import kotlin.math.*
     var camera by cameraState
     var size by remember{mutableStateOf(IntSize.Zero)}
     var frames by remember{mutableStateOf<List<RadarFrame>>(emptyList())}
-    var index by remember{mutableIntStateOf(0)};var playing by remember{mutableStateOf(false)}
+    var position by remember{mutableFloatStateOf(0f)}
+    val currentPosition by rememberUpdatedState(position)
+    var playing by remember{mutableStateOf(false)}
     var attempt by remember{mutableIntStateOf(0)};var status by remember{mutableStateOf("正在取得雷達時間軸…")}
     var opacity by remember{mutableFloatStateOf(.75f)}
     val reduce=rememberAppleReduceMotion()
+    LaunchedEffect(reduce){if(reduce)playing=false}
+    val maxSources=remember(context){if(context.getSystemService(ActivityManager::class.java)?.isLowRamDevice==true)2 else RadarPlayback.MAX_SOURCE_TILES}
     LaunchedEffect(attempt) {
-        try {val t=RadarRepository.timeline(attempt>0);frames=t.frames;index=frames.lastIndex
-            status=if(t.cached)"目前顯示快取圖層" else "歷史回波實況 · 近 2 小時"}
-        catch(cancel:CancellationException){throw cancel}
-        catch(_:Exception){status="雷達服務暫時無法連線，可保留地圖操作並重試"}
+        try {
+            val old=frames.getOrNull(RadarPlayback.sample(position,frames.size).lower)
+            val wasLatest=frames.isEmpty()||position>=frames.lastIndex-.01f
+            val timeline=RadarRepository.timeline(attempt>0)
+            frames=timeline.frames
+            position=if(wasLatest)frames.lastIndex.toFloat() else frames.indices.minByOrNull{abs(frames[it].time-(old?.time?:frames.last().time))}?.toFloat()?:0f
+            status=if(timeline.cached)"目前顯示快取圖層" else "歷史回波實況 · 近 2 小時"
+        } catch(cancel:CancellationException){throw cancel}
+          catch(_:Exception){status="雷達服務暫時無法連線，可保留地圖操作並重試"}
     }
     LaunchedEffect(lifecycle) {lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
         while(isActive){delay(300000);attempt++}
     }}
-    val frame=frames.getOrNull(index)
     val baseTiles by remember(cameraState,size,density){derivedStateOf{RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,RadarTilePolicy.BASE_MAX_ZOOM)}}
-    val radarTiles by remember(cameraState,size,density){derivedStateOf{RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density)}}
+    val radarTiles by remember(cameraState,size,density,maxSources){derivedStateOf{RadarPlayback.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,maxSources)}}
     val pastNativeLimit by remember(cameraState){derivedStateOf{camera.zoom>RadarTilePolicy.RADAR_MAX_ZOOM}}
     var base by remember{mutableStateOf<Map<RadarTile,ImageBitmap>>(emptyMap())}
-    var echoes by remember{mutableStateOf<Map<RadarTile,ImageBitmap>>(emptyMap())}
-    var loadedFrame by remember{mutableStateOf<String?>(null)}
+    val buffered=remember{mutableStateMapOf<String,Map<RadarTile,ImageBitmap>>()}
+    val motions=remember{mutableStateMapOf<Pair<String,String>,RadarFlowPair>()}
+    var bufferedViewport by remember{mutableStateOf<List<RadarTile>>(emptyList())}
     var baseFetching by remember{mutableStateOf(false)};var radarFetching by remember{mutableStateOf(false)}
     var baseFailure by remember{mutableStateOf(false)};var radarFailure by remember{mutableStateOf(false)}
+    var motionPending by remember{mutableIntStateOf(0)}
     var tileRetry by remember{mutableIntStateOf(0)}
     LaunchedEffect(baseTiles,tileRetry) {
         baseFetching=true
         try {
-            // Existing tiles follow the live camera while finer tiles arrive individually.
             delay(40)
             supervisorScope {baseTiles.map {tile->launch {
-                RadarRepository.image(context,null,tile)?.asImageBitmap()?.let {image->
-                    base=RadarTileWindow.merge(base,tile,image)
-                }
+                RadarRepository.image(context,null,tile)?.asImageBitmap()?.let {image->base=RadarTileWindow.merge(base,tile,image)}
             }}.joinAll()}
             baseFailure=baseTiles.any{it !in base}
             if(!baseFailure)base=base.filterKeys{it in baseTiles}
         } finally{baseFetching=false}
     }
-    LaunchedEffect(radarTiles,frame?.path,tileRetry) {
-        radarFetching=true
-        try {
-            delay(100)
-            echoes=supervisorScope{if(frame==null)emptyMap() else radarTiles.map{tile->async {tile to RadarRepository.image(context,frame,tile)?.asImageBitmap()}}.awaitAll().mapNotNull{(k,v)->v?.let{k to it}}.toMap()}
-            loadedFrame=frame?.path;radarFailure=frame!=null&&echoes.size<radarTiles.size
-        } finally{radarFetching=false}
-    }
-    LaunchedEffect(playing,frames,lifecycle,reduce) {
-        if(playing&&!reduce&&frames.isNotEmpty())lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while(isActive){delay(1100);if(!radarFetching&&loadedFrame==frames.getOrNull(index)?.path)index=(index+1)%frames.size}
+    // Cursor changes NEVER launch tile requests. Buffer every observation for the viewport once.
+    LaunchedEffect(radarTiles,frames,tileRetry,lifecycle,reduce) {
+        if(radarTiles.isEmpty()||frames.isEmpty())return@LaunchedEffect
+        if(bufferedViewport!=radarTiles){buffered.clear();motions.clear();bufferedViewport=radarTiles}
+        val paths=frames.map{it.path}.toSet()
+        buffered.keys.toList().filter{it !in paths}.forEach{buffered.remove(it)}
+        motions.keys.toList().filter{it.first !in paths||it.second !in paths}.forEach{motions.remove(it)}
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            radarFetching=true;radarFailure=false
+            val attempted=mutableSetOf<String>();val flowAttempted=motions.keys.toMutableSet()
+            val flowGate=Semaphore(1)
+            try {supervisorScope {
+                fun prepareMotion() {
+                    if(reduce)return
+                    frames.zipWithNext().forEach{(a,b)->
+                        val key=a.path to b.path
+                        val first=buffered[a.path];val second=buffered[b.path]
+                        if(first!=null&&second!=null&&RadarPlayback.canInterpolate(a,b)&&flowAttempted.add(key)) {
+                            motionPending++
+                            launch {
+                                try {
+                                    val motion=flowGate.withPermit {withContext(Dispatchers.Default) {
+                                        val job=currentCoroutineContext()[Job]
+                                        RadarMotionField.estimate(first,second){job?.ensureActive()}
+                                    }}
+                                    if(motion!=null)motions[key]=motion
+                                } finally{motionPending--}
+                            }
+                        }
+                    }
+                }
+                prepareMotion()
+                while(isActive) {
+                    val next=RadarPlayback.loadOrder(frames.size,currentPosition).map{frames[it]}
+                        .firstOrNull{it.path !in buffered && attempted.add(it.path)}?:break
+                    val images=radarTiles.map{tile->async {tile to RadarRepository.image(context,next,tile)?.asImageBitmap()}}
+                        .awaitAll().mapNotNull{(tile,image)->image?.let{tile to it}}.toMap()
+                    if(images.size==radarTiles.size)buffered[next.path]=images else radarFailure=true
+                    prepareMotion()
+                }
+            }}finally{radarFetching=false}
         }
     }
+    val readyCount=frames.count{it.path in buffered}
+    val animationReady=frames.isNotEmpty()&&readyCount==frames.size&&motionPending==0&&bufferedViewport==radarTiles
+    val canScrub=animationReady||(!radarFetching&&readyCount>0&&bufferedViewport==radarTiles)
+    fun selectLoaded(target:Float):Float=if(animationReady)target.coerceIn(0f,frames.lastIndex.coerceAtLeast(0).toFloat())
+        else frames.indices.filter{frames[it].path in buffered}.minByOrNull{abs(it-target)}?.toFloat()?:position
+    val ready by rememberUpdatedState(animationReady)
+    LaunchedEffect(playing,frames,lifecycle,reduce) {
+        if(playing&&!reduce&&frames.size>1)lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var previous=0L;var endHold=0L
+            while(isActive)withFrameNanos {now->
+                val elapsed=if(previous==0L)0 else (now-previous).coerceIn(0,100_000_000L);previous=now
+                if(ready) {
+                    if(position>=frames.lastIndex) {
+                        endHold+=elapsed
+                        if(endHold>=700_000_000L){position=0f;endHold=0}
+                    } else {position=RadarPlayback.advance(position,elapsed,frames.size);endHold=0}
+                }
+            }
+        }
+    }
+    val sample=RadarPlayback.sample(if(reduce)position.roundToInt().toFloat() else position,frames.size)
+    val first=frames.getOrNull(sample.lower);val second=frames.getOrNull(sample.upper)
+    val lower=first?.let{buffered[it.path]};val upper=second?.let{buffered[it.path]}
+    val prepared=if(first!=null&&second!=null&&lower!=null&&upper!=null)
+        RadarScene(first,second,sample.fraction,lower,upper,motions[first.path to second.path]) else null
+    val memory=remember{RadarSceneMemory()}
+    val scene=prepared?:memory.scene
+    SideEffect {if(prepared!=null)memory.scene=prepared}
+    val painter=remember{RadarTemporalPainter()}
     val fetching=baseFetching||radarFetching
     val tileFailure=baseFailure||radarFailure
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
@@ -103,10 +173,11 @@ import kotlin.math.*
             Canvas(Modifier.fillMaxSize().pointerInput(density) {
                 detectTransformGestures {centroid,pan,zoom,_->camera=camera.zoomAt(zoom,centroid.x,centroid.y,size.width.toFloat(),size.height.toFloat(),density).pan(pan.x,pan.y,density)}
             }) {
-                drawRadarLayers(camera,density,base,if(loadedFrame==frame?.path)echoes else emptyMap(),opacity,dark)
-                val w=camera.world(density)
-                val dx=((RadarProjection.x(longitude)-RadarProjection.x(camera.longitude)+1.5)%1-.5)*w
-                val point=Offset((size.width/2+dx).toFloat(),(size.height/2+(RadarProjection.y(latitude)-RadarProjection.y(camera.latitude))*w).toFloat())
+                drawRadarLayers(camera,density,base,emptyMap(),opacity,dark)
+                scene?.let{painter.draw(this,camera,density,it,opacity)}
+                val world=camera.world(density)
+                val dx=((RadarProjection.x(longitude)-RadarProjection.x(camera.longitude)+1.5)%1-.5)*world
+                val point=Offset((size.width/2+dx).toFloat(),(size.height/2+(RadarProjection.y(latitude)-RadarProjection.y(camera.latitude))*world).toFloat())
                 drawCircle(Color(0x552788FF),13.dp.toPx(),point);drawCircle(Color.White,7.dp.toPx(),point)
                 drawCircle(Color(0xFF147BE2),5.dp.toPx(),point)
             }
@@ -117,24 +188,27 @@ import kotlin.math.*
                 Spacer(Modifier.height(7.dp))
                 GlassIconButton(onClick={camera=RadarCamera(latitude,longitude,6.5).normalized()}){androidx.compose.material3.Icon(Icons.Rounded.MyLocation,"回到選擇地點")}
             }
-            if(fetching)Text("載入圖資…",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(Color(0xC017334B)),fontSize=14.sp)
-            if(tileFailure&&!fetching)Text("部分圖資尚未載入，請重試或移動地圖",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.TopStart).padding(10.dp).background(Color(0xD017334B)))
+            if(!animationReady&&radarFetching)Text(if(motionPending>0&&readyCount==frames.size)"準備連續動畫…" else "預載回放 $readyCount/${frames.size}",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(Color(0xD017334B)),fontSize=14.sp)
+            else if(baseFetching)Text("載入底圖…",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(Color(0xC017334B)),fontSize=14.sp)
+            if(tileFailure&&!fetching)Text("部分圖資未完整，可查看已載入時段或重新讀取",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.TopStart).padding(10.dp).background(Color(0xE017334B)))
             Text("底圖 © OpenStreetMap contributors",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xD017334B)).clickable{uri.openUri("https://www.openstreetmap.org/copyright")}.padding(7.dp))
         }
         Column(Modifier.padding(horizontal=16.dp)) {
-            val time=frame?.let{Instant.ofEpochSecond(it.time).atZone(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))}?:"尚無時間資料"
+            val timeFormat=remember{DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei"))}
+            val displayTime=scene?.let{it.first.time+((it.second.time-it.first.time)*it.fraction).roundToLong()}
+            val time=displayTime?.let{timeFormat.format(Instant.ofEpochSecond(it))}?:"尚無時間資料"
             if(pastNativeLimit)Text("底圖持續放大；回波細節已達資料來源上限",color=palette.onSurfaceVariant,fontSize=14.sp)
-            Text("圖層時間 $time（台灣時間）",color=palette.onSurface,fontSize=15.sp)
+            Text("回放時間 $time（台灣時間）",color=palette.onSurface,fontSize=15.sp)
             Row(verticalAlignment=Alignment.CenterVertically) {
-                GlassIconButton({playing=false;index=(index-1).coerceAtLeast(0)},enabled=frames.isNotEmpty()){androidx.compose.material3.Icon(Icons.Rounded.SkipPrevious,"前一張")}
-                GlassIconButton({playing=!playing},enabled=frames.isNotEmpty()&&!reduce){androidx.compose.material3.Icon(if(playing)Icons.Rounded.Pause else Icons.Rounded.PlayArrow,if(playing)"暫停回波動畫" else "播放回波動畫")}
-                GlassSlider(index.toFloat(),{playing=false;index=it.roundToInt().coerceIn(0,frames.lastIndex.coerceAtLeast(0))},Modifier.weight(1f),valueRange=0f..frames.lastIndex.coerceAtLeast(1).toFloat(),steps=(frames.size-2).coerceAtLeast(0),enabled=frames.isNotEmpty())
-                GlassIconButton({playing=false;index=(index+1).coerceAtMost(frames.lastIndex.coerceAtLeast(0))},enabled=frames.isNotEmpty()){androidx.compose.material3.Icon(Icons.Rounded.SkipNext,"後一張")}
+                GlassIconButton({playing=false;position=RadarPlayback.step(position,-1,frames.indices.filter{frames[it].path in buffered})},enabled=canScrub){androidx.compose.material3.Icon(Icons.Rounded.SkipPrevious,"前一張")}
+                GlassIconButton({if(!playing&&position>=frames.lastIndex)position=0f;playing=!playing},enabled=(animationReady||playing)&&frames.size>1&&!reduce){androidx.compose.material3.Icon(if(playing)Icons.Rounded.Pause else Icons.Rounded.PlayArrow,if(playing)"暫停回波動畫" else "播放回波動畫")}
+                GlassSlider(position,{playing=false;position=selectLoaded(if(reduce)it.roundToInt().toFloat() else it)},Modifier.weight(1f),valueRange=0f..frames.lastIndex.coerceAtLeast(1).toFloat(),steps=0,enabled=canScrub&&frames.size>1)
+                GlassIconButton({playing=false;position=RadarPlayback.step(position,1,frames.indices.filter{frames[it].path in buffered})},enabled=canScrub){androidx.compose.material3.Icon(Icons.Rounded.SkipNext,"後一張")}
                 GlassIconButton({attempt++;tileRetry++}){androidx.compose.material3.Icon(Icons.Rounded.Refresh,"重新讀取雷達")}
             }
             Row(verticalAlignment=Alignment.CenterVertically){Text("回波透明度",color=palette.onSurfaceVariant,fontSize=14.sp);GlassSlider(opacity,{opacity=it},Modifier.weight(1f),valueRange=.2f..1f)}
             Text("Weather data by RainViewer ↗",color=palette.primary,fontSize=14.sp,modifier=Modifier.clickable{uri.openUri("https://www.rainviewer.com")}.padding(vertical=4.dp))
-            Text("圖層時間為回波合成時間；歷史觀測不是未來預測。空白亦可能是圖資不足。",color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(bottom=7.dp))
+            Text("原始圖層時間為回波合成時間；中間僅為動畫過渡，非新增觀測或未來預測。空白亦可能是圖資不足。",color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(bottom=7.dp))
         }
     }
 }

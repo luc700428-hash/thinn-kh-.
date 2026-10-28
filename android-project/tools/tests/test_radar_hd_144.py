@@ -6,7 +6,8 @@ class RadarHd144(unittest.TestCase):
  def test_base_zoom_and_radar_zoom_are_independent(self):
   s=(SRC/'radar/NativeRadarViewer.kt').read_text();policy=(SRC/'radar/RadarProjection.kt').read_text()
   self.assertIn('RadarTilePolicy.BASE_MAX_ZOOM',s);self.assertIn('LaunchedEffect(baseTiles,tileRetry)',s)
-  self.assertIn('LaunchedEffect(radarTiles,frame?.path,tileRetry)',s)
+  self.assertIn('LaunchedEffect(radarTiles,frames,tileRetry,lifecycle,reduce)',s)
+  self.assertNotIn('LaunchedEffect(radarTiles,frame?.path',s)
   self.assertIn('RADAR_PIXELS=512',policy);self.assertIn('RADAR_MAX_ZOOM=7',policy)
   self.assertIn('/2/0_1.png',policy);self.assertIn('hd-raw-512',policy)
  def test_theme_binding_preserves_weather_colour_semantics(self):

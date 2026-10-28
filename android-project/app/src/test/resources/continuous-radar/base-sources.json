@@ -1,0 +1,37 @@
+{
+  "sources": [
+    {
+      "file": "base-106-54.png",
+      "url": "https://tile.openstreetmap.org/7/106/54.png",
+      "z": 7,
+      "x": 106,
+      "y": 54,
+      "sha256": "142f0f5b3ebc0f607a2749b8c433c69cf5c6eeb4a75774e55901381238949496"
+    },
+    {
+      "file": "base-107-54.png",
+      "url": "https://tile.openstreetmap.org/7/107/54.png",
+      "z": 7,
+      "x": 107,
+      "y": 54,
+      "sha256": "98796196cf85733b54786a3760cb26cf035a9b60632455a0c906222cb35b11a7"
+    },
+    {
+      "file": "base-106-55.png",
+      "url": "https://tile.openstreetmap.org/7/106/55.png",
+      "z": 7,
+      "x": 106,
+      "y": 55,
+      "sha256": "373bf429ac164df4f1956923d36c2c82a8263ac1e137c84cce105c94d2962bb9"
+    },
+    {
+      "file": "base-107-55.png",
+      "url": "https://tile.openstreetmap.org/7/107/55.png",
+      "z": 7,
+      "x": 107,
+      "y": 55,
+      "sha256": "0eb3c6b7f931d6fbd020b3356267439bfa971445274738907d482500d9fc9933"
+    }
+  ],
+  "attribution": "\u00a9 OpenStreetMap contributors"
+}

@@ -1,0 +1,95 @@
+{
+  "frames": [
+    {
+      "time": 1793212800,
+      "path": "/v2/radar/9275f9f9f453"
+    },
+    {
+      "time": 1793213400,
+      "path": "/v2/radar/06d842ab2d51"
+    }
+  ],
+  "sources": [
+    {
+      "file": "0-106-54.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/9275f9f9f453/512/7/106/54/2/0_1.png",
+      "time": 1793212800,
+      "z": 7,
+      "x": 106,
+      "y": 54,
+      "sha256": "207065f84c3790bdb9d85803a63349a613d9b37ffe507907173c3bcc31b6f3f2",
+      "bytes": 1604
+    },
+    {
+      "file": "0-107-54.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/9275f9f9f453/512/7/107/54/2/0_1.png",
+      "time": 1793212800,
+      "z": 7,
+      "x": 107,
+      "y": 54,
+      "sha256": "cbd45397ca2a2c7e9d623f83e7083c3dead17a74601029410498cd5d0b79991e",
+      "bytes": 4605
+    },
+    {
+      "file": "0-106-55.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/9275f9f9f453/512/7/106/55/2/0_1.png",
+      "time": 1793212800,
+      "z": 7,
+      "x": 106,
+      "y": 55,
+      "sha256": "21302bb0227f44b31ba10f552b4aa0aad92f3942858d090bec3f89c31a5ff0f6",
+      "bytes": 5268
+    },
+    {
+      "file": "0-107-55.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/9275f9f9f453/512/7/107/55/2/0_1.png",
+      "time": 1793212800,
+      "z": 7,
+      "x": 107,
+      "y": 55,
+      "sha256": "ac058dd2f876e19a22f9e61e8debd45ddc07560f606eb8a0eb873d290557922a",
+      "bytes": 6693
+    },
+    {
+      "file": "1-106-54.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/06d842ab2d51/512/7/106/54/2/0_1.png",
+      "time": 1793213400,
+      "z": 7,
+      "x": 106,
+      "y": 54,
+      "sha256": "74cbed3218bc7dad8698c49037cb81680a48d73c6f0aa249c35308581a071ced",
+      "bytes": 1226
+    },
+    {
+      "file": "1-107-54.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/06d842ab2d51/512/7/107/54/2/0_1.png",
+      "time": 1793213400,
+      "z": 7,
+      "x": 107,
+      "y": 54,
+      "sha256": "d23711473843ef17e74a3d3952db0e1b9e4a395757ac9522ab46bee5da908854",
+      "bytes": 4260
+    },
+    {
+      "file": "1-106-55.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/06d842ab2d51/512/7/106/55/2/0_1.png",
+      "time": 1793213400,
+      "z": 7,
+      "x": 106,
+      "y": 55,
+      "sha256": "b911754dfc0aa0cdda9892d4984340261773fd8b531cf0735c4eb7e4247cb35b",
+      "bytes": 5364
+    },
+    {
+      "file": "1-107-55.png",
+      "url": "https://tilecache.rainviewer.com/v2/radar/06d842ab2d51/512/7/107/55/2/0_1.png",
+      "time": 1793213400,
+      "z": 7,
+      "x": 107,
+      "y": 55,
+      "sha256": "bea98f2fbf3a42f3ec80463aa4d3ca1eb61ffba4c2e7acc38df1907fd2852fb4",
+      "bytes": 7381
+    }
+  ],
+  "note": "Actual adjacent historical observations; no forecast or generated imagery."
+}

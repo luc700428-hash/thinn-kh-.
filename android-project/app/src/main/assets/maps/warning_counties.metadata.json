@@ -1,0 +1,17 @@
+{
+  "title": "警特報縣市識別向量底圖",
+  "authority": "內政部國土測繪中心",
+  "source_dataset": "COUNTY_MOI_1090820",
+  "source": "https://maps.nlsc.gov.tw/download/縣市界線(TWD97經緯度).zip",
+  "catalog": "https://data.gov.tw/dataset/7442",
+  "license": "政府資料開放授權條款第1版",
+  "license_url": "https://data.gov.tw/license",
+  "source_crs": "EPSG:3824",
+  "source_shp_sha256": "f534543bc2e5f11bce439d76ab0ed0fde760ca50cf118e0c08fa1ab94ef396f7",
+  "atlas_sha256": "aaba378d1ba225680ce9450fa8f68a745ca6972766402dbdd496472a19b192bd",
+  "tolerance_degrees": 0.00025,
+  "counties": 22,
+  "rings": 697,
+  "vertices": 27597,
+  "note": "保存具名行政區與離島輪廓。圖形只代表行政界線；警特報涉及縣市由氣象署資料指定，局部範圍依官方原文。"
+}
