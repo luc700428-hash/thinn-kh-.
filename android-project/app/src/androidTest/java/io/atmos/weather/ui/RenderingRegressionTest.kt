@@ -75,19 +75,23 @@ class RenderingRegressionTest {
     @Test(timeout=120_000) fun preferenceChoicesExposeOneSelectionInBothAppearances() {
         val selected=mutableIntStateOf(1)
         val dark=mutableStateOf(false)
+        val weekday=mutableStateOf(true)
         compose.setContent {
             ThinnAppTheme {
                 MaterialTheme(colorScheme=if(dark.value)darkColorScheme() else lightColorScheme()) {
                     CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density,1.5f)) {
                         Column(Modifier.width(320.dp)) {
                             GlassChoiceGroup(listOf("怕冷","一般","怕熱"),selected.intValue,{selected.intValue=it})
+                            GlassToggleChoice("星期一",weekday.value,{weekday.value=!weekday.value})
                         }
                     }
                 }
             }
         }
         for(appearance in listOf(false,true)) {
-            compose.runOnIdle {dark.value=appearance;selected.intValue=1};frame()
+            compose.runOnIdle {dark.value=appearance;selected.intValue=1;weekday.value=true};frame()
+            compose.onNodeWithText("星期一").assertIsOn().performClick();frame()
+            compose.onNodeWithText("星期一").assertIsOff()
             compose.onNodeWithText("一般").assertIsSelected()
             compose.onNodeWithText("怕冷").assertIsNotSelected()
             compose.onNodeWithText("怕熱").performClick();frame()

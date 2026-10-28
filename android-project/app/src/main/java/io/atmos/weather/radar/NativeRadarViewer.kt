@@ -37,6 +37,7 @@ import kotlin.math.*
     val context=LocalContext.current;val density=LocalDensity.current.density
     val palette=MaterialTheme.colorScheme
     val dark=palette.background.luminance()<.4f
+    AppSystemBars(dark)
     val lifecycle=LocalLifecycleOwner.current
     val cameraState=remember(latitude,longitude){mutableStateOf(RadarCamera(latitude,longitude,6.5).normalized())}
     var camera by cameraState

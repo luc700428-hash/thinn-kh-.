@@ -1,0 +1,33 @@
+{
+ "cwaopendata": {
+  "@xmlns": "urn:cwa:gov:tw:cwacommon:0.1",
+  "identifier": "9ea45036-74f2-4d3a-87ec-15c3c77f3e80",
+  "sender": "od@cwa.gov.tw",
+  "sent": "2026-10-28T19:26:37+08:00",
+  "status": "Actual",
+  "msgType": "Issue",
+  "scope": "Public",
+  "dataid": "O-A0058-003",
+  "source": "CWA",
+  "dataset": {
+   "datasetInfo": {
+    "datasetDescription": "資料說明",
+    "parameterSet": {
+     "parameter": {
+      "parameterName": "整合雷達名",
+      "radarName": "五分山、花蓮、七股、墾丁、樹林、南屯、林園雷達"
+     },
+     "LongitudeRange": "118.0-124.0",
+     "LatitudeRange": "20.5-26.5",
+     "ImageDimension": "3600x3600"
+    }
+   },
+   "resource": {
+    "resourceDesc": "雷達整合回波圖-臺灣(鄰近地區)_無地形",
+    "mimeType": "image/png",
+    "ProductURL": "https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-003.png"
+   },
+   "DateTime": "2026-10-28T19:20:00+08:00"
+  }
+ }
+}

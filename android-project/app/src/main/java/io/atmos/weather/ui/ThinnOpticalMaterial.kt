@@ -2,6 +2,8 @@ package io.atmos.weather.ui
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -18,29 +20,24 @@ import androidx.compose.ui.unit.dp
  * Independently drawn Android Compose material; not an iOS or Apple shader.
  */
 object ThinnOpticalMaterial {
-    val page: Brush get() = Brush.verticalGradient(listOf(
-        Color.Black, Color.Black, Color(0xFF09090B), Color.Black
-    ))
-    // Quiet content material: avoids a thick translucent rectangle around every paragraph.
-    val surface: Brush get() = Brush.linearGradient(listOf(
-        Color(0xE52C2C2E), Color(0xEC1C1C1E), Color(0xF01C1C1E)
-    ))
+    val page: Brush @Composable get() = Brush.verticalGradient(listOf(
+        MaterialTheme.colorScheme.background,MaterialTheme.colorScheme.background))
+    val surface: Brush @Composable get() = Brush.linearGradient(listOf(
+        MaterialTheme.colorScheme.surface,MaterialTheme.colorScheme.surface))
     // Floating lens for the navigation/interactive layer.
     val raised: Brush get() = Brush.linearGradient(listOf(
         Color(0xD9F1F1F3), Color(0x8A8E8E93), Color(0xB02C2C2E), Color(0xB9B3B3B8)
     ))
-    val opaque: Brush get() = Brush.verticalGradient(listOf(
-        Color(0xFF2C2C2E), Color(0xFF1C1C1E)
-    ))
+    val opaque: Brush @Composable get() = Brush.verticalGradient(listOf(
+        MaterialTheme.colorScheme.surfaceVariant,MaterialTheme.colorScheme.surface))
     val rim: Brush get() = Brush.linearGradient(listOf(
         Color.White.copy(alpha=.65f),Color.White.copy(alpha=.15f),Color.Transparent
     ))
     val luminousPill: Brush get() = Brush.linearGradient(listOf(
         Color(0xFFDBF4FF), Color(0xFF92D9FF), Color(0xFF55B5EF)
     ))
-    val subtlePill: Brush get() = Brush.linearGradient(listOf(
-        Color.White.copy(alpha=.30f), Color.White.copy(alpha=.095f), Color.White.copy(alpha=.16f)
-    ))
+    val subtlePill: Brush @Composable get() = Brush.linearGradient(listOf(
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.92f),MaterialTheme.colorScheme.surface.copy(alpha=.96f)))
     val selectedLens: Brush get() = Brush.verticalGradient(listOf(
         Color.White.copy(alpha=.34f), Color(0xFFB5E7FF).copy(alpha=.21f),
         Color.White.copy(alpha=.09f)

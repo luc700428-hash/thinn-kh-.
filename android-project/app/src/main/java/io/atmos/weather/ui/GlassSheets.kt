@@ -42,8 +42,8 @@ private val glassBorder: Brush get() = ThinnOpticalMaterial.rim
 
 /** Native full-width bottom sheet with user-controlled drag handle. */
 @Composable
-fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0xFF141416),
-    contentColor:Color=Color.White,content:@Composable ColumnScope.()->Unit) {
+fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=MaterialTheme.colorScheme.surface,
+    contentColor:Color=MaterialTheme.colorScheme.onSurface,content:@Composable ColumnScope.()->Unit) {
     val scope=rememberCoroutineScope()
     val reduceMotion=rememberAppleReduceMotion()
     val readingDensity=LocalDensity.current

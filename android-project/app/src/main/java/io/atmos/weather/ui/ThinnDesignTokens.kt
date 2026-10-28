@@ -44,7 +44,7 @@ object ThinnDesignTokens {
     val caution = Color(0xFFFFC65A)
     val critical = Color(0xFFFF5A52)
     val primaryInkDark = Color.White
-    val secondaryInkDark = Color(0xFF8E8E93)
+    val secondaryInkDark = Color(0xFFC7C7CC)
     const val shortMotionMillis = 180
     const val mediumMotionMillis = 320
     const val longMotionMillis = 480
@@ -53,25 +53,34 @@ object ThinnDesignTokens {
 }
 
 private val thinnScheme = darkColorScheme(
-    primary = ThinnDesignTokens.accent,
-    onPrimary = Color.White,
+    primary = Color(0xFF75BFFF),
+    onPrimary = Color(0xFF081828),
     background = ThinnDesignTokens.darkBackground,
     onBackground = Color.White,
     surface = Color(0xFF1C1C1E),
     onSurface = Color.White,
     surfaceVariant = Color(0xFF2C2C2E),
     onSurfaceVariant = ThinnDesignTokens.secondaryInkDark,
-    secondary = Color(0xFF9FD8FF),
+    secondary = Color(0xFF9FD8FF), onSecondary = Color(0xFF081828),
+    primaryContainer = Color(0xFF183D62), onPrimaryContainer = Color(0xFFD9EDFF),
+    secondaryContainer = Color(0xFF253442), onSecondaryContainer = Color(0xFFE3EDF5),
+    surfaceContainer = Color(0xFF242426), surfaceContainerHigh = Color(0xFF2C2C2E),
+    inverseSurface = Color(0xFFF2F2F7), inverseOnSurface = Color(0xFF1C1C1E),
     error = ThinnDesignTokens.critical,
     outline = Color(0xFF8098AE)
 )
 
 private val thinnLightScheme = lightColorScheme(
-    primary = Color(0xFF007AFF), onPrimary = Color.White,
+    primary = Color(0xFF0066CC), onPrimary = Color.White,
     background = ThinnDesignTokens.lightBackground, onBackground = Color.Black,
     surface = Color.White, onSurface = Color(0xFF1C1C1E),
-    surfaceVariant = Color(0xFFF2F2F7), onSurfaceVariant = Color(0xFF8E8E93),
-    secondary = Color(0xFF007AFF), error = Color(0xFFFF3B30),
+    surfaceVariant = Color(0xFFE8EAF0), onSurfaceVariant = Color(0xFF5C5C64),
+    secondary = Color(0xFF0066CC), onSecondary = Color.White,
+    primaryContainer = Color(0xFFDCEBFF), onPrimaryContainer = Color(0xFF12395E),
+    secondaryContainer = Color(0xFFE8EDF4), onSecondaryContainer = Color(0xFF243C50),
+    surfaceContainer = Color.White, surfaceContainerHigh = Color(0xFFE8EAF0),
+    inverseSurface = Color(0xFF1C1C1E), inverseOnSurface = Color.White,
+    error = Color(0xFFB42318),
     outline = Color(0xFFC7C7CC)
 )
 
@@ -102,9 +111,8 @@ fun ThinnAppTheme(content:@Composable ()->Unit) {
     val reading=rememberAppAppearance()
     val baseDensity=LocalReadingBaseDensity.current?:androidx.compose.ui.platform.LocalDensity.current
 
-    // Theme tokens never rewrite weather-data-driven sky colors or domain state.
-    // Existing feature screens still hardcode white foreground; keep dark until
-    // all light-screen text/colors pass contrast and device regression tests.
+    // Weather scenery has its own readable material. Forms and tools share this
+    // complete light/dark palette, including selected controls and secondary copy.
     val context=androidx.compose.ui.platform.LocalContext.current
     IOS27AppearanceMode.initialize(context)
     val requested=IOS27AppearanceMode.value

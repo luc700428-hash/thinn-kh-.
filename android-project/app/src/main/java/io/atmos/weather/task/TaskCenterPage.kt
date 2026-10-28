@@ -1,6 +1,7 @@
 package io.atmos.weather.task
 import io.atmos.weather.ui.appleBouncingScroll
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,32 +43,33 @@ fun TaskCenterPage(onClose:()->Unit) {
             .onFailure{error="儲存失敗，請確認裝置空間是否足夠"}
     }
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        AppSystemBars(MaterialTheme.colorScheme.background.red<.5f)
         Column(Modifier.fillMaxSize()
             .background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
             .appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=20.dp,vertical=32.dp)) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                GlassIconButton(onClick=onClose) {Icon(Icons.Rounded.ArrowBack,"返回",tint=Color.White)}
+                GlassIconButton(onClick=onClose) {Icon(Icons.Rounded.ArrowBack,"返回",tint=MaterialTheme.colorScheme.onSurface)}
                 Spacer(Modifier.width(10.dp))
-                Text("我的事項",color=Color.White,fontSize=28.sp,fontWeight=FontWeight.Bold,
+                Text("我的事項",color=MaterialTheme.colorScheme.onSurface,fontSize=28.sp,fontWeight=FontWeight.Bold,
                     modifier=Modifier.weight(1f))
                 GlassIconButton(onClick={editing=null;editingOpen=true}) {
                     Icon(Icons.Rounded.Add,"新增事項",tint=ThinnDesignTokens.accent)
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Text("本機私人清單 · 可安排日期、時間與提醒",color=ThinnDesignTokens.secondaryInkDark,fontSize=15.sp)
+            Text("本機私人清單 · 可安排日期、時間與提醒",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=15.sp)
             Spacer(Modifier.height(17.dp))
             if(error.isNotBlank())Text(error,color=ThinnDesignTokens.critical)
             if(tasks.isEmpty()) {
                 GlassSurface(Modifier.fillMaxWidth()) {
-                    Text("還沒有事項",fontSize=21.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
+                    Text("還沒有事項",fontSize=21.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                     Text("點選右上角的 ＋，新增你的第一個事項。",fontSize=16.sp,
-                        color=ThinnDesignTokens.secondaryInkDark)
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(13.dp))
                     GlassButton(onClick={editing=null;editingOpen=true},modifier=Modifier.fillMaxWidth()) {
-                        Icon(Icons.Rounded.Add,null,tint=Color.White)
-                        Spacer(Modifier.width(6.dp));Text("新增事項",color=Color.White)
+                        Icon(Icons.Rounded.Add,null,tint=MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(6.dp));Text("新增事項",color=MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             } else {
@@ -82,22 +84,22 @@ fun TaskCenterPage(onClose:()->Unit) {
                             })
                             Spacer(Modifier.width(9.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(task.title,color=if(task.completed) ThinnDesignTokens.secondaryInkDark else Color.White,
+                                Text(task.title,color=if(task.completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                                     fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-                                Text(task.displayDate(),color=ThinnDesignTokens.secondaryInkDark,fontSize=16.sp)
-                                if(task.note.isNotBlank())Text(task.note,color=ThinnDesignTokens.secondaryInkDark,
+                                Text(task.displayDate(),color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=16.sp)
+                                if(task.note.isNotBlank())Text(task.note,color=MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize=14.sp,maxLines=2)
                             }
                             Icon(Icons.Rounded.Edit,"編輯 ${task.title}",tint=ThinnDesignTokens.accent,
                                 modifier=Modifier.size(20.dp))
                         }
-                        if(i<tasks.lastIndex) GlassDivider(color=Color.White.copy(alpha=.13f))
+                        if(i<tasks.lastIndex) GlassDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.13f))
                     }
                 }
             }
             Spacer(Modifier.height(20.dp))
             Text("事項會儲存在這台手機。若開啟提醒，Android 可能因省電設定延遲通知；系統通知權限必須已開啟。",
-                color=ThinnDesignTokens.secondaryInkDark,fontSize=14.sp,lineHeight=18.sp)
+                color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=18.sp)
         }
     }
     if(editingOpen) TaskEditor(existing=editing,persistenceError=error,onDismiss={editingOpen=false},
@@ -124,18 +126,18 @@ private fun TaskEditor(existing:ThinnTask?,persistenceError:String,onDismiss:()-
   if(error.isBlank())pending=ThinnTask(id=existing?.id?:java.util.UUID.randomUUID().toString(),title=name.trim(),note=note.trim(),year=date.year,month=date.monthValue,day=date.dayOfMonth,hour=hour,minute=minute,completed=existing?.completed?:false,notify=alert)
   error.isBlank()
  },onDone={pending?.let(onSave)}){
-  Text("事項名稱",color=Color(0xFFAEAEB2),fontSize=14.sp)
-  GlassOutlinedTextField(name,{name=it.take(100)},label={Text("例如：帶雨傘、領包裹",color=Color(0xFF8E8E93))})
-  Text("備註（選填）",color=Color(0xFFAEAEB2),fontSize=14.sp)
-  GlassOutlinedTextField(note,{note=it.take(500)},singleLine=false,label={Text("簡單記下重要資訊",color=Color(0xFF8E8E93))})
-  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF1C1C1E))){
+  Text("事項名稱",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
+  GlassOutlinedTextField(name,{name=it.take(100)},label={Text("例如：帶雨傘、領包裹",color=MaterialTheme.colorScheme.onSurfaceVariant)})
+  Text("備註（選填）",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
+  GlassOutlinedTextField(note,{note=it.take(500)},singleLine=false,label={Text("簡單記下重要資訊",color=MaterialTheme.colorScheme.onSurfaceVariant)})
+  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surface)){
    TaskEditorRow("日期","${date.year}年${date.monthValue}月${date.dayOfMonth}日"){dateOpen=true}
-   Box(Modifier.padding(start=16.dp).fillMaxWidth().height(.5.dp).background(Color(0xFF38383A)))
+   Box(Modifier.padding(start=16.dp).fillMaxWidth().height(.5.dp).background(MaterialTheme.colorScheme.outline))
    TaskEditorRow("時間",(if(hour<12)"上午 " else "下午 ")+"%d:%02d".format(if(hour%12==0)12 else hour%12,minute)){timeOpen=true}
-   Box(Modifier.padding(start=16.dp).fillMaxWidth().height(.5.dp).background(Color(0xFF38383A)))
-   Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Text("提醒我",color=Color.White,fontSize=17.sp,modifier=Modifier.weight(1f));GlassSwitch(alert,{alert=it})}
+   Box(Modifier.padding(start=16.dp).fillMaxWidth().height(.5.dp).background(MaterialTheme.colorScheme.outline))
+   Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Text("提醒我",color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,modifier=Modifier.weight(1f));GlassSwitch(alert,{alert=it})}
   }
-  Text("背景提醒可能因手機省電設定延遲。",color=Color(0xFFAEAEB2),fontSize=14.sp)
+  Text("背景提醒可能因手機省電設定延遲。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
   val displayedError=error.ifBlank{persistenceError}
   if(displayedError.isNotBlank())Text(displayedError,color=ThinnDesignTokens.critical,fontSize=14.sp)
   onDelete?.let{delete->GlassOutlinedButton(onClick=delete,modifier=Modifier.fillMaxWidth()){Text("刪除事項",color=ThinnDesignTokens.critical)}}
@@ -144,5 +146,5 @@ private fun TaskEditor(existing:ThinnTask?,persistenceError:String,onDismiss:()-
  if(timeOpen){var h by remember{mutableIntStateOf(hour)};var m by remember{mutableIntStateOf(minute)};io.atmos.weather.ui.IOSFormSheet("選擇時間",onDismiss={timeOpen=false},onDone={hour=h;minute=m;timeOpen=false}){io.atmos.weather.ui.IOSClockDrums(h,m,{h=it},{m=it})}}
 }
 @Composable private fun TaskEditorRow(label:String,value:String,onClick:()->Unit){
- Row(Modifier.fillMaxWidth().heightIn(min=52.dp).clickable(onClick=onClick).padding(16.dp),verticalAlignment=Alignment.CenterVertically){Text(label,color=Color.White,fontSize=17.sp,modifier=Modifier.weight(1f));Text(value,color=Color(0xFF0A84FF),fontSize=16.sp);Spacer(Modifier.width(9.dp));io.atmos.weather.ui.SettingsChevron()}
+ Row(Modifier.fillMaxWidth().heightIn(min=52.dp).clickable(onClick=onClick).padding(16.dp),verticalAlignment=Alignment.CenterVertically){Text(label,color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,modifier=Modifier.weight(1f));Text(value,color=MaterialTheme.colorScheme.primary,fontSize=16.sp);Spacer(Modifier.width(9.dp));io.atmos.weather.ui.SettingsChevron()}
 }

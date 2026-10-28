@@ -139,19 +139,17 @@ fun AppleParallaxStack(
         if(nested||progress>.001f) {
             Box(Modifier.fillMaxSize().graphicsLayer {
                 translationX=(1f-progress)*width+drag.coerceAtLeast(0f)
-            }.pointerInput(nested) {
-                detectHorizontalDragGestures(onHorizontalDrag={change,x->
-                    if(nested&&change.position.x<100.dp.toPx()+drag) {
-                        drag=(drag+x).coerceIn(0f,width);change.consume()
-                    }
-                },onDragEnd={
-                    if(drag>width*.28f) onBack()
-                    drag=0f
-                },onDragCancel={drag=0f})
             }) {
-                Box(Modifier.fillMaxSize().background(Color.Black)) { detail() }
+                Box(Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background)) { detail() }
                 Box(Modifier.fillMaxHeight().width(18.dp).align(Alignment.CenterStart)
-                    .background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha=.18f),Color.Transparent))))
+                    .background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha=.18f),Color.Transparent)))
+                    // Only the edge starts back navigation. Map and WebView drags
+                    // elsewhere are delivered directly to their own gesture handlers.
+                    .pointerInput(nested,width) {
+                        if(nested)detectHorizontalDragGestures(onHorizontalDrag={change,x->
+                            drag=(drag+x).coerceIn(0f,width);change.consume()
+                        },onDragEnd={if(drag>width*.28f)onBack();drag=0f},onDragCancel={drag=0f})
+                    })
             }
         }
     }

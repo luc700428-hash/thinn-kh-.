@@ -54,7 +54,7 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
             }
             if (!SeismicPushRegistration.configured()) {
                 Text("目前不可接收：尚未配置 Firebase Cloud Messaging",
-                    color = Color(0xFFFFD38C), fontSize = 15.sp)
+                    color = MaterialTheme.colorScheme.error, fontSize = 15.sp)
             }
             Text(status, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
             Spacer(Modifier.height(10.dp))
@@ -62,7 +62,7 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
             Spacer(Modifier.height(10.dp))
             Text("本服務不能保證地震到達前通知；緊急防災資訊以中央氣象署和手機官方災防告警為準。",
-                color = Color(0xFFFFDB9D), fontSize = 14.sp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         }
         Spacer(Modifier.height(22.dp))
         GlassButton(onClick = onClose) { Text("返回設定") }

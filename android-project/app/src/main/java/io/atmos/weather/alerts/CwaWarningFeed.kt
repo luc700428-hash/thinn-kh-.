@@ -30,7 +30,8 @@ object CwaWarningFeed {
             }
             val result=conn.getInputStream().use { parse(it) }
             CwaFetchResult(result,true,"官方 RSS 已查詢；全臺警報需另核對正式發布標題")
-        } catch(e:Exception) {
+        } catch(cancel:kotlinx.coroutines.CancellationException){throw cancel}
+          catch(e:Exception) {
             CwaFetchResult(emptyList(),false,"官方 RSS 無法讀取：${e.javaClass.simpleName}")
         }
     }
@@ -60,7 +61,8 @@ object CwaWarningFeed {
                     warning.issuedAt.isBefore(now.plusSeconds(600))
             }.take(5)
             CwaFetchResult(matched, true, "官方 RSS 已查詢；依 $county 比對 ${warnings.size} 筆近期公告（非完整有效警報清單）")
-        } catch (e: Exception) {
+        } catch(cancel:kotlinx.coroutines.CancellationException){throw cancel}
+          catch (e: Exception) {
             CwaFetchResult(emptyList(), false, "目前無法讀取官方 RSS：${e.javaClass.simpleName}")
         }
     }
@@ -87,7 +89,7 @@ object CwaWarningFeed {
                     if (parser.name.equals("item", ignoreCase = true)) {
                         inside = false
                         val issuedAt = runCatching { ZonedDateTime.parse(date.trim(), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant() }.getOrNull()
-                        if (issuedAt != null && title.isNotBlank() && link.startsWith("https://www.cwa.gov.tw")) {
+                        if (issuedAt != null && title.isNotBlank() && CwaOfficialPages.allowed(link)) {
                             output += CwaWarning(title.trim(), summary.replace(Regex("<[^>]*>"), " ").trim(), link, issuedAt)
                         }
                     }

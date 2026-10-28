@@ -8,6 +8,7 @@ import io.atmos.weather.ui.GlassTextButton as TextButton
 import io.atmos.weather.ui.GlassSwitch as Switch
 import io.atmos.weather.ui.GlassClockDial
 import io.atmos.weather.ui.GlassTextButton
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -58,7 +59,7 @@ fun WeatherBriefingSettingsPage(onClose:()->Unit) {
             Text("最多設定 5 組星期與時分。每次只分析從這次提醒到下一次提醒間的天氣，提供降雨、穿搭、溫差及外出建議。",
                 fontSize=14.sp,color=muted)
             Text("使用上下滾輪選擇時間。背景通知可能因 Android 省電策略延遲，不能保證精確分鐘。",
-                fontSize=14.sp,color=Color(0xFFF1D49B))
+                fontSize=14.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             slots.sortedWith(compareBy({it.hour},{it.minute},{it.id})).forEach { slot ->
                 Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha=.09f),RoundedCornerShape(20.dp))
                     .border(1.dp,Color.White.copy(alpha=.13f),RoundedCornerShape(20.dp)).padding(14.dp)) {
@@ -104,8 +105,8 @@ fun WeatherBriefingSettingsPage(onClose:()->Unit) {
             change(next);showAdd=false
         }){
             io.atmos.weather.ui.IOSClockDrums(selectedHour,selectedMinute,{selectedHour=it},{selectedMinute=it})
-            Text("重複",color=Color.White,fontSize=17.sp)
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly){weekNames.forEachIndexed{index,name->val selected=days and (1 shl index)!=0;io.atmos.weather.ui.IOS27RoundControl(name,onClick={days=days xor (1 shl index)},fill=if(selected)Color(0xFF0A84FF) else Color(0xFF2C2C2E),foreground=Color.White)}}
+            Text("重複",color=ink,fontSize=17.sp)
+            io.atmos.weather.ui.GlassWeekdayChoices(weekNames,weekNames.indices.filter{days and (1 shl it)!=0}.toSet()){index->days=days xor (1 shl index)}
             if(error.isNotBlank())Text(error,color=Color(0xFFFF9F91),fontSize=14.sp)
         }
 

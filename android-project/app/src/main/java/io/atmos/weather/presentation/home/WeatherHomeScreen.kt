@@ -327,6 +327,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     var weatherAlarmOpen by remember { mutableStateOf(fromClockWidget) }
     var marineOpen by remember {mutableStateOf(false)}
     var skyOpen by remember {mutableStateOf(false)}
+    var insightsOpen by remember {mutableStateOf(false)}
+    var alertsOpen by remember {mutableStateOf(false)}
+    var alertTitle by remember {mutableStateOf<String?>(null)}
+    var alertUrl by remember {mutableStateOf<String?>(null)}
     LaunchedEffect(fromClockWidget) {
         if(fromClockWidget)(context as? android.app.Activity)?.intent?.removeExtra("open_weather_alarms")
     }
@@ -335,9 +339,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
     BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
         pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen ||
-        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || marineOpen || skyOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || marineOpen || skyOpen || alertsOpen || insightsOpen ||
         mainPager.currentPage != 0) {
         when {
+            alertsOpen -> alertsOpen=false
+            insightsOpen -> insightsOpen=false
             marineOpen -> marineOpen=false
             skyOpen -> skyOpen=false
             weatherAlarmOpen -> weatherAlarmOpen=false
@@ -528,6 +534,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         LocalHapticEngine provides hapticEngine
     ) {
     io.atmos.weather.ui.GlassAppTheme {
+        val themedPage=mainPager.currentPage!=0||settingsOpen||settingsDetailOpen||lifestyleSettingsOpen||
+            pushSettingsOpen||diagnosticsOpen||briefingOpen||tasksOpen||updatePageOpen||
+            earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen
+        io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f || !themedPage)
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
@@ -671,8 +681,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         rainProbability=snapshot.nextHourRainProbabilityPct
                     )
                     val sourceTime=snapshot.observedAt.atZone(runCatching{ZoneId.of(snapshot.timeZoneId?:"Asia/Taipei")}.getOrDefault(ZoneId.systemDefault())).format(DateTimeFormatter.ofPattern("HH:mm"))
-                    Text(if(snapshot.observationStation!=null) "${snapshot.observationStation}站實測 · 距離 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} km · $sourceTime  ⓘ"
-                        else "Open-Meteo 多模式預報 · $sourceTime  ⓘ",
+                    if(snapshot.observationStation!=null) Text("${snapshot.observationStation}站實測 · 距離 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} km · $sourceTime  ⓘ",
                         color=White.copy(alpha=.95f),fontSize=14.sp,textAlign=TextAlign.Center,
                         modifier=Modifier.fillMaxWidth().clickable {
                             details="天氣資料依據" to buildString {
@@ -680,7 +689,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                 snapshot.observationStation?.let{append("附近實測：${it}站，距離約 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} 公里\n")}
                                 append("觀測／模式時間：$sourceTime\n")
                                 append("體感估算：${snapshot.feelsLikeMethod?:"氣象模式"}\n\n")
-                                append("未來預報：Open-Meteo 多模式預報。預報有不確定性，地形、日照、活動與每人的冷熱感受也會影響體感。")
+                                append("未來預報：Open-Meteo。預報有不確定性，地形、日照、活動與每人的冷熱感受也會影響體感。")
                             }
                         }.padding(vertical=9.dp))
                 } else if(state.loading) {
@@ -811,7 +820,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Text("收到後顯示 30 分鐘；有新的已驗證報告會自動更新。",
                             color=White.copy(alpha=.85f),fontSize=14.sp)
                         if(report.sourceOfficial && report.officialUrl.startsWith("https://")) {
-                            TextButton(onClick={uriHandler.openUri(report.officialUrl)}) {
+                            TextButton(onClick={alertTitle="中央氣象署地震報告";alertUrl=report.officialUrl;alertsOpen=true}) {
                                 Text("查看官方報告",color=White,fontSize=15.sp)
                             }
                         }
@@ -828,7 +837,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         .clip(RoundedCornerShape(20.dp))
                         .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFBCAC).copy(alpha=.72f),RoundedCornerShape(20.dp))
-                        .clickable { uriHandler.openUri(io.atmos.weather.alerts.CwaCountyHazardFeed.OFFICIAL_URL) }
+                        .clickable {alertTitle=hazard.title;alertUrl=null;alertsOpen=true}
                         .padding(16.dp)) {
                         Text("中央氣象署 · ${hazard.title}",color=White,
                             fontSize=18.sp,fontWeight=FontWeight.Bold)
@@ -836,7 +845,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         val end = hazard.expiresAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
                         Text("${hazard.county} · 有效至 ${end.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))}",
                             color=White.copy(alpha=.9f),fontSize=14.sp)
-                        Text("查看警戒區域與防護建議 ↗",
+                        Text("在 App 內查看警戒區域與防護建議 ›",
                             color=Color(0xFFFFD5D0),fontSize=14.sp)
                     }
                     Spacer(Modifier.height(12.dp))
@@ -853,19 +862,25 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
                         .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFB4AE).copy(alpha=.64f),RoundedCornerShape(22.dp))
-                        .clickable { uriHandler.openUri(notice.link) }.padding(17.dp)) {
+                        .clickable {alertTitle=notice.title;alertUrl=notice.link;alertsOpen=true}.padding(17.dp)) {
                         Text("中央氣象署 · ${notice.title}",color=White,
                             fontSize=18.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
                         Spacer(Modifier.height(7.dp))
                         Text(notice.summary.ifBlank { "查看公告內容與受影響地區" }.take(98),
                             color=White.copy(alpha=.94f),fontSize=14.sp,maxLines=3)
                         Spacer(Modifier.height(7.dp))
-                        Text("${notice.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} 發布 · 查看詳情 ↗",
+                        Text("${notice.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} 發布 · 在 App 內查看詳情 ›",
                             color=Color(0xFFFFDBD7),fontSize=14.sp)
                     }
                     Spacer(Modifier.height(12.dp))
                 }
 
+                io.atmos.weather.ui.GlassSurface {
+                    io.atmos.weather.ui.GlassAction("中央氣象署警特報","完整公告、警戒地區與官方圖表") {
+                        alertTitle=null;alertUrl=null;alertsOpen=true
+                    }
+                    if(snapshot!=null) io.atmos.weather.ui.GlassAction("氣象詳解與外出時段","逐時比較、風與陣風、露點及空氣成分") {insightsOpen=true}
+                }
                 if (snapshot != null) {
                     // Weather always takes precedence over decor: show real six-hour facts
                     // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.
@@ -954,7 +969,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onWeatherAlarms = { weatherAlarmOpen = true },
                 onTyphoons = { typhoonPageOpen = true },
                 onRadar = {nativeRadarOpen=true},
-                onMarine={marineOpen=true},onSky={skyOpen=true})
+                onMarine={marineOpen=true},onSky={skyOpen=true},
+                onAlerts={alertTitle=null;alertUrl=null;alertsOpen=true},onInsights={insightsOpen=true})
             3 -> AppGlassSettingsPage(
                 appearance = appearance,
                 onAppearance = { appearance = it },
@@ -1113,7 +1129,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
                 Text("官方 RSS 對照所在地，背景約每 15 分鐘排程檢查，實際可能延遲；並非緊急細胞廣播替代品。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(16.dp))
-                TextButton(onClick={uriHandler.openUri(CwaWarningFeed.OFFICIAL_URL)}) { Text("查看中央氣象署官方警報",color=White) }
+                TextButton(onClick={settingsOpen=false;alertTitle=null;alertUrl=null;alertsOpen=true}) { Text("查看中央氣象署官方警報",color=White) }
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color=White.copy(alpha=.13f))
                 Spacer(Modifier.height(15.dp))
@@ -1205,6 +1221,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         io.atmos.weather.ui.MainDetailLayer(lifestyleSettingsOpen,{lifestyleSettingsOpen=false}) {LifestyleAiSettingsPage(onClose={lifestyleSettingsOpen=false})}
         if (showLifestyleDetails && snapshot != null) {
             ModalBottomSheet(onDismissRequest={showLifestyleDetails=false}) {
+                val White=MaterialTheme.colorScheme.onSurface
+                val TextSoft=MaterialTheme.colorScheme.onSurfaceVariant
                 Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                     .padding(horizontal=22.dp).padding(bottom=42.dp)) {
                     Text("今日穿搭與天氣依據",color=White,fontSize=25.sp,lineHeight=34.sp,fontWeight=FontWeight.Bold)
@@ -1241,6 +1259,12 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         io.atmos.weather.ui.MainDetailLayer(marineOpen,{marineOpen=false}) {
             io.atmos.weather.ocean.MarinePage(state.city){marineOpen=false}
         }
+        io.atmos.weather.ui.MainDetailLayer(alertsOpen,{alertsOpen=false}) {
+            io.atmos.weather.alerts.CwaAlertsPage(alertTitle,alertUrl,state.officialHazards,state.cwaWarnings){alertsOpen=false}
+        }
+        io.atmos.weather.ui.MainDetailLayer(insightsOpen,{insightsOpen=false}) {
+            io.atmos.weather.insights.WeatherInsightsPage(snapshot,state.stale){insightsOpen=false}
+        }
         io.atmos.weather.ui.MainDetailLayer(skyOpen,{skyOpen=false}) {
             io.atmos.weather.sky.SkyPlannerPage(state.city,snapshot?.timeZoneId){skyOpen=false}
         }
@@ -1249,8 +1273,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             selected = dockRequestedTab ?: mainPager.targetPage,
             onSelect = {requested ->
                 val leavingDetail=typhoonPageOpen||earthquakePageOpen||tasksOpen||briefingOpen||
-                    diagnosticsOpen||pushSettingsOpen||lifestyleSettingsOpen||settingsOpen||settingsDetailOpen||weatherAlarmOpen||updatePageOpen||locationOpen||nativeRadarOpen||marineOpen||skyOpen
-                marineOpen=false;skyOpen=false
+                    diagnosticsOpen||pushSettingsOpen||lifestyleSettingsOpen||settingsOpen||settingsDetailOpen||weatherAlarmOpen||updatePageOpen||locationOpen||nativeRadarOpen||marineOpen||skyOpen||alertsOpen||insightsOpen
+                marineOpen=false;skyOpen=false;alertsOpen=false;insightsOpen=false
                 typhoonPageOpen=false;earthquakePageOpen=false;tasksOpen=false;briefingOpen=false
                 diagnosticsOpen=false;pushSettingsOpen=false;lifestyleSettingsOpen=false;settingsOpen=false
                 locationOpen=false;weatherAlarmOpen=false;updatePageOpen=false;nativeRadarOpen=false

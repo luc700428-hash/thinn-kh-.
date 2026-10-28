@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import io.atmos.weather.ui.AppText as Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import io.atmos.weather.ui.GlassIconButton as IconButton
 import io.atmos.weather.ui.GlassTextButton as TextButton
@@ -32,9 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 
-private val bg = Color(0xFF10273D)
-private val ink = Color.White
-private val accent = Color(0xFF95E5FF)
+private val ink:Color @Composable get()=MaterialTheme.colorScheme.onSurface
+private val accent:Color @Composable get()=MaterialTheme.colorScheme.primary
 private val days=listOf("一","二","三","四","五","六","日")
 
 @Composable
@@ -69,10 +69,10 @@ fun WeatherAlarmPage(onClose:()->Unit) {
             Text("天氣鬧鐘",fontSize=28.sp,fontWeight=FontWeight.Bold,color=ink,modifier=Modifier.weight(1f))
             IconButton(onClick={editing=null;showEditor=true}) {Icon(Icons.Rounded.Add,"新增鬧鐘",tint=accent)}
         }
-        Text("鬧鐘時間與重複週期會保存在手機中",color=Color(0xFFD8EAF6),fontSize=16.sp)
+        Text("鬧鐘時間與重複週期會保存在手機中",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=16.sp)
         if (!WeatherAlarmScheduler.canBeExact(ctx)) {
             Spacer(Modifier.height(14.dp))
-            Text("尚未取得精確鬧鐘權限；可能延遲響鈴。",color=Color(0xFFFFD69E),fontSize=16.sp)
+            Text("尚未取得精確鬧鐘權限；可能延遲響鈴。",color=MaterialTheme.colorScheme.error,fontSize=16.sp)
             TextButton(onClick = {
                 runCatching {
                     ctx.startActivity(
@@ -91,13 +91,13 @@ fun WeatherAlarmPage(onClose:()->Unit) {
             }
         }
         if(Build.VERSION.SDK_INT >= 33 && !notificationAllowed) {
-            Text("通知權限尚未開啟；可能看不到鬧鐘響鈴畫面。",color=Color(0xFFFFD69E),fontSize=15.sp)
+            Text("通知權限尚未開啟；可能看不到鬧鐘響鈴畫面。",color=MaterialTheme.colorScheme.error,fontSize=15.sp)
             TextButton(onClick={requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)}) {
                 Text("允許鬧鐘通知",color=accent)
             }
         }
         if(Build.VERSION.SDK_INT >= 34 && !notifications.canUseFullScreenIntent()) {
-            Text("尚未開放全螢幕鬧鐘，鎖定畫面可能只顯示通知。",color=Color(0xFFFFD69E),fontSize=15.sp)
+            Text("尚未開放全螢幕鬧鐘，鎖定畫面可能只顯示通知。",color=MaterialTheme.colorScheme.error,fontSize=15.sp)
             TextButton(onClick={
                 runCatching {
                     ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
@@ -113,19 +113,19 @@ fun WeatherAlarmPage(onClose:()->Unit) {
                 modifier=Modifier.padding(vertical=28.dp))
         }
         alarms.forEach { a ->
-            Row(Modifier.fillMaxWidth().padding(bottom=12.dp).background(Color.White.copy(alpha=.12f),RoundedCornerShape(22.dp))
+            Row(Modifier.fillMaxWidth().padding(bottom=12.dp).background(MaterialTheme.colorScheme.surface,RoundedCornerShape(22.dp))
                 .clickable {editing=a;showEditor=true}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(String.format(Locale.TAIWAN,"%02d:%02d",a.hour,a.minute),fontSize=39.sp,color=ink,
                         fontWeight=FontWeight.Light)
                     Text(a.title.ifBlank {"鬧鐘"},fontSize=17.sp,color=ink,fontWeight=FontWeight.SemiBold)
                     Text((if(a.days.isEmpty()) "只響一次" else "每週 ${a.days.sorted().joinToString("、") {days[it-1]}}")+
-                        (if(a.weatherVoice) " · 起床天氣語音" else ""),fontSize=14.sp,color=Color(0xFFE1F0F9))
+                        (if(a.weatherVoice) " · 起床天氣語音" else ""),fontSize=14.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 R10Switch(checked=a.enabled,onCheckedChange={value->update(alarms.map{if(it.id==a.id)it.copy(enabled=value) else it})})
             }
         }
-        Text("實際提醒由 Android 鬧鐘與通知權限控制；Android 14+ 全螢幕顯示須個別授權。",color=Color(0xFFCCE0ED),fontSize=14.sp)
+        Text("實際提醒由 Android 鬧鐘與通知權限控制；Android 14+ 全螢幕顯示須個別授權。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
     }
     if(showEditor) R10AlarmEditor(initial=editing,onClose={showEditor=false},onDelete={a->
         update(alarms.filterNot { it.id==a.id });showEditor=false

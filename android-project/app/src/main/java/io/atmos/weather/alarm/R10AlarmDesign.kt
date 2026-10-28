@@ -30,6 +30,8 @@ import android.net.Uri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -62,10 +64,12 @@ import java.time.LocalTime
 import java.util.Locale
 
 /** Independently authored Compose Foundation controls, not Material picker or switch widgets. */
-private val night=Color(0xFF141416)
-private val group=Color(0xFF1C1C1E)
-private val secondary=Color(0xFF8E8E93)
+private val night:Color @Composable get()=MaterialTheme.colorScheme.background
+private val group:Color @Composable get()=MaterialTheme.colorScheme.surface
+private val secondary:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
+private val ink:Color @Composable get()=MaterialTheme.colorScheme.onSurface
 private val amber=Color(0xFFFF9F0A)
+private val amberInk:Color @Composable get()=if(MaterialTheme.colorScheme.background.red<.5f)Color(0xFFFFB340) else Color(0xFF8F4800)
 private val weekdays=listOf("一","二","三","四","五","六","日")
 
 object R10AlarmTones {
@@ -148,7 +152,7 @@ private fun GlassSetting(label:String, detail:String?=null,click:(()->Unit)?=nul
     Row(Modifier.fillMaxWidth().heightIn(min=48.dp).background(background)
         .then(if(click!=null)Modifier.clickable(interactionSource=presses,indication=null,onClick=click) else Modifier)
         .padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically) {
-        Text(label,color=Color.White,fontSize=17.sp,modifier=Modifier.weight(1f).padding(vertical=12.dp))
+        Text(label,color=ink,fontSize=17.sp,modifier=Modifier.weight(1f).padding(vertical=12.dp))
         if(trailing!=null)trailing()
         else if(detail!=null) {
             Text(detail,color=detailColor,fontSize=17.sp,modifier=Modifier.widthIn(max=170.dp),maxLines=2)
@@ -205,8 +209,8 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
             .background(night).navigationBarsPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().height(72.dp).padding(horizontal=20.dp),verticalAlignment=Alignment.CenterVertically) {
                 io.atmos.weather.ui.IOS27RoundControl("×",onClick={finishSheet(onClose)},
-                    fill=Color(0xFF2C2C2E),foreground=Color.White)
-                Text(if(initial==null)"新增鬧鐘" else "編輯鬧鐘",color=Color.White,fontSize=18.sp,
+                    fill=MaterialTheme.colorScheme.surfaceVariant,foreground=ink)
+                Text(if(initial==null)"新增鬧鐘" else "編輯鬧鐘",color=ink,fontSize=18.sp,
                     textAlign=TextAlign.Center,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                 io.atmos.weather.ui.IOS27RoundControl("✓",onClick={
                     val id=initial?.id ?: generateSequence(1) {it+1}.first {candidate ->
@@ -215,7 +219,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     val saved=WeatherAlarm(id,hour,minute,label.take(30),repeat,initial?.enabled ?: true,voice,snooze,uri,
                         WeatherAlarmTime.validSnoozeMinutes(snoozeMinutes))
                     finishSheet {onSave(saved)}
-                },fill=Color(0xFFFF9F0A),foreground=Color.White)
+                },fill=Color(0xFFFF9F0A),foreground=Color.Black)
             }
             AppleAlarmTimeSelector(hour=hour,minute=minute,
                 onHour={hour=it},onMinute={minute=it},
@@ -224,12 +228,10 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(group)) {
                     GlassSetting("重複",detail=if(repeat.isEmpty())"不重複" else "每週 ${repeat.sorted().joinToString("") { weekdays[it-1] }}")
                     Line()
-                    Row(Modifier.fillMaxWidth().padding(vertical=8.dp),
-                        horizontalArrangement=Arrangement.SpaceEvenly) {
-                        listOf(7,1,2,3,4,5,6).forEach { day ->
-                            val active=day in repeat
-                            AlarmWeekday(day,active) {repeat=if(active) repeat-day else repeat+day}
-                        }
+                    val order=listOf(7,1,2,3,4,5,6)
+                    io.atmos.weather.ui.GlassWeekdayChoices(order.map{weekdays[it-1]},
+                        order.indices.filter{order[it] in repeat}.toSet()){index->
+                        val day=order[index];repeat=if(day in repeat)repeat-day else repeat+day
                     }
                 }
                 Spacer(Modifier.height(32.dp))
@@ -248,7 +250,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     GlassSetting("延遲響鬧",trailing={R10Switch(snooze){snooze=it}})
                     Line()
                     GlassSetting("延遲響鬧時長",detail="$snoozeMinutes 分鐘",
-                        detailColor=if(snooze)amber else secondary,click={if(snooze)chooseSnoozeMinutes=true})
+                        detailColor=if(snooze)amberInk else secondary,click={if(snooze)chooseSnoozeMinutes=true})
                 }
                 if(initial!=null) {
                     Spacer(Modifier.height(10.dp))
@@ -268,16 +270,16 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     }
     if(ttsOptions) Dialog(onDismissRequest={ttsOptions=false}) {
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF24252B),night)))
+            .background(Brush.verticalGradient(listOf(group,night)))
             .border(1.dp,Color.White.copy(alpha=.28f),RoundedCornerShape(24.dp))
             .padding(20.dp).verticalScroll(rememberScrollState())) {
-            Text("鬧鐘播報引擎",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Color.White)
+            Text("鬧鐘播報引擎",fontSize=23.sp,fontWeight=FontWeight.Bold,color=ink)
             Spacer(Modifier.height(8.dp))
             Text("每支手機分開設定。Samsung TTS 需要手機已安裝繁中離線聲線；Bixby 非公開 TTS。",
                 fontSize=14.sp,color=secondary)
             SamsungTtsSelector.choices(ctx).forEach { item ->
                 Text((if(SamsungTtsSelector.selected(ctx)==item.id)"●  " else "○  ")+item.title,
-                    color=Color.White,fontSize=15.sp,
+                    color=ink,fontSize=15.sp,
                     modifier=Modifier.fillMaxWidth().clickable {
                         SamsungTtsSelector.setSelected(ctx,item.id)
                         ttsLabel=SamsungTtsSelector.label(ctx)
@@ -346,13 +348,14 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
     }
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Column(Modifier.fillMaxSize().background(night).statusBarsPadding().navigationBarsPadding().padding(horizontal=20.dp)) {
+            io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f)
             Row(Modifier.fillMaxWidth().height(68.dp),verticalAlignment=Alignment.CenterVertically) {
-                io.atmos.weather.ui.IOS27RoundControl("×",onClose,fill=Color(0xFF2C2C2E),foreground=Color.White)
-                Text("鬧鐘鈴聲",color=Color.White,fontSize=19.sp,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
-                io.atmos.weather.ui.IOS27RoundControl("✓",onClick={preview?.release();preview=null;weatherPreview?.close();onChoose(active)},fill=amber,foreground=Color.White)
+                io.atmos.weather.ui.IOS27RoundControl("×",onClose,fill=MaterialTheme.colorScheme.surfaceVariant,foreground=ink)
+                Text("鬧鐘鈴聲",color=ink,fontSize=19.sp,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
+                io.atmos.weather.ui.IOS27RoundControl("✓",onClick={preview?.release();preview=null;weatherPreview?.close();onChoose(active)},fill=amber,foreground=Color.Black)
             }
             // Weather speech remains removed; the rebuilt suite uses melody and nature.
-            Text("天氣流行音樂館",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold)
+            Text("天氣流行音樂館",color=ink,fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text("新增 6 首原創流行短曲，共 20 款風格。主歌、旋律、副歌與天氣聲景分層編曲。點選試聽，按右上角勾號套用。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -362,8 +365,10 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                             val chosen=active==R10AlarmTones.prefix+choice.id
                             Column(Modifier.weight(1f).heightIn(min=184.dp).iosJellyPress().clip(RoundedCornerShape(22.dp))
                                 .background(Brush.linearGradient(listOf(choice.upper,choice.lower)))
-                                .border(if(chosen) 2.dp else 1.dp,if(chosen) Color.White else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
-                                .clickable {
+                                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.45f),Color.Black.copy(alpha=.72f))))
+                                .border(if(chosen) 2.dp else 1.dp,if(chosen) Color(0xFF79CBFF) else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
+                                .semantics{stateDescription=if(chosen)"已選取" else "未選取"}
+                                .selectable(chosen,role=Role.RadioButton,onClick={
                                     active=R10AlarmTones.prefix+choice.id
                                     preview?.release();preview=null;weatherPreview?.close()
                                     weatherPreview=io.atmos.weather.next.NextWeatherAlarmPlayer.start(ctx,active,WeatherAlarmSpeechCache.load(ctx),preview=true)
@@ -372,12 +377,12 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                                         setOnCompletionListener {p->p.release();if(preview===p)preview=null}
                                         start()
                                     }}.getOrNull() else null
-                                }.padding(14.dp),verticalArrangement=Arrangement.SpaceBetween) {
+                                }).padding(14.dp),verticalArrangement=Arrangement.SpaceBetween) {
                                 Box(Modifier.fillMaxWidth().height(88.dp)) {
                                     ToneArtwork(choice.id,Modifier.fillMaxSize())
                                     Text(if(chosen) "✓ 已選擇" else "▶ 試聽",color=Color.White,fontSize=14.sp,
                                         modifier=Modifier.align(Alignment.TopStart)
-                                            .background(Color.Black.copy(alpha=.23f),RoundedCornerShape(14.dp))
+                                            .background(if(chosen)Color(0xFF0866CC) else Color(0xCC172332),RoundedCornerShape(14.dp))
                                             .padding(horizontal=8.dp,vertical=4.dp))
                                 }
                                 Column {
@@ -390,16 +395,16 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                 }
                 Spacer(Modifier.height(4.dp))
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                    .background(Color.White.copy(alpha=.13f))
+                    .background(group)
                     .border(1.dp,Color.White.copy(alpha=.30f),RoundedCornerShape(22.dp))
                     .clickable { localAudioPicker.launch(arrayOf("audio/*")) }
                     .padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Text("♫",color=Color.White,fontSize=29.sp,modifier=Modifier.padding(end=16.dp))
+                    Text("♫",color=ink,fontSize=29.sp,modifier=Modifier.padding(end=16.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("選擇本地音樂",color=Color.White,fontSize=18.sp,fontWeight=FontWeight.SemiBold)
+                        Text("選擇本地音樂",color=ink,fontSize=18.sp,fontWeight=FontWeight.SemiBold)
                         Text("從手機資料夾或其他檔案提供者選取音訊",color=secondary,fontSize=14.sp)
                     }
-                    Text(if(active.startsWith("content://")) "✓" else "›",color=amber,fontSize=24.sp)
+                    Text(if(active.startsWith("content://")) "✓" else "›",color=amberInk,fontSize=24.sp)
                 }
             }
         }
@@ -503,21 +508,5 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
                 drawLine(Color.White.copy(alpha=.8f),c+Offset(0f,-r*1.2f),c+Offset(0f,r*1.2f),1.dp.toPx())
             }
         }
-    }
-}
-
-@Composable
-private fun AlarmWeekday(day:Int,selected:Boolean,onClick:()->Unit) {
-    val presses=remember {MutableInteractionSource()}
-    val pressed by presses.collectIsPressedAsState()
-    val reduce=LocalContext.current.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
-    val scale by animateFloatAsState(if(pressed && !reduce) .96f else 1f,
-        animationSpec=if(reduce)tween(0) else spring(.72f,190f),label="repeat-day-press")
-    Box(Modifier.size(40.dp).graphicsLayer {scaleX=scale;scaleY=scale}
-        .clip(CircleShape).background(if(selected) Color(0xFFFF9F0A) else Color(0xFF3A3A3C))
-        .thinnSpecularEdge(20.dp)
-        .semantics {contentDescription="星期"+weekdays[day-1];stateDescription=if(selected)"已選取" else "未選取"}
-        .clickable(interactionSource=presses,indication=null,onClick=onClick),contentAlignment=Alignment.Center) {
-        Text(weekdays[day-1],color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Medium)
     }
 }

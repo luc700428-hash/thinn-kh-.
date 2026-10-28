@@ -1,5 +1,6 @@
 package io.atmos.weather.ui
 import androidx.compose.animation.core.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -63,14 +64,14 @@ fun IOSDrumColumn(value:Int,count:Int,onValue:(Int)->Unit,modifier:Modifier=Modi
  },contentAlignment=Alignment.Center){
   Layout(content={for(i in -3..3){val candidate=selected+i;val valid=wrap||candidate in 0 until count;val item=if(wrap)Math.floorMod(candidate,count) else candidate;val d=i+offset
    Box(Modifier.fillMaxWidth().height(row).graphicsLayer{rotationX=(-d*20f).coerceIn(-62f,62f);cameraDistance=12.dp.toPx();scaleX=(1-abs(d)*.06f).coerceAtLeast(.78f);alpha=(1-abs(d)*.35f).coerceIn(.025f,1f)}
-    .then(if(valid&&enabled)Modifier.clickable{motion?.cancel();offset=0f;choose(item)} else Modifier),contentAlignment=Alignment.Center){if(valid)Text(display(item),color=Color.White,fontSize=22.sp,maxLines=1,style=TextStyle(fontFeatureSettings="tnum"))}
+    .then(if(valid&&enabled)Modifier.clickable{motion?.cancel();offset=0f;choose(item)} else Modifier),contentAlignment=Alignment.Center){if(valid)Text(display(item),color=MaterialTheme.colorScheme.onSurface,fontSize=22.sp,maxLines=1,style=TextStyle(fontFeatureSettings="tnum"))}
   }},modifier=Modifier.fillMaxSize()){items,c->val h=row.roundToPx();val cells=items.map{it.measure(Constraints.fixed(c.maxWidth,h))};layout(c.maxWidth,c.maxHeight){val center=(c.maxHeight-h)/2;cells.forEachIndexed{i,p->p.placeRelative(0,center+(i-3)*h+(offset*h).roundToInt())}}}
  }
 }
 @Composable fun IOSWheelRow(modifier:Modifier=Modifier,content:@Composable RowScope.()->Unit){
  val row=drumRow
  Box(modifier.fillMaxWidth().height(row*5.6f),contentAlignment=Alignment.Center){
-  Box(Modifier.fillMaxWidth().height(row).clip(RoundedCornerShape(9999.dp)).thinnBackdrop(rememberAppleReduceTransparency(),9999.dp).background(Color(0xFF2C2C2E).copy(alpha=if(rememberAppleReduceTransparency())1f else .88f)).thinnSpecularEdge(9999.dp))
+  Box(Modifier.fillMaxWidth().height(row).clip(RoundedCornerShape(9999.dp)).thinnBackdrop(rememberAppleReduceTransparency(),9999.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=if(rememberAppleReduceTransparency())1f else .88f)).thinnSpecularEdge(9999.dp))
   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,content=content)
  }
 }

@@ -95,11 +95,7 @@ import java.util.Locale
                             }
                         }
                         "氣象單位換算" -> {
-                            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                EverydayToolMath.categories.forEachIndexed {i,c ->
-                                    GlassTextButton(onClick={category=i;source=0;target=1}) {Text(c.title,color=if(category==i)palette.primary else palette.onSurfaceVariant)}
-                                }
-                            }
+                            GlassChoiceGroup(EverydayToolMath.categories.map{it.title},category,{category=it;source=0;target=1})
                             val units=EverydayToolMath.categories[category].units
                             Text("輸入數值",color=palette.onSurfaceVariant,fontSize=14.sp)
                             BasicTextField(input,{input=it.take(24)},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),

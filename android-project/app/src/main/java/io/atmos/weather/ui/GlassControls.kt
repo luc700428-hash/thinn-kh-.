@@ -66,15 +66,18 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
         animationSpec=if(reduce) tween(0) else if(pressed) tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃按鈕按壓")
     val appear by animateFloatAsState(if(entered) 1f else .94f,
         animationSpec=tween(if(reduce) 0 else 170,easing=AppleMotion.fluid),label="玻璃按鈕入場")
+    val palette=androidx.compose.material3.MaterialTheme.colorScheme
+    val weatherCards=LocalWeatherCardPalette.current
     val fill=if(colors!=null) {
         val chosen=if(enabled) colors.containerColor else colors.disabledContainerColor
         listOf(chosen,chosen)
-    } else if(outlined) listOf(Color.White.copy(alpha=.24f),Color.White.copy(alpha=.105f),Color.White.copy(alpha=.17f))
-        else listOf(androidx.compose.material3.MaterialTheme.colorScheme.primary,
-            androidx.compose.material3.MaterialTheme.colorScheme.primary)
+    } else if(outlined) {
+        val neutral=weatherCards?.fill?:palette.surfaceVariant
+        listOf(neutral,neutral)
+    } else listOf(palette.primary,palette.primary)
     val labelColor=colors?.let {if(enabled) it.contentColor else it.disabledContentColor}
-        ?: if(outlined) androidx.compose.material3.MaterialTheme.colorScheme.primary
-        else androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
+        ?: if(outlined) weatherCards?.accent?:palette.primary
+        else palette.onPrimary
     Row(modifier.defaultMinSize(minHeight=48.dp)
         .graphicsLayer { scaleX=pressScale*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear*(if(pressed && !reduce) AppleMotion.pressedAlpha else 1f) else appear*.45f }
         .clip(corner)
@@ -82,7 +85,7 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
         .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque)1f else if(pressed).80f else .93f))}))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
         .thinnSpecularEdge(ThinnDesignTokens.radiusControl)
-        .clickable(interactionSource=interaction,indication=null,enabled=enabled,onClick={
+        .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=androidx.compose.ui.semantics.Role.Button,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
         })
         .padding(padding), horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically,

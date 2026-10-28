@@ -17,6 +17,8 @@ import android.view.WindowManager
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.*
 
@@ -77,6 +79,20 @@ private fun Context.activity():Activity?=when(this) {
     is ContextWrapper->baseContext.takeIf {it!==this}?.activity()
     else->null
 }
+/** Match system icons to the visible page, including full-screen dialog windows. */
+@Suppress("DEPRECATION")
+@Composable internal fun AppSystemBars(darkBackground:Boolean) {
+    val view=LocalView.current
+    SideEffect {
+        val window=(view.parent as? DialogWindowProvider)?.window?:view.context.activity()?.window
+        window?.let {
+            val flags=android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            it.insetsController?.setSystemBarsAppearance(if(darkBackground)0 else flags,flags)
+            it.navigationBarColor=if(darkBackground)android.graphics.Color.BLACK else 0xfff2f2f7.toInt()
+        }
+    }
+}
 @Composable internal fun HighRefreshHost() {
     val view=LocalView.current
     DisposableEffect(view) {
@@ -122,13 +138,25 @@ private fun Context.activity():Activity?=when(this) {
 }
 /** App windows, sheets and popup menus share one refresh-rate preference. */
 @Composable fun ThinnDialog(onDismissRequest:()->Unit,properties:DialogProperties=DialogProperties(),content:@Composable ()->Unit) {
-    Dialog(onDismissRequest,properties=properties){HighRefreshHost();content()}
+    val readingDensity=LocalDensity.current
+    val contentColor=LocalContentColor.current
+    Dialog(onDismissRequest,properties=properties){
+        CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){HighRefreshHost();content()}
+    }
 }
 @Composable fun ThinnPopup(alignment:Alignment=Alignment.TopStart,offset:IntOffset=IntOffset.Zero,
     onDismissRequest:(()->Unit)?=null,properties:PopupProperties=PopupProperties(),content:@Composable ()->Unit) {
-    Popup(alignment,offset,onDismissRequest,properties){HighRefreshHost();content()}
+    val readingDensity=LocalDensity.current
+    val contentColor=LocalContentColor.current
+    Popup(alignment,offset,onDismissRequest,properties){
+        CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){HighRefreshHost();content()}
+    }
 }
 @Composable fun ThinnPopup(popupPositionProvider:PopupPositionProvider,onDismissRequest:(()->Unit)?=null,
     properties:PopupProperties=PopupProperties(),content:@Composable ()->Unit) {
-    Popup(popupPositionProvider,onDismissRequest,properties){HighRefreshHost();content()}
+    val readingDensity=LocalDensity.current
+    val contentColor=LocalContentColor.current
+    Popup(popupPositionProvider,onDismissRequest,properties){
+        CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){HighRefreshHost();content()}
+    }
 }

@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine
 
-private val bg = ThinnOpticalMaterial.surface
 private val stroke = Color.White.copy(alpha=.16f)
 private val dim:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 

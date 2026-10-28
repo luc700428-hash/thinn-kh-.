@@ -13,7 +13,10 @@ class IntegratedTyphoonFallbackTests(unittest.TestCase):
         self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',h)
         self.assertIn('GdacsCycloneFeed.read()',h)
         self.assertIn('https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP?eventtypes=TC',g)
-        self.assertIn('GlassAlertDialog(',read('typhoon/TyphoonCenterPage.kt'))
+        # Full native official text and in-app charts replace the former summary-only dialog.
+        details=read('typhoon/TyphoonCenterPage.kt')
+        self.assertIn('CwaAlertsPage(',details)
+        self.assertIn('initialTitle=warning.title,initialUrl=warning.link',details)
         self.assertNotIn('Intent.ACTION_VIEW',read('typhoon/TyphoonCenterPage.kt'))
     def test_home_not_invisible_on_outage(self):
         h=read('presentation/home/WeatherHomeScreen.kt')

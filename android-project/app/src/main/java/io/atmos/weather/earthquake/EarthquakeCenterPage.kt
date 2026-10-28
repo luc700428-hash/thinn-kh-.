@@ -45,10 +45,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
-private val white = Color.White
-private val soft = Color.White.copy(alpha=.79f)
-private val cyan = Color(0xFF83E6FF)
-private val orange = Color(0xFFFFD094)
+private val white:Color @Composable get()=MaterialTheme.colorScheme.onSurface
+private val soft:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
+private val cyan:Color @Composable get()=MaterialTheme.colorScheme.primary
+private val orange:Color @Composable get()=if(MaterialTheme.colorScheme.background.red<.5f)Color(0xFFFFD094) else Color(0xFF8A4300)
 
 /** Report center only. NOT a certified seconds-before-shaking early warning receiver. */
 @Composable
@@ -123,13 +123,14 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                 SeismicGlass {
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         Box(Modifier.size(100.dp),contentAlignment=Alignment.Center) {
+                            val ringInk=cyan
                             Canvas(Modifier.fillMaxSize()) {
                                 val radius=size.minDimension/2f
                                 for (i in 0..2) {
                                     val p=(progress + i/3f)%1f
-                                    drawCircle(cyan.copy(alpha=(1f-p)*.52f),radius=radius*(.20f+.78f*p),style=Stroke(width=2.dp.toPx()))
+                                    drawCircle(ringInk.copy(alpha=(1f-p)*.52f),radius=radius*(.20f+.78f*p),style=Stroke(width=2.dp.toPx()))
                                 }
-                                drawCircle(cyan.copy(alpha=.36f),radius*.17f)
+                                drawCircle(ringInk.copy(alpha=.36f),radius*.17f)
                             }
                             Icon(Icons.Rounded.Waves,null,tint=white,modifier=Modifier.size(27.dp))
                         }
@@ -166,6 +167,8 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                         .border(2.dp,orange.copy(alpha=.6f),RoundedCornerShape(26.dp))
                         .padding(18.dp)) {
                         Column(horizontalAlignment=Alignment.CenterHorizontally,modifier=Modifier.fillMaxWidth()) {
+                            val white=Color.White
+                            val orange=Color(0xFFFFD094)
                             Icon(Icons.Rounded.WarningAmber,null,tint=orange,modifier=Modifier.size(37.dp))
                             Text("收到即時地震速報",color=white,fontSize=20.sp,fontWeight=FontWeight.Black)
                             Text("趴下 · 掩護 · 穩住",color=white,fontSize=28.sp,fontWeight=FontWeight.Bold)
@@ -241,7 +244,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                     }
                     reports.firstOrNull()?.let { newest ->
                         Spacer(Modifier.height(10.dp))
-                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp)).background(Brush.horizontalGradient(listOf(Color(0xFF246D8A).copy(alpha=.7f),Color(0xFF143653).copy(alpha=.5f)))).padding(13.dp)) {
+                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp)).background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primaryContainer,MaterialTheme.colorScheme.primaryContainer))).padding(13.dp)) {
                             Column {
                                 Text("最近一筆震後報告 · ${newest.category}",color=cyan,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                                 Spacer(Modifier.height(5.dp))
@@ -257,7 +260,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                         Row(verticalAlignment=Alignment.CenterVertically) {
                             Box(Modifier.size(62.dp).clip(RoundedCornerShape(18.dp))
                                 .background(Brush.verticalGradient(listOf(Color(0xFF286A8A),Color(0xFF194059)))),contentAlignment=Alignment.Center) {
-                                Text(String.format(java.util.Locale.US,"%.1f",report.magnitude),color=white,fontSize=22.sp,fontWeight=FontWeight.Bold)
+                                Text(String.format(java.util.Locale.US,"%.1f",report.magnitude),color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold)
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {

@@ -25,10 +25,37 @@ import java.time.temporal.ChronoUnit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
 
 /** Radar observation + 3-hour weather MODEL comparison. Neither is mislabelled as nowcasting. */
 @Composable
 fun RadarThreeHourCard(weather:WeatherSnapshot) {
+    var radar by remember { mutableStateOf<RadarImage?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var attempt by remember { mutableIntStateOf(0) }
+    var showHistory by remember { mutableStateOf(false) }
+    val lat=weather.city.coordinate.latitude
+    val lon=weather.city.coordinate.longitude
+    val supported=CwaRadarObservation.coverage(lat,lon)
+    LaunchedEffect(supported,weather.fetchedAt,attempt) {
+        if(!supported){radar=null;return@LaunchedEffect}
+        loading=true
+        try {
+            var next=CwaRadarObservation.latest(force=attempt>0)
+            if(next==null){delay(700);next=CwaRadarObservation.latest(force=true)}
+            radar=next
+        } finally{loading=false}
+    }
+    RadarThreeHourContent(weather,radar,loading,{attempt++},{showHistory=true})
+    if (showHistory) CompositionLocalProvider(LocalWeatherCardPalette provides null) {
+        RadarHistoryDialog(onClose={showHistory=false},latitude=lat,longitude=lon)
+    }
+}
+
+@Composable internal fun RadarThreeHourContent(weather:WeatherSnapshot,radar:RadarImage?,loading:Boolean,
+    onRetry:()->Unit,onHistory:()->Unit,now:Instant=Instant.now()) {
     val cards=LocalWeatherCardPalette.current
     val ink=cards?.ink?:MaterialTheme.colorScheme.onSurface
     val muted=cards?.secondary?:if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF4B5563) else Color(0xFFC7D4E0)
@@ -37,15 +64,9 @@ fun RadarThreeHourCard(weather:WeatherSnapshot) {
     val lat=weather.city.coordinate.latitude
     val lon=weather.city.coordinate.longitude
     val supported=CwaRadarObservation.coverage(lat,lon)
-    var radar by remember { mutableStateOf<RadarImage?>(null) }
-    var attempted by remember { mutableStateOf(false) }
-    var showHistory by remember { mutableStateOf(false) }
-    LaunchedEffect(supported,lat,lon) {
-        attempted=false;radar=null
-        if(supported) radar=CwaRadarObservation.latest()
-        attempted=true
-    }
-    val start=Instant.now()
+    val zone=runCatching{ZoneId.of(weather.timeZoneId?:"Asia/Taipei")}.getOrDefault(ZoneId.of("Asia/Taipei"))
+    val clock=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(zone)
+    val start=now
     val range=weather.hourly.filter { !it.at.isBefore(start.minusSeconds(900)) && it.at.isBefore(start.plus(3,ChronoUnit.HOURS)) }
     val rain=range.mapNotNull { it.precipitationProbabilityPct }.maxOrNull()
     val snow=range.mapNotNull { it.snowfallProbabilityPct }.maxOrNull()
@@ -73,15 +94,21 @@ fun RadarThreeHourCard(weather:WeatherSnapshot) {
                 }
             }
             Spacer(Modifier.height(8.dp))
-            val age=(System.currentTimeMillis()-observation.fetchedAt)/60000
-            Text("中央氣象署雷達實際觀測圖 · ${if(age<15)"已取得近期圖資" else "快取 ${age} 分鐘前"}",fontSize=14.sp,color=ink)
+            val time=observation.observedAt?:observation.modifiedAt
+            val age=time?.let{(now.toEpochMilli()-it)/60000}
+            Text("中央氣象署 · "+(time?.let{clock.format(Instant.ofEpochMilli(it))}?:"圖資時間未提供")+
+                (if(observation.observedAt!=null)" 觀測" else " 圖檔更新")+
+                (if(observation.cached || (age?:0)>=20)" · 較早圖資" else ""),fontSize=14.sp,color=ink)
             Text("藍色標記為選擇城市的示意位置；雷達回波不等於地面降雨量。",fontSize=14.sp,color=muted)
         } else {
             Text(when {
                 !supported -> "選取地點超出中央氣象署雷達圖範圍，可開啟下方的 App 內雷達。"
-                !attempted -> "正在讀取中央氣象署雷達觀測圖…"
-                else -> "暫時無法取得雷達圖資；預報仍可獨立使用。"
+                loading -> "正在讀取中央氣象署雷達觀測圖…"
+                else -> "雷達連線未完成，請重試，或開啟下方互動雷達。"
             },fontSize=14.sp,color=warning)
+        }
+        if(supported) GlassTextButton(onRetry,enabled=!loading) {
+            Text(if(loading)"更新雷達中…" else "重新取得觀測圖",color=blue,fontSize=14.sp)
         }
         Spacer(Modifier.height(13.dp))
         Text("氣象預報 · 接下來三小時",fontSize=15.sp,color=ink,fontWeight=FontWeight.SemiBold)
@@ -91,7 +118,7 @@ fun RadarThreeHourCard(weather:WeatherSnapshot) {
             fontSize=14.sp,color=muted)
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)) {
             range.take(3).forEach { hour ->
-                val time=SimpleDateFormat("HH:mm",Locale.TAIWAN).format(Date(hour.at.toEpochMilli()))
+                val time=DateTimeFormatter.ofPattern("HH:mm").withZone(zone).format(hour.at)
                 val probability=hour.precipitationProbabilityPct
                 Column(Modifier.weight(1f)
                     .background(blue.copy(alpha=.07f),RoundedCornerShape(18.dp))
@@ -107,11 +134,8 @@ fun RadarThreeHourCard(weather:WeatherSnapshot) {
             }
         }
         Spacer(Modifier.height(10.dp))
-        GlassAction("在 App 內操作降雨雷達", "近 2 小時回波 · 縮放、拖曳與播放",onClick={showHistory=true})
+        GlassAction("在 App 內操作降雨雷達", "近 2 小時回波 · 縮放、拖曳與播放",onClick=onHistory)
         Spacer(Modifier.height(5.dp))
         Text("雷達為歷史觀測；未來三小時是數值預報，並非衛星預測雲圖。",fontSize=14.sp,color=muted)
-    }
-    if (showHistory) CompositionLocalProvider(LocalWeatherCardPalette provides null) {
-        RadarHistoryDialog(onClose={showHistory=false},latitude=lat,longitude=lon)
     }
 }

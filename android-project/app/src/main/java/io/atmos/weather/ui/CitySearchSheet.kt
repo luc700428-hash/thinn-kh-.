@@ -37,6 +37,7 @@ import kotlinx.coroutines.delay
     val shown=results.filter {val tw=it.name.startsWith("台灣")||LocationLabels.probablyTaiwan(it.coordinate)||LocationLabels.isDiaoyutai(it.coordinate)
         scope==0||scope==1&&tw||scope==2&&!tw}
     ThinnDialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        AppSystemBars(palette.background.red<.5f)
         Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding().imePadding()) {
             IOSSettingsHeader("地點與城市",onClose)
             Row(Modifier.padding(horizontal=16.dp,vertical=8.dp).fillMaxWidth().background(palette.surfaceVariant,RoundedCornerShape(28.dp)).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {

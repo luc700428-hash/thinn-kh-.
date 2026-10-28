@@ -142,9 +142,12 @@ import java.time.format.DateTimeFormatter
     AppleParallaxStack(selectedTimeline!=null,{selectedTimeline=null},Modifier.fillMaxSize(),root) {
         retainedTimeline?.let{StormTimelineOverlay(it){selectedTimeline=null}}
     }
-    selectedWarning?.let {warning->GlassAlertDialog(onDismissRequest={selectedWarning=null},
-        title={Text(warning.title)},text={Text(warning.summary)},
-        confirmButton={GlassTextButton({selectedWarning=null}){Text("完成")}})}
+    var retainedWarning by remember{mutableStateOf<CwaWarning?>(null)}
+    selectedWarning?.let{retainedWarning=it}
+    MainDetailLayer(selectedWarning!=null,{selectedWarning=null}) {
+        retainedWarning?.let{warning->io.atmos.weather.alerts.CwaAlertsPage(
+            initialTitle=warning.title,initialUrl=warning.link,initialNotices=warnings,onClose={selectedWarning=null})}
+    }
 }
 
 @Composable internal fun TyphoonPageHeader(loading:Boolean,onClose:()->Unit,onRefresh:()->Unit) {
