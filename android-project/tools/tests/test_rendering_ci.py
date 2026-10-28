@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -24,6 +25,11 @@ class ResultTests(unittest.TestCase):
             root = Path(directory)
             (root/'TEST-device.xml').write_text(text)
             return results.verify(root)
+
+    def test_expected_results_match_every_instrumentation_method(self):
+        source=(TOOLS.parent/'app/src/androidTest/java/io/atmos/weather/ui/RenderingRegressionTest.kt').read_text()
+        names=set(re.findall(r'@Test\s*(?:\([^)]*\))?\s+fun\s+(\w+)',source))
+        self.assertEqual(names,results.EXPECTED)
 
     def test_requires_every_real_passing_result(self):
         self.assertEqual(self.check_report(report(results.EXPECTED)), len(results.EXPECTED))

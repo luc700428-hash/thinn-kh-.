@@ -149,18 +149,19 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
     var query by remember {mutableStateOf("")}
     var utility by remember {mutableStateOf<String?>(null)}
     data class Entry(val title:String,val subtitle:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,val action:()->Unit)
+    data class EntryGroup(val title:String,val tint:Color,val entries:List<Entry>)
     val groups=listOf(
-        "日常生活" to listOf(Entry("天氣鬧鐘","重複星期、鈴聲與稍後提醒",SettingsSymbols.alarm,onWeatherAlarms),
+        EntryGroup("日常生活",Color(0xFFFF9500),listOf(Entry("天氣鬧鐘","重複星期、鈴聲與稍後提醒",SettingsSymbols.alarm,onWeatherAlarms),
             Entry("我的事項","待辦清單與個人提醒",Icons.Rounded.Checklist,onTasks),
-            Entry("天氣定時通知","週間與指定時間的天氣摘要",SettingsSymbols.notification,onBriefings)),
-        "天氣與防災" to listOf(Entry("颱風動向","官方警報、路徑與預報時間軸",SettingsSymbols.cyclone,onTyphoons),
+            Entry("天氣定時通知","週間與指定時間的天氣摘要",SettingsSymbols.notification,onBriefings))),
+        EntryGroup("天氣與防災",Color(0xFF007AFF),listOf(Entry("颱風動向","官方警報、路徑與預報時間軸",SettingsSymbols.cyclone,onTyphoons),
             Entry("地震監測","測站、震後報告與演練",Icons.Rounded.Waves,onSeismic),
-            Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,onRadar)),
-        "海洋與天文" to listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,onMarine),
-            Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.Nightlight,onSky)),
-        "時間與換算" to listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{utility="碼錶"}),
+            Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,onRadar))),
+        EntryGroup("海洋與天文",Color(0xFF007A78),listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,onMarine),
+            Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.Nightlight,onSky))),
+        EntryGroup("時間與換算",Color(0xFF5856D6),listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{utility="碼錶"}),
             Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,{utility="世界時鐘"}),
-            Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{utility="氣象單位換算"}))
+            Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{utility="氣象單位換算"})))
     )
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()
         .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=18.dp,bottom=120.dp),
@@ -178,14 +179,13 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             }
         }
         var count=0
-        groups.forEachIndexed {groupIndex,(title,entries) ->
-            val shown=entries.filter {query.isBlank() || (it.title+it.subtitle).contains(query.trim(),ignoreCase=true)}
+        groups.forEach {group ->
+            val shown=group.entries.filter {query.isBlank() || (it.title+it.subtitle).contains(query.trim(),ignoreCase=true)}
             count+=shown.size
             if(shown.isNotEmpty()) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text(title,color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(horizontal=6.dp))
+                Text(group.title,color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(horizontal=6.dp))
                 IOSV25SettingsGroup {
-                    shown.forEachIndexed {i,item ->IOSV25SettingsCell(item.title,"",item.icon,
-                        listOf(Color(0xFFFF9500),Color(0xFF007AFF),Color(0xFF5856D6))[groupIndex],
+                    shown.forEachIndexed {i,item ->IOSV25SettingsCell(item.title,"",item.icon,group.tint,
                         last=i==shown.lastIndex,onClick=item.action)}
                 }
             }

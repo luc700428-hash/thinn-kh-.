@@ -199,6 +199,32 @@ class RenderingRegressionTest {
         assertNull(CrashDiagnostics.graphics(context))
     }
 
+    @Test(timeout=120_000) fun allToolsGroupsAndFilteredLastGroupRenderInBothAppearances() {
+        val dark=mutableStateOf(false)
+        compose.setContent {
+            ThinnAppTheme {
+                MaterialTheme(colorScheme=if(dark.value)darkColorScheme() else lightColorScheme()) {
+                    AppGlassToolsPage(onBriefings={},onUpdates={},onDiagnostics={},onSeismic={})
+                }
+            }
+        }
+        for(appearance in listOf(false,true)) {
+            compose.runOnIdle{dark.value=appearance};frame()
+            // All groups compose, including the fourth group beyond the initial viewport.
+            for(title in listOf("日常生活","天氣與防災","海洋與天文","時間與換算")) {
+                compose.onNodeWithText(title).performScrollTo().assertIsDisplayed()
+            }
+            compose.onNode(hasSetTextAction()).performScrollTo().performTextInput("世界時鐘")
+            frame()
+            compose.onNodeWithText("時間與換算").assertIsDisplayed()
+            compose.onNodeWithText("世界時鐘").assertIsDisplayed()
+            compose.onNodeWithText("海洋與天文").assertDoesNotExist()
+            compose.onNode(hasSetTextAction()).performTextClearance();frame()
+            compose.onNodeWithText("海洋與天文").assertExists()
+        }
+        checkpoint("tools: all four groups and last-group search passed light and dark")
+    }
+
     @Test(timeout=120_000) fun weatherScrollAndRepeatedSettingsNavigationKeepVisibleText() {
         checkpoint("weather: prepare fixture")
         val now=Instant.now()

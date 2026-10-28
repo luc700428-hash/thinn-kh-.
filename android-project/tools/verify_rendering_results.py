@@ -13,6 +13,7 @@ EXPECTED = {
     'glassSamplingCannotPaintOverItsForegroundSiblings',
     'deferredChildRecordingCannotSampleItsOwnAncestor',
     'weatherScrollAndRepeatedSettingsNavigationKeepVisibleText',
+    'allToolsGroupsAndFilteredLastGroupRenderInBothAppearances',
 }
 
 
