@@ -214,12 +214,15 @@ fun SeismicLiveMapPage(
     val originMillis = if(inReplay) replayReport?.origin?.toEpochMilli() else displayQuake?.originAtMs
 
 
-    // Real provider updates create one brief 260 ms highlight, not a simulated new event.
+    // Observations still update immediately. Only their confirmation ring is paced and softened.
     val stationFlash = remember { androidx.compose.animation.core.Animatable(0f) }
-    LaunchedEffect(live.lastRtsAt) {
-        if (live.lastRtsAt > 0L && stations.isNotEmpty() && fresh) {
-            stationFlash.snapTo(1f)
-            stationFlash.animateTo(0f, animationSpec=tween(if(reduceMotion) 0 else 680))
+    val latestStationFrame by rememberUpdatedState(live.lastRtsAt)
+    val canAnimateStations by rememberUpdatedState(live.lastRtsAt > 0L && stations.isNotEmpty() && fresh)
+    LaunchedEffect(reduceMotion) {
+        stationFlash.snapTo(0f)
+        if(!reduceMotion)StationUpdateMotion.play(snapshotFlow{latestStationFrame},{canAnimateStations}) {
+            stationFlash.snapTo(0f)
+            stationFlash.animateTo(1f,animationSpec=tween(StationUpdateMotion.DURATION_MS,easing=LinearEasing))
         }
     }
     // Stop replay sounds when the user exits the page or the replay ends.
@@ -352,11 +355,10 @@ fun SeismicLiveMapPage(
                                         // Only provider-explicitly offline/maintenance stations glow red.
                                         drawCircle(Color(0xFFFF7682).copy(alpha=if(!fresh || reduceMotion) .55f else .25f+.6f*pulse),
                                             (5f+3f*pulse).dp.toPx(),p,style=Stroke(1.8.dp.toPx()))
-                                    } else if(stationState==StationViewState.LIVE && stationFlash.value>.01f) {
-                                        // A real fresh RTS frame causes a brief cyan-blue confirmation flash.
-                                        drawCircle(Color(0xFF77CFFF).copy(alpha=stationFlash.value*.95f),
-                                            (5f+7f*(1f-stationFlash.value)).dp.toPx(),p,
-                                            style=Stroke(2.dp.toPx()))
+                                    } else if(fresh && stationFlash.value>.001f && stationState==StationViewState.LIVE) {
+                                        drawCircle(Color(0xFF77CFFF).copy(alpha=StationUpdateMotion.opacity(stationFlash.value)),
+                                            StationUpdateMotion.radiusDp(stationFlash.value).dp.toPx(),p,
+                                            style=Stroke(1.4.dp.toPx()))
                                     }
                                 }
                                 if(layer!="測站") {
@@ -378,7 +380,7 @@ fun SeismicLiveMapPage(
                         Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
                             Text("TREM-Net 測站",color=Color.White,fontSize=15.sp,fontWeight=FontWeight.SemiBold)
                             Text("${stations.size} 站 · ${currentStations.size} 站有效觀測",
-                                color=if (fresh && stationFlash.value > 0.1f) iceBlue else muted,fontSize=14.sp,
+                                color=Color(0xFFC5E5F4),fontSize=14.sp,
                                 maxLines=1)
                         }
                         Column(Modifier.align(Alignment.TopEnd).padding(10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {

@@ -5,6 +5,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -15,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.atmos.weather.domain.model.WeatherCity
@@ -26,6 +30,28 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.*
 
 @Composable fun MarinePage(city:WeatherCity,onClose:()->Unit) {
+    MarineScreen(city,onClose){place,force->MarineRepository.read(place,force)}
+}
+
+/** Keep the forecast page on its own readable surfaces, even when opened over the sky. */
+@Composable internal fun MarineScreen(city:WeatherCity,onClose:()->Unit,
+    loadForecast:suspend (SeaPlace,Boolean)->MarineSnapshot) {
+    val base=MaterialTheme.colorScheme
+    val dark=base.background.luminance()<.5f
+    val colors=base.copy(
+        primary=if(dark)Color(0xFF90D7FF) else Color(0xFF0066CC),
+        onSurfaceVariant=if(dark)Color(0xFFC7C7CC) else Color(0xFF5C5C64),
+        primaryContainer=if(dark)Color(0xFF163C56) else Color(0xFFE2F0FF),
+        onPrimaryContainer=if(dark)Color(0xFFD5EDFF) else Color(0xFF073F7C))
+    MaterialTheme(colorScheme=colors) {
+        CompositionLocalProvider(LocalWeatherCardPalette provides null) {
+            MarineContent(city,onClose,loadForecast)
+        }
+    }
+}
+
+@Composable private fun MarineContent(city:WeatherCity,onClose:()->Unit,
+    loadForecast:suspend (SeaPlace,Boolean)->MarineSnapshot) {
     val palette=MaterialTheme.colorScheme
     var place by remember(city){mutableStateOf(MarineRepository.nearest(city))}
     var picker by remember{mutableStateOf(false)};var refresh by remember{mutableIntStateOf(0)}
@@ -35,7 +61,7 @@ import kotlin.math.*
     LaunchedEffect(place,refresh) {
         loading=true;error=null
         if(data?.place?.id!=place.id){data=null;index=0}
-        try {data=MarineRepository.read(place,refresh>0);index=0}
+        try {data=loadForecast(place,refresh>0);index=0}
         catch(cancel:CancellationException){throw cancel}
         catch(_:Exception){error="目前無法取得海象資料，請重試";data=null}
         finally{loading=false}
@@ -44,12 +70,14 @@ import kotlin.math.*
     val focus=records.getOrNull(index)?:data?.current
     val clock=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei"))
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
-        Row(verticalAlignment=Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)){IOSSettingsHeader("海象與浪況",onClose)}
-            GlassIconButton({refresh++},enabled=!loading,modifier=Modifier.padding(end=12.dp)){Icon(Icons.Rounded.Refresh,"更新海象預報")}
+        Box(Modifier.fillMaxWidth()) {
+            IOSSettingsHeader("海象與浪況",onClose)
+            GlassIconButton({refresh++},enabled=!loading,modifier=Modifier.align(Alignment.CenterEnd).padding(end=16.dp)){
+                Icon(Icons.Rounded.Refresh,"更新海象預報",tint=palette.primary)
+            }
         }
         Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=12.dp,bottom=128.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-            GlassSurface {
+            MarineSurface {
                 GlassAction(place.name,"切換臺灣近海、東岸與離島海域"){picker=true}
                 Text("近海模式預報 · 海域與陸地氣溫分開計算",fontSize=14.sp,color=palette.onSurfaceVariant)
             }
@@ -58,7 +86,7 @@ import kotlin.math.*
             data?.let{snapshot->
                 if(!snapshot.fresh())Text("目前顯示較舊的海象資料，請先更新再安排行程。",color=palette.error,fontSize=14.sp)
                 OceanHero(focus)
-                GlassSurface {
+                MarineSurface {
                     Text("${if(index==0)"目前模式時刻" else "預報時刻"} · ${focus?.at?.let(clock::format)?:"未提供"}",color=palette.onSurface,fontSize=17.sp)
                     if(records.size>1)GlassSlider(index.toFloat(),{index=it.roundToInt().coerceIn(records.indices)},Modifier.fillMaxWidth(),valueRange=0f..records.lastIndex.toFloat(),steps=(records.size-2).coerceAtLeast(0))
                     MarineChart(records,index)
@@ -72,7 +100,7 @@ import kotlin.math.*
                     MarineMetric("湧浪高度",focus?.swellHeight.unit("m"),"由遠方傳來的長浪",Modifier.weight(1f))
                     MarineMetric("湧浪週期",focus?.swellPeriod.unit("秒"),"長浪週期",Modifier.weight(1f))
                 }
-                GlassSurface {
+                MarineSurface {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         BearingCompass(focus?.waveDirection,"波浪來向",Modifier.size(144.dp))
                         Column(Modifier.weight(1f)) {
@@ -82,7 +110,7 @@ import kotlin.math.*
                         }
                     }
                 }
-                GlassSurface {
+                MarineSurface {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         BearingCompass(focus?.currentDirection,"海流流向",Modifier.size(144.dp))
                         Column(Modifier.weight(1f)) {
@@ -98,12 +126,18 @@ import kotlin.math.*
             }
         }
     }
-    if(picker)GlassModalBottomSheet(onDismissRequest={picker=false}) {
-        LazyColumn(Modifier.fillMaxWidth().heightIn(max=500.dp).padding(horizontal=16.dp).navigationBarsPadding()) {
-            item{Text("選擇海域",fontSize=23.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,color=palette.onSurface,modifier=Modifier.padding(14.dp))}
+    if(picker)GlassModalBottomSheet(onDismissRequest={picker=false},containerColor=palette.surface,contentColor=palette.onSurface) {
+        Row(Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+            Text("選擇海域",fontSize=23.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,color=palette.onSurface,modifier=Modifier.weight(1f))
+            GlassTextButton({picker=false}){Text("完成",color=palette.primary)}
+        }
+        val listState=rememberLazyListState(initialFirstVisibleItemIndex=(MarineRepository.places.indexOfFirst{it.id==place.id}-2).coerceAtLeast(0))
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max=500.dp).padding(horizontal=16.dp).selectableGroup(),state=listState,
+            contentPadding=PaddingValues(bottom=24.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
             items(MarineRepository.places,key={it.id}){candidate->
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if(candidate.id==place.id)palette.primaryContainer else Color.Transparent)
-                    .iosJellyPress().clickable{place=candidate;picker=false}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
+                    .iosJellyPress().selectable(selected=candidate.id==place.id,role=Role.RadioButton,onClick={place=candidate;picker=false})
+                    .defaultMinSize(minHeight=56.dp).padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
                     Text(candidate.name,color=if(candidate.id==place.id)palette.onPrimaryContainer else palette.onSurface,modifier=Modifier.weight(1f),fontSize=17.sp)
                     if(candidate.id==place.id)Icon(Icons.Rounded.Check,"目前選擇",tint=palette.onPrimaryContainer)
                 }
@@ -111,10 +145,17 @@ import kotlin.math.*
         }
     }
 }
+@Composable private fun MarineSurface(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
+    val p=MaterialTheme.colorScheme
+    CompositionLocalProvider(LocalContentColor provides p.onSurface) {
+        Column(modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.surface)
+            .thinnSpecularEdge(24.dp).padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp),content=content)
+    }
+}
 private fun Double?.unit(unit:String)=this?.takeIf{it.isFinite()}?.let{"%.1f".format(it)+" $unit"}?:"未提供"
 @Composable private fun MarineMetric(title:String,value:String,note:String,modifier:Modifier) {
     val p=MaterialTheme.colorScheme
-    GlassSurface(modifier) {
+    MarineSurface(modifier) {
         Text(title,color=p.onSurfaceVariant,fontSize=14.sp)
         Text(value,color=p.onSurface,fontSize=26.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
         Text(note,color=p.onSurfaceVariant,fontSize=14.sp)
@@ -122,11 +163,11 @@ private fun Double?.unit(unit:String)=this?.takeIf{it.isFinite()}?.let{"%.1f".fo
 }
 @Composable private fun OceanHero(record:MarineHour?) {
     val reduce=rememberAppleReduceMotion()
-    val transition=rememberInfiniteTransition(label="ocean highlight")
-    val phase=transition.animateFloat(0f,1f,infiniteRepeatable(tween(8000,easing=LinearEasing)),label="ocean swell")
+    val phase=if(reduce)null else rememberInfiniteTransition(label="ocean highlight")
+        .animateFloat(0f,1f,infiniteRepeatable(tween(8000,easing=LinearEasing)),label="ocean swell")
     Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(Color(0xFF084878),Color(0xFF117A9C))))) {
         Canvas(Modifier.matchParentSize()) {
-            val t=if(reduce)0f else phase.value
+            val t=phase?.value?:0f
             repeat(3){layer->
                 val path=Path();val baseline=size.height*(.62f+layer*.10f)
                 path.moveTo(0f,size.height)
@@ -137,6 +178,8 @@ private fun Double?.unit(unit:String)=this?.takeIf{it.isFinite()}?.let{"%.1f".fo
                 drawPath(path,listOf(Color(0x445CCFE6),Color(0x6677E1E8),Color(0x8876D9E7))[layer])
             }
         }
+        // Keep the labels readable as bright wave crests pass behind them.
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0x66032640),Color(0x99032640)))))
         Column(Modifier.padding(22.dp)) {
             Text("有效波高",color=Color.White.copy(alpha=.9f),fontSize=16.sp)
             Text(record?.waveHeight.unit("m"),color=Color.White,fontSize=44.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)

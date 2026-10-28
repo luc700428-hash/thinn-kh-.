@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +46,7 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
     contentColor:Color=Color.White,content:@Composable ColumnScope.()->Unit) {
     val scope=rememberCoroutineScope()
     val reduceMotion=rememberAppleReduceMotion()
+    val readingDensity=LocalDensity.current
     var offsetPx by remember { mutableFloatStateOf(750f) }
     var grabbing by remember {mutableStateOf(false)}
     var closing by remember {mutableStateOf(false)}
@@ -59,6 +61,7 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
         scope.launch { offsetPx=900f; delay(if(reduceMotion)0 else 380);onDismissRequest() }
     }
     Dialog(onDismissRequest={dismissAnimated()},properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor) {
         Box(Modifier.fillMaxSize(),contentAlignment=Alignment.BottomCenter) {
             Column(Modifier.fillMaxWidth().heightIn(max=780.dp)
                 .offset { IntOffset(0,animatedY.toInt()) }
@@ -81,10 +84,11 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Color(0
                         },onDragCancel={grabbing=false;offsetPx=0f;dragged=0f})
                     },contentAlignment=Alignment.Center) {
                     Box(Modifier.size(width=42.dp,height=5.dp).clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha=.64f)))
+                        .background(contentColor.copy(alpha=.38f)))
                 }
                 content()
             }
+        }
         }
     }
 }
