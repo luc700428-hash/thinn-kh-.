@@ -232,8 +232,16 @@ class RenderingRegressionTest {
             compose.onNodeWithText("外觀與亮度").performClick()
             frame();compose.onNodeWithText("深色").assertIsDisplayed()
             checkpoint("weather: round $iteration return")
-            compose.onNodeWithContentDescription("返回").performClick()
+            // Switching the root Dock must also dismiss an open settings detail.
+            if(iteration%2==1){compose.onNodeWithContentDescription("返回").performClick();frame()}
+            compose.onNodeWithContentDescription("天氣").performClick()
             frame()
+            compose.waitUntil(5_000) {
+                compose.mainClock.advanceTimeBy(32)
+                compose.onAllNodesWithText("深色").fetchSemanticsNodes().isEmpty()
+            }
+            // Rapid requests must settle on the last destination.
+            compose.onNodeWithContentDescription("工具").performClick()
             compose.onNodeWithContentDescription("天氣").performClick()
             frame()
             centerWeatherText("現在最重要的天氣")

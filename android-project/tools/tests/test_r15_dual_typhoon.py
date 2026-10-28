@@ -13,7 +13,8 @@ class IntegratedTyphoonFallbackTests(unittest.TestCase):
         self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',h)
         self.assertIn('GdacsCycloneFeed.read()',h)
         self.assertIn('https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP?eventtypes=TC',g)
-        self.assertIn('https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_WARN.html',read('typhoon/TyphoonCenterPage.kt'))
+        self.assertIn('GlassAlertDialog(',read('typhoon/TyphoonCenterPage.kt'))
+        self.assertNotIn('Intent.ACTION_VIEW',read('typhoon/TyphoonCenterPage.kt'))
     def test_home_not_invisible_on_outage(self):
         h=read('presentation/home/WeatherHomeScreen.kt')
         self.assertIn('if (officialStormActive || verifiedTyphoonWarning!=null)',h)
@@ -35,7 +36,7 @@ class IntegratedTyphoonFallbackTests(unittest.TestCase):
         for token in ['val ageSec=', 'now.epochSecond-last.epochSecond','MAX_BYTES','HttpsURLConnection','if(!lat.isFinite() || !lon.isFinite()']:
             self.assertIn(token,g)
         c=read('typhoon/TyphoonCenterPage.kt')
-        self.assertIn('OfficialTrackPlot(plotFixes,plotTracks)',c)
+        self.assertIn('OfficialTrackPlot(points)',c)
         self.assertNotIn('GdacsCycloneFeed.read()',c)
     def test_original_alert_and_island_unmodified(self):
         self.assertIn('正式警戒範圍以氣象署為準',read('presentation/home/WeatherHomeScreen.kt'))

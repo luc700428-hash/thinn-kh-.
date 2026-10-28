@@ -32,6 +32,6 @@ class UserInitiatedLiveUpdateTests(unittest.TestCase):
         page=(SRC/'typhoon/TyphoonCenterPage.kt').read_text()
         self.assertNotIn('approachingStormPopupOpen',home)
         self.assertNotIn('GDACS 備援連線失敗',page)
-        self.assertIn('OfficialTrackPlot(plotFixes,plotTracks)',page)
+        self.assertIn('OfficialTrackPlot(points)',page)
 
 if __name__ == '__main__': unittest.main()

@@ -111,7 +111,7 @@ object ExpTechRealtimeParser {
     private fun number(o: JSONObject,vararg fields:String):Double? = fields.firstNotNullOfOrNull { name ->
         o.opt(name)?.toString()?.toDoubleOrNull()?.takeIf { it.isFinite() }
     }
-    private fun parseEpoch(value: Any?): Long? {
+    internal fun parseEpoch(value: Any?): Long? {
         if (value == null || value == JSONObject.NULL) return null
         val raw=value.toString().trim()
         raw.toDoubleOrNull()?.let { num -> if (num > 1e12) return num.toLong(); if (num > 1e9) return (num*1000).toLong() }

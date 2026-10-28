@@ -246,8 +246,16 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val mainPager = rememberPagerState(initialPage = if (fromEarthquakeNotification) 1 else 0, pageCount = { 4 })
     val weatherScrollState = rememberScrollState()
     val mainPagerScope = rememberCoroutineScope()
-    fun showMainTab(index: Int) {
-        mainPagerScope.launch { mainPager.animateScrollToPage(index.coerceIn(0,3)) }
+    var mainTabJob by remember {mutableStateOf<kotlinx.coroutines.Job?>(null)}
+    var dockRequestedTab by remember {mutableStateOf<Int?>(null)}
+    val tabResetEpochs=remember {mutableStateListOf(0,0,0,0)}
+    fun showMainTab(index:Int,exitDelay:Long=0L) {
+        mainTabJob?.cancel()
+        mainTabJob=mainPagerScope.launch {
+            if(exitDelay>0)delay(exitDelay)
+            mainPager.animateScrollToPage(index.coerceIn(0,3))
+            dockRequestedTab=null
+        }
     }
     LaunchedEffect(fromEarthquakeNotification) { if (fromEarthquakeNotification) (context as? android.app.Activity)?.intent?.removeExtra("open_earthquake_center") }
     val fromUpdateNotification = remember { (context as? android.app.Activity)?.intent?.getBooleanExtra("open_update_center",false) == true }
@@ -272,7 +280,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if(officialStormActive || verifiedTyphoonWarning!=null) {
             while(true) {
                 val snapshot=io.atmos.weather.typhoon.CwaWindProbability.read()
-                value=snapshot?.at(state.city.coordinate.longitude,state.city.coordinate.latitude)
+                value=snapshot?.at(state.city.coordinate.longitude,state.city.coordinate.latitude,state.city.name)
                 kotlinx.coroutines.delay(20*60_000L)
             }
         }
@@ -317,6 +325,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     }
     val fromClockWidget=remember {(context as? android.app.Activity)?.intent?.getBooleanExtra("open_weather_alarms",false)==true}
     var weatherAlarmOpen by remember { mutableStateOf(fromClockWidget) }
+    var marineOpen by remember {mutableStateOf(false)}
+    var skyOpen by remember {mutableStateOf(false)}
     LaunchedEffect(fromClockWidget) {
         if(fromClockWidget)(context as? android.app.Activity)?.intent?.removeExtra("open_weather_alarms")
     }
@@ -325,9 +335,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
     BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
         pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen ||
-        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || marineOpen || skyOpen ||
         mainPager.currentPage != 0) {
         when {
+            marineOpen -> marineOpen=false
+            skyOpen -> skyOpen=false
             weatherAlarmOpen -> weatherAlarmOpen=false
             typhoonPageOpen -> typhoonPageOpen=false
             earthquakePageOpen -> earthquakePageOpen=false
@@ -359,8 +371,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
 
     // Open-Meteo air-quality and forecast visibility are fetched in OpenMeteoProvider.
     // No account, extra API key, or duplicate network request is needed.
-    var soundOn by remember { mutableStateOf(settingsPrefs.getBoolean("sound_enabled", false)) }
-    var soundVolume by remember { mutableFloatStateOf(settingsPrefs.getFloat("sound_volume", .50f)) }
+    var soundOn by remember { mutableStateOf(settingsPrefs.getBoolean("sound_enabled",true)) }
+    var soundVolume by remember {mutableFloatStateOf(settingsPrefs.getFloat("sound_volume",.50f).takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f)}
+    var soundPreviewActive by remember {mutableStateOf(false)}
+    LaunchedEffect(soundPreviewActive){if(soundPreviewActive){delay(8_000);soundPreviewActive=false}}
+    LaunchedEffect(settingsPrefs){if(!settingsPrefs.contains("sound_enabled"))settingsPrefs.edit().putBoolean("sound_enabled",true).apply()}
     var refreshMinutes by remember { mutableIntStateOf(settingsPrefs.getInt("refresh_minutes", 30).coerceIn(5,120)) }
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, refreshMinutes) {
@@ -466,8 +481,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     LaunchedEffect(demoCompleted) {
         if (demoCompleted) { delay(2500L); demoCompleted = false }
     }
-    NextWeatherAmbience(demoCondition ?: snapshot?.condition, soundOn || demoRemaining > 0,
-        if(demoRemaining > 0) soundVolume.coerceAtLeast(.5f) else soundVolume,
+    val ambientPlayback=NextWeatherAmbience(demoCondition ?: snapshot?.condition ?: if(soundPreviewActive)WeatherCondition.CLEAR else null, soundOn || demoRemaining>0 || soundPreviewActive,
+        if(demoRemaining>0||soundPreviewActive)soundVolume.coerceAtLeast(.65f) else soundVolume,
         if (demoCondition == WeatherCondition.THUNDERSTORM) 95 else if (demoCondition == WeatherCondition.RAIN) 61 else snapshot?.weatherCode,
         snapshot?.visibilityM, thunderCue + demoThunderCue,isNight=snapshot?.isDay==false)
     var nativeRadarOpen by remember {mutableStateOf(false)}
@@ -536,8 +551,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 modifier = Modifier.fillMaxSize()
                     .background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))),
                 beyondViewportPageCount = 0,
-                userScrollEnabled = !locationOpen && !settingsOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen
+                userScrollEnabled = !locationOpen && !settingsOpen && !settingsDetailOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen && !typhoonPageOpen && !earthquakePageOpen && !weatherAlarmOpen && !pushSettingsOpen && !lifestyleSettingsOpen && !nativeRadarOpen && !marineOpen && !skyOpen
             ) { page ->
+            key(page,tabResetEpochs[page]) {
             when (page) {
             0 -> {
                 // Each Pager item MUST have exactly one layout root. The former
@@ -583,14 +599,18 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         .verticalScroll(weatherScrollState,overscrollEffect=null)
                         .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=176.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Image(painterResource(R.drawable.brand_symbol),"thinn-khì",Modifier.size(34.dp))
-                    Spacer(Modifier.width(10.dp))
                     Row(Modifier.weight(1f).heightIn(min=54.dp).clip(RoundedCornerShape(999.dp))
                         .background(White.copy(alpha=.12f)).border(1.dp,White.copy(alpha=.32f),RoundedCornerShape(999.dp))
                         .clickable {locationOpen=true}.padding(horizontal=18.dp,vertical=13.dp),verticalAlignment=Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Search,"搜尋城市",tint=White,modifier=Modifier.size(22.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text("搜尋城市、鄉鎮或地點",color=White.copy(alpha=.88f),fontSize=16.sp,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text("搜尋城市、鄉鎮或地點",color=White.copy(alpha=.95f),fontSize=15.sp,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(horizontalAlignment=Alignment.CenterHorizontally) {
+                        Image(painterResource(R.drawable.brand_symbol),"thinn-khì 標誌",Modifier.size(34.dp))
+                        Spacer(Modifier.height(3.dp))
+                        Text("thinn-khì",color=White,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                     }
                 }
                 androidx.compose.animation.AnimatedVisibility(
@@ -650,6 +670,19 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         isNight=!snapshot.isDay,
                         rainProbability=snapshot.nextHourRainProbabilityPct
                     )
+                    val sourceTime=snapshot.observedAt.atZone(runCatching{ZoneId.of(snapshot.timeZoneId?:"Asia/Taipei")}.getOrDefault(ZoneId.systemDefault())).format(DateTimeFormatter.ofPattern("HH:mm"))
+                    Text(if(snapshot.observationStation!=null) "${snapshot.observationStation}站實測 · 距離 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} km · $sourceTime  ⓘ"
+                        else "Open-Meteo 多模式預報 · $sourceTime  ⓘ",
+                        color=White.copy(alpha=.95f),fontSize=14.sp,textAlign=TextAlign.Center,
+                        modifier=Modifier.fillMaxWidth().clickable {
+                            details="天氣資料依據" to buildString {
+                                append("目前氣溫：${snapshot.temperatureC}°C\n")
+                                snapshot.observationStation?.let{append("附近實測：${it}站，距離約 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} 公里\n")}
+                                append("觀測／模式時間：$sourceTime\n")
+                                append("體感估算：${snapshot.feelsLikeMethod?:"氣象模式"}\n\n")
+                                append("未來預報：Open-Meteo 多模式預報。預報有不確定性，地形、日照、活動與每人的冷熱感受也會影響體感。")
+                            }
+                        }.padding(vertical=9.dp))
                 } else if(state.loading) {
                     Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=White,modifier=Modifier.align(Alignment.CenterHorizontally))
                 } else {
@@ -900,7 +933,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         color=Color(0xFFFFE4C6),fontSize=15.sp,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                 }
                 Spacer(Modifier.height(22.dp))
-                Text("數據提供：Open-Meteo.com  ·  依其授權條款使用",color=TextSoft,fontSize=14.sp,
+                Text(if(snapshot?.observationStation!=null)"觀測：中央氣象署 · 預報：Open-Meteo" else "預報：Open-Meteo.com · 依其授權條款使用",color=TextSoft,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
                 Text("天氣是預測資訊，請以當地官方警報為準。",color=TextSoft,fontSize=14.sp,
@@ -920,7 +953,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onTasks = { tasksOpen = true },
                 onWeatherAlarms = { weatherAlarmOpen = true },
                 onTyphoons = { typhoonPageOpen = true },
-                onRadar = {nativeRadarOpen=true})
+                onRadar = {nativeRadarOpen=true},
+                onMarine={marineOpen=true},onSky={skyOpen=true})
             3 -> AppGlassSettingsPage(
                 appearance = appearance,
                 onAppearance = { appearance = it },
@@ -940,6 +974,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onTyphoons = { typhoonPageOpen = true },
                 onDetailVisibility = {settingsDetailOpen=it})
             } // when(page)
+            } // destination root identity
             } // HorizontalPager
             } // page capture; foreground remains a normal Compose layout
         if(nativeRadarOpen) io.atmos.weather.ui.RadarHistoryDialog(onClose={nativeRadarOpen=false},latitude=state.city.coordinate.latitude,longitude=state.city.coordinate.longitude)
@@ -948,7 +983,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             onQuery=viewModel::search,
             onSelect={ viewModel.addSavedCity(it);viewModel.onIntent(WeatherIntent.SelectCity(it));locationOpen=false },
             onRemove=viewModel::removeSavedCity,onClose={locationOpen=false})
-        if (settingsOpen) {
+        io.atmos.weather.ui.MainDetailLayer(settingsOpen,{settingsOpen=false}) {
             val preferencePalette=androidx.compose.material3.MaterialTheme.colorScheme
             val White=preferencePalette.onSurface
             val TextSoft=preferencePalette.onSurfaceVariant
@@ -1103,9 +1138,17 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     soundOn=it;settingsPrefs.edit().putBoolean("sound_enabled",it).apply()
                 }
                 GlassTrackingSlider("環境音量",soundVolume) {
-                    soundVolume=it;settingsPrefs.edit().putFloat("sound_volume",it).apply()
+                    soundVolume=it
+                    if(it>0)soundOn=true
+                    settingsPrefs.edit().putFloat("sound_volume",it).putBoolean("sound_enabled",soundOn).apply()
                 }
-                Text("僅在 App 前景播放；可調整音量或隨時關閉。",color=TextSoft,fontSize=14.sp)
+                Text(ambientPlayback.value.message,color=White,fontSize=14.sp)
+                OutlinedButton(onClick={soundPreviewActive=!soundPreviewActive},modifier=Modifier.fillMaxWidth()) {
+                    Icon(if(soundPreviewActive)Icons.Rounded.Stop else Icons.Rounded.PlayArrow,null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if(soundPreviewActive)"停止試聽" else "試聽目前天氣音效 · 8 秒")
+                }
+                Text("僅在 App 前景播放；媒體音量、音訊焦點與系統音訊設定會一併生效。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(22.dp))
                 HorizontalDivider(color=White.copy(alpha=.13f))
                 Spacer(Modifier.height(20.dp))
@@ -1158,8 +1201,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
             }
         }
-        if (pushSettingsOpen) io.atmos.weather.push.SeismicPushSettingsPage(onClose={pushSettingsOpen=false})
-        if (lifestyleSettingsOpen) LifestyleAiSettingsPage(onClose={lifestyleSettingsOpen=false})
+        io.atmos.weather.ui.MainDetailLayer(pushSettingsOpen,{pushSettingsOpen=false}) {io.atmos.weather.push.SeismicPushSettingsPage(onClose={pushSettingsOpen=false})}
+        io.atmos.weather.ui.MainDetailLayer(lifestyleSettingsOpen,{lifestyleSettingsOpen=false}) {LifestyleAiSettingsPage(onClose={lifestyleSettingsOpen=false})}
         if (showLifestyleDetails && snapshot != null) {
             ModalBottomSheet(onDismissRequest={showLifestyleDetails=false}) {
                 Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
@@ -1180,25 +1223,43 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
             }
         }
-        if (diagnosticsOpen) SettingsDiagnosticsPage(onClose={diagnosticsOpen=false})
-        if (briefingOpen) WeatherBriefingSettingsPage(onClose={briefingOpen=false})
-        if (tasksOpen) io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})
-        if (weatherAlarmOpen) io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})
-        if (typhoonPageOpen) io.atmos.weather.typhoon.TyphoonCenterPage(
+        io.atmos.weather.ui.MainDetailLayer(diagnosticsOpen,{diagnosticsOpen=false}) {SettingsDiagnosticsPage(onClose={diagnosticsOpen=false})}
+        io.atmos.weather.ui.MainDetailLayer(briefingOpen,{briefingOpen=false}) {WeatherBriefingSettingsPage(onClose={briefingOpen=false})}
+        io.atmos.weather.ui.MainDetailLayer(tasksOpen,{tasksOpen=false}) {io.atmos.weather.task.TaskCenterPage(onClose={tasksOpen=false})}
+        io.atmos.weather.ui.MainDetailLayer(weatherAlarmOpen,{weatherAlarmOpen=false}) {io.atmos.weather.alarm.WeatherAlarmPage(onClose={weatherAlarmOpen=false})}
+        io.atmos.weather.ui.MainDetailLayer(typhoonPageOpen,{typhoonPageOpen=false}) { io.atmos.weather.typhoon.TyphoonCenterPage(
             warnings=state.cwaWarnings,onClose={typhoonPageOpen=false},
             initialBackup=gdacsCyclones, primaryUnavailable=typhoonPrimaryUnavailable,
             currentLat=state.city.coordinate.latitude,currentLon=state.city.coordinate.longitude,
-            currentName=state.city.name)
-        if (updatePageOpen) {
+            currentName=state.city.name) }
+        io.atmos.weather.ui.MainDetailLayer(updatePageOpen,{updatePageOpen=false}) {
             AppUpdatePage(onClose={updatePageOpen=false})
         }
-        if (earthquakePageOpen) {
+        io.atmos.weather.ui.MainDetailLayer(earthquakePageOpen,{earthquakePageOpen=false}) {
             EarthquakeCenterPage(onClose={earthquakePageOpen=false})
         }
-        if(!settingsDetailOpen && !settingsOpen && !updatePageOpen && !weatherAlarmOpen) CompositionLocalProvider(
+        io.atmos.weather.ui.MainDetailLayer(marineOpen,{marineOpen=false}) {
+            io.atmos.weather.ocean.MarinePage(state.city){marineOpen=false}
+        }
+        io.atmos.weather.ui.MainDetailLayer(skyOpen,{skyOpen=false}) {
+            io.atmos.weather.sky.SkyPlannerPage(state.city,snapshot?.timeZoneId){skyOpen=false}
+        }
+        CompositionLocalProvider(
             io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) { AppGlassNavigation(
-            selected = mainPager.targetPage,
-            onSelect = { settingsOpen=false; showMainTab(it) },
+            selected = dockRequestedTab ?: mainPager.targetPage,
+            onSelect = {requested ->
+                val leavingDetail=typhoonPageOpen||earthquakePageOpen||tasksOpen||briefingOpen||
+                    diagnosticsOpen||pushSettingsOpen||lifestyleSettingsOpen||settingsOpen||settingsDetailOpen||weatherAlarmOpen||updatePageOpen||locationOpen||nativeRadarOpen||marineOpen||skyOpen
+                marineOpen=false;skyOpen=false
+                typhoonPageOpen=false;earthquakePageOpen=false;tasksOpen=false;briefingOpen=false
+                diagnosticsOpen=false;pushSettingsOpen=false;lifestyleSettingsOpen=false;settingsOpen=false
+                locationOpen=false;weatherAlarmOpen=false;updatePageOpen=false;nativeRadarOpen=false
+                showLifestyleDetails=false;details=null;settingsDetailOpen=false
+                val target=requested.coerceIn(0,3)
+                dockRequestedTab=target
+                setOf(mainPager.currentPage,target).forEach{tab->tabResetEpochs[tab]=tabResetEpochs[tab]+1}
+                showMainTab(target,if(leavingDetail&&!reducedMotion)160L else 0L)
+            },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp)) }
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },

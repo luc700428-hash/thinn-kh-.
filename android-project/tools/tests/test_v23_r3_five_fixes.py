@@ -42,7 +42,8 @@ class R3FiveUserReports(unittest.TestCase):
 
     def test_station_alert_is_opt_in_but_really_connected(self):
         s=source('earthquake/ExpTechSeismicService.kt')
-        self.assertIn('maybeNotifyStation(stations,time)',s)
+        self.assertIn('maybeNotifyStation(current,time)',s)
+        self.assertIn('StationFreshness.state(it,time)==StationViewState.LIVE',s)
         self.assertIn('stationGate.observe(',s)
         gate=source('earthquake/StationDetectionGate.kt')
         self.assertIn('streak<3',gate)

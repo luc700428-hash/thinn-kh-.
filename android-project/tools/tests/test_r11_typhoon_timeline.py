@@ -16,10 +16,13 @@ class R11UITests(unittest.TestCase):
             self.assertIn(token,s)
     def test_scrubbing_visual_without_material_widgets(self):
         s=(JAVA/'typhoon/StormTimelineOverlay.kt').read_text()
-        self.assertIn('detectDragGestures',s)
-        self.assertIn('BasicText',s)
+        self.assertIn('GlassSlider(',s)
+        self.assertIn('AppText(',s)
         self.assertIn('尚未提供',s)
-        self.assertNotIn('material3',s)
+        self.assertIn('MaterialTheme.colorScheme',s)
+        self.assertIn('GlassSurface(',s)
+        self.assertNotIn('SliderDefaults',s)
+        self.assertNotIn('TabRow(',s)
     def test_no_auto_popup_and_checks_at_20min(self):
         s=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
         self.assertIn('TaiwanStormRelevance.isMovingTowardTaiwan',s)

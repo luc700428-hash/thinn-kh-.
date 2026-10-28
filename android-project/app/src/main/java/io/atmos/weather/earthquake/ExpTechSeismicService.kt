@@ -146,7 +146,7 @@ class ExpTechSeismicService : Service() {
                 if (!supervisor.isActive) break
                 setStatus(type,"連線中斷，等待重連")
             }
-            delay(minOf(30_000L,1500L * (1L shl minOf(attempt/2,4))))
+            delay(if(type=="RTS")minOf(5_000L,1000L*(1L shl minOf(attempt/2,3))) else minOf(30_000L,1500L*(1L shl minOf(attempt/2,4))))
         }
     }
     private fun setStatus(type:String,value:String) {
@@ -163,7 +163,7 @@ class ExpTechSeismicService : Service() {
     private fun stream(host:String,path:String,type:String) {
         val connection=(URL("https://$host$path").openConnection() as HttpURLConnection).apply {
             connectTimeout=10_000
-            readTimeout=95_000 // EEW is quiet between earthquakes; a timeout triggers reconnect.
+            readTimeout=if(type=="RTS")12_000 else 95_000 // Retry a silent station stream before the 20s expiry.
             setRequestProperty("Accept","text/event-stream")
             setRequestProperty("Cache-Control","no-cache")
             setRequestProperty("User-Agent","thinn-khi/21.0 (+Android; seismic public feed)")
@@ -183,7 +183,7 @@ class ExpTechSeismicService : Service() {
                     if(line.isEmpty()) {
                         if (lines.isNotEmpty()) {
                             val raw=decodePayload(event,lines.toString())
-                            if (raw!=null && (type=="EEW" && event in setOf("g","message") || type=="RTS" && event in setOf("trem.rts.v1","g"))) handleFrame(type,raw)
+                            if (raw!=null && (type=="EEW" && event in setOf("g","message") || type=="RTS" && event in setOf("trem.rts.v1","g","message"))) handleFrame(type,raw)
                         }
                         lines.setLength(0);event="message"
                     } else if(line.startsWith("event:")) event=line.substringAfter(':').trim()
@@ -195,7 +195,8 @@ class ExpTechSeismicService : Service() {
         } finally { activeConnections.remove(connection);connection.disconnect() }
     }
     private fun decodePayload(event:String,data:String):String? = try {
-        if (event=="g" || event=="trem.rts.v1") {
+        if(data.trimStart().startsWith("{")||data.trimStart().startsWith("["))data
+        else if (event=="g" || event=="trem.rts.v1") {
             val packed=Base64.decode(data,Base64.DEFAULT)
             GZIPInputStream(packed.inputStream()).use { stream ->
                 val buffer=ByteArray(8192)
@@ -212,14 +213,20 @@ class ExpTechSeismicService : Service() {
     private fun handleFrame(type:String,raw:String) {
         val time=System.currentTimeMillis()
         if(type=="RTS") {
-            val stations = SeismicStationData.parse(raw, stationMetadata)
+            val stations=SeismicStationData.parse(raw,stationMetadata,receivedAtMs=time)
             // Empty/unlocatable frames are not proof of a new valid observation.
             // Keep the last verified snapshot for labelled historical display;
             // importantly, do NOT advance lastRtsAt or send a detection notification.
             if (stations.any { it.intensity != null || it.accelerationGal != null }) {
-                live.update { it.copy(lastRtsAt=time,
-                    stationCount=ExpTechRealtimeParser.stationCount(raw),stations=stations.take(1500)) }
-                maybeNotifyStation(stations,time)
+                val current=stations.filter{StationFreshness.state(it,time)==StationViewState.LIVE}
+                val newest=stations.mapNotNull{it.observedAtMs}.filter{it<=time+2_000L}.maxOrNull()
+                live.update {it.copy(lastRtsAt=if(newest!=null)maxOf(it.lastRtsAt,newest) else it.lastRtsAt,
+                    stationCount=ExpTechRealtimeParser.stationCount(raw),stations=StationFreshness.merge(it.stations,stations))}
+                if(current.isNotEmpty())maybeNotifyStation(current,time)
+            } else if(stations.any{it.availability!=StationAvailability.UNKNOWN}) {
+                // Explicit provider maintenance/offline is useful even without a magnitude;
+                // it must not renew the observation timestamp or trigger an alert.
+                live.update{it.copy(stations=StationFreshness.merge(it.stations,stations))}
             }
             return
         }

@@ -38,10 +38,10 @@ data class WidgetLayoutPlan(
             val icon=if(strip)min(46f,ih) else min(if(w>=260f)80f else 68f,ih*.40f)
             val hero=if(strip)min(32f*scale,min(ih*.54f,iw*.27f)) else min(if(h<210f)44f else min(64f,58f*scale),min(iw*.42f,ih*.40f))
             val clock=min(64f*scale,min(iw/3.05f,ih*.38f))
-            val dial=min(iw,ih-city*1.25f-body*1.3f-12f-(if(h>=240f)26f else 0f)).coerceAtLeast(24f)
+            val dial=min(iw,ih-city*1.5f-body*1.5f-14f-(if(h>=240f)26f else 0f)).coerceAtLeast(24f)
             return WidgetLayoutPlan(w,h,pad,mode,hero,city,body,caption,icon,clock,dial,
                 (iw/(48f*min(scale,1.25f))).toInt().coerceIn(1,6),if(h>=280f)4 else if(h>=180f)2 else 0,
-                h>=240f&&ih>=200f,h>=172f,h>=350f,sys)
+                h>=240f&&ih>=200f,h>=172f,h>=420f,sys)
         }
     }
 }

@@ -26,8 +26,10 @@ class UnifiedWiringTests(unittest.TestCase):
                           (SRC/'earthquake'/f).read_text())
     def test_source_aligned_storm_and_weatherlab(self):
         s=(SRC/'typhoon/TyphoonCenterPage.kt').read_text()
-        self.assertIn('sameStormConfirmed',s)
-        self.assertIn('V25StormComparison.compare(',s)
+        self.assertNotIn('sameStormConfirmed',s)
+        self.assertNotIn('V25StormComparison.compare(',s)
+        self.assertNotIn('weatherLabPicker',s)
+        self.assertIn('OfficialTyphoonTrack.extract(data)',s)
         self.assertIn('rememberTaiwanVectorAtlas()',s)
     def test_widget_mood_from_actual_weather_and_radar_reload(self):
         self.assertIn('OpticalWidgetData.read(',

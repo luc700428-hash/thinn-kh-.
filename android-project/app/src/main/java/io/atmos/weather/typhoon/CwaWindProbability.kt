@@ -26,9 +26,10 @@ object CwaWindProbability {
 
     data class Coordinate(val lon:Double,val lat:Double)
     data class Region(val label:String,val outer:List<Coordinate>,val holes:List<List<Coordinate>>)
-    data class Snapshot(val regions:List<Region>,val fetchedAt:Long,val sourceUpdatedAt:Long?) {
+    data class Snapshot(val regions:List<Region>,val fetchedAt:Long,val sourceUpdatedAt:Long?,val cityTable:CwaWindCityTable.Snapshot?=null) {
         /** Returns official interval verbatim, never an invented point probability. */
-        fun at(lon:Double,lat:Double):String? {
+        fun at(lon:Double,lat:Double,place:String?=null):String? {
+            cityTable?.value(lon,lat,place)?.let{return it}
             if(!lon.isFinite() || !lat.isFinite()) return null
             val contained=regions.filter { polygonContains(it.outer,lon,lat) &&
                 it.holes.none { hole -> polygonContains(hole,lon,lat) } }
@@ -46,12 +47,17 @@ object CwaWindProbability {
         return previous
     }
 
-    suspend fun read():Snapshot? = withContext(Dispatchers.IO) {
+    suspend fun read(forceRefresh:Boolean=false):Snapshot? = withContext(Dispatchers.IO) {
         val now=System.currentTimeMillis()
-        if(now-lastAttempt<CACHE_MS) return@withContext cached?.takeIf { now-it.fetchedAt<60L*60_000L }
+        if(!forceRefresh&&now-lastAttempt in 0L until CACHE_MS) return@withContext validCache(now)
         lastAttempt=now
         var conn:HttpsURLConnection?=null
         try {
+            val cities=try {CwaWindCityTable.read(now)}
+                catch(cancel:CancellationException){throw cancel}
+                catch(_:Exception){null}
+            if(cities!=null)return@withContext Snapshot(emptyList(),now,cities.issuedAt,cities)
+                .also {cached=it;fetchState=FetchState.CURRENT}
             conn=URL(URL_KMZ).openConnection() as HttpsURLConnection
             conn.connectTimeout=10_000; conn.readTimeout=12_000
             conn.instanceFollowRedirects=false
@@ -79,7 +85,7 @@ object CwaWindProbability {
         finally { conn?.disconnect() }
     }
 
-    private fun validCache(now:Long)=cached?.takeIf { now-it.fetchedAt<60L*60_000L }
+    private fun validCache(now:Long)=cached?.takeIf { now-it.fetchedAt in 0L until 60L*60_000L }
 
     internal fun parseKmz(bytes:ByteArray):List<Region> {
         if(bytes.size>MAX_DOWNLOAD) return emptyList()

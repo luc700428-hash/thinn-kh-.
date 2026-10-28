@@ -45,24 +45,14 @@ fun LifestyleAdviceCard(weather: WeatherSnapshot, stale: Boolean, onOpenSettings
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("✦ 智慧生活穿搭", fontSize = 17.sp, fontWeight = FontWeight.Bold,
             color = textColor, modifier = Modifier.weight(1f))
-        TextButton(onClick = onOpenSettings) { Text("AI 設定", color = Color(0xFFE2F4FF), fontSize=14.sp) }
+        TextButton(onClick = onOpenSettings) { Text("AI 設定", color = MaterialTheme.colorScheme.primary, fontSize=14.sp) }
     }
-    Text(plan.headline, color = Color(0xFFFFE4A5), fontSize=16.sp, fontWeight = FontWeight.SemiBold)
+    Text(plan.headline, color = MaterialTheme.colorScheme.primary, fontSize=16.sp, fontWeight = FontWeight.SemiBold)
     Spacer(Modifier.height(12.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        OutingMode.entries.forEach { choice ->
-            val selected = choice == mode
-            Box(Modifier.weight(1f).heightIn(min = 48.dp)
-                .background(if (selected) Color.White.copy(alpha = .30f) else Color.White.copy(alpha = .09f), RoundedCornerShape(14.dp))
-                .border(1.dp, Color.White.copy(alpha = if (selected) .73f else .18f), RoundedCornerShape(14.dp))
-                .clickable {
-                    mode = choice
-                    context.getSharedPreferences("thinn_lifestyle_ai", 0).edit().putString("mode", choice.name).apply()
-                }, contentAlignment = Alignment.Center) {
-                Text(choice.title, color = textColor, fontSize=14.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-            }
-        }
-    }
+    io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,{index->
+        mode=OutingMode.entries[index]
+        context.getSharedPreferences("thinn_lifestyle_ai",0).edit().putString("mode",mode.name).apply()
+    })
     Spacer(Modifier.height(12.dp))
     AdviceLine("上衣", plan.top)
     AdviceLine("褲子", plan.bottoms)
@@ -70,12 +60,15 @@ fun LifestyleAdviceCard(weather: WeatherSnapshot, stale: Boolean, onOpenSettings
     AdviceLine("鞋子", plan.shoes)
     AdviceLine("雨具", plan.umbrella)
     Spacer(Modifier.height(8.dp))
-    Text(plan.reminder, color = Color(0xFFFFEAC9), fontSize=14.sp)
+    Text(plan.reminder,color=textColor,fontSize=14.sp)
+    plan.extraReminders.filter{it!=plan.reminder}.take(3).forEach {reminder->
+        Spacer(Modifier.height(7.dp));Text("• $reminder",color=textColor,fontSize=14.sp)
+    }
     Spacer(Modifier.height(9.dp))
     Text("判斷依據：${plan.evidence}", color = detailColor, fontSize=14.sp)
     if (!plan.weatherFresh) {
         Spacer(Modifier.height(8.dp))
-        Text("資料非即時，已停止呼叫 AI；請刷新天氣。", color = Color(0xFFFFE1AE), fontSize=14.sp)
+        Text("資料非即時，已停止呼叫 AI；請刷新天氣。", color = MaterialTheme.colorScheme.error, fontSize=14.sp)
     } else if (settings.isConfigured()) {
         Spacer(Modifier.height(9.dp))
         Button(onClick = {
@@ -99,13 +92,13 @@ fun LifestyleAdviceCard(weather: WeatherSnapshot, stale: Boolean, onOpenSettings
             fontSize=14.sp, fontWeight = FontWeight.SemiBold)
         Text(it, color = detailColor, fontSize=15.sp)
     }
-    aiError?.let { Text("AI 連線：$it；仍可使用上方穿搭建議。", color=Color(0xFFFFD9B3), fontSize=14.sp) }
+    aiError?.let { Text("AI 連線：$it；仍可使用上方穿搭建議。", color=MaterialTheme.colorScheme.error, fontSize=14.sp) }
 }
 
 @Composable
 private fun AdviceLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical=3.dp), verticalAlignment=Alignment.Top) {
-        Text(label, color = Color(0xFFD6EEFF), fontWeight=FontWeight.Bold,
+        Text(label, color = MaterialTheme.colorScheme.primary, fontWeight=FontWeight.Bold,
             modifier=Modifier.width(42.dp), fontSize=15.sp)
         Text(value, color = textColor, modifier=Modifier.weight(1f), fontSize=15.sp)
     }

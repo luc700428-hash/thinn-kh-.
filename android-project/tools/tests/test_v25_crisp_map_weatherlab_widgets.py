@@ -7,7 +7,8 @@ class CrispMapGoogleWidgets(unittest.TestCase):
         s=(B/'typhoon/TyphoonCenterPage.kt').read_text()
         fragment=s[s.index('private fun OfficialTrackPlot'):]
         self.assertIn('rememberTaiwanVectorAtlas()',fragment)
-        self.assertIn('atlas.draw(this)',fragment)
+        self.assertIn('taiwan?.draw(this)',fragment)
+        self.assertIn('regional?.draw(this,view,dark)',fragment)
         self.assertIn('coerceIn(1f,32f)',fragment)
         self.assertIn('mapPan.x/scale',fragment)
         self.assertNotIn('graphicsLayer',fragment)
@@ -15,9 +16,10 @@ class CrispMapGoogleWidgets(unittest.TestCase):
     def test_official_source_does_not_change(self):
         s=(B/'typhoon/TyphoonCenterPage.kt').read_text()
         self.assertIn('CwaOfficialGateway.read(context,"W-C0034-005")',s)
-        self.assertIn('verifiedTracks',s)
-        self.assertIn('開啟 Weather Lab',s)
-        self.assertIn('weatherLabPicker.launch',s)
+        self.assertIn('VerifiedTrackPlanner.verifiedForecastSegments',s)
+        self.assertNotIn('開啟 Weather Lab',s)
+        self.assertNotIn('weatherLabPicker.launch',s)
+        self.assertNotIn('Intent.ACTION_VIEW',s)
         self.assertNotIn('nextOfficialStormPrompt',s)
     def test_google_import_is_local_and_bounded(self):
         s=(B/'typhoon/WeatherLabLocalCsv.kt').read_text()

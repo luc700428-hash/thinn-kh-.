@@ -4,13 +4,12 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[2]/'app/src/main/java/io/atmos/weather'
 class V25StormWidgetIntegration(unittest.TestCase):
-    def test_google_data_private_persistent_and_consent(self):
+    def test_unintegrated_google_import_and_external_ui_are_removed(self):
         src=(ROOT/'typhoon/TyphoonCenterPage.kt').read_text()
-        for token in ('openFileOutput("weatherlab_last.csv"',
-                      'openFileInput("weatherlab_last.csv")',
-                      'sameStormConfirmed', 'V25StormComparison.compare(',
-                      'deleteFile("weatherlab_last.csv")'):
-            self.assertIn(token,src)
+        for token in ('weatherlab_last.csv','sameStormConfirmed','V25StormComparison.compare(',
+                      'weatherLabPicker','開啟 Weather Lab','Intent.ACTION_VIEW'):
+            self.assertNotIn(token,src)
+        self.assertIn('OfficialTyphoonTrack.extract(data)',src)
     def test_no_fabricated_track_or_fake_model_certainty(self):
         src=(ROOT/'typhoon/V25StormComparison.kt').read_text()
         self.assertIn('maxMinutes: Long = 90L',src)

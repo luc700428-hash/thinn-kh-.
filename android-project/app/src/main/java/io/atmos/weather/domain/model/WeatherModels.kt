@@ -15,7 +15,8 @@ data class HourlyWeather(
     val freezingRainProbabilityPct: Int? = null,
     val humidityPct: Int? = null,
     val windKmh: Double? = null,
-    val weatherCode: Int? = null
+    val weatherCode: Int? = null,
+    val feelsLikeC: Double? = null
 )
 data class WeatherSnapshot(
     val city: WeatherCity,
@@ -50,12 +51,17 @@ data class WeatherSnapshot(
     val snowfallCm: Double? = null,
     val snowDepthM: Double? = null,
     val windGustKmh: Double? = null,
-    val timeZoneId: String? = null
+    val timeZoneId: String? = null,
+    val observationStation: String? = null,
+    val observationDistanceKm: Double? = null,
+    val observationDescription: String? = null,
+    val feelsLikeMethod: String? = null,
+    val forecastReferenceAt: Instant? = null
 ) {
     val nextHourRainProbabilityPct: Int?
-        get() = hourly.firstOrNull { !it.at.isBefore(observedAt) }?.precipitationProbabilityPct
+        get() = hourly.firstOrNull { !it.at.isBefore(forecastReferenceAt ?: observedAt) }?.precipitationProbabilityPct
     val nextHours: List<HourlyWeather>
-        get() = hourly.filter { !it.at.isBefore(observedAt) }.take(24)
+        get() = hourly.filter { !it.at.isBefore(forecastReferenceAt ?: observedAt) }.take(24)
 }
 object SampleCities {
     val all = listOf(

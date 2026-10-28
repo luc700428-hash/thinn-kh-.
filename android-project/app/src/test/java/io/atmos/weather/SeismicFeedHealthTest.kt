@@ -18,14 +18,14 @@ class SeismicFeedHealthTest {
 
     @Test fun staleReadingsAreNotLiveEvenIfTransportIsConnected() {
         assertEquals(SeismicFeedState.STALE,
-            SeismicFeedHealth.rts(true, "即時串流已連線 · test", 1_000, 17_000))
+            SeismicFeedHealth.rts(true, "即時串流已連線 · test", 1_000, 21_001))
     }
 
-    @Test fun dataFreshAtFifteenSecondsButNotAfter() {
+    @Test fun dataFreshAtTwentySecondsButNotAfter() {
         assertEquals(SeismicFeedState.LIVE,
-            SeismicFeedHealth.rts(true, "即時串流已連線 · test", 1_000, 16_000))
+            SeismicFeedHealth.rts(true, "即時串流已連線 · test", 1_000, 21_000))
         assertEquals(SeismicFeedState.STALE,
-            SeismicFeedHealth.rts(true, "即時串流已連線 · test", 1_000, 16_001))
+            SeismicFeedHealth.rts(true, "即時串流已連線 · test", 1_000, 21_001))
     }
 
     @Test fun connectionStatusIsNotConfusedWithAnEewBulletin() {

@@ -42,7 +42,9 @@ class CitiesRadarBuddy(unittest.TestCase):
  def test_embedded_update_notes_match_release_notes(self):
   self.assertEqual((ROOT/'tools/stable_maintenance_notes.md').read_bytes(),(ASSETS/'current_release_notes.md').read_bytes())
   text=(ASSETS/'current_release_notes.md').read_text().split('<!-- THINN_INCREMENTAL_CHANGES -->',1)[1].split('<!-- END_THINN_INCREMENTAL_CHANGES -->',1)[0]
-  self.assertIn('512',text);self.assertIn('144Hz',text);self.assertIn('黑色模式',text)
+  for feature in ('Q 版','Dock','海象','日月','20 秒','144Hz'):self.assertIn(feature,text)
+  history=(ASSETS/'current_release_notes.md').read_text()
+  self.assertIn('512',history);self.assertIn('黑色模式',history)
  def test_q_buddy_registered_and_obeys_power_and_motion_settings(self):
   manifest=(ROOT/'app/src/main/AndroidManifest.xml').read_text();s=(SRC/'widgets/AtmosWidgets.kt').read_text()
   self.assertIn('WeatherBuddyWidgetReceiver',manifest)

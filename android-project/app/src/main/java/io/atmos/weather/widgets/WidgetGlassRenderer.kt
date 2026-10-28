@@ -10,8 +10,11 @@ object WidgetGlassRenderer {
   3->Palette(0xFFF7FAFF.toInt(),0xFFDCE7F2.toInt(),0xFF16253A.toInt(),0xFF4A586B.toInt(),0xFF0064C8.toInt())
   else->Palette(0xFF705342.toInt(),0xFF302725.toInt(),Color.WHITE,0xFFF0E2D5.toInt(),0xFFFFD39A.toInt())
  }
- fun background(width:Int,height:Int,index:Int,edge:Float,opacity:Float,alert:Boolean=false):Bitmap{
-  val w=width.coerceIn(1,640);val h=height.coerceIn(1,640);val b=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);val c=Canvas(b);val p=Paint(Paint.ANTI_ALIAS_FLAG);val palette=palette(index,alert);val radius=minOf(w,h)*.16f
+ fun background(width:Int,height:Int,index:Int,edge:Float,opacity:Float,alert:Boolean=false,cornerRadiusPx:Float=minOf(width,height)*.16f):Bitmap{
+  val scale=minOf(1f,640f/width.coerceAtLeast(1),640f/height.coerceAtLeast(1))
+  val w=(width*scale).toInt().coerceIn(1,640);val h=(height*scale).toInt().coerceIn(1,640)
+  val b=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);val c=Canvas(b);val p=Paint(Paint.ANTI_ALIAS_FLAG);val palette=palette(index,alert)
+  val radius=(cornerRadiusPx.takeIf{it.isFinite()}?:28f).coerceAtLeast(0f)*scale
   val rect=RectF(1f,1f,w-1f,h-1f);p.shader=LinearGradient(0f,0f,w.toFloat(),h.toFloat(),palette.top,palette.bottom,Shader.TileMode.CLAMP);p.alpha=(215+40*opacity.coerceIn(0f,1f)).toInt();c.drawRoundRect(rect,radius,radius,p)
   p.alpha=255;p.shader=RadialGradient(w*.22f,0f,w*.9f,intArrayOf(0x45FFFFFF,0x04FFFFFF,Color.TRANSPARENT),null,Shader.TileMode.CLAMP);c.drawRoundRect(rect,radius,radius,p)
   c.save();c.clipPath(Path().apply {addRoundRect(rect,radius,radius,Path.Direction.CW)})

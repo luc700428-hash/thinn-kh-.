@@ -41,7 +41,8 @@ class NextIntegrationReleaseContract(unittest.TestCase):
         self.assertIn('NextWeatherBackdrop(',src)
         self.assertIn('HorizontalPager(',src)
         self.assertIn('AppGlassNavigation(',src)
-        self.assertIn('settingsPrefs.getBoolean("sound_enabled", false)',src)
+        self.assertIn('settingsPrefs.getBoolean("sound_enabled",true)',src)
+        self.assertIn('if(!settingsPrefs.contains("sound_enabled"))',src)
 
     def test_main_dock_has_real_navigation_and_fixed_order(self):
         nav=(BASE/'ui/GlassNavigation.kt').read_text(encoding='utf-8')

@@ -101,7 +101,7 @@ fun NextReorderableToolDock(
     LaunchedEffect(selectedId) {displayId=selectedId}
     val density = LocalDensity.current
     val lightTheme=MaterialTheme.colorScheme.background.red > .5f
-    val activeInk=if(lightTheme) Color(0xFF007AFF) else Color(0xFF0A84FF)
+    val activeInk=if(lightTheme) Color(0xFF0059B9) else Color(0xFF0A84FF)
     val inactiveInk=if(lightTheme) Color(0xFF2C2C2E) else Color(0xFFEBEBF0)
     val dockInsetPx = with(density) { 6.dp.toPx() }
     val currentIndex = visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)

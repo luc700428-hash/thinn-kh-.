@@ -143,8 +143,15 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
             io.atmos.weather.ui.IOSSettingsHeader("地震監測設定",onClose)
             Spacer(Modifier.height(8.dp))
-            io.atmos.weather.ui.IOSSegmentedControl(listOf("一般","警報","音效","關於"),tab,
-                onSelect={tab=it;SeismicPreviewPlayer.stop()},modifier=Modifier.padding(horizontal=16.dp))
+            val monitorTabs=listOf("一般","警報","音效","關於")
+            io.atmos.weather.next.NextReorderableToolDock(
+                actions=monitorTabs.mapIndexed {i,title->io.atmos.weather.next.NextToolAction(title,title,
+                    when(i){0->Icons.Rounded.Tune;1->Icons.Rounded.Warning;2->Icons.Rounded.VolumeUp;else->Icons.Rounded.Info})},
+                selectedId=monitorTabs[tab],onSelected={id->tab=monitorTabs.indexOf(id).coerceAtLeast(0);SeismicPreviewPlayer.stop()},
+                onOrderChanged={},maxVisible=4,allowReorder=false,
+                reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
+                reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency(),
+                modifier=Modifier.padding(horizontal=16.dp).fillMaxWidth().height(58.dp))
             Spacer(Modifier.height(14.dp))
             Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)) {
                 when(tab) {

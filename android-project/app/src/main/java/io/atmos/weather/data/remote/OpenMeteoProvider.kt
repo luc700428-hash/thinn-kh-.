@@ -13,7 +13,8 @@ import kotlinx.coroutines.CancellationException
 class OpenMeteoProvider(
     private val api: OpenMeteoApi,
     private val airQuality: OpenMeteoAirQualityApi,
-    private val clock: Clock = Clock.systemUTC()
+    private val clock:Clock=Clock.systemUTC(),
+    private val observations:CwaSurfaceObservations?=null
 ) : WeatherProvider {
     override val id = "open-meteo"
 
@@ -27,13 +28,15 @@ class OpenMeteoProvider(
             api.forecast(
                 city.coordinate.latitude, city.coordinate.longitude,
                 current = "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m,surface_pressure,uv_index,wind_direction_10m,visibility",
-                hourly = "temperature_2m,precipitation_probability,uv_index,relative_humidity_2m,wind_speed_10m,weather_code"
+                hourly = "temperature_2m,apparent_temperature,precipitation_probability,uv_index,relative_humidity_2m,wind_speed_10m,weather_code"
             )
         }
         val zone = ZoneId.of(response.timezone ?: "UTC")
         val current = requireNotNull(response.current) { "Missing current weather" }
         val now = requireNotNull(current.time) { "Missing observation timestamp" }.asInstant(zone)
-        val temp = requireNotNull(current.temperature) { "Missing temperature" }
+        val temp=requireNotNull(current.temperature?.takeIf{it.isFinite()&&it in -90.0..65.0}){"Missing temperature"}
+        check(response.currentUnits?.get("temperature_2m") in listOf(null,"°C")){"Unexpected temperature unit"}
+        check(java.time.Duration.between(now,clock.instant()).seconds in -120L..7200L){"Current forecast time is stale"}
         val times = response.hourly?.time.orEmpty()
         val series = times.mapIndexedNotNull { index, timestamp ->
             runCatching {
@@ -46,8 +49,9 @@ class OpenMeteoProvider(
                     freezingRainProbabilityPct = response.hourly?.freezingRainProbabilities?.getOrNull(index),
                     uvIndex = response.hourly?.uvIndices?.getOrNull(index),
                     humidityPct = response.hourly?.humidities?.getOrNull(index),
-                    windKmh = response.hourly?.winds?.getOrNull(index),
-                    weatherCode = response.hourly?.weatherCodes?.getOrNull(index)
+                    windKmh = windKmh(response.hourly?.winds?.getOrNull(index),response.hourlyUnits?.get("wind_speed_10m")),
+                    weatherCode = response.hourly?.weatherCodes?.getOrNull(index),
+                    feelsLikeC=response.hourly?.feelsLike?.getOrNull(index)?.takeIf{it.isFinite()}
                 )
             }.getOrNull()
         }
@@ -56,18 +60,31 @@ class OpenMeteoProvider(
             airQuality.currentAir(city.coordinate.latitude, city.coordinate.longitude).current
         } catch (cancel: CancellationException) { throw cancel }
           catch (_: Exception) { null }
+        val observed=observations?.nearest(city,response.elevation,clock.instant())
+        val description=observed?.description
+        val observedCode=description?.let {when {
+            "雷" in it->95;"雪" in it->71;"霧" in it->45
+            "毛毛" in it->51;"大雨" in it->65;"中雨" in it->63;"小雨" in it->61;"雨" in it->null
+            "陰" in it->3;"雲" in it->2;"晴" in it->0;else->null
+        }}
+        val observedCondition=description?.let {when {
+            "雷" in it->WeatherCondition.THUNDERSTORM;"雪" in it->WeatherCondition.SNOW
+            "雨" in it->WeatherCondition.RAIN;"霧" in it->WeatherCondition.FOG
+            "陰" in it->WeatherCondition.CLOUDY;"雲" in it->WeatherCondition.PARTLY_CLOUDY
+            "晴" in it->WeatherCondition.CLEAR;else->null
+        }}
         return WeatherSnapshot(
             city = city,
-            observedAt = now,
+            observedAt = observed?.at ?: now,
             fetchedAt = clock.instant(),
-            sourceId = id,
-            temperatureC = temp,
-            feelsLikeC = current.feelsLike,
-            humidityPct = current.humidity,
-            windKmh = current.wind,
-            pressureHpa = current.pressure,
+            sourceId = if(observed!=null)"cwa-observation+open-meteo" else id,
+            temperatureC = observed?.temperature ?: temp,
+            feelsLikeC = observed?.let{CwaSurfaceObservations.apparent(it.temperature,it.humidity,it.windMs)} ?: current.feelsLike?.takeIf{it.isFinite()},
+            humidityPct = observed?.humidity ?: current.humidity?.takeIf{it in 0..100},
+            windKmh = observed?.windMs?.times(3.6) ?: windKmh(current.wind,response.currentUnits?.get("wind_speed_10m")),
+            pressureHpa = observed?.pressure ?: current.pressure,
             condition = characterizeWeather(
-                conditionFromWmo(current.code), air?.dust, current.wind, current.visibility,
+                observedCondition ?: conditionFromWmo(current.code), air?.dust, observed?.windMs?.times(3.6) ?: windKmh(current.wind,response.currentUnits?.get("wind_speed_10m")), current.visibility,
                 air?.aerosolOpticalDepth
             ),
             isDay = current.isDay == 1,
@@ -77,8 +94,8 @@ class OpenMeteoProvider(
             maxTempC = response.daily?.highs?.firstOrNull(),
             minTempC = response.daily?.lows?.firstOrNull(),
             currentUv = current.uv,
-            weatherCode = current.code,
-            windDirectionDeg = current.windDirection,
+            weatherCode = if(observedCondition!=null)observedCode else current.code,
+            windDirectionDeg = observed?.direction ?: current.windDirection,
             visibilityM = current.visibility,
             usAqi = air?.usAqi,
             pm25 = air?.pm25,
@@ -91,12 +108,20 @@ class OpenMeteoProvider(
             airborneDust = air?.dust,
             snowfallCm = current.snowfall,
             snowDepthM = current.snowDepth,
-            windGustKmh = current.gusts,
-            timeZoneId = response.timezone
+            windGustKmh = windKmh(current.gusts,response.currentUnits?.get("wind_gusts_10m")),
+            timeZoneId = response.timezone,
+            observationStation=observed?.name,observationDistanceKm=observed?.distanceKm,
+            observationDescription=description,
+            feelsLikeMethod=if(observed!=null)"氣象署體感公式 · 附近測站實測溫濕度與風速" else "Open-Meteo 模式體感 · 風、濕度與輻射",
+            forecastReferenceAt=now
         )
     }
 }
 
+internal fun windKmh(value:Double?,unit:String?):Double? {
+    val x=value?.takeIf{it.isFinite()&&it>=0}?:return null
+    return when(unit){"m/s"->x*3.6;"mph"->x*1.609344;"kn"->x*1.852;"km/h",null->x;else->null}
+}
 private fun String.asInstant(zone: ZoneId): Instant = LocalDateTime.parse(this).atZone(zone).toInstant()
 
 /** Open-Meteo current weather_code uses WMO numeric codes. */

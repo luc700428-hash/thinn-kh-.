@@ -17,14 +17,17 @@ data class SeismicStation(
     val longitude: Double?,
     val intensity: Double?,
     val accelerationGal: Double?,
-    val availability: StationAvailability = StationAvailability.UNKNOWN
+    val availability: StationAvailability = StationAvailability.UNKNOWN,
+    val observedAtMs:Long?=null
 )
 
 object SeismicStationData {
     /** Provider can return a root map, nested keyed map, or array. Unknown frames stay empty. */
-    fun parse(raw: String, metadata: Map<String, SeismicStation> = emptyMap()): List<SeismicStation> {
+    fun parse(raw:String,metadata:Map<String,SeismicStation> = emptyMap(),receivedAtMs:Long?=null):List<SeismicStation> {
         val root = runCatching { if (raw.trimStart().startsWith("[")) JSONArray(raw) else JSONObject(raw) }.getOrNull()
             ?: return emptyList()
+        val envelope=root as? JSONObject
+        val frameTime=envelope?.let {o->listOf("ts","timestamp","time","updated").firstNotNullOfOrNull{ExpTechRealtimeParser.parseEpoch(o.opt(it))}}
         val seen = LinkedHashMap<String, SeismicStation>()
         fun number(o: JSONObject, vararg names: String): Double? = names.firstNotNullOfOrNull { key ->
             o.opt(key)?.toString()?.toDoubleOrNull()?.takeIf { it.isFinite() }
@@ -60,7 +63,8 @@ object SeismicStationData {
                             else -> StationAvailability.UNKNOWN
                         }
                         val point = SeismicStation(id, name.take(70),
-                            locLat?.takeIf { it in 21.0..26.5 }, locLon?.takeIf { it in 118.0..123.5 }, level, pga, availability)
+                            locLat?.takeIf { it in 21.0..26.5 }, locLon?.takeIf { it in 118.0..123.5 },level,pga,availability,
+                            if(level!=null||pga!=null)listOf("ts","timestamp","time","updated").firstNotNullOfOrNull{ExpTechRealtimeParser.parseEpoch(node.opt(it))}?:frameTime?:receivedAtMs else null)
                         if (point.latitude != null && point.longitude != null) seen[id] = point
                     }
                     if (id == null || (!node.has("i") && !node.has("pga") && !node.has("lat") && !node.has("intensity"))) {

@@ -144,7 +144,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
-    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={}) {
+    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={}) {
     val palette=MaterialTheme.colorScheme
     var query by remember {mutableStateOf("")}
     var utility by remember {mutableStateOf<String?>(null)}
@@ -155,7 +155,9 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             Entry("天氣定時通知","週間與指定時間的天氣摘要",SettingsSymbols.notification,onBriefings)),
         "天氣與防災" to listOf(Entry("颱風動向","官方警報、路徑與預報時間軸",SettingsSymbols.cyclone,onTyphoons),
             Entry("地震監測","測站、震後報告與演練",Icons.Rounded.Waves,onSeismic),
-            Entry("降雨雷達","開啟中央氣象署 QPE 雷達",Icons.Rounded.Radar,onRadar)),
+            Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,onRadar)),
+        "海洋與天文" to listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,onMarine),
+            Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.Nightlight,onSky)),
         "時間與換算" to listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{utility="碼錶"}),
             Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,{utility="世界時鐘"}),
             Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{utility="氣象單位換算"}))

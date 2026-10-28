@@ -13,6 +13,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.material3.MaterialTheme
+import io.atmos.weather.ui.AppText
+import io.atmos.weather.maps.rememberRegionalVectorAtlas
+import io.atmos.weather.maps.drawRegionalPlaceLabels
 import io.atmos.weather.maps.rememberTaiwanVectorAtlas
 import io.atmos.weather.maps.drawTaiwanAtlasCredit
 import androidx.compose.foundation.layout.*
@@ -57,19 +61,16 @@ private val timeFormatter=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ta
 
 @Composable private fun StormText(text:String, size:Int, color:Color=cream, weight:FontWeight=FontWeight.Normal,
  modifier:Modifier=Modifier,align:TextAlign=TextAlign.Start) {
-    BasicText(text, modifier, style=TextStyle(color=color,fontSize=size.sp,fontWeight=weight,
-        lineHeight=(size+5).sp,textAlign=align))
+    AppText(text, modifier, color=color,fontSize=size.coerceAtLeast(14).sp,fontWeight=weight,
+        lineHeight=(size.coerceAtLeast(14)+5).sp,textAlign=align)
 }
 @Composable private fun GlassPlate(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
-    Column(modifier.clip(RoundedCornerShape(24.dp))
-        .background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
-        .border(1.dp,Color.White.copy(alpha=.28f),RoundedCornerShape(24.dp))
-        .padding(16.dp),content=content)
+    io.atmos.weather.ui.GlassSurface(modifier=modifier,content=content)
 }
 @Composable private fun StormValue(label:String,value:String,modifier:Modifier=Modifier) {
     Column(modifier.padding(vertical=8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        StormText(label,13,muted)
-        StormText(value,21,cream,FontWeight.Medium)
+        StormText(label,14,MaterialTheme.colorScheme.onSurfaceVariant)
+        StormText(value,21,MaterialTheme.colorScheme.onSurface,FontWeight.Medium)
     }
 }
 
@@ -78,20 +79,22 @@ private val timeFormatter=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ta
 fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     if(storm.fixes.size < 2) return
     val context=LocalContext.current
-    val reduceMotion=remember { context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false) }
+    val palette=MaterialTheme.colorScheme
+    val dark=palette.background.red<.5f
+    val cyan=if(dark)Color(0xFF76DEFC) else Color(0xFF0059B9)
+    val cream=palette.onSurface
+    val muted=palette.onSurfaceVariant
+    val reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion()
     var progress by remember(storm.signature) { mutableFloatStateOf(0f) }
     val maxStep=(storm.fixes.size-1).toFloat()
     val smoothProgress by animateFloatAsState(progress,tween(durationMillis=if(reduceMotion) 0 else 190),label="storm timeline transition")
     val chosen=storm.fixes[progress.roundToInt().coerceIn(0,storm.fixes.lastIndex)]
-    val light=rememberInfiniteTransition(label="optic glow")
-    val breathing by light.animateFloat(.55f,1f,
-        infiniteRepeatable(tween(2500),RepeatMode.Reverse),label="storm glow")
     var terrainCanvasSize by remember { mutableStateOf(IntSize.Zero) }
     val terrainPoints=storm.fixes.map { it.latitude to it.longitude }+
         TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
     val terrainPad=with(LocalDensity.current) { 28.dp.toPx() }
     val atlas=rememberTaiwanVectorAtlas()
+    val regional=rememberRegionalVectorAtlas()
     var zoom by remember {mutableFloatStateOf(1f)}
     var pan by remember {mutableStateOf(Offset.Zero)}
     var fitTrack by remember {mutableStateOf(true)}
@@ -102,13 +105,13 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     val scale=base.pxPerKm*zoom
     val camera=base.copy(originXKm=base.originXKm-pan.x/scale,originYKm=base.originYKm+pan.y/scale,pxPerKm=scale)
     androidx.activity.compose.BackHandler(onBack=onDismiss)
-    Box(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
+    Box(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         Box(Modifier.fillMaxSize()
             .padding(horizontal=8.dp).clip(RoundedCornerShape(34.dp))
-            .background(Color(0xFF141416))
-            .border(1.dp,Color.White.copy(alpha=.23f),RoundedCornerShape(34.dp))) {
+            .background(palette.surface)
+            .border(1.dp,palette.outlineVariant,RoundedCornerShape(34.dp))) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                .padding(start=16.dp,end=16.dp,top=16.dp,bottom=128.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         StormText("中央氣象署 · 颱風路徑",14,cyan)
@@ -124,9 +127,10 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                     }
                 }
                 Box(Modifier.fillMaxWidth().height(315.dp).clip(RoundedCornerShape(26.dp))
-                    .background(Brush.radialGradient(listOf(Color(0xFF24587B),Color(0xFF081D34),Color(0xFF051426))))) {
+                    .background(if(dark)Color(0xFF081E31) else Color(0xFFE4F0F7))) {
                     Canvas(Modifier.fillMaxSize().onSizeChanged { terrainCanvasSize=it }.pointerInput(Unit) {
                         detectTransformGestures {centroid,move,magnification,_ ->
+                            if(!magnification.isFinite()||magnification<=0||!move.x.isFinite()||!move.y.isFinite())return@detectTransformGestures
                             val next=(zoom*magnification).coerceIn(1f,32f)
                             val anchor=centroid-Offset(size.width/2f,size.height/2f)
                             pan=anchor+(pan-anchor)*(next/zoom)+move;zoom=next
@@ -134,11 +138,11 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                     }) {
                         val viewport=camera
                         val pad=28.dp.toPx()
+                        regional?.draw(this,viewport,dark)
                         if(atlas!=null) atlas.draw(this) {lon,lat ->
                             val (x,y)=viewport.project(lon,lat);Offset(x,y)
-                        } else with(TyphoonGeoBackdrop) {draw(viewport)}
-                        drawTaiwanAtlasCredit()
-                        TyphoonGeoBackdrop.drawLabels(this,viewport)
+                        }
+                        drawRegionalPlaceLabels(viewport,dark)
                         val pts=storm.fixes.map {fix ->
                             val (x,y)=viewport.project(fix.longitude,fix.latitude)
                             Offset(x,y)
@@ -177,8 +181,8 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                             drawCircle(Color(0xFF83F4D1).copy(alpha=.35f),9.dp.toPx(),Offset(tx,ty),style=Stroke(1.dp.toPx()))
                         }
                     }
-                    StormText("箭頭：預報順序 · 移動僅為視覺插值",12,muted,
-                        modifier=Modifier.align(Alignment.BottomStart).padding(14.dp))
+                    StormText("Natural Earth · 國土測繪中心",14,muted,
+                        modifier=Modifier.align(Alignment.BottomStart).background(palette.surface.copy(alpha=.88f)).padding(8.dp))
                 }
                 GlassPlate(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,
@@ -213,9 +217,9 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
 
 /** Independent glass button; does not use any Material Design widgets. */
 @Composable private fun StormCloseButton(onClick:()->Unit) {
-    Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha=.17f))
-        .border(1.dp,Color.White.copy(alpha=.24f),CircleShape)
+    Box(Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
+        .border(1.dp,MaterialTheme.colorScheme.outlineVariant,CircleShape)
         .then(Modifier.clickable { onClick() }),contentAlignment=Alignment.Center) {
-        StormText("×",27,cream)
+        StormText("×",27,MaterialTheme.colorScheme.onSurface)
     }
 }

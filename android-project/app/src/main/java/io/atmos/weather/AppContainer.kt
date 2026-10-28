@@ -27,7 +27,7 @@ object AppContainer {
     @Volatile private var instance: WeatherDataRepository? = null
     fun repository(context: Context): WeatherDataRepository = synchronized(this) {
         instance ?: DefaultWeatherDataRepository(
-            providers = listOf(OpenMeteoProvider(meteo, airQuality)),
+            providers = listOf(OpenMeteoProvider(meteo,airQuality,observations=io.atmos.weather.data.remote.CwaSurfaceObservations(context.applicationContext))),
             diskCache = WeatherDiskCache(context.applicationContext)
         ).also { instance = it }
     }

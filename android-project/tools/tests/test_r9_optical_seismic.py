@@ -31,7 +31,9 @@ class R9Contracts(unittest.TestCase):
     def test_empty_frame_does_not_advance_freshness(self):
         handle = self.service.split('private fun handleFrame(', 1)[1].split('live.update { it.copy(lastEewAt=time) }',1)[0]
         self.assertIn('if (stations.any { it.intensity != null || it.accelerationGal != null })', handle)
-        self.assertLess(handle.index('if (stations.any { it.intensity != null || it.accelerationGal != null })'), handle.index('lastRtsAt=time'))
+        self.assertIn('stations.mapNotNull{it.observedAtMs}', handle)
+        self.assertIn('StationFreshness.merge',handle)
+        self.assertLess(handle.index('if (stations.any { it.intensity != null || it.accelerationGal != null })'), handle.index('lastRtsAt=if(newest!=null)'))
 
     def test_only_explicit_offline_state(self):
         self.assertIn('node.has("online")', self.parser)

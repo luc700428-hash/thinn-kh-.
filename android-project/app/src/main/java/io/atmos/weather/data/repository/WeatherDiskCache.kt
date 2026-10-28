@@ -39,7 +39,10 @@ class WeatherDiskCache(context: Context) {
             put("pm25", value.pm25)
             put("pm10", value.pm10)
             put("aerosol_optical_depth", value.aerosolOpticalDepth)
-            put("timezone", value.timeZoneId)
+            put("timezone",value.timeZoneId)
+            put("observation_station",value.observationStation);put("observation_distance",value.observationDistanceKm)
+            put("observation_description",value.observationDescription);put("feels_method",value.feelsLikeMethod)
+            put("forecast_reference",value.forecastReferenceAt?.toEpochMilli())
             put("hourly", JSONArray().also { items ->
                 value.hourly.take(72).forEach { hour ->
                     items.put(JSONObject().apply {
@@ -50,6 +53,8 @@ class WeatherDiskCache(context: Context) {
                         put("humidity", hour.humidityPct)
                         put("wind", hour.windKmh)
                         put("wmo", hour.weatherCode)
+                        put("snow_prob",hour.snowfallProbabilityPct);put("snow",hour.snowfallCm)
+                        put("freezing_rain_prob",hour.freezingRainProbabilityPct);put("feels",hour.feelsLikeC)
                     })
                 }
             })
@@ -80,9 +85,11 @@ class WeatherDiskCache(context: Context) {
             sunset = o.longOrNull("sunset")?.let(Instant::ofEpochMilli),
             hourly = (0 until hours.length()).map { idx ->
                 val h = hours.getJSONObject(idx)
-                HourlyWeather(Instant.ofEpochMilli(h.getLong("at")), h.doubleOrNull("temp"),
-                    h.intOrNull("rain"), h.doubleOrNull("uv"),
-                    h.intOrNull("humidity"), h.doubleOrNull("wind"), h.intOrNull("wmo"))
+                HourlyWeather(at=Instant.ofEpochMilli(h.getLong("at")),temperatureC=h.doubleOrNull("temp"),
+                    precipitationProbabilityPct=h.intOrNull("rain"),uvIndex=h.doubleOrNull("uv"),
+                    humidityPct=h.intOrNull("humidity"),windKmh=h.doubleOrNull("wind"),weatherCode=h.intOrNull("wmo"),
+                    snowfallProbabilityPct=h.intOrNull("snow_prob"),snowfallCm=h.doubleOrNull("snow"),
+                    freezingRainProbabilityPct=h.intOrNull("freezing_rain_prob"),feelsLikeC=h.doubleOrNull("feels"))
             },
             maxTempC = o.doubleOrNull("high"),
             minTempC = o.doubleOrNull("low"),
@@ -94,7 +101,12 @@ class WeatherDiskCache(context: Context) {
             pm25 = o.doubleOrNull("pm25"),
             pm10 = o.doubleOrNull("pm10"),
             aerosolOpticalDepth = o.doubleOrNull("aerosol_optical_depth"),
-            timeZoneId = o.optString("timezone", "").ifBlank { null }
+            timeZoneId=o.optString("timezone","").ifBlank{null},
+            observationStation=o.optString("observation_station","").takeUnless{it.isBlank()||it=="null"},
+            observationDistanceKm=o.doubleOrNull("observation_distance"),
+            observationDescription=o.optString("observation_description","").takeUnless{it.isBlank()||it=="null"},
+            feelsLikeMethod=o.optString("feels_method","").takeUnless{it.isBlank()||it=="null"},
+            forecastReferenceAt=o.longOrNull("forecast_reference")?.let(Instant::ofEpochMilli)
         )
     }.getOrNull()
     }

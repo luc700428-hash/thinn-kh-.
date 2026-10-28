@@ -49,7 +49,7 @@ class AlarmServiceAndMapTests(unittest.TestCase):
         viewport=(APP/'typhoon/TyphoonViewport.kt').read_text()
         center=(APP/'typhoon/TyphoonCenterPage.kt').read_text()
         self.assertIn('cos(Math.toRadians(centerLat))',viewport)
-        self.assertIn('viewport.project(',center)
+        self.assertIn('view.project(',center)
         self.assertIn('VerifiedTrackPlanner.verifiedForecastSegments',center)
 
 if __name__=='__main__': unittest.main()

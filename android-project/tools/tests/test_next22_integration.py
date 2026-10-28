@@ -22,7 +22,7 @@ class NextIntegratedSafety(unittest.TestCase):
         self.assertIn('OfficialStormTimeline.parse(data)',s)
         self.assertNotIn('nextOfficialStormPrompt',s)
         self.assertNotIn('thinn_next_official_typhoon_sheet',s)
-        self.assertIn('if (typhoonPageOpen)',s)
+        self.assertIn('MainDetailLayer(typhoonPageOpen',s)
         self.assertIn('TyphoonDirection.zh(it)',s)
 
     def test_rss_readability_and_no_technical_copy(self):

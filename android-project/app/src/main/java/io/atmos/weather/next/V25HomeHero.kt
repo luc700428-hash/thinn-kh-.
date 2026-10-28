@@ -87,7 +87,7 @@ fun V25HomeHero(
             horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             V25HeroStat("最高",high?.let {"$it°"}?:"—",Modifier.weight(1f))
             V25HeroStat("最低",low?.let {"$it°"}?:"—",Modifier.weight(1f))
-            V25HeroStat("體感",feelsLike?.let {"$it°"}?:"—",Modifier.weight(1f))
+            V25HeroStat("體感估算",feelsLike?.let {"$it°"}?:"—",Modifier.weight(1f))
         }
         Text(scene.advice,color=Color(0xFFE3EEF8),fontSize=14.sp,
             textAlign=TextAlign.Center,

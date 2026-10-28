@@ -1,435 +1,213 @@
 package io.atmos.weather.typhoon
-import io.atmos.weather.ui.appleBouncingScroll
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.delay
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import io.atmos.weather.maps.rememberNlscMap
-import io.atmos.weather.maps.rememberTaiwanVectorAtlas
-import io.atmos.weather.maps.drawTaiwanAtlasCredit
-import io.atmos.weather.maps.NlscTerrain
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.atmos.weather.alerts.CwaWarning
 import io.atmos.weather.earthquake.CwaOfficialGateway
+import io.atmos.weather.maps.*
+import io.atmos.weather.ui.*
+import io.atmos.weather.ui.AppText as Text
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
-/** Official reports + CWA dataset view: an unavailable feed never becomes a fake forecast. */
-@Composable
-fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
-    initialBackup:List<GdacsCyclone> = emptyList(), primaryUnavailable:Boolean = false,
+/** Official tracks, probability values and regional geography are all usable inside the app. */
+@Composable fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
+    initialBackup:List<GdacsCyclone> = emptyList(),primaryUnavailable:Boolean=false,
     currentLat:Double=Double.NaN,currentLon:Double=Double.NaN,currentName:String="目前位置") {
+    val context=LocalContext.current;val palette=MaterialTheme.colorScheme;val scope=rememberCoroutineScope()
+    var fixes by remember {mutableStateOf<List<TyphoonFix>>(emptyList())}
+    var timelines by remember {mutableStateOf<List<StormTimeline>>(emptyList())}
+    var selectedTimeline by remember {mutableStateOf<StormTimeline?>(null)}
+    var selectedWarning by remember {mutableStateOf<CwaWarning?>(null)}
     var focusStorm by remember {mutableStateOf("")}
-    val context=LocalContext.current
-    val link=LocalUriHandler.current
-    val scope=rememberCoroutineScope()
-    val typhoonWarnings=warnings.filter { it.title.contains("颱風") || it.summary.contains("颱風警報") }
-    var fixes by remember { mutableStateOf<List<TyphoonFix>>(emptyList()) }
-    var timelines by remember { mutableStateOf<List<StormTimeline>>(emptyList()) }
-    var selectedTimeline by remember { mutableStateOf<StormTimeline?>(null) }
-    val verifiedTracks=remember(fixes) { VerifiedTrackPlanner.verifiedForecastSegments(fixes.map {
-        DatedTyphoonPosition(it.stormId,it.latitude,it.longitude,it.kind==TyphoonFix.Kind.FORECAST,it.timestamp)
-    }) }
-    var status by remember { mutableStateOf("尚未更新颱風資訊") }
-    var loading by remember { mutableStateOf(false) }
-    var officialProbability by remember { mutableStateOf<CwaWindProbability.Snapshot?>(null) }
-    var probabilityLoading by remember { mutableStateOf(false) }
-    var googlePath by remember { mutableStateOf<List<WeatherLabLocalCsv.Position>>(emptyList()) }
-    var googleMessage by remember { mutableStateOf("尚未匯入 Google Weather Lab 路徑") }
-    var sameStormConfirmed by remember { mutableStateOf(false) }
-    val officialStormIds = remember(fixes) {
-        fixes.filter { it.kind == TyphoonFix.Kind.FORECAST }
-            .map { it.stormId }.filter { it.isNotBlank() }.distinct()
-    }
-    val modelDifferences = remember(fixes, googlePath, sameStormConfirmed) {
-        if (!sameStormConfirmed || officialStormIds.size != 1) emptyList()
-        else V25StormComparison.compare(
-            fixes.filter { it.kind == TyphoonFix.Kind.FORECAST && it.stormId == officialStormIds[0] }
-                .map { V25StormComparison.Position(it.longitude,it.latitude,it.timestamp) },
-            googlePath.map { V25StormComparison.Position(it.longitude,it.latitude,it.time) })
-    }
-    val weatherLabPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if(uri != null) scope.launch {
-            try {
-                val csv=withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                        val output=java.io.ByteArrayOutputStream()
-                        val block=ByteArray(8192)
-                        while(true) {
-                            val n=stream.read(block)
-                            if(n<0) break
-                            require(output.size()+n<=1_000_000) { "檔案超過 1 MB" }
-                            output.write(block,0,n)
-                        }
-                        val bytes=output.toByteArray()
-                        require(bytes.size<=1_000_000) { "檔案超過 1 MB" }
-                        bytes.toString(Charsets.UTF_8)
-                    } ?: error("無法讀取 CSV")
-                }
-                val parsed=WeatherLabLocalCsv.parse(csv)
-                googlePath=parsed
-                sameStormConfirmed=false
-                // Store only in this app's private files; never upload research data.
-                withContext(Dispatchers.IO) {
-                    runCatching { context.openFileOutput("weatherlab_last.csv",android.content.Context.MODE_PRIVATE)
-                        .use { it.write(csv.toByteArray(Charsets.UTF_8)) } }
-                }
-                googleMessage="已匯入 ${googlePath.size} 個 AI 預測座標（本機資料，非即時更新）"
-            } catch(_:Exception) {
-                googlePath=emptyList()
-                googleMessage="無法讀取路徑，請確認是 Weather Lab 匯出的 CSV"
-            }
-        }
-    }
+    var loading by remember {mutableStateOf(false)}
+    var status by remember {mutableStateOf(if(primaryUnavailable)"正在重新連接官方路徑…" else "正在取得官方路徑…")}
+    var probabilityLoading by remember {mutableStateOf(false)}
+    var officialProbability by remember {mutableStateOf<CwaWindProbability.Snapshot?>(null)}
     fun refresh() {
-        if(loading) return
-        loading=true; status="查詢官方資料中…"
-        scope.launch {
-            probabilityLoading=true
-            try { officialProbability=CwaWindProbability.read() }
-            catch (cancel:CancellationException) { throw cancel }
-            catch (_:Exception) { officialProbability=null }
-            finally { probabilityLoading=false }
-        }
+        if(loading||probabilityLoading)return
+        loading=true
         scope.launch {
             try {
                 val data=CwaOfficialGateway.read(context,"W-C0034-005")
-                val points=OfficialTyphoonTrack.extract(data)
-                fixes=points
-                timelines=OfficialStormTimeline.parse(data)
-                status=if(points.isEmpty()) "目前沒有可顯示的官方路徑" else ""
-            } catch (cancel:CancellationException) {throw cancel}
-            catch (_:Exception) {status="目前無法更新官方路徑，請稍後重新整理"}
-            finally {loading=false}
+                fixes=OfficialTyphoonTrack.extract(data);timelines=OfficialStormTimeline.parse(data)
+                status=if(fixes.isEmpty())"目前沒有可顯示的官方熱帶氣旋路徑" else "中央氣象署最新預報 · 點選颱風可檢視時間軸"
+            } catch(cancel:CancellationException){throw cancel}
+              catch(_:Exception){status="官方路徑暫時無法更新，可重試；已載入的地圖仍可操作"}
+            finally{loading=false}
+        }
+        scope.launch {
+            probabilityLoading=true
+            try {officialProbability=CwaWindProbability.read(forceRefresh=true)}
+            catch(cancel:CancellationException){throw cancel}
+            finally{probabilityLoading=false}
         }
     }
-    LaunchedEffect(Unit){
-        val cached=withContext(Dispatchers.IO) {
-            runCatching { context.openFileInput("weatherlab_last.csv")
-                .bufferedReader().use { it.readText() } }.getOrNull()
-        }
-        if (!cached.isNullOrBlank() && cached.length <= 1_000_000) {
-            runCatching { WeatherLabLocalCsv.parse(cached) }.onSuccess {
-                googlePath=it
-                googleMessage="上次匯入的 AI 預測資料（非即時資料）"
-            }
-        }
-        refresh()
+    LaunchedEffect(Unit){refresh()}
+    BackHandler(selectedTimeline!=null||selectedWarning!=null) {
+        if(selectedWarning!=null)selectedWarning=null else selectedTimeline=null
     }
-    val rootContent:@Composable ()->Unit = {
-    Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState())
-        .padding(horizontal=20.dp,vertical=20.dp)) {
-        Row(verticalAlignment=Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).background(Color.White.copy(alpha=.12f),RoundedCornerShape(24.dp))
-                .clickable(onClick=onClose),contentAlignment=Alignment.Center) {
-                Icon(Icons.Rounded.ArrowBack,"返回",tint=Color.White)
+    val root:@Composable ()->Unit={
+        Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)){IOSSettingsHeader("颱風動向與警報",onClose)}
+                GlassIconButton({refresh()},enabled=!loading&&!probabilityLoading,modifier=Modifier.padding(end=12.dp)) {Icon(Icons.Rounded.Refresh,"更新官方颱風資料")}
             }
-            Text("颱風動向與警報",fontSize=26.sp,color=Color.White,modifier=Modifier.weight(1f))
-            Box(Modifier.size(48.dp).background(Color.White.copy(alpha=.12f),RoundedCornerShape(24.dp))
-                .clickable { refresh() },contentAlignment=Alignment.Center) {
-                Icon(Icons.Rounded.Refresh,"重新查詢",tint=Color.White)
-            }
-        }
-        Spacer(Modifier.height(15.dp))
-        Text("中央氣象署 · 颱風預報",color=Color(0xFFAAE6FF),fontSize=17.sp)
-        if(status.isNotBlank()) {
-            Spacer(Modifier.height(7.dp))
-            Text(status,color=Color.White,fontSize=15.sp)
-        }
-        Spacer(Modifier.height(14.dp))
-        val ids=fixes.map {it.stormId}.filter {it.isNotBlank()}.distinct()
-        val focused=focusStorm.takeIf {it in ids} ?: ids.firstOrNull()
-        if(ids.size>1)Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            ids.forEach {id ->io.atmos.weather.ui.GlassTextButton(onClick={focusStorm=id}) {
-                Text(timelines.firstOrNull {it.stormId==id}?.name ?: id,color=if(id==focused)Color(0xFF0A84FF) else Color.White)
-            }}
-        }
-        val plotFixes=fixes.filter {focused==null || it.stormId==focused}
-        val plotTracks=verifiedTracks.filter {focused==null || it.firstOrNull()?.stormId==focused}
-        if(googlePath.isEmpty())OfficialTrackPlot(plotFixes,plotTracks)
-        else OfficialTrackPlot(plotFixes,plotTracks,googlePath)
-        Spacer(Modifier.height(12.dp))
-        if(fixes.isNotEmpty()) {
-            Text("官方預報路徑 · 臺灣、澎湖、金門、馬祖",
-                color=Color(0xFFCDE7F3),fontSize=14.sp)
-        } else if(googlePath.isNotEmpty()) {
-            Text("Weather Lab 本機匯入路徑 · 尚無官方路徑",
-                color=Color(0xFFCDE7F3),fontSize=14.sp)
-        } else {
-            Text("臺澎金馬地圖 · 目前沒有可顯示的官方路徑（不代表沒有天氣風險）",
-                color=Color(0xFFCDE7F3),fontSize=14.sp)
-        }
-        Spacer(Modifier.height(15.dp))
-        Column(Modifier.fillMaxWidth()
-            .background(Color.White.copy(alpha=.075f),RoundedCornerShape(26.dp))
-            .border(1.dp,Color.White.copy(alpha=.15f),RoundedCornerShape(26.dp))
-            .padding(17.dp),verticalArrangement=Arrangement.spacedBy(11.dp)) {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Icon(Icons.Rounded.AutoAwesome,null,tint=Color(0xFF9CE9FF))
-                Spacer(Modifier.width(9.dp))
-                Text("Google Weather Lab · AI 預測對照",fontSize=17.sp,color=Color.White)
-            }
-            Text("官方路徑以中央氣象署為準。Google 是實驗性 AI 預測，僅供比較。",
-                fontSize=14.sp,color=Color(0xFFCEE2F2))
-            Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha=.13f))
-                    .clickable { link.openUri("https://deepmind.google.com/science/weatherlab") }
-                    .padding(13.dp),contentAlignment=Alignment.Center) {
-                    Text("開啟 Weather Lab ↗",color=Color.White,fontSize=14.sp)
+            Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState())
+                .padding(horizontal=16.dp).padding(top=12.dp,bottom=128.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Text(status,color=palette.onSurfaceVariant,fontSize=14.sp)
+                if(loading)IOSLinearProgressIndicator(modifier=Modifier.fillMaxWidth())
+                val ids=fixes.map{it.stormId}.filter{it.isNotBlank()}.distinct()
+                val focused=focusStorm.takeIf{it in ids}?:ids.firstOrNull()
+                if(ids.size>1) io.atmos.weather.next.NextReorderableToolDock(
+                    actions=ids.map {id->io.atmos.weather.next.NextToolAction(id,timelines.firstOrNull{it.stormId==id}?.name?:id,Icons.Rounded.Cyclone)},
+                    selectedId=focused,onSelected={focusStorm=it},onOrderChanged={},maxVisible=4,
+                    reduceMotion=rememberAppleReduceMotion(),reduceTransparency=rememberAppleReduceTransparency(),modifier=Modifier.fillMaxWidth())
+                val points=fixes.filter{focused==null||it.stormId==focused}
+                OfficialTrackPlot(points)
+                timelines.filter{focused==null||it.stormId==focused}.forEach {storm->
+                    GlassSurface {GlassAction("${storm.name} · 預報時間軸","拖曳時間檢視中心位置、風速與暴風圈"){selectedTimeline=storm}}
                 }
-                Box(Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFF275C73))
-                    .clickable { weatherLabPicker.launch(arrayOf("*/*")) }
-                    .padding(13.dp),contentAlignment=Alignment.Center) {
-                    Text("匯入 CSV 對照",color=Color.White,fontSize=14.sp)
-                }
-            }
-            Text(googleMessage,color=Color(0xFFCEE2F2),fontSize=14.sp)
-            if (googlePath.isNotEmpty()) {
-                Row(Modifier.fillMaxWidth().clickable { sameStormConfirmed=!sameStormConfirmed }
-                    .padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Icon(if(sameStormConfirmed) Icons.Rounded.CheckBox
-                        else Icons.Rounded.CheckBoxOutlineBlank,
-                        "確認匯入資料所屬颱風",tint=Color(0xFFA6E4FA))
-                    Spacer(Modifier.width(8.dp))
-                    Text("確認 CSV 與目前官方颱風是同一個颱風",color=Color.White,
-                        fontSize=14.sp,modifier=Modifier.weight(1f))
-                }
-                val comparisonText=when {
-                    !sameStormConfirmed -> "請先確認兩組資料屬於同一個颱風，才比較路徑距離。"
-                    officialStormIds.size != 1 -> "目前無法唯一辨識官方颱風；不顯示可能誤導的比較。"
-                    modelDifferences.isEmpty() -> "兩組預測時刻沒有對齊；不產生推測數值。"
-                    else -> "相同預報時刻的最新路徑位置差距：約 ${modelDifferences.last().distanceKm} 公里；共 ${modelDifferences.size} 個可比對時刻。"
-                }
-                Text(comparisonText,color=Color(0xFFE0F5FD),fontSize=14.sp)
-                Text("只顯示中心座標差距，不代表哪一個模式一定較準。",
-                    color=Color(0xFFCEE2F2),fontSize=14.sp)
-                Text("移除本機 Weather Lab 路徑資料",color=Color(0xFF9DE1FA),
-                    fontSize=14.sp,modifier=Modifier.clickable {
-                        googlePath=emptyList()
-                        sameStormConfirmed=false
-                        context.deleteFile("weatherlab_last.csv")
-                        googleMessage="尚未匯入 Google Weather Lab 路徑"
-                    }.padding(vertical=8.dp))
-            }
-        }
-        if(timelines.isNotEmpty()) {
-            Spacer(Modifier.height(16.dp))
-            timelines.forEach { storm ->
-                androidx.compose.foundation.layout.Box(
-                    Modifier.fillMaxWidth().padding(vertical=5.dp)
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF3D7492),Color(0xFF1A3856))),RoundedCornerShape(22.dp))
-                        .border(1.dp,Color.White.copy(alpha=.26f),RoundedCornerShape(22.dp))
-                        .clickable { selectedTimeline=storm }.padding(19.dp)) {
-                    Text("${storm.name} · 查看可拖曳預報時間軸  ↗",color=Color.White,fontSize=17.sp)
-                }
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        Column(Modifier.fillMaxWidth()
-            .background(Color(0xFF183C56),RoundedCornerShape(22.dp))
-            .padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text("七級風暴風圈侵襲機率",color=Color.White,fontSize=19.sp,
-                fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
-            val risks = listOf(
-                Triple(currentName,currentLon,currentLat),
-                Triple("臺灣中部參考點",120.98,23.76),
-                Triple("澎湖參考點",119.57,23.57),
-                Triple("金門參考點",118.38,24.44),
-                Triple("馬祖參考點",119.95,26.17)
-            ).distinctBy { it.first }
-            risks.chunked(2).forEach { group ->
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    group.forEach { (name,lon,lat) ->
-                        Column(Modifier.weight(1f)
-                            .background(Color.White.copy(alpha=.08f),RoundedCornerShape(12.dp))
-                            .padding(11.dp)) {
-                            Text(name,color=Color(0xFFDBEAF4),fontSize=14.sp,maxLines=2)
-                            Text(officialProbability?.at(lon,lat) ?: "未提供",color=Color.White,
-                                fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                GlassSurface {
+                    Text("七級風暴風圈侵襲機率",color=palette.onSurface,fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text("未來 120 小時 · 氣象署主要城市／離島參考點",color=palette.onSurfaceVariant,fontSize=14.sp)
+                    val currentReference=officialProbability?.cityTable?.reference(currentLon,currentLat,currentName)
+                    val risks=listOf(Triple(currentReference?.name?:currentName,currentLon,currentLat),
+                        Triple("南投縣",120.69,23.91),Triple("澎湖縣",119.57,23.57),
+                        Triple("金門縣",118.32,24.43),Triple("連江縣",119.95,26.16)).distinctBy{it.first}
+                    risks.chunked(2).forEach {group->
+                        Spacer(Modifier.height(10.dp))
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            group.forEach {(name,lon,lat)->
+                                Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(palette.surfaceVariant).padding(12.dp)) {
+                                    Text(io.atmos.weather.location.LocationLabels.clean(name),color=palette.onSurfaceVariant,fontSize=14.sp,maxLines=2)
+                                    Text(officialProbability?.at(lon,lat,if(lon==currentLon&&lat==currentLat)currentName else name)?:"未提供",
+                                        color=palette.onSurface,fontSize=26.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
+                                }
+                            }
+                            if(group.size==1)Spacer(Modifier.weight(1f))
                         }
                     }
-                    if(group.size==1) Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.height(10.dp))
+                    val probabilityMessage=when {
+                        probabilityLoading->"正在取得官方機率…"
+                        CwaWindProbability.fetchState==CwaWindProbability.FetchState.CACHED->"更新暫時失敗，顯示先前取得的官方資料，請核對發布時間；缺值不代表 0%。"
+                        officialProbability?.cityTable!=null->"0% 是官方公布值；參考點數值不代表精確地址，也不是颱風登陸機率。"
+                        officialProbability!=null->"目前顯示官方等值區間；缺值不推定為 0%。"
+                        CwaWindProbability.fetchState==CwaWindProbability.FetchState.STALE->"官方檔案時間較舊，暫不當作目前機率；未提供不代表 0%。"
+                        CwaWindProbability.fetchState==CwaWindProbability.FetchState.NO_USABLE_REGIONS->"官方暫無可核對的機率範圍；未提供不代表 0%。"
+                        else->"目前沒有可核對的官方機率，請稍後重試；缺值不代表 0%。"
+                    }
+                    Text(probabilityMessage,color=palette.onSurfaceVariant,fontSize=14.sp)
+                    officialProbability?.sourceUpdatedAt?.let {at->
+                        Text("官方發布："+Instant.ofEpochMilli(at).atZone(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("MM/dd HH:mm")),color=palette.onSurfaceVariant,fontSize=14.sp)
+                    }
                 }
-            }
-            val probabilityMessage = when {
-                probabilityLoading -> "正在取得最新侵襲機率…"
-                officialProbability != null -> "未提供表示此地不在可核對的官方區間內，不代表 0%。"
-                CwaWindProbability.fetchState == CwaWindProbability.FetchState.STALE -> "官方機率資料已過期，請稍後更新。"
-                CwaWindProbability.fetchState == CwaWindProbability.FetchState.NO_USABLE_REGIONS -> "目前沒有可辨識的官方機率區域。"
-                else -> "暫時無法讀取官方機率資料，請稍後重試。"
-            }
-            Text(probabilityMessage,color=Color(0xFFBDD8E9),fontSize=14.sp)
-            Text("此為七級風暴風圈侵襲機率；參考點不代表整區平均，也不是登陸機率。",
-                color=Color(0xFFBDD8E9),fontSize=14.sp)
-            Text("資料更新後會顯示官方區間；可至氣象署查詢最新資訊。",color=Color(0xFFBDD8E9),fontSize=14.sp)
-        }
-        if(typhoonWarnings.isNotEmpty()) {
-            Spacer(Modifier.height(16.dp))
-            Text("最新官方颱風公告",color=Color.White,fontSize=18.sp)
-        }
-        typhoonWarnings.forEach { a ->
-            Column(Modifier.fillMaxWidth().padding(vertical=6.dp)
-                .background(Color.White.copy(alpha=.13f),RoundedCornerShape(22.dp))
-                .clickable {link.openUri(a.link)}.padding(17.dp)) {
-                Text(a.title,color=Color.White,fontSize=19.sp)
-                Text(a.summary.take(190),color=Color(0xFFE1EFF7),fontSize=15.sp)
-                Text("查看官方公告 ↗",color=Color(0xFF9FECFF),fontSize=15.sp)
+                warnings.filter{it.title.contains("颱風")||it.summary.contains("颱風警報")}.forEach {warning->
+                    GlassSurface {GlassAction(warning.title,warning.summary.take(120)){selectedWarning=warning}}
+                }
+                Text("路徑、時間與警報以中央氣象署公告為準；地圖可離線縮放，不另開網站。",color=palette.onSurfaceVariant,fontSize=14.sp)
             }
         }
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth().height(55.dp)
-            .background(Brush.horizontalGradient(listOf(Color(0xFF4B8FAB),Color(0xFF27658A))),RoundedCornerShape(28.dp))
-            .border(1.dp,Color.White.copy(alpha=.33f),RoundedCornerShape(28.dp))
-            .clickable { link.openUri("https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_WARN.html") }
-            .padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,
-            horizontalArrangement=Arrangement.Center) {
-            Icon(Icons.Rounded.OpenInNew,null,tint=Color.White)
-            Spacer(Modifier.width(8.dp))
-            Text("查看中央氣象署完整路徑圖",fontSize=17.sp,color=Color.White)
-        }
-        Spacer(Modifier.height(12.dp))
-        Text("路徑與警報以中央氣象署最新公告為準。",
-            color=Color(0xFFCDE1ED),fontSize=14.sp)
     }
+    // Retain the selected timeline while the outgoing layer animates away.
+    var retainedTimeline by remember{mutableStateOf<StormTimeline?>(null)}
+    if(selectedTimeline!=null)retainedTimeline=selectedTimeline
+    AppleParallaxStack(selectedTimeline!=null,{selectedTimeline=null},Modifier.fillMaxSize(),root) {
+        retainedTimeline?.let{StormTimelineOverlay(it){selectedTimeline=null}}
     }
-    io.atmos.weather.ui.AppleParallaxStack(nested=selectedTimeline!=null,onBack={selectedTimeline=null},
-        modifier=Modifier.fillMaxSize(),root=rootContent,detail={
-            selectedTimeline?.let {storm ->StormTimelineOverlay(storm) {selectedTimeline=null}}
-        })
+    selectedWarning?.let {warning->GlassAlertDialog(onDismissRequest={selectedWarning=null},
+        title={Text(warning.title)},text={Text(warning.summary)},
+        confirmButton={GlassTextButton({selectedWarning=null}){Text("完成")}})}
 }
 
-@Composable
-private fun OfficialTrackPlot(points:List<TyphoonFix>,verifiedTracks:List<List<DatedTyphoonPosition>>,
-    googlePath:List<WeatherLabLocalCsv.Position> = emptyList()) {
-    val displayPoints=remember(points) {
-        points.filter { it.kind==TyphoonFix.Kind.OBSERVED }.takeLast(10) +
-            points.filter { it.kind==TyphoonFix.Kind.FORECAST }.takeLast(16)
+@Composable private fun OfficialTrackPlot(points:List<TyphoonFix>) {
+    val palette=MaterialTheme.colorScheme
+    val dark=palette.background.red<.5f
+    val regional=rememberRegionalVectorAtlas();val taiwan=rememberTaiwanVectorAtlas()
+    val displayPoints=remember(points){points.filter{it.kind==TyphoonFix.Kind.OBSERVED}.takeLast(10)+points.filter{it.kind==TyphoonFix.Kind.FORECAST}.takeLast(24)}
+    val tracks=remember(points){VerifiedTrackPlanner.verifiedForecastSegments(points.map{DatedTyphoonPosition(it.stormId,it.latitude,it.longitude,it.kind==TyphoonFix.Kind.FORECAST,it.timestamp)})}
+    var canvasSize by remember{mutableStateOf(IntSize.Zero)}
+    var fitTrack by remember(points){mutableStateOf(true)}
+    var mapZoom by remember{mutableFloatStateOf(1f)};var mapPan by remember{mutableStateOf(Offset.Zero)}
+    val padding=with(LocalDensity.current){22.dp.toPx()}
+    val reference=displayPoints.map{it.latitude to it.longitude}+TyphoonGeoBackdrop.keyAnchors.map{it.second to it.first}
+    val base=remember(reference,canvasSize,fitTrack,padding){
+        if(fitTrack)TyphoonViewport.forPoints(reference,canvasSize.width.toFloat().coerceAtLeast(1f),canvasSize.height.toFloat().coerceAtLeast(1f),padding)
+        else TyphoonViewport.forTaiwan(canvasSize.width.toFloat().coerceAtLeast(1f),canvasSize.height.toFloat().coerceAtLeast(1f),padding)
     }
-    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-    val atlas=rememberTaiwanVectorAtlas()
-    var fitTrack by remember(points) {mutableStateOf(true)}
-    var mapZoom by remember { mutableFloatStateOf(1f) }
-    var mapPan by remember { mutableStateOf(Offset.Zero) }
-    val pxPad=with(LocalDensity.current) { 20.dp.toPx() }
-    val reference=displayPoints.map { it.latitude to it.longitude } +
-        googlePath.map { it.latitude to it.longitude } +
-        TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
-    val baseline=remember(reference,canvasSize,pxPad,fitTrack) {
-        if(fitTrack) TyphoonViewport.forPoints(reference,canvasSize.width.toFloat().coerceAtLeast(1f),
-            canvasSize.height.toFloat().coerceAtLeast(1f),pxPad)
-        else TyphoonViewport.forTaiwan(canvasSize.width.toFloat().coerceAtLeast(1f),
-            canvasSize.height.toFloat().coerceAtLeast(1f),pxPad)
-    }
-    // Geographic camera: every pointer move reprojects the vectors and CWA track at native pixels.
-    // Camera is rendered through projection; request a fresh WMS BBOX after gestures settle.
-    val view=remember(baseline,mapZoom,mapPan) {
-        val scale=baseline.pxPerKm*mapZoom
-        TyphoonViewport(
-            baseline.originXKm - mapPan.x/scale,
-            baseline.originYKm + mapPan.y/scale,
-            scale,baseline.widthPx,baseline.heightPx,baseline.cosCenter)
-    }
-    Box(Modifier.fillMaxWidth().height(430.dp)
-        .clip(RoundedCornerShape(25.dp))
-        .background(Color(0xFF0B253B))
-        .border(1.dp,Color.White.copy(alpha=.19f),RoundedCornerShape(25.dp))
-        .pointerInput(Unit) {
-            detectTransformGestures { centroid, move, magnification, _ ->
-                val next=(mapZoom*magnification).coerceIn(1f,32f)
-                val anchor=centroid-Offset(size.width/2f,size.height/2f)
-                val adjusted=anchor+(mapPan-anchor)*(next/mapZoom)+move
-                mapZoom=next
-                mapPan=Offset(adjusted.x.coerceIn(-size.width*next,size.width*next),
-                    adjusted.y.coerceIn(-size.height*next,size.height*next))
-            }
-        }) {
-        Canvas(Modifier.matchParentSize().onSizeChanged { canvasSize=it }) {
-            val viewport=view
-            if(atlas!=null) atlas.draw(this) {lon,lat ->
-                val (x,y)=viewport.project(lon,lat);Offset(x,y)
-            } else with(TyphoonGeoBackdrop) { draw(viewport) }
-            drawTaiwanAtlasCredit()
-            verifiedTracks.forEach { track ->
-                for(i in 0 until track.size-1) {
-                    val from=track[i];val to=track[i+1]
-                    val (x1,y1)=viewport.project(from.longitude,from.latitude)
-                    val (x2,y2)=viewport.project(to.longitude,to.latitude)
-                    drawDirectedTrack(Offset(x1,y1),Offset(x2,y2),Color(0xFF66C7FF))
+    val view=remember(base,mapZoom,mapPan){val scale=base.pxPerKm*mapZoom
+        TyphoonViewport(base.originXKm-mapPan.x/scale,base.originYKm+mapPan.y/scale,scale,base.widthPx,base.heightPx,base.cosCenter)}
+    val predicted=if(dark)Color(0xFF69CFFF) else Color(0xFF0059B9)
+    val observed=if(dark)Color(0xFFFFD389) else Color(0xFF8F4B00)
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(25.dp))
+            .background(if(dark)Color(0xFF081E31) else Color(0xFFE4F0F7)).border(1.dp,palette.outlineVariant,RoundedCornerShape(25.dp))
+            .pointerInput(Unit){detectTransformGestures {centroid,move,factor,_->
+                if(factor.isFinite()&&factor>0&&move.x.isFinite()&&move.y.isFinite()) {
+                    val next=(mapZoom*factor).coerceIn(1f,32f);val anchor=centroid-Offset(size.width/2f,size.height/2f)
+                    val pan=anchor+(mapPan-anchor)*(next/mapZoom)+move
+                    mapZoom=next;mapPan=Offset(pan.x.coerceIn(-size.width*next,size.width*next),pan.y.coerceIn(-size.height*next,size.height*next))
+                }
+            }}) {
+            Canvas(Modifier.matchParentSize().onSizeChanged{canvasSize=it}) {
+                regional?.draw(this,view,dark)
+                taiwan?.draw(this){lon,lat->val p=view.project(lon,lat);Offset(p.first,p.second)}
+                drawRegionalPlaceLabels(view,dark)
+                tracks.forEach {track->for(i in 0 until track.size-1){
+                    val a=view.project(track[i].longitude,track[i].latitude);val b=view.project(track[i+1].longitude,track[i+1].latitude)
+                    drawDirectedTrack(Offset(a.first,a.second),Offset(b.first,b.second),predicted)
+                }}
+                val labelled=mutableListOf<Offset>()
+                displayPoints.forEach {point->
+                    val p=view.project(point.longitude,point.latitude);val at=Offset(p.first,p.second)
+                    if(at.x !in 0f..size.width||at.y !in 0f..size.height)return@forEach
+                    val color=if(point.kind==TyphoonFix.Kind.OBSERVED)observed else predicted
+                    drawCircle(color.copy(alpha=.28f),9.dp.toPx(),at,style=Stroke(1.dp.toPx()))
+                    drawCircle(if(dark)Color(0xFF082139) else Color.White,5.5.dp.toPx(),at)
+                    drawCircle(color,4.dp.toPx(),at)
+                    if(point.kind==TyphoonFix.Kind.FORECAST&&labelled.none{(it-at).getDistance()<72.dp.toPx()}) {
+                        VerifiedTrackPlanner.parseTime(point.timestamp)?.let {
+                            drawTrackTime(it.atZone(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("dd日 HH:mm")),at);labelled+=at
+                        }
+                    }
                 }
             }
-            // Imported research data is NEVER represented as an official warning or CWA forecast.
-            for(i in 0 until googlePath.size-1) {
-                val from=googlePath[i];val to=googlePath[i+1]
-                val (x1,y1)=viewport.project(from.longitude,from.latitude)
-                val (x2,y2)=viewport.project(to.longitude,to.latitude)
-                drawLine(Color(0xFFF6A8F3),Offset(x1,y1),Offset(x2,y2),
-                    strokeWidth=2.5.dp.toPx())
+            Column(Modifier.align(Alignment.TopEnd).padding(10.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
+                GlassTextButton({fitTrack=!fitTrack;mapZoom=1f;mapPan=Offset.Zero}){Text(if(fitTrack)"回到臺灣" else "完整路徑")}
+                GlassIconButton({mapZoom=(mapZoom*1.5f).coerceAtMost(32f)}){Icon(Icons.Rounded.Add,"放大颱風地圖")}
+                GlassIconButton({mapZoom=(mapZoom/1.5f).coerceAtLeast(1f)}){Icon(Icons.Rounded.Remove,"縮小颱風地圖")}
             }
-            TyphoonGeoBackdrop.drawLabels(this,viewport)
-            val labelled=ArrayList<Offset>()
-            displayPoints.forEach { pt ->
-                val color=when(pt.kind) {
-                    TyphoonFix.Kind.FORECAST->Color(0xFF66C7FF)
-                    TyphoonFix.Kind.OBSERVED->Color(0xFFFFD389)
-                    TyphoonFix.Kind.UNSPECIFIED->Color(0xFFDDE6EF)
-                }
-                val (x,y)=viewport.project(pt.longitude,pt.latitude)
-                val at=Offset(x,y)
-                if(pt.kind==TyphoonFix.Kind.FORECAST && labelled.none {(it-at).getDistance()<70.dp.toPx()}) {
-                    val time=runCatching {java.time.Instant.parse(pt.timestamp).atZone(java.time.ZoneId.of("Asia/Taipei"))
-                        .format(java.time.format.DateTimeFormatter.ofPattern("dd日 HH:mm"))}.getOrNull()
-                    if(time!=null){drawTrackTime(time,at);labelled+=at}
-                }
-                drawCircle(color,5.dp.toPx(),at)
-                drawCircle(color.copy(alpha=.33f),10.dp.toPx(),at,style=Stroke(1.dp.toPx()))
-            }
+            Text("Natural Earth 10m · © 國土測繪中心",color=if(dark)Color(0xFFD9EBF5) else Color(0xFF234353),fontSize=14.sp,
+                modifier=Modifier.align(Alignment.BottomStart).background(if(dark)Color(0xD9081E31) else Color(0xDEE4F0F7)).padding(7.dp))
         }
-        Box(Modifier.align(Alignment.TopEnd).padding(12.dp)
-            .clip(RoundedCornerShape(17.dp))
-            .background(Color(0xBC183950))
-            .clickable { fitTrack=!fitTrack;mapZoom=1f;mapPan=Offset.Zero }
-            .padding(horizontal=14.dp,vertical=9.dp)) {
-            Text(if(fitTrack) "回到臺灣" else "完整路徑",color=Color.White,fontSize=14.sp)
+        Row(horizontalArrangement=Arrangement.spacedBy(16.dp)) {
+            Text("● 實測位置",color=observed,fontSize=14.sp);Text("┄ 官方預報 →",color=predicted,fontSize=14.sp)
         }
-    }
-    Column(Modifier.padding(top=9.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("● 實測位置",color=Color(0xFFFFD389),fontSize=14.sp)
-            Text("┄ 官方預報 →",color=Color(0xFF66C7FF),fontSize=14.sp)
-            if(googlePath.isNotEmpty()) Text("● Weather Lab（匯入）",color=Color(0xFFF6A8F3),fontSize=14.sp)
-        }
-        Text("箭頭表示預報順序 · 時間為臺灣時間",color=Color(0xFFCCE3ED),fontSize=14.sp)
-        Text("雙指縮放、拖移 · 離線向量底圖，支援 32 倍縮放",
-            color=Color(0xFFCCE3ED),fontSize=14.sp)
+        Text("雙指縮放、拖移 · 32 倍原生向量縮放 · 時間為臺灣時間",color=palette.onSurfaceVariant,fontSize=14.sp)
     }
 }

@@ -33,5 +33,5 @@ object WeatherDescriptions {
             WeatherCondition.THUNDERSTORM->"雷雨";else->"天氣資料更新中"
         }
     }
-    fun current(w:WeatherSnapshot)=label(w.condition,w.weatherCode,w.visibilityM,w.isDay)
+    fun current(w:WeatherSnapshot)=if(w.condition in setOf(WeatherCondition.DUST_STORM,WeatherCondition.DUST,WeatherCondition.HAZE))label(w.condition,w.weatherCode,w.visibilityM,w.isDay) else w.observationDescription ?: label(w.condition,w.weatherCode,w.visibilityM,w.isDay)
 }

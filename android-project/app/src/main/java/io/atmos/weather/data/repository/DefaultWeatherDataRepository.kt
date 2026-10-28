@@ -22,13 +22,14 @@ class DefaultWeatherDataRepository(
     private val memory = mutableMapOf<String, WeatherSnapshot>()
     override suspend fun load(city: WeatherCity, forceRefresh: Boolean): WeatherLoadResult {
         val cached = mutex.withLock { memory["${city.id}@${city.coordinate.latitude},${city.coordinate.longitude}"] } ?: diskCache?.load(city)
-        if (!forceRefresh && cached != null && Duration.between(cached.fetchedAt, clock.instant()) < ttl) {
+        if (!forceRefresh && cached != null && io.atmos.weather.domain.model.WeatherDataQuality.cacheFresh(cached,clock.instant(),ttl)) {
             return WeatherLoadResult.Success(cached, fromCache = true, stale = false)
         }
         var lastError: Throwable? = null
         for (provider in providers) {
             try {
                 val result = provider.get(city)
+                check(io.atmos.weather.domain.model.WeatherDataQuality.current(result,clock.instant())) {"氣象資料時間或數值異常，暫不視為最新觀測"}
                 mutex.withLock { memory["${city.id}@${city.coordinate.latitude},${city.coordinate.longitude}"] = result }
                 diskCache?.save(result)
                 return WeatherLoadResult.Success(result, fromCache = false, stale = false)

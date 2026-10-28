@@ -109,8 +109,9 @@ class WidgetRenderingTest {
             assertEquals(1,float.childCount)
             assertNotNull(float.inAnimation)
             val eyes=view.findViewById<android.widget.ViewFlipper>(R.id.buddy_eyes)
-            assertEquals(24,eyes.childCount)
-            assertEquals(50,view.findViewById<android.widget.ViewFlipper>(R.id.buddy_rain).flipInterval)
+            assertEquals(96,eyes.childCount)
+            assertEquals(if(reading.condition in listOf(WeatherCondition.RAIN,WeatherCondition.SNOW))70 else 180,view.findViewById<android.widget.ViewFlipper>(R.id.buddy_rain).flipInterval)
+            assertTrue(view.findViewById<android.widget.ImageView>(R.id.buddy_body).drawable is android.graphics.drawable.VectorDrawable)
             val bitmaps=java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Bitmap,Boolean>())
             fun collect(v:View){
                 if(v is android.widget.ImageView)(v.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap?.let{bitmaps.add(it)}
@@ -122,25 +123,46 @@ class WidgetRenderingTest {
         }
         assertFalse(WeatherBuddyArt.still(WeatherBuddyArt.Kind.SUN,true,112).sameAs(WeatherBuddyArt.still(WeatherBuddyArt.Kind.MOON,false,112)))
     }
+    @Test(timeout=180_000) fun buddyFitsLongRealCityAtIntermediateAndLargeResizes() {
+        val long=data.copy(city="台灣 · 嘉義縣 · 阿里山鄉")
+        for((width,height) in listOf(160 to 160,180 to 280,320 to 240,640 to 450,800 to 600))for(scale in listOf(1f,1.5f))
+            render(27,width,height,scale,"buddy_resize_${width}x${height}_${(scale*100).toInt()}",long)
+        RuntimeEnvironment.setQualifiers("zh-rTW-xxhdpi")
+        try {render(27,320,240,1.5f,"buddy_xxhdpi_960x720",long)}
+        finally {RuntimeEnvironment.setQualifiers("zh-rTW-mdpi")}
+    }
+    @Test fun enlargedGlassKeepsItsAspectAndPaddingInsideTheRoundedCard() {
+        val wide=WidgetGlassRenderer.background(2400,1800,0,.65f,.66f,cornerRadiusPx=84f)
+        assertEquals(640,wide.width);assertEquals(480,wide.height)
+        assertTrue(wide.allocationByteCount<=640*640*4)
+        assertEquals(0,android.graphics.Color.alpha(wide.getPixel(0,0)))
+        assertTrue("Glass corner expanded into text padding",android.graphics.Color.alpha(wide.getPixel(8,8))>200)
+    }
     private fun render(variant:Int,width:Int,height:Int,scale:Float,name:String,reading:OpticalWidgetData=data) {
         context.getSharedPreferences("thinn_settings",0).edit().putFloat("v4_fontscale",scale).commit()
         val remote=runBlocking {GlanceRemoteViews().compose(context,DpSize(width.dp,height.dp)) {OpticalWidgetContent(context,variant,reading)}.remoteViews}
+        val density=context.resources.displayMetrics.density
+        val pixelWidth=(width*density).toInt();val pixelHeight=(height*density).toInt()
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         try {
             val activity=controller.get();val parent=FrameLayout(activity)
-            val view=remote.apply(activity,parent);parent.addView(view,ViewGroup.LayoutParams(width,height))
+            val view=remote.apply(activity,parent);parent.addView(view,ViewGroup.LayoutParams(pixelWidth,pixelHeight))
             activity.setContentView(parent)
-            parent.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY))
-            parent.layout(0,0,width,height)
-            val bitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);parent.draw(Canvas(bitmap))
+            parent.measure(View.MeasureSpec.makeMeasureSpec(pixelWidth,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(pixelHeight,View.MeasureSpec.EXACTLY))
+            parent.layout(0,0,pixelWidth,pixelHeight)
+            val bitmap=Bitmap.createBitmap(pixelWidth,pixelHeight,Bitmap.Config.ARGB_8888);parent.draw(Canvas(bitmap))
             File(output,"$name.png").outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}
             fun inspect(v:View) {
                 if(v.visibility!=View.VISIBLE)return
                 if(v is TextView&&v.text.isNotEmpty()) {
                     val rect=Rect(0,0,v.width,v.height);parent.offsetDescendantRectToMyCoords(v,rect)
-                    val pad=WidgetLayoutPlan.create(width.toFloat(),height.toFloat(),scale,context.resources.configuration.fontScale).padding
-                    assertTrue("$name clipped ${v.text}: $rect in ${width}x$height, safe inset $pad",rect.top>=pad-1&&rect.left>=pad-1&&rect.right<=width-pad+1&&rect.bottom<=height-pad+1)
+                    val pad=WidgetLayoutPlan.create(width.toFloat(),height.toFloat(),scale,context.resources.configuration.fontScale).padding*density
+                    assertTrue("$name clipped ${v.text}: $rect in ${width}x$height, safe inset $pad",rect.top>=pad-1&&rect.left>=pad-1&&rect.right<=pixelWidth-pad+1&&rect.bottom<=pixelHeight-pad+1)
                     assertTrue("$name hid ${v.text}",v.width>0&&v.height>0)
+                    v.layout?.let {layout->
+                        if(layout.lineCount>0)assertTrue("$name cut off text baseline ${v.text}: ${layout.height} in ${v.height}",
+                            layout.getLineBottom(layout.lineCount-1)<=v.height-v.compoundPaddingTop-v.compoundPaddingBottom+1)
+                    }
                     if(v.text.toString()==data.temperature&&v.layout!=null)assertEquals("$name truncated temperature",0,v.layout.getEllipsisCount(0))
                 }
                 if(v is ViewGroup)for(i in 0 until v.childCount)inspect(v.getChildAt(i))

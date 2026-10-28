@@ -16,8 +16,8 @@ class ExecutiveSummaryRulesTest {
     @Test fun underTwentyUsesOuterLayer() {
         assertTrue(LifestyleAdvisor.recommend(weather(19.9),OutingMode.DAILY,now=now).layer.contains("外套"))
     }
-    @Test fun twentyToTwentyEightUsesMidLongSleeves() {
-        assertTrue(LifestyleAdvisor.recommend(weather(20.0),OutingMode.DAILY,now=now).top.contains("中長袖"))
+    @Test fun twentyOneToTwentyEightUsesMidLongSleeves() {
+        assertTrue(LifestyleAdvisor.recommend(weather(21.0),OutingMode.DAILY,now=now).top.contains("中長袖"))
         assertTrue(LifestyleAdvisor.recommend(weather(28.0),OutingMode.DAILY,now=now).top.contains("中長袖"))
     }
     @Test fun aboveTwentyEightUsesShortSleeves() {

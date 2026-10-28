@@ -9,15 +9,14 @@ package io.atmos.weather.earthquake
 enum class SeismicFeedState { STOPPED, CONNECTING, CONNECTED_NO_FRAME, LIVE, STALE }
 
 object SeismicFeedHealth {
-    private const val RTS_FRESH_MS = 15_000L
+    const val RTS_FRESH_MS = 20_000L
 
     fun rts(enabled: Boolean, status: String, lastAt: Long, now: Long): SeismicFeedState {
         if (!enabled) return SeismicFeedState.STOPPED
         val connected = status.startsWith("即時串流已連線")
-        if (!connected) return SeismicFeedState.CONNECTING
-        if (lastAt <= 0L) return SeismicFeedState.CONNECTED_NO_FRAME
-        val age = now - lastAt
-        return if (age in 0..RTS_FRESH_MS) SeismicFeedState.LIVE else SeismicFeedState.STALE
+        if(lastAt<=0L)return if(connected)SeismicFeedState.CONNECTED_NO_FRAME else SeismicFeedState.CONNECTING
+        val age=now-lastAt
+        return if(age in -2_000L..RTS_FRESH_MS)SeismicFeedState.LIVE else SeismicFeedState.STALE
     }
 
     fun eew(enabled: Boolean, status: String): SeismicFeedState = when {
@@ -31,7 +30,7 @@ object SeismicFeedHealth {
         SeismicFeedState.CONNECTING -> "連線中或正在重試"
         SeismicFeedState.CONNECTED_NO_FRAME -> "已連線，等待測站資料"
         SeismicFeedState.LIVE -> "測站讀數正常更新"
-        SeismicFeedState.STALE -> "測站資料超過 15 秒，已隱藏舊讀數"
+        SeismicFeedState.STALE -> "超過 20 秒未收到測站觀測，等待恢復更新"
     }
 
     fun eewLabel(value: SeismicFeedState): String = when (value) {

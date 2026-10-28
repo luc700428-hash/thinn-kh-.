@@ -14,7 +14,10 @@ class R19GeographicDataTests(unittest.TestCase):
         for p in ("typhoon/TyphoonCenterPage.kt","typhoon/StormTimelineOverlay.kt",
                   "earthquake/SeismicLiveMapPage.kt"):
             self.assertIn("rememberTaiwanVectorAtlas()",code(p))
-            self.assertIn("atlas.draw(this)",code(p))
+            self.assertTrue("atlas.draw(this)" in code(p) or "taiwan?.draw(this)" in code(p))
+        for p in ("typhoon/TyphoonCenterPage.kt","typhoon/StormTimelineOverlay.kt"):
+            self.assertIn("rememberRegionalVectorAtlas()",code(p))
+            self.assertIn("regional?.draw(this",code(p))
         radar=(ROOT.parents[5]/"src/main/assets/radar/history.html").read_text(encoding="utf-8")
         self.assertIn("wmts.nlsc.gov.tw/wmts/EMAP5",radar)
         self.assertIn("rasterBounds()",code("typhoon/TyphoonViewport.kt"))
@@ -31,10 +34,13 @@ class R19GeographicDataTests(unittest.TestCase):
         self.assertIn("homeWindProbability",home)
         self.assertIn("七級風暴風圈侵襲機率",detail)
         self.assertNotIn("目前侵台機率：68%",home)
-        self.assertIn('officialProbability?.at(lon,lat) ?: "未提供"',detail)
+        self.assertIn('officialProbability?.at(lon,lat,',detail)
+        self.assertIn('?:"未提供"',detail)
         # Check source-bound official probability and safe missing/stale states,
         # not a fragile exact wording of the public-facing message.
-        self.assertIn('officialProbability?.at(lon,lat) ?: "未提供"', detail)
+        self.assertIn('CwaWindCityTable', code('typhoon/CwaWindProbability.kt'))
+        self.assertIn('DURING_THE_HOURS',code('typhoon/CwaWindCityTable.kt'))
+        self.assertIn('raw as? Number',code('typhoon/CwaWindCityTable.kt'))
         self.assertIn('probabilityMessage', detail)
         self.assertIn('CwaWindProbability.FetchState.STALE', detail)
         self.assertIn('CwaWindProbability.FetchState.NO_USABLE_REGIONS', detail)

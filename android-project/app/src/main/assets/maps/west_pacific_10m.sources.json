@@ -1,0 +1,27 @@
+{
+  "source": "Natural Earth physical land + minor islands",
+  "license": "Public domain",
+  "license_url": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "bounds": [
+    90.0,
+    -15.0,
+    180.0,
+    60.0
+  ],
+  "sources": [
+    {
+      "url": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_land.zip",
+      "sha256": "e547d749445eaa0964aba76738090ec88f5e63c4585122170f98c67a7ea922dc"
+    },
+    {
+      "url": "https://naturalearth.s3.amazonaws.com/10m_physical/ne_10m_minor_islands.zip",
+      "sha256": "47c0b3ce26df7b4dbabdbb251023918cb2f5c83462a426288f1f253da7284db2"
+    }
+  ],
+  "polygons": 3178,
+  "minor_islands": 1062,
+  "vertices": 104907,
+  "compressed_bytes": 639317,
+  "sha256": "d869f02203caa9b841270d6b140d016ffbf94e676d4c31405f63a22f4e2f03da",
+  "processing": "Clip to regional extent; retain source vertices and small-island layer; no extra line simplification. Not a navigation chart."
+}

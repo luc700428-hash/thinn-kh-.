@@ -57,8 +57,10 @@ object WeatherAdviceEngine {
         }
         val feels = weather.feelsLikeC ?: weather.temperatureC
         when {
-            feels < 12 -> suggestions += WeatherAdvice("需要保暖", "體感約 ${feels.roundToInt()}°C，建議穿著保暖外套與多層次衣物。", 7)
-            feels < 20 -> suggestions += WeatherAdvice("適合薄外套", "體感約 ${feels.roundToInt()}°C，可搭配長袖或輕薄外套。", 4)
+            minOf(weather.temperatureC,feels)<4 -> suggestions += WeatherAdvice("低於 4°C，特別留意低溫","準備厚外套、防風層、帽子與圍巾，出門前再確認最新預報。",9)
+            minOf(weather.temperatureC,feels)<10 -> suggestions += WeatherAdvice("低於 10°C，完整保暖","穿保暖外套與長褲，風大或潮濕時加防風、防水外層。",8)
+            feels < 16 -> suggestions += WeatherAdvice("需要保暖", "體感約 ${feels.roundToInt()}°C，建議穿著保暖外套與多層次衣物。", 7)
+            minOf(weather.temperatureC,feels)<21 -> suggestions += WeatherAdvice("適合薄外套", "體感約 ${feels.roundToInt()}°C，可搭配長袖或輕薄外套。", 4)
             feels >= 30 -> suggestions += WeatherAdvice("天氣較熱", "體感約 ${feels.roundToInt()}°C，建議穿透氣衣物、補充水分並避免長時間曝曬。", 7)
             else -> suggestions += WeatherAdvice("穿搭建議", "體感約 ${feels.roundToInt()}°C，建議舒適透氣的日常衣物。", 3)
         }

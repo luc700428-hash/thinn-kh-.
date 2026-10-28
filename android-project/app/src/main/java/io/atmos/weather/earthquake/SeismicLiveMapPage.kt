@@ -165,7 +165,7 @@ fun SeismicLiveMapPage(
 
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(5_000)
+            kotlinx.coroutines.delay(1_000)
             timestamp = System.currentTimeMillis()
         }
     }
@@ -229,9 +229,9 @@ fun SeismicLiveMapPage(
     // Show last provider-observed values steadily, but explicitly mark them stale
     // after freshness expires. Never relabel archived readings as live values.
     val currentStations = stations.filter {
-        it.availability != StationAvailability.OFFLINE && it.availability != StationAvailability.MAINTENANCE &&
-            (it.intensity != null || it.accelerationGal != null)
+        StationFreshness.state(it,timestamp,live.lastRtsAt)==StationViewState.LIVE
     }
+    val expiredStationCount=stations.count{StationFreshness.state(it,timestamp,live.lastRtsAt)==StationViewState.EXPIRED}
     val hasObservedFrame = live.lastRtsAt > 0L
     val maxI = currentStations.mapNotNull { it.intensity }.maxOrNull()
     val maxPga = currentStations.mapNotNull { it.accelerationGal }.maxOrNull()
@@ -336,8 +336,10 @@ fun SeismicLiveMapPage(
                                     val p=Offset(SeismicGeo.screenX(station.longitude!!,size.width,size.height),SeismicGeo.screenY(station.latitude!!,size.width,size.height))
                                     val offline = station.availability == StationAvailability.OFFLINE ||
                                         station.availability == StationAvailability.MAINTENANCE
+                                    val stationState=StationFreshness.state(station,timestamp,live.lastRtsAt)
                                     val hue=when {
                                         offline -> Color(0xFFFF7682)
+                                        stationState!=StationViewState.LIVE -> Color(0xFF9BACBD)
                                         station.intensity==null -> iceBlue
                                         station.intensity>=5 -> Color(0xFFFF776F)
                                         station.intensity>=3 -> Color(0xFFFFB551)
@@ -350,7 +352,7 @@ fun SeismicLiveMapPage(
                                         // Only provider-explicitly offline/maintenance stations glow red.
                                         drawCircle(Color(0xFFFF7682).copy(alpha=if(!fresh || reduceMotion) .55f else .25f+.6f*pulse),
                                             (5f+3f*pulse).dp.toPx(),p,style=Stroke(1.8.dp.toPx()))
-                                    } else if(fresh && stationFlash.value > .01f) {
+                                    } else if(stationState==StationViewState.LIVE && stationFlash.value>.01f) {
                                         // A real fresh RTS frame causes a brief cyan-blue confirmation flash.
                                         drawCircle(Color(0xFF77CFFF).copy(alpha=stationFlash.value*.95f),
                                             (5f+7f*(1f-stationFlash.value)).dp.toPx(),p,
@@ -375,7 +377,7 @@ fun SeismicLiveMapPage(
                             style=androidx.compose.ui.text.TextStyle(color=Color(0xFFB8CDD5),fontSize=14.sp))
                         Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
                             Text("TREM-Net 測站",color=Color.White,fontSize=15.sp,fontWeight=FontWeight.SemiBold)
-                            Text("${currentStations.size} 處座標 · ${if (fresh) "資料更新中" else "最後觀測非即時"}",
+                            Text("${stations.size} 站 · ${currentStations.size} 站有效觀測",
                                 color=if (fresh && stationFlash.value > 0.1f) iceBlue else muted,fontSize=14.sp,
                                 maxLines=1)
                         }
@@ -390,8 +392,15 @@ fun SeismicLiveMapPage(
                                 Icon(Icons.Rounded.CenterFocusStrong,"重置地圖")
                             }
                         }
-                        if (!fresh || (stations.isEmpty() && layer!="震央")) {
-                            Text(if(!live.enabled) "可在下方開啟即時監測" else if(!fresh) "目前觀測資料過期，不代表測站離線" else "尚未取得可定位的測站資料",
+                        if (!fresh || expiredStationCount>0 || (stations.isEmpty() && layer!="震央")) {
+                            Text(when {
+                                !live.enabled -> "可在下方開啟即時監測"
+                                live.lastRtsAt>timestamp+2_000L -> "測站時間與手機不同步，等待確認"
+                                rtsHealth==SeismicFeedState.STALE -> "超過 20 秒未更新 · 測站觀測暫時失效"
+                                live.lastRtsAt<=0L -> "正在連接測站，等待第一筆觀測…"
+                                expiredStationCount>0 -> "$expiredStationCount 站超過 20 秒未更新，已標示暫時失效"
+                                else -> "尚未取得可定位的測站資料"
+                            },
                                 color=Color.White,modifier=Modifier.align(Alignment.BottomCenter).padding(12.dp)
                                     .clip(RoundedCornerShape(12.dp)).background(Color(0xC80B223A)).padding(10.dp),fontSize=14.sp)
                         }
@@ -400,17 +409,17 @@ fun SeismicLiveMapPage(
                     Spacer(Modifier.height(10.dp))
                     Text("● 0　● 1–2　● 3–4　● 5+    ✚ 震央",fontSize=14.sp,color=muted)
                     Text("雙指縮放、點選測站 · 波圈為時間驅動示意",fontSize=14.sp,color=muted)
-                    selected?.let {station ->
+                    (stations.firstOrNull{it.id==selected?.id}?:selected)?.let {station ->
                         Spacer(Modifier.height(12.dp))
                         HorizontalDivider(color=palette.outlineVariant)
                         Row(Modifier.padding(top=12.dp),verticalAlignment=Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(station.label,color=light,fontSize=17.sp,fontWeight=FontWeight.SemiBold)
-                                Text("測站 ${station.id} · ${if(fresh) "最新觀測" else "上次觀測，非即時"}",color=muted,fontSize=14.sp)
+                                Text("測站 ${station.id} · ${StationFreshness.label(StationFreshness.state(station,timestamp,live.lastRtsAt))}",color=muted,fontSize=14.sp)
                             }
-                            Text(station.intensity?.toString() ?: "—",color=iceBlue,fontSize=30.sp,fontWeight=FontWeight.SemiBold)
+                            Text(if(StationFreshness.state(station,timestamp,live.lastRtsAt)==StationViewState.LIVE)station.intensity?.toString()?:"—" else "—",color=iceBlue,fontSize=30.sp,fontWeight=FontWeight.SemiBold)
                         }
-                        Text("PGA ${station.accelerationGal?.let {"%.2f".format(Locale.US,it)} ?: "—"} gal · ${station.availability}",color=muted,fontSize=14.sp)
+                        Text("PGA ${station.accelerationGal?.let {"%.2f".format(Locale.US,it)} ?: "—"} gal · ${StationFreshness.label(StationFreshness.state(station,timestamp,live.lastRtsAt))}",color=muted,fontSize=14.sp)
                     }
                 }
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
