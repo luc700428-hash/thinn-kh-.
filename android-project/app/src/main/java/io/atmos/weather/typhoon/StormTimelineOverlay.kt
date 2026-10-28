@@ -90,18 +90,18 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     val smoothProgress by animateFloatAsState(progress,tween(durationMillis=if(reduceMotion) 0 else 190),label="storm timeline transition")
     val chosen=storm.fixes[progress.roundToInt().coerceIn(0,storm.fixes.lastIndex)]
     var terrainCanvasSize by remember { mutableStateOf(IntSize.Zero) }
-    val terrainPoints=storm.fixes.map { it.latitude to it.longitude }+
-        TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }
+    val terrainPoints=remember(storm){storm.fixes.map { it.latitude to it.longitude }+
+        TyphoonGeoBackdrop.keyAnchors.map { it.second to it.first }}
     val terrainPad=with(LocalDensity.current) { 28.dp.toPx() }
     val atlas=rememberTaiwanVectorAtlas()
     val regional=rememberRegionalVectorAtlas()
     var zoom by remember {mutableFloatStateOf(1f)}
     var pan by remember {mutableStateOf(Offset.Zero)}
     var fitTrack by remember {mutableStateOf(true)}
-    val base=if(fitTrack) TyphoonViewport.forPoints(terrainPoints,terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
+    val base=remember(fitTrack,terrainPoints,terrainCanvasSize,terrainPad){if(fitTrack) TyphoonViewport.forPoints(terrainPoints,terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
         terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)
         else TyphoonViewport.forTaiwan(terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
-            terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)
+            terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)}
     val scale=base.pxPerKm*zoom
     val camera=base.copy(originXKm=base.originXKm-pan.x/scale,originYKm=base.originYKm+pan.y/scale,pxPerKm=scale)
     androidx.activity.compose.BackHandler(onBack=onDismiss)

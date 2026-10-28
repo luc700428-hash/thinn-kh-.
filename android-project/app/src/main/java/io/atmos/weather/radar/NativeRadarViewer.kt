@@ -38,7 +38,8 @@ import kotlin.math.*
     val palette=MaterialTheme.colorScheme
     val dark=palette.background.luminance()<.4f
     val lifecycle=LocalLifecycleOwner.current
-    var camera by remember(latitude,longitude){mutableStateOf(RadarCamera(latitude,longitude,6.5).normalized())}
+    val cameraState=remember(latitude,longitude){mutableStateOf(RadarCamera(latitude,longitude,6.5).normalized())}
+    var camera by cameraState
     var size by remember{mutableStateOf(IntSize.Zero)}
     var frames by remember{mutableStateOf<List<RadarFrame>>(emptyList())}
     var index by remember{mutableIntStateOf(0)};var playing by remember{mutableStateOf(false)}
@@ -55,8 +56,9 @@ import kotlin.math.*
         while(isActive){delay(300000);attempt++}
     }}
     val frame=frames.getOrNull(index)
-    val baseTiles=remember(camera,size,density){RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,RadarTilePolicy.BASE_MAX_ZOOM)}
-    val radarTiles=remember(camera,size,density){RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density)}
+    val baseTiles by remember(cameraState,size,density){derivedStateOf{RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,RadarTilePolicy.BASE_MAX_ZOOM)}}
+    val radarTiles by remember(cameraState,size,density){derivedStateOf{RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density)}}
+    val pastNativeLimit by remember(cameraState){derivedStateOf{camera.zoom>RadarTilePolicy.RADAR_MAX_ZOOM}}
     var base by remember{mutableStateOf<Map<RadarTile,ImageBitmap>>(emptyMap())}
     var echoes by remember{mutableStateOf<Map<RadarTile,ImageBitmap>>(emptyMap())}
     var loadedFrame by remember{mutableStateOf<String?>(null)}
@@ -66,9 +68,15 @@ import kotlin.math.*
     LaunchedEffect(baseTiles,tileRetry) {
         baseFetching=true
         try {
-            delay(100)
-            base=supervisorScope{baseTiles.map{tile->async {tile to RadarRepository.image(context,null,tile)?.asImageBitmap()}}.awaitAll().mapNotNull{(k,v)->v?.let{k to it}}.toMap()}
-            baseFailure=base.size<baseTiles.size
+            // Existing tiles follow the live camera while finer tiles arrive individually.
+            delay(40)
+            supervisorScope {baseTiles.map {tile->launch {
+                RadarRepository.image(context,null,tile)?.asImageBitmap()?.let {image->
+                    base=RadarTileWindow.merge(base,tile,image)
+                }
+            }}.joinAll()}
+            baseFailure=baseTiles.any{it !in base}
+            if(!baseFailure)base=base.filterKeys{it in baseTiles}
         } finally{baseFetching=false}
     }
     LaunchedEffect(radarTiles,frame?.path,tileRetry) {
@@ -114,7 +122,7 @@ import kotlin.math.*
         }
         Column(Modifier.padding(horizontal=16.dp)) {
             val time=frame?.let{Instant.ofEpochSecond(it.time).atZone(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))}?:"尚無時間資料"
-            if(camera.zoom>8.0)Text("底圖持續放大；回波細節已達資料來源上限",color=palette.onSurfaceVariant,fontSize=14.sp)
+            if(pastNativeLimit)Text("底圖持續放大；回波細節已達資料來源上限",color=palette.onSurfaceVariant,fontSize=14.sp)
             Text("圖層時間 $time（台灣時間）",color=palette.onSurface,fontSize=15.sp)
             Row(verticalAlignment=Alignment.CenterVertically) {
                 GlassIconButton({playing=false;index=(index-1).coerceAtLeast(0)},enabled=frames.isNotEmpty()){androidx.compose.material3.Icon(Icons.Rounded.SkipPrevious,"前一張")}

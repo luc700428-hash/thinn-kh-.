@@ -105,11 +105,12 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
                     }
                     // Clear body: the underlying track/background remain visible.
                     drawPath(path,if(opaque)solid else Color.White.copy(alpha=if(dark).065f else .035f))
-                    val phase=head.coerceIn(0f,1f)*160f+lift*40f
+                    val safeLift=BubbleSliderGeometry.unit(lift)
+                    val phase=BubbleSliderGeometry.rimPhase(head,lift)
                     val center=Offset((g.head+g.tail)/2,g.y)
                     val rainbow=(0..6).map {i->Color.hsv((phase+i*60f)%360f,.38f,.98f,if(i%2==0).82f else .48f)}
                     val rim=Brush.sweepGradient(rainbow,center)
-                    drawPath(path,Brush.sweepGradient(rainbow.map{it.copy(alpha=.10f+lift*.045f)},center),style=Stroke(5.dp.toPx()))
+                    drawPath(path,Brush.sweepGradient(rainbow.map{it.copy(alpha=.10f+safeLift*.045f)},center),style=Stroke(5.dp.toPx()))
                     drawPath(path,rim,style=Stroke(1.25.dp.toPx()))
                     drawPath(path,Brush.linearGradient(listOf(Color.White.copy(alpha=.82f),Color.Transparent,
                         Color.White.copy(alpha=.56f)),Offset(g.head-g.width/2,g.y-g.height/2),Offset(g.head+g.width/2,g.y+g.height/2)),style=Stroke(.65.dp.toPx()))

@@ -298,17 +298,23 @@ class RenderingRegressionTest {
         }}}
         frame()
         repeat(60){i->
-            compose.onNodeWithTag("stress-${i%3}").performTouchInput {
-                val start=if(i%2==0).15f else .85f;val end=1-start
-                down(Offset(width*start,centerY))
-                for(step in 1..10)moveTo(Offset(width*(start+(end-start)*step/10f),centerY),delayMillis=16)
+            val slider=compose.onNodeWithTag("stress-${i%3}")
+            slider.performTouchInput {
+                down(Offset(width*(if(i%2==0).02f else .98f),centerY))
+                moveTo(center,delayMillis=80)
+            }
+            // Let the pressed lens actually lift before release; a frozen clock misses rebound bugs.
+            compose.mainClock.advanceTimeBy(80);compose.waitForIdle()
+            slider.performTouchInput {
+                moveTo(Offset(width*(if(i%2==0).98f else .02f),centerY),delayMillis=80)
                 up()
             }
             compose.mainClock.advanceTimeBy(32)
+            if(i%6==0) {compose.mainClock.advanceTimeBy(240);compose.waitForIdle()}
             assertTrue(values.all{it.floatValue.isFinite()&&it.floatValue in 0f..1f})
         }
         frame();assertNull(CrashDiagnostics.graphics(context))
-        checkpoint("sliders: 60 alternating fast drags passed")
+        checkpoint("sliders: 60 endpoint drags and release rebound passed")
     }
 
     @Test(timeout=120_000) fun textSizeAndWeightApplyOnceAcrossNestedThemes() {

@@ -25,9 +25,9 @@ class RadarHdRenderingTest {
         val base=RadarProjection.tiles(c,1200f,1800f,3f,RadarTilePolicy.BASE_MAX_ZOOM)
         val radar=RadarProjection.tiles(c,1200f,1800f,3f)
         assertTrue(base.isNotEmpty()&&radar.isNotEmpty())
-        assertTrue(base.all{it.z==14});assertTrue(radar.all{it.z==7})
-        assertTrue(base.size<=36&&radar.size<=4)
-        base.forEach{assertTrue(RadarTilePolicy.imageUrl(null,it).startsWith("https://tile.openstreetmap.org/14/"))}
+        assertTrue(base.all{it.z==16});assertTrue(radar.all{it.z==7})
+        assertTrue(base.size<=RadarTilePolicy.BASE_MAX_VISIBLE_TILES&&radar.size<=4)
+        base.forEach{assertTrue(RadarTilePolicy.imageUrl(null,it).startsWith("https://tile.openstreetmap.org/16/"))}
         val frame=RadarFrame(1,"/v2/radar/abcd1234")
         radar.forEach{assertTrue(RadarTilePolicy.imageUrl(frame,it).endsWith("/2/0_1.png"));assertTrue(RadarTilePolicy.imageUrl(frame,it).contains("/512/7/"))}
         assertTrue(runCatching{RadarTilePolicy.imageUrl(frame,base.first())}.isFailure)
@@ -45,7 +45,7 @@ class RadarHdRenderingTest {
         for(zoom in listOf(2.0,7.0,12.0,16.0))for(lon in listOf(-179.9,121.565,179.9)) {
             val c=RadarCamera(25.033,lon,zoom)
             val tiles=RadarProjection.tiles(c,3500f,2200f,1f,RadarTilePolicy.BASE_MAX_ZOOM)
-            assertTrue(tiles.isNotEmpty()&&tiles.size<=36)
+            assertTrue(tiles.isNotEmpty()&&tiles.size<=RadarTilePolicy.BASE_MAX_VISIBLE_TILES)
             val span=256.0*2.0.pow(c.zoom-tiles.first().z)
             val world=c.world(1f)
             val left=tiles.minOf{it.column*span}-RadarProjection.x(lon)*world+1750

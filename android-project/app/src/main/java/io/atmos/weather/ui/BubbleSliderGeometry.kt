@@ -6,6 +6,9 @@ import kotlin.math.roundToInt
 /** Numeric and optical bounds shared by drawing, pointer mapping and accessibility. */
 internal object BubbleSliderGeometry {
     const val insetDp=30f
+    fun unit(value:Float)=if(value.isFinite())value.coerceIn(0f,1f) else 0f
+    // Springs can undershoot zero on release. HSV requires a non-negative hue.
+    fun rimPhase(head:Float,lift:Float)=unit(head)*160f+unit(lift)*40f
     fun fraction(value:Float,low:Float,high:Float):Float {
         if(!value.isFinite() || !low.isFinite() || !high.isFinite() || high<=low) return 0f
         return ((value-low)/(high-low)).coerceIn(0f,1f)

@@ -25,6 +25,7 @@ import io.atmos.weather.ocean.CompassDirections
 import io.atmos.weather.ui.*
 import io.atmos.weather.ui.AppText as Text
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.time.*
@@ -32,6 +33,17 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.*
 
 @Composable fun SkyPlannerPage(city:WeatherCity,timeZoneId:String?,onClose:()->Unit) {
+    SkyPlannerScreen(city,timeZoneId,onClose,Dispatchers.Default)
+}
+@Composable internal fun SkyPlannerScreen(city:WeatherCity,timeZoneId:String?,onClose:()->Unit,computationDispatcher:CoroutineDispatcher) {
+    val base=MaterialTheme.colorScheme
+    val dark=base.background.luminance()<.5f
+    MaterialTheme(colorScheme=base.copy(primary=if(dark)Color(0xFF90D7FF) else Color(0xFF0066CC),
+        onSurfaceVariant=if(dark)Color(0xFFC7C7CC) else Color(0xFF5C5C64))) {
+        CompositionLocalProvider(LocalWeatherCardPalette provides null){SkyPlannerContent(city,timeZoneId,onClose,computationDispatcher)}
+    }
+}
+@Composable private fun SkyPlannerContent(city:WeatherCity,timeZoneId:String?,onClose:()->Unit,computationDispatcher:CoroutineDispatcher) {
     val p=MaterialTheme.colorScheme
     val zone=remember(timeZoneId){runCatching{ZoneId.of(timeZoneId?:"Asia/Taipei")}.getOrDefault(ZoneId.systemDefault())}
     val owner=LocalLifecycleOwner.current
@@ -44,22 +56,22 @@ import kotlin.math.*
     val minute=if(live)now.atZone(zone).hour*60+now.atZone(zone).minute else chosenMinute
     val at=if(live)now.atZone(zone) else date.atTime(minute/60,minute%60).atZone(zone)
     val position by produceState<Result<SkyPosition>?>(null,city,at) {
-        value=withContext(Dispatchers.Default){runCatching{SkyEphemeris.position(city,at)}}
+        value=withContext(computationDispatcher){runCatching{SkyEphemeris.position(city,at)}}
     }
     val dayResult by produceState<Result<SkyDay>?>(null,city,date,zone){
         value=null
-        value=withContext(Dispatchers.Default){runCatching{SkyEphemeris.day(city,date,zone)}}
+        value=withContext(computationDispatcher){runCatching{SkyEphemeris.day(city,date,zone)}}
     }
     val day=dayResult?.getOrNull()
     val week by produceState<List<SkyPosition>>(emptyList(),city,date,zone) {
-        value=withContext(Dispatchers.Default){(0..6).mapNotNull{i->runCatching{SkyEphemeris.position(city,date.plusDays(i.toLong()).atTime(12,0).atZone(zone))}.getOrNull()}}
+        value=withContext(computationDispatcher){(0..6).mapNotNull{i->runCatching{SkyEphemeris.position(city,date.plusDays(i.toLong()).atTime(12,0).atZone(zone))}.getOrNull()}}
     }
     val data=position?.getOrNull()
     Column(Modifier.fillMaxSize().background(p.background).statusBarsPadding().navigationBarsPadding()) {
         IOSSettingsHeader("日月與月相",onClose)
         Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=12.dp,bottom=128.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
             Text(LocationLabels.microcity(city.name),fontSize=17.sp,color=p.onSurface)
-            GlassSurface {
+            SkySurface {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     GlassIconButton({chosenDate=date.minusDays(1);chosenMinute=minute;live=false}){Icon(Icons.Rounded.ChevronLeft,"前一天")}
                     Text(date.format(DateTimeFormatter.ofPattern("MM月dd日 EEEE",java.util.Locale.TAIWAN)),fontSize=17.sp,color=p.onSurface,modifier=Modifier.weight(1f),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
@@ -73,7 +85,7 @@ import kotlin.math.*
                 if(position?.isFailure==true)Text("目前無法計算此地的日月位置，請切換日期或地點。",color=p.error,fontSize=15.sp)
                 else IOSLinearProgressIndicator(modifier=Modifier.fillMaxWidth())
             } else {
-                GlassSurface {
+                SkySurface {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         MoonPhaseArt(data.fraction,data.phase,Modifier.size(145.dp))
                         Column(Modifier.weight(1f)) {
@@ -84,7 +96,7 @@ import kotlin.math.*
                     }
                     Text("月相示意 · 依所選地點與時間計算",fontSize=14.sp,color=p.onSurfaceVariant)
                 }
-                GlassSurface {
+                SkySurface {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         BearingCompass(data.moonAzimuth,"月亮方位",Modifier.size(145.dp))
                         Column(Modifier.weight(1f)) {
@@ -95,7 +107,7 @@ import kotlin.math.*
                         }
                     }
                 }
-                GlassSurface {
+                SkySurface {
                     val time=DateTimeFormatter.ofPattern("HH:mm")
                     if(dayResult==null)IOSLinearProgressIndicator(modifier=Modifier.fillMaxWidth())
                     else if(day==null)Text("目前無法計算當日出沒時間",color=p.error,fontSize=15.sp)
@@ -109,7 +121,7 @@ import kotlin.math.*
                         Spacer(Modifier.height(12.dp));Text("日長 ${length/60} 小時 ${length%60} 分鐘",fontSize=14.sp,color=p.onSurfaceVariant)
                     }
                 }
-                GlassSurface {
+                SkySurface {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         BearingCompass(data.sunAzimuth,"太陽方位",Modifier.size(145.dp))
                         Column(Modifier.weight(1f)) {
@@ -119,7 +131,7 @@ import kotlin.math.*
                         }
                     }
                 }
-                GlassSurface {
+                SkySurface {
                     Text("接下來七天",fontSize=18.sp,color=p.onSurface)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(15.dp)) {
                         week.forEach {item->Column(Modifier.width(70.dp),horizontalAlignment=Alignment.CenterHorizontally) {
@@ -134,6 +146,13 @@ import kotlin.math.*
         }
     }
 }
+@Composable private fun SkySurface(content:@Composable ColumnScope.()->Unit) {
+    val p=MaterialTheme.colorScheme
+    CompositionLocalProvider(LocalContentColor provides p.onSurface) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.surface)
+            .thinnSpecularEdge(24.dp).padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp),content=content)
+    }
+}
 @Composable private fun SkyTimeRow(left:String,leftValue:String,right:String,rightValue:String) {
     val p=MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -144,17 +163,20 @@ import kotlin.math.*
 }
 @Composable fun MoonPhaseArt(fraction:Double,phase:Double,modifier:Modifier=Modifier) {
     val reduce=rememberAppleReduceMotion()
+    val dark=MaterialTheme.colorScheme.background.luminance()<.5f
     val lit by animateFloatAsState(fraction.toFloat().coerceIn(0f,1f),tween(if(reduce)0 else 500,easing=AppleMotion.fluid),label="lunar terminator")
     Canvas(modifier) {
         val r=minOf(size.width,size.height)*.34f;val c=Offset(size.width/2,size.height/2)
         drawCircle(Brush.radialGradient(listOf(Color(0x554C8FCB),Color.Transparent),c,r*1.48f),r*1.48f,c)
-        drawCircle(Brush.radialGradient(listOf(Color(0xFF415975),Color(0xFF1C2C45)),c,r),r,c)
+        drawCircle(Brush.radialGradient(if(dark)listOf(Color(0xFF708EAE),Color(0xFF435E7E))
+            else listOf(Color(0xFF415975),Color(0xFF1C2C45)),c,r),r,c)
         val path=Path();val sign=if(phase<0)1 else -1
         for(i in 0..100){val y=-r+2*r*i/100;val x=sqrt((r*r-y*y).coerceAtLeast(0f))*sign
             if(i==0)path.moveTo(c.x+x,c.y+y) else path.lineTo(c.x+x,c.y+y)}
         for(i in 100 downTo 0){val y=-r+2*r*i/100;val x=sqrt((r*r-y*y).coerceAtLeast(0f))*(1-2*lit)*sign
             path.lineTo(c.x+x,c.y+y)};path.close()
         drawPath(path,Brush.radialGradient(listOf(Color(0xFFFFF4D0),Color(0xFFE0E7E7),Color(0xFFABC9DE)),c-Offset(r*.2f,r*.3f),r*1.6f))
+        if(dark)drawCircle(Color(0xFFB7CBDD),r,c,style=androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx()))
         listOf(Triple(-.35f,-.25f,.14f),Triple(.25f,.30f,.18f),Triple(-.05f,.50f,.09f)).forEach {(x,y,s)->
             drawCircle(Color(0x20516F8F),r*s,c+Offset(x*r,y*r))}
     }

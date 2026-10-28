@@ -24,7 +24,7 @@ object RadarRepository {
         val files=directory.listFiles()?.sortedBy{it.lastModified()}.orEmpty();var total=files.sumOf{it.length()}
         for(f in files){if(total<=48L*1024*1024&&now-f.lastModified()<7*86400000L)break;val length=f.length();if(f.delete())total-=length}
     }
-    private val images=object:LruCache<String,Bitmap>(12*1024*1024){override fun sizeOf(key:String,value:Bitmap)=value.allocationByteCount}
+    private val images=object:LruCache<String,Bitmap>(32*1024*1024){override fun sizeOf(key:String,value:Bitmap)=value.allocationByteCount}
     fun parse(json:String,now:Long):RadarTimeline {
         val j=JSONObject(json);require(j.optString("host")=="https://tilecache.rainviewer.com")
         val a=j.getJSONObject("radar").getJSONArray("past")

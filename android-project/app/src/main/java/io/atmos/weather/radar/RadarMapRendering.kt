@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.*
@@ -25,14 +26,14 @@ internal fun DrawScope.drawRadarLayers(camera:RadarCamera,density:Float,
     base:Map<RadarTile,ImageBitmap>,echoes:Map<RadarTile,ImageBitmap>,opacity:Float,dark:Boolean) {
     val world=camera.world(density)
     fun paint(images:Map<RadarTile,ImageBitmap>,alpha:Float,filter:ColorFilter?,sampling:FilterQuality) {
-        images.forEach {(tile,img)->
-            val span=(256*density*2.0.pow(camera.zoom-tile.z)).toFloat()
-            val x=(tile.column*span-RadarProjection.x(camera.longitude)*world+size.width/2).toFloat()
-            val y=(tile.y*span-RadarProjection.y(camera.latitude)*world+size.height/2).toFloat()
-            if(x>=size.width||y>=size.height||x+span<=0||y+span<=0)return@forEach
-            drawImage(img,dstOffset=IntOffset(x.roundToInt(),y.roundToInt()),
-                dstSize=IntSize(ceil(span).toInt(),ceil(span).toInt()),alpha=alpha,
-                colorFilter=filter,filterQuality=sampling)
+        images.entries.sortedBy{it.key.z}.forEach {(tile,img)->
+            val bounds=RadarTileGeometry.bounds(camera,tile,size.width,size.height,density)
+            val x=bounds.left;val y=bounds.top;val span=bounds.width
+            if(x>=size.width||y>=size.height||bounds.right<=0||bounds.bottom<=0)return@forEach
+            // Keep projection arithmetic in Double, then transform local pixels continuously.
+            withTransform({translate(x,y);scale((span/img.width).toFloat(),(span/img.height).toFloat(),pivot=Offset.Zero)}) {
+                drawImage(img,alpha=alpha,colorFilter=filter,filterQuality=sampling)
+            }
         }
     }
     clipRect {

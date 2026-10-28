@@ -28,6 +28,8 @@ import io.atmos.weather.maps.*
 import io.atmos.weather.ui.*
 import io.atmos.weather.ui.AppText as Text
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -53,7 +55,10 @@ import java.time.format.DateTimeFormatter
         scope.launch {
             try {
                 val data=CwaOfficialGateway.read(context,"W-C0034-005")
-                fixes=OfficialTyphoonTrack.extract(data);timelines=OfficialStormTimeline.parse(data)
+                val parsed=withContext(Dispatchers.Default) {
+                    OfficialTyphoonTrack.extract(data) to OfficialStormTimeline.parse(data)
+                }
+                fixes=parsed.first;timelines=parsed.second
                 status=if(fixes.isEmpty())"目前沒有可顯示的官方熱帶氣旋路徑" else "中央氣象署最新預報 · 點選颱風可檢視時間軸"
             } catch(cancel:CancellationException){throw cancel}
               catch(_:Exception){status="官方路徑暫時無法更新，可重試；已載入的地圖仍可操作"}
@@ -72,10 +77,7 @@ import java.time.format.DateTimeFormatter
     }
     val root:@Composable ()->Unit={
         Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)){IOSSettingsHeader("颱風動向與警報",onClose)}
-                GlassIconButton({refresh()},enabled=!loading&&!probabilityLoading,modifier=Modifier.padding(end=12.dp)) {Icon(Icons.Rounded.Refresh,"更新官方颱風資料")}
-            }
+            TyphoonPageHeader(loading||probabilityLoading,onClose,{refresh()})
             Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState())
                 .padding(horizontal=16.dp).padding(top=12.dp,bottom=128.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                 Text(status,color=palette.onSurfaceVariant,fontSize=14.sp)
@@ -143,6 +145,15 @@ import java.time.format.DateTimeFormatter
     selectedWarning?.let {warning->GlassAlertDialog(onDismissRequest={selectedWarning=null},
         title={Text(warning.title)},text={Text(warning.summary)},
         confirmButton={GlassTextButton({selectedWarning=null}){Text("完成")}})}
+}
+
+@Composable internal fun TyphoonPageHeader(loading:Boolean,onClose:()->Unit,onRefresh:()->Unit) {
+    Box(Modifier.fillMaxWidth()) {
+        IOSSettingsHeader("颱風動向與警報",onClose)
+        GlassIconButton(onRefresh,enabled=!loading,modifier=Modifier.align(Alignment.CenterEnd).padding(end=16.dp)) {
+            Icon(Icons.Rounded.Refresh,"更新官方颱風資料",tint=MaterialTheme.colorScheme.primary)
+        }
+    }
 }
 
 @Composable private fun OfficialTrackPlot(points:List<TyphoonFix>) {

@@ -19,7 +19,34 @@ import kotlin.math.*
 /** Cached native paths retain the source coastlines. Camera changes transform paths, not bitmaps.
  * The .tkatlasz suffix preserves gzip bytes: Android asset merging automatically expands .gz files. */
 class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>,val vertexCount:Int) {
-    private data class Polygon(val minor:Boolean,val bounds:RectF,val path:Path)
+    private data class Detail(val path:Path,val vertices:Int)
+    private data class Polygon(val minor:Boolean,val bounds:RectF,val details:List<Detail>)
+    private data class Key(val level:Int,val left:Int,val top:Int,val right:Int,val bottom:Int)
+    private data class Batch(val path:Path,val polygons:Int,val vertices:Int,val minor:List<Polygon>)
+    internal data class RenderStats(val vertices:Int,val polygons:Int,val contourDrawCalls:Int,val errorPixels:Float)
+    private val batches=object:LinkedHashMap<Key,Batch>(4,.75f,true) {
+        override fun removeEldestEntry(eldest:MutableMap.MutableEntry<Key,Batch>?)=size>4
+    }
+    internal var batchBuildCount=0;private set
+    private fun batch(view:TyphoonViewport):Pair<Key,Batch> {
+        val ppd=(111.2*view.pxPerKm).toFloat()
+        val level=TOLERANCES.indexOfFirst{it*ppd<=.4f}.coerceAtLeast(0)
+        val bounds=view.rasterBounds()
+        val key=Key(level,floor(bounds.west/2).toInt()-1,floor(bounds.south/2).toInt()-1,
+            ceil(bounds.east/2).toInt()+1,ceil(bounds.north/2).toInt()+1)
+        return key to batches.getOrPut(key) {
+            val visible=polygons.filter{it.bounds.right>=key.left*2 && it.bounds.left<=key.right*2 &&
+                it.bounds.bottom>=key.top*2 && it.bounds.top<=key.bottom*2}
+            val path=Path().apply{fillType=Path.FillType.EVEN_ODD;visible.forEach{addPath(it.details[level].path)}}
+            batchBuildCount++
+            Batch(path,visible.size,visible.sumOf{it.details[level].vertices},visible.filter{it.minor})
+        }
+    }
+    internal fun renderStats(view:TyphoonViewport):RenderStats {
+        val (key,batch)=batch(view)
+        return RenderStats(batch.vertices,batch.polygons,if(batch.polygons>0)2 else 0,
+            TOLERANCES[key.level]*(111.2*view.pxPerKm).toFloat())
+    }
     val polygonCount get()=polygons.size
     val minorIslandCount get()=polygons.count{it.minor}
     private val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL}
@@ -30,9 +57,7 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
     fun draw(scope:DrawScope,view:TyphoonViewport,dark:Boolean) {
         val pixelsPerDegree=(111.2*view.pxPerKm).toFloat()
         if(!pixelsPerDegree.isFinite()||pixelsPerDegree<=0f)return
-        val cx=view.originXKm/(111.2*view.cosCenter);val cy=view.originYKm/111.2
-        val hx=view.widthPx/(2*view.pxPerKm*111.2*view.cosCenter);val hy=view.heightPx/(2*view.pxPerKm*111.2)
-        val visible=polygons.filter {it.bounds.right>=cx-hx&&it.bounds.left<=cx+hx&&it.bounds.bottom>=cy-hy&&it.bounds.top<=cy+hy}
+        val (_,batch)=batch(view)
         fill.color=if(dark)0xff294d51.toInt() else 0xffd3e3d1.toInt()
         edge.color=if(dark)0xff8cb6bd.toInt() else 0xff628a91.toInt()
         edge.strokeWidth=(.75f*scope.density/pixelsPerDegree).coerceAtLeast(.000001f)
@@ -40,15 +65,24 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
         canvas.save();canvas.clipRect(0f,0f,scope.size.width,scope.size.height)
         canvas.translate(origin.first,origin.second)
         canvas.scale((pixelsPerDegree*view.cosCenter).toFloat(),-pixelsPerDegree)
-        visible.forEach {p->
-            canvas.drawPath(p.path,fill);canvas.drawPath(p.path,edge)
-            if(p.minor&&(p.bounds.width()*pixelsPerDegree<scope.density*1.4f)) {
-                canvas.drawCircle(p.bounds.centerX()-100,p.bounds.centerY(),.7f*scope.density/pixelsPerDegree,fill)
+        // One immutable vector batch replaces thousands of drawPath calls per gesture frame.
+        canvas.drawPath(batch.path,fill);canvas.drawPath(batch.path,edge)
+        val dots=FloatArray(batch.minor.size*2);var count=0
+        batch.minor.forEach {p->
+            if(p.bounds.width()*pixelsPerDegree<scope.density*1.4f) {
+                dots[count++]=p.bounds.centerX()-100;dots[count++]=p.bounds.centerY()
             }
+        }
+        if(count>0) {
+            val previous=fill.style
+            fill.style=Paint.Style.STROKE;fill.strokeCap=Paint.Cap.ROUND
+            fill.strokeWidth=1.4f*scope.density/pixelsPerDegree
+            canvas.drawPoints(dots,0,count,fill);fill.style=previous
         }
         canvas.restore()
     }
     companion object {
+        private val TOLERANCES=floatArrayOf(.04f,.008f,.0016f,0f)
         @Volatile private var cached:RegionalVectorAtlas?=null
         suspend fun load(context:Context):RegionalVectorAtlas=withContext(Dispatchers.IO) {
             cached?:synchronized(this@Companion) {
@@ -60,14 +94,24 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
                         val box=RectF(input.readFloat(),input.readFloat(),input.readFloat(),input.readFloat())
                         require(box.left.isFinite()&&box.top.isFinite()&&box.right.isFinite()&&box.bottom.isFinite())
                         val ringCount=input.readInt();require(ringCount in 1..10_000)
-                        val path=Path().apply {fillType=Path.FillType.EVEN_ODD}
-                        repeat(ringCount) {
+                        val rings=List(ringCount) {
                             val n=input.readInt();require(n in 4..1_000_000);total+=n;require(total<=2_000_000)
-                            repeat(n) {i->val x=input.readFloat();val y=input.readFloat()
-                                require(x.isFinite()&&y.isFinite()&&x in -10f..80f&&y in -15f..60f)
-                                if(i==0)path.moveTo(x,y) else path.lineTo(x,y)
-                            };path.close()
-                        };Polygon(minor,box,path)
+                            FloatArray(n*2) {i->input.readFloat().also {v->
+                                require(v.isFinite() && if(i%2==0)v in -10f..80f else v in -15f..60f)
+                            }}
+                        }
+                        val details=TOLERANCES.map {tolerance->
+                            var vertices=0
+                            val path=Path().apply {
+                                fillType=Path.FillType.EVEN_ODD
+                                rings.forEach {source->
+                                    val ring=VectorRingSimplifier.simplify(source,tolerance);vertices+=ring.size/2
+                                    moveTo(ring[0],ring[1]);for(i in 1 until ring.size/2)lineTo(ring[i*2],ring[i*2+1]);close()
+                                }
+                            }
+                            Detail(path,vertices)
+                        }
+                        Polygon(minor,box,details)
                     }
                     RegionalVectorAtlas(data,total).also{cached=it}
                 }

@@ -53,6 +53,8 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
         unitTests.isIncludeAndroidResources = true
+        // Native Compose tests recreate Android Loopers; isolate their static dispatcher/render state.
+        unitTests.all { it.forkEvery = 1 }
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }

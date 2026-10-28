@@ -63,6 +63,14 @@ class MarineRenderingTest {
         }
         return Bitmap.createBitmap(400,850,Bitmap.Config.ARGB_8888).also{view.draw(Canvas(it))}
     }
+    private fun settle(view:View,condition:()->Boolean) {
+        repeat(100) {
+            pump(view)
+            if(condition())return
+            java.util.concurrent.locks.LockSupport.parkNanos(1_000_000)
+        }
+        assertTrue("Marine asynchronous content did not settle",condition())
+    }
     private fun save(bitmap:Bitmap,name:String) {
         val dir=File("build/marine-renders").apply{mkdirs()}
         File(dir,name).outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}
@@ -82,7 +90,7 @@ class MarineRenderingTest {
                 loaded.add(place.id to force)
                 val now=Instant.now()
                 val hour=MarineHour(now,1.9,45.0,7.0,1.0,60.0,9.0,.4,90.0,24.0)
-                MarineSnapshot(place,place.latitude,place.longitude,hour,listOf(hour.copy(at=now.plusSeconds(3600))),now)
+                MarineSnapshot(place,place.latitude,place.longitude,hour,(1..48).map{hour.copy(at=now.plusSeconds(it*3600L),waveHeight=1.9+it*.1)},now)
             }
             try {
                 view.setContent {ThinnAppTheme {
@@ -94,8 +102,15 @@ class MarineRenderingTest {
                 val parent=FrameLayout(activity).apply{addView(view,ViewGroup.LayoutParams(400,850))}
                 activity.setContentView(parent)
                 val label="${if(dark)"dark" else "light"}_${(scale*100).toInt()}"
+                settle(parent){loaded.isNotEmpty() && nodes(parent).any{it.config.contains(SemanticsActions.SetProgress)}}
                 save(pump(parent),"marine_$label.png")
                 assertEquals("tamsui",loaded.first().first)
+                repeat(4) {
+                    for(value in listOf(0f,48f,0f,24f)) {
+                        val slider=nodes(parent).single{it.config.contains(SemanticsActions.SetProgress)}
+                        assertTrue(slider.config[SemanticsActions.SetProgress].action!!.invoke(value));pump(parent)
+                    }
+                }
                 val page=nodes(parent)
                 val title=page.single{text(it,"海象與浪況")}
                 assertEquals("Title shifted away from screen center",200f,title.boundsInRoot.center.x,1f)
@@ -120,13 +135,13 @@ class MarineRenderingTest {
                     if(dark)Color(0xFF163C56) else Color(0xFFE2F0FF) else surface)
                 val target=rows.single{text(it,"基隆外海")}
                 assertTrue(target.config[SemanticsActions.OnClick].action!!.invoke())
-                pump(parent);assertFalse(dialog.isShowing)
+                settle(parent){!dialog.isShowing && loaded.lastOrNull()?.first=="keelung"};assertFalse(dialog.isShowing)
                 assertEquals("keelung",loaded.last().first)
                 assertTrue(nodes(parent).any{text(it,"基隆外海")})
                 val refresh=nodes(parent).single{it.config.contains(SemanticsProperties.ContentDescription) &&
                     "更新海象預報" in it.config[SemanticsProperties.ContentDescription] && it.config.contains(SemanticsActions.OnClick)}
                 assertTrue(refresh.config[SemanticsActions.OnClick].action!!.invoke())
-                pump(parent);assertEquals("keelung" to true,loaded.last())
+                settle(parent){loaded.lastOrNull()==("keelung" to true)};assertEquals("keelung" to true,loaded.last())
                 val back=nodes(parent).single{it.config.contains(SemanticsProperties.ContentDescription) &&
                     "返回" in it.config[SemanticsProperties.ContentDescription] && it.config.contains(SemanticsActions.OnClick)}
                 assertTrue(back.config[SemanticsActions.OnClick].action!!.invoke());assertTrue(closed)
