@@ -216,9 +216,11 @@ class RenderingRegressionTest {
             compose.runOnIdle{dark.value=appearance};frame()
             // All groups compose, including the fourth group beyond the initial viewport.
             for(title in listOf("日常生活","天氣與防災","海洋與天文","時間與換算")) {
-                compose.onNodeWithText(title).performScrollTo().assertIsDisplayed()
+                checkpoint("tools: ${if(appearance)"dark" else "light"} scroll to $title")
+                centerScrollTarget(hasText(title),"tools group $title")
             }
-            compose.onNode(hasSetTextAction()).performScrollTo().performTextInput("世界時鐘")
+            centerScrollTarget(hasSetTextAction(),"tools search field")
+            compose.onNode(hasSetTextAction()).performTextInput("世界時鐘")
             frame()
             compose.onNode(hasSetTextAction()).assertTextEquals("世界時鐘")
             compose.onNodeWithText("時間與換算").assertIsDisplayed()
@@ -340,11 +342,13 @@ class RenderingRegressionTest {
         checkpoint("reading: global size and weight passed nested theme regression")
     }
 
-    private fun centerWeatherText(text:String) {
+    private fun centerWeatherText(text:String)=centerScrollTarget(hasText(text),text)
+
+    private fun centerScrollTarget(matcher:SemanticsMatcher,description:String) {
         frame()
-        val node=compose.onNodeWithText(text)
+        val node=compose.onNode(matcher)
         val scroll=compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and
-            hasAnyDescendant(hasText(text)))
+            hasAnyDescendant(matcher))
         // performScrollTo loops until the target is visible, without advancing a
         // paused animation clock. Drive each asynchronous ScrollBy explicitly.
         repeat(8) {attempt ->
@@ -356,15 +360,15 @@ class RenderingRegressionTest {
             val delta=(target.positionInRoot.y-viewport.top-viewport.height*.25f)
                 .coerceIn(-before,(range.maxValue()-before).coerceAtLeast(0f))
             if(abs(delta)<1f) {node.assertIsDisplayed();return}
-            checkpoint("scroll: $text attempt $attempt from $before by $delta")
+            checkpoint("scroll: $description attempt $attempt from $before by $delta")
             scroll.performSemanticsAction(SemanticsActions.ScrollBy) {
-                assertTrue("ScrollBy rejected $text",it(0f,delta))
+                assertTrue("ScrollBy rejected $description",it(0f,delta))
             }
             frame()
             val after=scroll.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
-            assertTrue("Scrolling $text stalled with the manual clock: $before -> $after",abs(after-before)>.5f)
+            assertTrue("Scrolling $description stalled with the manual clock: $before -> $after",abs(after-before)>.5f)
         }
-        fail("Could not center $text after 8 clock-driven scrolls")
+        fail("Could not center $description after 8 clock-driven scrolls")
     }
     private fun assertPaintedText(text:String) {
         val node=compose.onNodeWithText(text).assertIsDisplayed()
