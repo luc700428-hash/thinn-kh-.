@@ -216,9 +216,18 @@ class RenderingRegressionTest {
             }
             compose.onNode(hasSetTextAction()).performScrollTo().performTextInput("世界時鐘")
             frame()
+            compose.onNode(hasSetTextAction()).assertTextEquals("世界時鐘")
             compose.onNodeWithText("時間與換算").assertIsDisplayed()
-            compose.onNodeWithText("世界時鐘").assertIsDisplayed()
+            // The same text is present in the editor; select the actionable result, not its input.
+            val clockResult=hasText("世界時鐘") and hasClickAction() and !hasSetTextAction()
+            compose.onAllNodes(clockResult).assertCountEquals(1)
+            compose.onNode(clockResult).assertIsDisplayed()
             compose.onNodeWithText("海洋與天文").assertDoesNotExist()
+            compose.onNode(clockResult).performClick();frame()
+            compose.onNodeWithText("臺北").assertIsDisplayed()
+            compose.onNodeWithText("東京").assertIsDisplayed()
+            compose.onNodeWithText("×").performClick();frame()
+            compose.onNodeWithText("臺北").assertDoesNotExist()
             compose.onNode(hasSetTextAction()).performTextClearance();frame()
             compose.onNodeWithText("海洋與天文").assertExists()
         }
