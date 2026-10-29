@@ -27,6 +27,6 @@ object SeismicWarningNarration {
         val overview=if(others.isEmpty()) "其他縣市目前沒有可靠的預估震度資料。"
             else "來源提供的其他縣市預估震度為："+
                 others.joinToString("；") { "${it.county}${gradeLabel(it.intensity ?: "未提供")}" }+"。"
-        return "地震速報！慎防強烈搖晃！趴下、掩護、穩住！${location}${center}${magDescription}${depthDescription}${overview}"
+        return "收到地震速報！慎防強烈搖晃！趴下、掩護、穩住！${location}${center}${magDescription}${depthDescription}${overview}"
     }
 }

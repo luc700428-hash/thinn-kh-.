@@ -46,23 +46,25 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
     val cameraState=remember(latitude,longitude){mutableStateOf(RadarCamera(latitude,longitude,6.5).normalized())}
     var camera by cameraState
     var size by remember{mutableStateOf(IntSize.Zero)}
+    var cwa by remember(latitude,longitude){mutableStateOf(CwaHighDefinitionRadar.covers(latitude,longitude))}
+    val radarMaxZoom=if(cwa)CwaHighDefinitionRadar.MAX_ZOOM else RadarTilePolicy.RADAR_MAX_ZOOM
     var frames by remember{mutableStateOf<List<RadarFrame>>(emptyList())}
     var position by remember{mutableFloatStateOf(0f)}
     val currentPosition by rememberUpdatedState(position)
     var playing by remember{mutableStateOf(false)}
     var attempt by remember{mutableIntStateOf(0)};var status by remember{mutableStateOf("正在取得雷達時間軸…")}
-    var opacity by remember{mutableFloatStateOf(.75f)}
+    var opacity by remember(cwa){mutableFloatStateOf(if(cwa)1f else .75f)}
     val reduce=rememberAppleReduceMotion()
     LaunchedEffect(reduce){if(reduce)playing=false}
     val maxSources=remember(context){if(context.getSystemService(ActivityManager::class.java)?.isLowRamDevice==true)2 else RadarPlayback.MAX_SOURCE_TILES}
-    LaunchedEffect(attempt) {
+    LaunchedEffect(attempt,cwa) {
         try {
             val old=frames.getOrNull(RadarPlayback.sample(position,frames.size).lower)
             val wasLatest=frames.isEmpty()||position>=frames.lastIndex-.01f
-            val timeline=RadarRepository.timeline(attempt>0)
+            val timeline=if(cwa)CwaHighDefinitionRadar.timeline(attempt>0) else RadarRepository.timeline(attempt>0)
             frames=timeline.frames
             position=if(wasLatest)frames.lastIndex.toFloat() else frames.indices.minByOrNull{abs(frames[it].time-(old?.time?:frames.last().time))}?.toFloat()?:0f
-            status=if(timeline.cached)"目前顯示快取圖層" else "歷史回波實況 · 近 2 小時"
+            status=if(timeline.cached)"目前顯示快取圖層" else if(cwa)"中央氣象署 · 臺灣高解析回波 · 近 2 小時" else "歷史回波實況 · 近 2 小時"
         } catch(cancel:CancellationException){throw cancel}
           catch(_:Exception){status="雷達服務暫時無法連線，可保留地圖操作並重試"}
     }
@@ -70,11 +72,11 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
         while(isActive){delay(300000);attempt++}
     }}
     val baseTiles by remember(cameraState,size,density){derivedStateOf{RadarProjection.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,RadarTilePolicy.BASE_MAX_ZOOM)}}
-    val radarTiles by remember(cameraState,size,density,maxSources){derivedStateOf{RadarPlayback.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,maxSources)}}
-    val pastNativeLimit by remember(cameraState){derivedStateOf{camera.zoom>RadarTilePolicy.RADAR_MAX_ZOOM}}
+    val radarTiles by remember(cameraState,size,density,maxSources,radarMaxZoom){derivedStateOf{RadarPlayback.tiles(camera,size.width.toFloat(),size.height.toFloat(),density,maxSources,radarMaxZoom)}}
+    val pastNativeLimit by remember(cameraState,radarMaxZoom){derivedStateOf{camera.zoom>radarMaxZoom}}
     var base by remember{mutableStateOf<Map<RadarTile,ImageBitmap>>(emptyMap())}
-    val buffered=remember{mutableStateMapOf<String,Map<RadarTile,ImageBitmap>>()}
-    val motions=remember{mutableStateMapOf<Pair<String,String>,RadarFlowPair>()}
+    val buffered=remember(cwa){mutableStateMapOf<String,Map<RadarTile,ImageBitmap>>()}
+    val motions=remember(cwa){mutableStateMapOf<Pair<String,String>,RadarFlowPair>()}
     var bufferedViewport by remember{mutableStateOf<List<RadarTile>>(emptyList())}
     var baseFetching by remember{mutableStateOf(false)};var radarFetching by remember{mutableStateOf(false)}
     var baseFailure by remember{mutableStateOf(false)};var radarFailure by remember{mutableStateOf(false)}
@@ -126,7 +128,11 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
                 while(isActive) {
                     val next=RadarPlayback.loadOrder(frames.size,currentPosition).map{frames[it]}
                         .firstOrNull{it.path !in buffered && attempted.add(it.path)}?:break
-                    val images=radarTiles.map{tile->async {tile to RadarRepository.image(context,next,tile)?.asImageBitmap()}}
+                    val images=if(next.path.startsWith("cwa:")) {
+                        try{CwaHighDefinitionRadar.tiles(context,next,radarTiles)}
+                        catch(cancel:CancellationException){throw cancel}
+                        catch(_:Exception){emptyMap()}
+                    } else radarTiles.map{tile->async {tile to RadarRepository.image(context,next,tile)?.asImageBitmap()}}
                         .awaitAll().mapNotNull{(tile,image)->image?.let{tile to it}}.toMap()
                     if(images.size==radarTiles.size)buffered[next.path]=images else radarFailure=true
                     prepareMotion()
@@ -159,7 +165,7 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
     val lower=first?.let{buffered[it.path]};val upper=second?.let{buffered[it.path]}
     val prepared=if(first!=null&&second!=null&&lower!=null&&upper!=null)
         RadarScene(first,second,sample.fraction,lower,upper,motions[first.path to second.path]) else null
-    val memory=remember{RadarSceneMemory()}
+    val memory=remember(cwa){RadarSceneMemory()}
     val scene=prepared?:memory.scene
     SideEffect {if(prepared!=null)memory.scene=prepared}
     val painter=remember{RadarTemporalPainter()}
@@ -167,11 +173,22 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
     val tileFailure=baseFailure||radarFailure
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         IOSSettingsHeader("降雨雷達",onClose)
+        GlassChoiceGroup(listOf("臺灣高解析","全球雷達"),if(cwa)0 else 1,{index->
+            val next=index==0
+            if(next!=cwa) {
+                playing=false;frames=emptyList();position=0f;cwa=next;status="正在取得雷達時間軸…"
+                if(next && !CwaHighDefinitionRadar.covers(camera.latitude,camera.longitude))camera=RadarCamera()
+                else if(next)camera=camera.copy(zoom=camera.zoom.coerceAtMost(9.0))
+            }
+        },modifier=Modifier.padding(horizontal=16.dp,vertical=5.dp))
         Text(status,color=palette.onSurfaceVariant,modifier=Modifier.padding(horizontal=18.dp),fontSize=14.sp)
         Box(Modifier.fillMaxWidth().weight(1f).padding(12.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
             .background(if(dark)RadarMapStyle.darkBackground else RadarMapStyle.lightBackground).onSizeChanged{size=it}) {
-            Canvas(Modifier.fillMaxSize().pointerInput(density) {
-                detectTransformGestures {centroid,pan,zoom,_->camera=camera.zoomAt(zoom,centroid.x,centroid.y,size.width.toFloat(),size.height.toFloat(),density).pan(pan.x,pan.y,density)}
+            Canvas(Modifier.fillMaxSize().pointerInput(density,cwa) {
+                detectTransformGestures {centroid,pan,zoom,_->
+                    val bounded=if(cwa)minOf(zoom,2.0.pow(9.0-camera.zoom).toFloat()) else zoom
+                    camera=camera.zoomAt(bounded,centroid.x,centroid.y,size.width.toFloat(),size.height.toFloat(),density).pan(pan.x,pan.y,density)
+                }
             }) {
                 drawRadarLayers(camera,density,base,emptyMap(),opacity,dark)
                 scene?.let{painter.draw(this,camera,density,it,opacity)}
@@ -182,14 +199,15 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
                 drawCircle(Color(0xFF147BE2),5.dp.toPx(),point)
             }
             Column(Modifier.align(Alignment.TopEnd).padding(9.dp)) {
-                GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom+.5).coerceAtMost(RadarTilePolicy.CAMERA_MAX_ZOOM))}){androidx.compose.material3.Icon(Icons.Rounded.Add,"放大")}
+                GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom+.5).coerceAtMost(if(cwa)9.0 else RadarTilePolicy.CAMERA_MAX_ZOOM))}){androidx.compose.material3.Icon(Icons.Rounded.Add,"放大")}
                 Spacer(Modifier.height(7.dp))
                 GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom-.5).coerceAtLeast(2.0))}){androidx.compose.material3.Icon(Icons.Rounded.Remove,"縮小")}
                 Spacer(Modifier.height(7.dp))
-                GlassIconButton(onClick={camera=RadarCamera(latitude,longitude,6.5).normalized()}){androidx.compose.material3.Icon(Icons.Rounded.MyLocation,"回到選擇地點")}
+                GlassIconButton(onClick={camera=if(cwa&&!CwaHighDefinitionRadar.covers(latitude,longitude))RadarCamera() else RadarCamera(latitude,longitude,6.5).normalized()}){androidx.compose.material3.Icon(Icons.Rounded.MyLocation,"回到選擇地點")}
             }
             if(!animationReady&&radarFetching)Text(if(motionPending>0&&readyCount==frames.size)"準備連續動畫…" else "預載回放 $readyCount/${frames.size}",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(Color(0xD017334B)),fontSize=14.sp)
             else if(baseFetching)Text("載入底圖…",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(Color(0xC017334B)),fontSize=14.sp)
+            if(cwa&&!CwaHighDefinitionRadar.covers(camera.latitude,camera.longitude))Text("超出臺灣高解析圖資範圍，可切換全球雷達",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=44.dp).background(Color(0xE017334B)).padding(8.dp))
             if(tileFailure&&!fetching)Text("部分圖資未完整，可查看已載入時段或重新讀取",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.TopStart).padding(10.dp).background(Color(0xE017334B)))
             Text("底圖 © OpenStreetMap contributors",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xD017334B)).clickable{uri.openUri("https://www.openstreetmap.org/copyright")}.padding(7.dp))
         }
@@ -207,7 +225,8 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
                 GlassIconButton({attempt++;tileRetry++}){androidx.compose.material3.Icon(Icons.Rounded.Refresh,"重新讀取雷達")}
             }
             Row(verticalAlignment=Alignment.CenterVertically){Text("回波透明度",color=palette.onSurfaceVariant,fontSize=14.sp);GlassSlider(opacity,{opacity=it},Modifier.weight(1f),valueRange=.2f..1f)}
-            Text("Weather data by RainViewer ↗",color=palette.primary,fontSize=14.sp,modifier=Modifier.clickable{uri.openUri("https://www.rainviewer.com")}.padding(vertical=4.dp))
+            if(cwa)Text("回波：中央氣象署 · 原始 3600 × 3600 圖資",color=palette.primary,fontSize=14.sp,modifier=Modifier.padding(vertical=4.dp))
+            else Text("Weather data by RainViewer ↗",color=palette.primary,fontSize=14.sp,modifier=Modifier.clickable{uri.openUri("https://www.rainviewer.com")}.padding(vertical=4.dp))
             Text("原始圖層時間為回波合成時間；中間僅為動畫過渡，非新增觀測或未來預測。空白亦可能是圖資不足。",color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(bottom=7.dp))
         }
     }

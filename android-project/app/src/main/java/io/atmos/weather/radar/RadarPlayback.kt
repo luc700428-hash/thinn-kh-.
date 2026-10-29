@@ -41,8 +41,8 @@ internal object RadarPlayback {
     }
 
     /** Keep all source frames resident without multiplying native tiles at wide viewports. */
-    fun tiles(camera:RadarCamera,width:Float,height:Float,density:Float,maxSources:Int=MAX_SOURCE_TILES):List<RadarTile> {
-        var zoom=RadarTilePolicy.RADAR_MAX_ZOOM
+    fun tiles(camera:RadarCamera,width:Float,height:Float,density:Float,maxSources:Int=MAX_SOURCE_TILES,maxZoom:Int=RadarTilePolicy.RADAR_MAX_ZOOM):List<RadarTile> {
+        var zoom=maxZoom.coerceIn(0,9)
         while(true) {
             val tiles=RadarProjection.tiles(camera,width,height,density,zoom)
             if(zoom==0 || tiles.distinctBy{Triple(it.z,it.x,it.y)}.size<=maxSources.coerceAtLeast(1))return tiles

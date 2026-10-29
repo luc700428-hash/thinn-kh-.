@@ -25,7 +25,7 @@ internal class RadarTemporalPainter {
             if(alpha<=0)return
             ink.alpha=(alpha.coerceIn(0f,1f)*255).toInt()
             ink.blendMode=if(add)BlendMode.PLUS else BlendMode.SRC_OVER
-            ink.isFilterBitmap=camera.zoom<=RadarTilePolicy.RADAR_MAX_ZOOM
+            ink.isFilterBitmap=camera.zoom<=if(scene.first.path.startsWith("cwa:"))CwaHighDefinitionRadar.MAX_ZOOM else RadarTilePolicy.RADAR_MAX_ZOOM
             images.forEach{(tile,image)->
                 val bounds=RadarTileGeometry.bounds(camera,tile,scope.size.width,scope.size.height,density)
                 if(bounds.right<=0||bounds.bottom<=0||bounds.left>=scope.size.width||bounds.top>=scope.size.height)return@forEach

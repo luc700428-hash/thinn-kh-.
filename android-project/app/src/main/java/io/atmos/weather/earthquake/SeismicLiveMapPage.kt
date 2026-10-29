@@ -183,7 +183,7 @@ fun SeismicLiveMapPage(
         if (!inReplay && incidentRecent && quake != null) {
             val key="${quake.id}:${quake.serial}"
             if (lastLiveShown != key) {
-                lastLiveShown=key;overlayReplay=false;overlay=quake
+                simulation=null;lastLiveShown=key;overlayReplay=false;overlay=quake
             }
         }
     }
@@ -533,11 +533,11 @@ fun SeismicLiveMapPage(
 
                 MapGlass {
                     Text("防災演練",fontSize=19.sp,color=light,fontWeight=FontWeight.SemiBold)
-                    Text("以下為虛構情境，畫面全程標示演練。",fontSize=14.sp,color=muted)
+                    Text("一般為虛構情境；921 採官方歷史震源與震度。全程標示演練，所在地震度另以本機模型示意。",fontSize=14.sp,color=muted)
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                         TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis())},modifier=Modifier.weight(1f)) {Text("一般演練",fontSize=15.sp)}
-                        TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis(),strong=true)},modifier=Modifier.weight(1f)) {Text("強震 7 級演練",fontSize=15.sp)}
+                        TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis(),strong=true)},modifier=Modifier.weight(1f)) {Text("臺灣 921 大地震演練",fontSize=15.sp)}
                     }
                 }
                 MapGlass {

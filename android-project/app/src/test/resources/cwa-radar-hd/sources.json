@@ -1,0 +1,28 @@
+{
+  "sources": [
+    {
+      "file": "CV1_TW_3600_202610290620.png",
+      "url": "https://www.cwa.gov.tw/Data/radar/CV1_TW_3600_202610290620.png",
+      "sha256": "806c3275f4ba58be6faf4f64fe99d49b75b3f3063ad50840581aae6d55419a2a"
+    },
+    {
+      "file": "CV1_TW_3600_202610290630.png",
+      "url": "https://www.cwa.gov.tw/Data/radar/CV1_TW_3600_202610290630.png",
+      "sha256": "551306102ddecabb03449eacf54e86307d52b7300a3fbad4fa4bf2c6f94d3777"
+    },
+    {
+      "file": "Observe_radar.js.gz",
+      "url": "https://www.cwa.gov.tw/Data/js/obs_img/Observe_radar.js",
+      "sha256": "7166093b06c728559883022a37710a74aa2854d54ecd7b4cc24c9356350e304b",
+      "uncompressed_sha256": "2eea814109759348782d4c567dc6b9650c3c1fad46d5af36641c3eccba6260be",
+      "compression": "gzip; original response bytes unchanged"
+    }
+  ],
+  "bounds": {
+    "west": 118,
+    "east": 124,
+    "south": 20.5,
+    "north": 26.5
+  },
+  "image_size": 3600
+}

@@ -109,7 +109,7 @@ import io.atmos.weather.lifestyle.LifestyleAdviceCard
 import io.atmos.weather.lifestyle.LifestyleAdvisor
 import io.atmos.weather.lifestyle.LifestylePreferenceStore
 import io.atmos.weather.lifestyle.OutingMode
-import io.atmos.weather.lifestyle.LifestyleAiSettingsPage
+import io.atmos.weather.lifestyle.LifestyleSettingsPage
 import io.atmos.weather.domain.visual.*
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -1212,7 +1212,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             }
         }
         io.atmos.weather.ui.MainDetailLayer(pushSettingsOpen,{pushSettingsOpen=false}) {io.atmos.weather.push.SeismicPushSettingsPage(onClose={pushSettingsOpen=false})}
-        io.atmos.weather.ui.MainDetailLayer(lifestyleSettingsOpen,{lifestyleSettingsOpen=false}) {LifestyleAiSettingsPage(onClose={lifestyleSettingsOpen=false})}
+        io.atmos.weather.ui.MainDetailLayer(lifestyleSettingsOpen,{lifestyleSettingsOpen=false}) {LifestyleSettingsPage(onClose={lifestyleSettingsOpen=false})}
         if (showLifestyleDetails && snapshot != null) {
             ModalBottomSheet(onDismissRequest={showLifestyleDetails=false}) {
                 val White=MaterialTheme.colorScheme.onSurface
@@ -1677,10 +1677,9 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
         ctx.getSharedPreferences("atmos_settings",android.content.Context.MODE_PRIVATE)
             .getString("city_name","").orEmpty())
     val landHere=localWarning?.localLandWarning(ownCounty)==true
-    val preferences=remember(ctx){LifestylePreferenceStore.load(ctx)}
-    val mode=remember(ctx){OutingMode.entries.firstOrNull {
-        it.name==ctx.getSharedPreferences("thinn_lifestyle_ai",0).getString("mode","DAILY")
-    } ?: OutingMode.DAILY}
+    val preferenceRevision by LifestylePreferenceStore.changes.collectAsState()
+    val preferences=remember(preferenceRevision){LifestylePreferenceStore.load(ctx)}
+    val mode=remember(preferenceRevision){LifestylePreferenceStore.mode(ctx)}
     val plan=remember(weather,stale,mode,preferences){
         LifestyleAdvisor.recommend(weather,mode,stale,preferences=preferences)
     }
@@ -1720,16 +1719,25 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
         Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha=.14f)))
         Spacer(Modifier.height(17.dp))
         // These are not optional fine print: clothing and rain decisions are always visible.
-        HomeAdviceRow("穿著建議",if(stale) "待更新" else plan.top)
+        Text(if(stale) "資料較舊，請先更新再決定穿搭" else plan.temperatureSummary,color=Color(0xFFE6F3FC),fontSize=15.sp,lineHeight=22.sp)
+        Spacer(Modifier.height(12.dp))
+        io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
+            {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
+        Spacer(Modifier.height(12.dp))
+        HomeAdviceRow("外套要帶嗎",if(stale) "待更新" else plan.coatDecision)
+        Spacer(Modifier.height(9.dp))
+        HomeAdviceRow("穿著建議",if(stale) "待更新" else "${plan.top}；${plan.bottoms}")
+        Spacer(Modifier.height(9.dp))
+        HomeAdviceRow("鞋襪建議",if(stale) "待更新" else plan.shoes)
         Spacer(Modifier.height(9.dp))
         HomeAdviceRow("雨具建議",if(stale) "待更新" else plan.umbrella)
-        if (!stale && plan.layer.isNotBlank() && plan.layer != "按體感帶薄外套") {
+        if(!stale) {
             Spacer(Modifier.height(9.dp))
-            HomeAdviceRow("外套／防曬",plan.layer)
+            HomeAdviceRow("時段提醒",plan.timeAdvice)
         }
         Spacer(Modifier.height(9.dp))
         TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
-            Text("調整個人偏好與計算依據",color=Color(0xFFC9EBFF),fontSize=15.sp,fontWeight=FontWeight.Medium)
+            Text("完整穿搭清單與個人偏好",color=Color(0xFFC9EBFF),fontSize=15.sp,fontWeight=FontWeight.Medium)
         }
         }
     }
@@ -1739,7 +1747,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
 private fun HomeAdviceRow(label:String,value:String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.Top) {
         Text(label,color=Color(0xFFBBDDF1),fontSize=16.sp,fontWeight=FontWeight.SemiBold,
-            modifier=Modifier.width(84.dp))
+            modifier=Modifier.width((84*LocalDensity.current.fontScale).dp))
         Text(value,color=White,fontSize=16.sp,lineHeight=24.sp,modifier=Modifier.weight(1f))
     }
 }

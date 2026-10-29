@@ -51,6 +51,9 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     simulation:Boolean=false) {
     val context=LocalContext.current
     val atlas=rememberTaiwanVectorAtlas()
+    val historical=simulation && ChiChi921.isScenario(incident)
+    val place=remember(incident.id){SeismicUserLocation.current(context)}
+    val estimate=remember(historical,place){if(historical)ChiChi921.estimate(place) else null}
     val reduce=context.getSharedPreferences("thinn_settings",0).getBoolean("reduce_motion",false)
     val accent=if(replay || simulation)Color(0xFFFF9F0A) else Color(0xFFFF6961)
     var entered by remember {mutableStateOf(false)}
@@ -60,7 +63,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     val county=userCounty.orEmpty().replace('台','臺')
     val supplied=remember(incident) { SeismicWarningCounties.fromProvider(incident.localIntensityByCounty) }
     val allCounties=remember(incident) { SeismicWarningCounties.allFromProvider(incident.localIntensityByCounty) }
-    val local=supplied.firstOrNull { it.county==county || (county.isNotEmpty() && county.contains(it.county)) }?.intensity
+    val providerLocal=supplied.firstOrNull { it.county==county || (county.isNotEmpty() && county.contains(it.county)) }?.intensity
+    val local=if(historical)estimate?.intensity else providerLocal
     val eventKey="${incident.id}:${incident.serial}:$replay:$simulation"
     val frameNow=io.atmos.weather.ui.rememberDisplayWallClock(!reduce)
     // A true incident plays a bounded looping alert tone and one descriptive spoken warning.
@@ -83,9 +87,19 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
             SeismicSpeech.speak(context,SeismicSpeech.warning(incident,SeismicUserLocation.current(context)))
         }
     }
+    val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val close by rememberUpdatedState(onClose)
+    DisposableEffect(lifecycle,simulation) {
+        val observer=androidx.lifecycle.LifecycleEventObserver { _,event ->
+            if(simulation && event==androidx.lifecycle.Lifecycle.Event.ON_STOP)close()
+        }
+        lifecycle.lifecycle.addObserver(observer)
+        onDispose {lifecycle.lifecycle.removeObserver(observer)}
+    }
+    LaunchedEffect(eventKey) {if(simulation){delay(120_000);close()}}
     val origin=incident.originAtMs
     val waveAvailable=origin!=null && SeismicGeo.visible(incident.latitude,incident.longitude)
-    Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+    Dialog(onDismissRequest=onClose,properties=DialogProperties(dismissOnClickOutside=false,usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
         Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
             if(replay || simulation)Color(0xFF241B10) else Color(0xFF291114),Color(0xFF050506),Color.Black)))
             .statusBarsPadding().navigationBarsPadding().padding(horizontal=20.dp,vertical=12.dp)
@@ -97,8 +111,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(if(simulation)"地震演練" else if(replay)"歷史地震演練" else "地震速報",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Color.White)
-                    Text(if(simulation)"虛構情境 · 並非真實速報" else if(replay)"過去事件回放 · 非即時警報" else "資料來源：${incident.source} · 第 ${incident.serial} 報",fontSize=14.sp,color=Color(0xFFAFAFB5))
+                    Text(if(historical)"臺灣 921 大地震演練" else if(simulation)"地震演練" else if(replay)"歷史地震演練" else "地震速報",fontSize=23.sp,lineHeight=31.sp,fontWeight=FontWeight.Bold,color=Color.White,modifier=Modifier.fillMaxWidth())
+                    Text(if(historical)"1999/09/21 歷史情境 · 並非真實速報" else if(simulation)"虛構情境 · 並非真實速報" else if(replay)"過去事件回放 · 非即時警報" else "資料來源：${incident.source} · 第 ${incident.serial} 報",fontSize=14.sp,color=Color(0xFFAFAFB5))
                 }
                 GlassIconButton(onClick=onClose) {Icon(Icons.Rounded.Close,"關閉速報",tint=Color.White)}
             }
@@ -106,27 +120,35 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(14.dp)) {
                 if(simulation || replay) Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                     .background(accent.copy(alpha=.12f)).padding(12.dp)) {
-                    Text(if(simulation)"演練中：所有震央與震度均為虛構。" else "歷史回放中：不是目前發生的地震。",color=accent,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+                    Text(if(historical)"演練中，非即時警報。震源採官方歷史資料；當地預估為本機模型，並非當年的即時速報。" else if(simulation)"演練中：所有震央與震度均為虛構。" else "歷史回放中：不是目前發生的地震。",color=accent,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                 }
+                Text("收到地震速報 · 慎防強烈搖晃",color=Color.White,fontSize=21.sp,lineHeight=29.sp,
+                    fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth())
                 WarningPlate {
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(if(county.isNotBlank())county else "所在地尚未設定",color=Color(0xFFAEAEB2),fontSize=14.sp)
-                            Text("預估震度",color=Color.White,fontSize=18.sp,fontWeight=FontWeight.Medium)
-                            Text(if(local==null)"待來源提供" else "來源提供的所在地震度",color=Color(0xFFAEAEB2),fontSize=14.sp)
-                        }
-                        Text(local?.toString() ?: "—",fontSize=68.sp,lineHeight=74.sp,fontWeight=FontWeight.Bold,color=accent,
-                            style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
-                        if(local!=null)Text("級",color=accent,fontSize=18.sp,modifier=Modifier.padding(top=24.dp,start=5.dp))
-                    }
+                    Text(if(county.isNotBlank())county else "所在地尚未設定",color=Color(0xFFC5C5CD),fontSize=15.sp,modifier=Modifier.fillMaxWidth())
+                    Text("預估震度",color=Color.White,fontSize=18.sp,fontWeight=FontWeight.Medium,modifier=Modifier.fillMaxWidth())
+                    Text(local?.let { if(historical && !it.contains("以上"))"$it 級" else it } ?: "—",
+                        fontSize=if(historical)42.sp else 68.sp,lineHeight=if(historical)52.sp else 78.sp,
+                        fontWeight=FontWeight.Bold,color=accent,modifier=Modifier.fillMaxWidth(),
+                        style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
+                    Text(if(historical)if(estimate==null)"請在地震設定選擇所在地" else "本機模型估算 · 僅供演練"
+                        else if(local==null)"待來源提供" else "來源提供的所在地震度",color=Color(0xFFC5C5CD),fontSize=14.sp,
+                        modifier=Modifier.fillMaxWidth())
                     Spacer(Modifier.height(14.dp))
                     Text(incident.epicenter,fontSize=22.sp,lineHeight=28.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(16.dp)) {
                         WarningStatistic("規模",incident.magnitude?.let {"M %.1f".format(Locale.US,it)} ?: "—",Modifier.weight(1f))
                         WarningStatistic("深度",incident.depthKm?.let {"%.0f km".format(Locale.US,it)} ?: "—",Modifier.weight(1f))
-                        WarningStatistic("第幾報",incident.serial.toString(),Modifier.weight(1f))
+                        WarningStatistic(if(historical)"最大震度" else "第幾報",if(historical)"7 級" else incident.serial.toString(),Modifier.weight(1f))
                     }
+                }
+                if(historical) {
+                    Text("歷史發震：1999/09/21 01:47:15.9（臺灣時間）\n震央：23.85°N · 120.82°E",color=Color(0xFFE0E0E7),fontSize=14.sp,lineHeight=21.sp)
+                    estimate?.let { localEstimate ->
+                        Text("距震央約 ${"%.0f".format(Locale.US,localEstimate.epicentralKm)} 公里 · ${place?.source}",color=Color(0xFFE0E0E7),fontSize=14.sp)
+                    }
+                    Text("這是演練估算，無法精確到街道；實際搖晃會受地形、土壤與斷層影響。",color=Color(0xFFC5C5CD),fontSize=14.sp,lineHeight=21.sp)
                 }
                 Box(Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(24.dp))
                     .background(Color(0xFF081B24)).thinnSpecularEdge(24.dp)) {
@@ -143,20 +165,24 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                             drawCircle(accent.copy(alpha=.2f),16.dp.toPx(),epicenter)
                             drawCircle(accent,7.dp.toPx(),epicenter);drawCircle(Color.White,2.5.dp.toPx(),epicenter)
                         }
+                        place?.takeIf{SeismicGeo.visible(it.lat,it.lon)}?.let { location ->
+                            val here=Offset(SeismicGeo.screenX(location.lon,size.width,size.height),SeismicGeo.screenY(location.lat,size.width,size.height))
+                            drawCircle(Color.White,6.dp.toPx(),here);drawCircle(warningIce,4.dp.toPx(),here)
+                        }
                         drawTaiwanAtlasCredit()
                     }
                     Column(Modifier.padding(12.dp)) {
-                        Text("震央與波圈",color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Medium)
+                        Text("震央與波圈 · 藍點為所在地",color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Medium)
                         Text(if(!waveAvailable)"來源資料不足，暫不繪製波圈" else "P／S 波為示意，非到達預測",color=Color(0xFFB2C9D1),fontSize=14.sp)
                     }
                 }
                 WarningPlate {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Text(if(simulation)"演練情境震度（虛構）" else "各縣市預估震度",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=Color.White,modifier=Modifier.weight(1f))
-                        Text("${supplied.size} / 22",fontSize=14.sp,color=Color(0xFFAEAEB2))
+                        Text(if(historical)"921 歷史縣市最大震度（舊制）" else if(simulation)"演練情境震度（虛構）" else "各縣市預估震度",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=Color.White,modifier=Modifier.weight(1f))
+                        Text("${if(historical)ChiChi921.historicalCountyMaxima.size else supplied.size} / 22",fontSize=14.sp,color=Color(0xFFAEAEB2))
                     }
                     Spacer(Modifier.height(10.dp))
-                    allCounties.chunked(2).forEach {row ->
+                    (if(historical)SeismicWarningCounties.counties.map {CountyIntensity(it,ChiChi921.historicalCountyMaxima[it])} else allCounties).chunked(2).forEach {row ->
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                             row.forEach {entry ->
                                 Row(Modifier.weight(1f).padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -168,7 +194,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                             if(row.size==1)Spacer(Modifier.weight(1f))
                         }
                     }
-                    Text("— 表示來源尚未提供，並非震度為零。",fontSize=14.sp,color=Color(0xFF8E8E93))
+                    Text(if(historical)"歷史縣市最大值不是每個地點的震度；舊制 5、6 級不換算成現制強弱。— 為歷史報告未列示。" else "— 表示來源尚未提供，並非震度為零。",fontSize=14.sp,color=Color(0xFF8E8E93))
                 }
             }
             Column(Modifier.fillMaxWidth().padding(top=14.dp),horizontalAlignment=Alignment.CenterHorizontally) {
@@ -190,7 +216,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
 }
 @Composable private fun WarningStatistic(label:String,value:String,modifier:Modifier=Modifier) {
     Column(modifier,verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Text(label,color=Color(0xFFAEAEB2),fontSize=14.sp)
-        Text(value,color=Color.White,fontSize=19.sp,fontWeight=FontWeight.Medium)
+        Text(label,color=Color(0xFFAEAEB2),fontSize=14.sp,modifier=Modifier.fillMaxWidth())
+        Text(value,color=Color.White,fontSize=19.sp,lineHeight=26.sp,fontWeight=FontWeight.Medium,modifier=Modifier.fillMaxWidth())
     }
 }

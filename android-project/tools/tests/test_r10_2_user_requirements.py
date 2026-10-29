@@ -26,7 +26,9 @@ class R102UserRequirements(unittest.TestCase):
         self.assertIn('SeismicTrainingVoice(context,incident',ui)
         train=self.read('earthquake/SeismicTrainingVoice.kt')
         self.assertIn('模擬演練',train)
-        self.assertIn('removePrefix("地震速報！慎防強烈搖晃！趴下、掩護、穩住！")',train)
+        self.assertIn('substringAfter("趴下、掩護、穩住！")',train)
+        self.assertIn("收到地震速報！慎防強烈搖晃！", train)
+        self.assertIn("ChiChi921.trainingNarration", train)
     def test_wheel_has_fast_settle_and_reliable_meridiem(self):
         s=self.read('ui/IOSDrumPicker.kt')
         self.assertIn('VelocityTracker()',s)
