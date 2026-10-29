@@ -56,6 +56,8 @@ exports.ingestTrustedEEW = onRequest({region:REGION,secrets:[secret],timeoutSeco
  const data={kind:'EEW',eventId:e.eventId,revision:String(e.revision),
    issuedAtMillis:String(e.issuedAtMillis),expiresAtMillis:String(e.expiresAtMillis),
    region:e.region,source:e.source,magnitude:String(e.magnitude??''),title:e.title,detail:e.detail};
+ for(const key of ['epicenter','depth','lat','lon','originTime','maximumIntensity','emergency','cancelled','agency'])if(e[key]!==undefined)data[key]=String(e[key]);
+ for(const key of ['countyIntensities','countyArrivalTimes'])if(e[key]!==undefined)data[key]=JSON.stringify(e[key]);
  let accepted=0,failed=0;
  for(let i=0;i<deviceTokens.length;i+=500) {
    const tokens=deviceTokens.slice(i,i+500);

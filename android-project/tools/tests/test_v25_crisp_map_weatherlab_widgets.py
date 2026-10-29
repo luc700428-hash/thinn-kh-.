@@ -8,10 +8,13 @@ class CrispMapGoogleWidgets(unittest.TestCase):
         fragment=s[s.index('private fun OfficialTrackPlot'):]
         self.assertIn('rememberTaiwanVectorAtlas()',fragment)
         self.assertIn('taiwan?.draw(this)',fragment)
-        self.assertIn('regional?.draw(this,view,dark)',fragment)
+        self.assertIn('regional?.draw(this,view,dark,preparedOnly=true)',fragment)
         self.assertIn('coerceIn(1f,32f)',fragment)
         self.assertIn('mapPan.x/scale',fragment)
-        self.assertNotIn('graphicsLayer',fragment)
+        self.assertIn('graphicsLayer()',fragment)
+        self.assertNotIn('graphicsLayer(scaleX',fragment)
+        self.assertIn('atlas.prepare(camera)',fragment)
+        self.assertIn('snapshotFlow{latestView}.conflate()',fragment)
         self.assertIn('mapZoom=1f;mapPan=Offset.Zero',fragment)
     def test_official_source_does_not_change(self):
         s=(B/'typhoon/TyphoonCenterPage.kt').read_text()

@@ -47,8 +47,8 @@ class EarthquakeReportWorker(ctx: Context, params: WorkerParameters): CoroutineW
         val intent=PendingIntent.getActivity(ctx,18015,
             Intent(ctx,MainActivity::class.java).putExtra("open_earthquake_center",true),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val title="${if(isOfficial) "中央氣象署地震報告" else "第三方地震報告"} · 規模 ${"%.1f".format(java.util.Locale.US,latest.magnitude)}"
-        val detail="${latest.location} · ${if(isOfficial) "官方震後報告" else "ExpTech 第三方彙整"}（非即時預警）"
+        val title="${if(isOfficial) "中央氣象署地震報告" else "第三方地震報告"} · M ${"%.1f".format(java.util.Locale.US,latest.magnitude)}"
+        val detail="${SeismicDisplayFormat.location(latest.location)} · ${if(isOfficial) "官方震後報告" else "ExpTech 第三方彙整"}（非即時預警）"
         val notif=NotificationCompat.Builder(ctx,SeismicAlertPolicy.channelId(ctx,SeismicAlertPolicy.Scenario.REPORT))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title).setContentText(detail)

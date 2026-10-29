@@ -44,39 +44,21 @@ class ThinnFirebaseMessagingService: FirebaseMessagingService() {
         getSharedPreferences("thinn_push_widget",Context.MODE_PRIVATE).edit()
             .putString("title",e.title).putString("detail",e.detail)
             .putLong("issued",now).apply()
-        notifyUser(e)
-        WidgetSync.updateVisible(applicationContext)
-    }
-    private fun notifyUser(e:PushEnvelope) {
-        if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(this,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) return
-        val manager=getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel="thinn_seismic_push_high_v22"
-        if(manager.getNotificationChannel(channel)==null) {
-            manager.createNotificationChannel(NotificationChannel(channel,"地震速報 · 高優先通知",NotificationManager.IMPORTANCE_HIGH).apply {
-                description="第三方即時地震事件提醒；可於系統設定停用，並非政府細胞廣播告警"
-                enableVibration(true)
-            })
+        val quake=io.atmos.weather.earthquake.ExpTechRealtimeParser.parseEew(org.json.JSONObject().apply{
+            put("cancelled",d["cancelled"]=="true");put("test",d["test"]=="true"||d["replay"]=="true");put("id",e.eventId);put("serial",e.revision);put("source",d["agency"]?.takeIf{it in setOf("cwa","trem","nied")}?:e.source);put("timestamp",e.issuedAtMillis);put("expiresAtMillis",e.expiresAtMillis)
+            put("location",d["epicenter"]?.take(160)?:e.title);put("magnitude",e.magnitude);put("emergency",d["emergency"]=="true")
+            listOf("depth","lat","lon","originTime","maximumIntensity").forEach{k->d[k]?.let{put(k,it)}}
+            listOf("countyIntensities","countyArrivalTimes").forEach{k->d[k]?.takeIf{it.length<=2500}?.let{value->runCatching{put(k,org.json.JSONObject(value))}}}
+        }.toString()).singleOrNull()?:return
+        if(quake.cancelled){
+            io.atmos.weather.earthquake.SeismicAlertDelivery.cancel(this,quake)
+            WidgetSync.updateVisible(applicationContext);return
         }
-        val pi=PendingIntent.getActivity(this, e.eventId.hashCode(),
-            Intent(this,MainActivity::class.java).apply {
-                putExtra("open_earthquake_center",true)
-                flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val note=NotificationCompat.Builder(this,channel)
-            .setSmallIcon(android.R.drawable.stat_notify_error)
-            .setContentTitle(e.title).setContentText(e.detail)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(e.detail+"\n來源："+e.source+"｜非政府災防簡訊"))
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(pi).setAutoCancel(false).setOnlyAlertOnce(true).build()
-        WeatherNotificationDispatcher.post(
-            this,
-            e.eventId.hashCode(),
-            note,
-            e.title.ifBlank { "地震速報" },
-            e.detail.ifBlank { "第三方地震速報通知" },
-            XiaomiFocusBridge.Kind.SEISMIC_EEW
-        )
+        // Push policy has checked authenticated transport, source, region, expiry and revision.
+        io.atmos.weather.earthquake.SeismicAlertNotifier.deliver(this,quake,
+            if(quake.urgent)io.atmos.weather.earthquake.SeismicAlertPolicy.Scenario.EEW_URGENT
+            else if(e.revision>1)io.atmos.weather.earthquake.SeismicAlertPolicy.Scenario.EEW_UPDATE
+            else io.atmos.weather.earthquake.SeismicAlertPolicy.Scenario.EEW_FIRST)
+        WidgetSync.updateVisible(applicationContext)
     }
 }

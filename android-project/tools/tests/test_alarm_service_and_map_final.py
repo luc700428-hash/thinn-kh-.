@@ -33,10 +33,12 @@ class AlarmServiceAndMapTests(unittest.TestCase):
             self.assertIn(token,manifest)
     def test_map_and_alert_use_same_geographic_projection(self):
         screen=(APP/'earthquake/SeismicLiveMapPage.kt').read_text()
-        warning=(APP/'earthquake/SeismicWarningOverlay.kt').read_text()
+        warning=(APP/'earthquake/SeismicWarningMap.kt').read_text()
         self.assertIn('SeismicGeo.screenX(',screen)
-        self.assertIn('SeismicGeo.screenX(',warning)
-        self.assertIn('SeismicGeo.screenY(',warning)
+        self.assertIn('WarningMapLayout.viewports(',warning)
+        self.assertIn('main.project(incident.longitude!!,incident.latitude!!)',warning)
+        self.assertIn('view.matrix()',warning)
+        self.assertIn('view.project(shape.label.first,shape.label.second)',warning)
         self.assertNotIn('SeismicGeo.x(',warning)
     def test_taiwan_warm_weather_never_shows_freezing_card(self):
         screen=(APP/'presentation/home/WeatherHomeScreen.kt').read_text()

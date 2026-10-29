@@ -204,7 +204,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                         Spacer(Modifier.height(10.dp))
                         HorizontalDivider(color=white.copy(alpha=.15f))
                         Text(if(item.test) "測試來源事件（不觸發警報）" else if(item.cancelled) "已取消速報" else "最近接收到的 EEW 速報",color=orange,fontWeight=FontWeight.Bold)
-                        Text(item.epicenter+" · "+(item.magnitude?.let { "M${String.format(java.util.Locale.US,"%.1f",it)}" } ?: "規模待確認"),color=white,fontSize=16.sp)
+                        Text(SeismicDisplayFormat.location(item.epicenter)+" · "+(item.magnitude?.let { "M ${String.format(java.util.Locale.US,"%.1f",it)}" } ?: "規模待確認"),color=white,fontSize=16.sp)
                         Text("來源 ${item.source} · 第 ${item.serial} 報 · ID ${item.id}",color=soft,fontSize=14.sp)
                     }
                     Spacer(Modifier.height(10.dp))
@@ -248,8 +248,8 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                             Column {
                                 Text("最近一筆震後報告 · ${newest.category}",color=cyan,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                                 Spacer(Modifier.height(5.dp))
-                                Text("規模 ${String.format(java.util.Locale.US,"%.1f",newest.magnitude)}  ·  最大震度 ${newest.maxIntensity ?: "待確認"}",color=white,fontSize=19.sp,fontWeight=FontWeight.Bold)
-                                Text(newest.location,color=soft,fontSize=15.sp)
+                                Text("M ${String.format(java.util.Locale.US,"%.1f",newest.magnitude)}  ·  最大震度 ${newest.maxIntensity ?: "待確認"}",color=white,fontSize=19.sp,fontWeight=FontWeight.Bold)
+                                Text(SeismicDisplayFormat.location(newest.location),color=soft,fontSize=15.sp)
                             }
                         }
                     }
@@ -264,7 +264,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(report.location,color=white,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                                Text(SeismicDisplayFormat.location(report.location),color=white,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
                                 val time=report.origin.atZone(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("MM/dd HH:mm:ss"))
                                 Text("$time · ${report.category}",fontSize=14.sp,color=soft)
                                 Text("深度 ${report.depthKm?.let { String.format(java.util.Locale.US,"%.1f",it) } ?: "—"} km  ·  最大震度 ${report.maxIntensity ?: "待確認"}",fontSize=14.sp,color=soft)

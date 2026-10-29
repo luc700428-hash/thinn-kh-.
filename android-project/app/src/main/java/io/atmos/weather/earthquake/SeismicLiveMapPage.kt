@@ -161,7 +161,6 @@ fun SeismicLiveMapPage(
     val devicePlace = remember(timestamp) { SeismicUserLocation.current(ctx) }
     var overlay by remember { mutableStateOf<EewIncident?>(null) }
     var overlayReplay by remember { mutableStateOf(false) }
-    var lastLiveShown by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -177,16 +176,11 @@ fun SeismicLiveMapPage(
     val stations = live.stations.filter { SeismicGeo.visible(it.latitude,it.longitude) }
     val quake = live.incident?.takeIf { SeismicGeo.visible(it.latitude,it.longitude) }
     val incidentRecent = quake != null && timestamp - quake.issuedAtMs in 0..120_000 && !quake.test && !quake.cancelled
-    // Only verified fresh provider frames raise the foreground safety sheet.
-    // Replay events have distinct state, wording and do not send real notifications.
-    LaunchedEffect(quake?.id, quake?.serial, incidentRecent, inReplay) {
-        if (!inReplay && incidentRecent && quake != null) {
-            val key="${quake.id}:${quake.serial}"
-            if (lastLiveShown != key) {
-                simulation=null;lastLiveShown=key;overlayReplay=false;overlay=quake
-            }
-        }
+    val interruptingAlert by SeismicAlertDelivery.active.collectAsState()
+    LaunchedEffect(interruptingAlert?.key,interruptingAlert?.incident?.serial){
+        if(interruptingAlert!=null){simulation=null;overlay=null;replayPlaying=false}
     }
+    // App-wide SeismicForegroundAlertHost owns validated live alerts, including on other pages.
     LaunchedEffect(replayIncident?.id, replayIncident?.serial, replayPlaying) {
         val incident=replayIncident
         if (inReplay && replayPlaying && incident!=null) {
@@ -453,7 +447,7 @@ fun SeismicLiveMapPage(
                 }
                 if(incidentRecent || inReplay) MapGlass {
                     Text(if(inReplay)"歷史資料回放中" else "收到地震預警 · 第三方來源",color=Color(0xFFFF9F0A),fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-                    Text(quake?.epicenter ?: replayReport?.location ?: "震央位置待來源確認",fontSize=21.sp,color=light,fontWeight=FontWeight.SemiBold)
+                    Text(SeismicDisplayFormat.location(quake?.epicenter ?: replayReport?.location ?: "震央位置待來源確認"),fontSize=21.sp,color=light,fontWeight=FontWeight.SemiBold)
                     Text(if(inReplay)"過去事件的教育回放，並非目前警報。" else "立即趴下、掩護、穩住。",fontSize=14.sp,color=muted)
                 }
                 MapGlass {
@@ -467,7 +461,7 @@ fun SeismicLiveMapPage(
                         Row(Modifier.fillMaxWidth().clickable { details=report }.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically) {
                             Box(Modifier.size(46.dp).clip(RoundedCornerShape(999.dp))
                                 .background(palette.primary.copy(alpha=.14f)),contentAlignment=Alignment.Center) {
-                                Text("M${"%.1f".format(Locale.US,report.magnitude)}",color=light,fontWeight=FontWeight.Bold,fontSize=14.sp)
+                                Text("M ${"%.1f".format(Locale.US,report.magnitude)}",color=light,fontWeight=FontWeight.Bold,fontSize=14.sp)
                             }
                             Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
@@ -518,7 +512,7 @@ fun SeismicLiveMapPage(
                         }
                         Row(verticalAlignment=Alignment.CenterVertically,
                             horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                            Text("${replayPosition.toInt()} / ${replayDuration.toInt()} 秒",color=muted,fontSize=14.sp,
+                            Text("${replayPosition.toInt()} / ${replayDuration.toInt()} s",color=muted,fontSize=14.sp,
                                 modifier=Modifier.weight(1f))
                             TextButton(onClick={ replayPlaying=!replayPlaying }) {
                                 Text(if(replayPlaying)"暫停" else "繼續",color=light)
@@ -569,10 +563,10 @@ fun SeismicLiveMapPage(
         }
         details?.let { report ->
             AlertDialog(onDismissRequest={details=null},
-                title={Text("地震報告 · M${"%.1f".format(Locale.US,report.magnitude)}")},
+                title={Text("地震報告 · M ${"%.1f".format(Locale.US,report.magnitude)}")},
                 text={Column {
-                    Text(report.location)
-                    Text("震源深度：${report.depthKm?.toString() ?: "未提供"} 公里")
+                    Text(SeismicDisplayFormat.location(report.location))
+                    Text("震源深度：${SeismicDisplayFormat.depth(report.depthKm)}")
                     Text("最大震度：${report.maxIntensity ?: "未提供"}")
                     Text("時間：${report.origin.atZone(java.time.ZoneId.of("Asia/Taipei"))}")
                     Text("此為震後報告，並非提前預警。")

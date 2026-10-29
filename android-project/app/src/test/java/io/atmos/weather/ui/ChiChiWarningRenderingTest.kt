@@ -33,14 +33,14 @@ class ChiChiWarningRenderingTest:WeatherInformationRenderingFixture() {
             val incident=SeismicSimulation.scenario(System.currentTimeMillis(),true)
             render(dark,scale,"921-host",{
                 if(visible)SeismicWarningOverlay(incident,true,"臺北市",{visible=false},simulation=true)
-            }){view,_->
+            }){view,palette->
                 val dialog=ShadowDialog.getLatestDialog();assertNotNull(dialog);assertTrue(dialog.isShowing)
                 val sheet=dialog.window!!.decorView;pump(sheet).recycle()
                 assertTrue(sheet.width>=400)
                 for(label in listOf("臺灣 921 大地震演練","收到地震速報 · 慎防強烈搖晃","M 7.3","8 km","7 級")) {
-                    val n=nodes(sheet).single{text(it,label)}
+                    val n=nodes(sheet).filter{text(it,label)}.minBy{it.boundsInRoot.top}
                     assertFalse("Clipped $label at $scale",layout(n).hasVisualOverflow)
-                    contrast(n,Color(0xFF1C1C1E))
+                    contrast(n,if(label in listOf("M 7.3","8 km","7 級"))palette.surface else palette.background)
                 }
                 assertTrue(nodes(sheet).any{text(it,"4 級")})
                 assertTrue(nodes(sheet).any{text(it,"本機模型估算 · 僅供演練")})

@@ -15,8 +15,8 @@ internal fun DrawScope.drawDirectedTrack(a:Offset,b:Offset,color:Color,forecast:
     val points=TrackArrowGeometry.head(a.x,a.y,b.x,b.y,4.3.dp.toPx())
     if(points.size==3)drawPath(Path().apply {moveTo(points[0].x,points[0].y);lineTo(points[1].x,points[1].y);lineTo(points[2].x,points[2].y);close()},color)
 }
-internal fun DrawScope.drawTrackTime(text:String,at:Offset) {
-    val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+internal fun DrawScope.drawTrackTime(text:String,at:Offset,cachedPaint:android.graphics.Paint?=null) {
+    val paint=cachedPaint?:android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         color=android.graphics.Color.WHITE;textSize=12*density
         typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
         setShadowLayer(3*density,0f,density,android.graphics.Color.BLACK)

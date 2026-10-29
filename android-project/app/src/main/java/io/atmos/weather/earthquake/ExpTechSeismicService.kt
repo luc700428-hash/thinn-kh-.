@@ -232,6 +232,15 @@ class ExpTechSeismicService : Service() {
         }
         live.update { it.copy(lastEewAt=time) }
         ExpTechRealtimeParser.parseEew(raw).forEach { quake ->
+            if(quake.cancelled){
+                val current=live.value.incident
+                if(!quake.test&&time-quake.issuedAtMs in -15_000L..120_000L) {
+                    SeismicAlertDelivery.cancel(this,quake,time)
+                    if(current!=null&&SeismicAlertDelivery.identity(current)==SeismicAlertDelivery.identity(quake)&&quake.serial>=current.serial)
+                        live.update{it.copy(incident=quake)}
+                }
+                return@forEach
+            }
             // In particular, Japanese EEW that does not affect Taiwan/islands must not
             // reach the alert, speech, focus-island or recent-event display pipeline.
             if (!TaiwanEewScope.relevant(quake)) return@forEach
@@ -242,18 +251,18 @@ class ExpTechSeismicService : Service() {
             }
             if (!ExpTechRealtimeParser.isFresh(quake,time)) return@forEach
             val prefs=getSharedPreferences("thinn_seismic_v15",Context.MODE_PRIVATE)
-            val previousId = prefs.getString("last_realtime_eew_id",null)
+            val previousIdentity = prefs.getString("last_realtime_eew_identity",null)
             // Different earthquakes can interleave. A single global (id, serial)
             // cursor makes the older event ring again when its frames are replayed.
             // Persist sequence by opaque SHA-256 key, never by a raw untrusted ID.
             val digest = MessageDigest.getInstance("SHA-256")
-                .digest(quake.id.toByteArray(Charsets.UTF_8))
+                .digest(SeismicAlertDelivery.identity(quake).toByteArray(Charsets.UTF_8))
                 .take(12).joinToString("") { "%02x".format(it.toInt() and 0xff) }
             val eventKey = "seen_eew_seq_$digest"
             val previousSerial = prefs.getInt(eventKey,
-                if (previousId == quake.id) prefs.getInt("last_realtime_eew_serial", -1) else -1)
-            if (previousId == quake.id && previousSerial < 0) {
-                // Migration from old event-only cursor: don't repeat an old alarm.
+                if (previousIdentity == SeismicAlertDelivery.identity(quake)) prefs.getInt("last_realtime_eew_serial", -1) else -1)
+            if (previousIdentity == SeismicAlertDelivery.identity(quake) && previousSerial < 0) {
+                // A source-aware event cursor from an earlier build must not repeat an old alarm.
                 prefs.edit().putInt(eventKey,quake.serial)
                     .putInt("last_realtime_eew_serial",quake.serial).apply()
                 return@forEach
@@ -261,16 +270,16 @@ class ExpTechSeismicService : Service() {
             if (quake.serial <= previousSerial) return@forEach
             val scenario = when {
                 quake.urgent -> SeismicAlertPolicy.Scenario.EEW_URGENT
-                previousSerial >= 0 -> SeismicAlertPolicy.Scenario.EEW_UPDATE
+                SeismicAlertDelivery.hasDelivered(this,quake) -> SeismicAlertPolicy.Scenario.EEW_UPDATE
                 else -> SeismicAlertPolicy.Scenario.EEW_FIRST
             }
             // Persist event and report sequence even when a user disabled a sound or alert.
             prefs.edit().putString("last_realtime_eew_id",quake.id)
+                .putString("last_realtime_eew_identity",SeismicAlertDelivery.identity(quake))
                 .putInt("last_realtime_eew_serial",quake.serial)
                 .putInt(eventKey,quake.serial).apply()
-            if (SeismicAlertPolicy.alertEnabled(this,scenario)) {
-                sendWarning(quake,scenario)
-                live.update { it.copy(lastAlertAt=time) }
+            if (SeismicAlertPolicy.alertEnabled(this,scenario) && SeismicAlertThreshold.accepts(this,quake)) {
+                if(sendWarning(quake,scenario))live.update { it.copy(lastAlertAt=time) }
             }
 
         }
@@ -306,39 +315,6 @@ class ExpTechSeismicService : Service() {
             XiaomiFocusBridge.Kind.STATION_DETECTION
         )
     }
-    private fun alertIntent():PendingIntent = PendingIntent.getActivity(this,29201,
-        Intent(this,MainActivity::class.java).putExtra("open_earthquake_center",true)
-            .putExtra("real_seismic_alert",true)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-    private fun sendWarning(quake:EewIncident, scenario:SeismicAlertPolicy.Scenario) {
-        if(!PermissionGuide.canNotify(this)) return
-        val magnitude=quake.magnitude?.let { " · M${String.format(java.util.Locale.US,"%.1f",it)}" }.orEmpty()
-        val title="${scenario.title} · ${quake.epicenter}$magnitude"
-        val detail="第三方速報（${quake.source}）· 趴下、掩護、穩住；感到搖晃請立即避難"
-        SeismicAlertPolicy.ensureChannels(this)
-        val builder=NotificationCompat.Builder(this,SeismicAlertPolicy.channelId(this,scenario))
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle(title).setContentText(detail)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("即時速報不保證提早送達。保護頭頸，趴下、掩護、穩住。這不是政府災防告警訊息。"))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setAutoCancel(true).setContentIntent(alertIntent())
-        // Android 14+ generally restricts full-screen intents to calls/alarms.
-        // Try only on explicit opt-in + OS grant; otherwise send normal high-priority alert.
-        val settings=getSharedPreferences("thinn_seismic_v15",Context.MODE_PRIVATE)
-        val nm=getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val mayFullscreen=if(Build.VERSION.SDK_INT>=34) nm.canUseFullScreenIntent() else true
-        if(settings.getBoolean("allow_seismic_full_screen",false) && mayFullscreen)
-            builder.setFullScreenIntent(alertIntent(),true)
-        val notification=builder.build()
-        WeatherNotificationDispatcher.post(this,29200,notification,title,detail,XiaomiFocusBridge.Kind.SEISMIC_EEW)
-        // A bounded foreground-service event tone; never a perpetual background siren.
-        SeismicContinuousWarning.start(this,quake)
-        io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
-        if(SeismicSpeech.enabled(this,"eew_voice_enabled")) {
-            SeismicSpeech.speak(this,SeismicSpeech.warning(quake,SeismicUserLocation.current(this)))
-        }
-    }
+    private fun sendWarning(quake:EewIncident, scenario:SeismicAlertPolicy.Scenario):Boolean =
+        SeismicAlertNotifier.deliver(this,quake,scenario)
 }

@@ -69,6 +69,7 @@ object SeismicSpeech {
             }
         }
     }
+    fun stop() {main.post{queued=null;engine?.stop()}}
     private fun speakQueued(tts:TextToSpeech) {
         val message=queued ?: return
         queued=null

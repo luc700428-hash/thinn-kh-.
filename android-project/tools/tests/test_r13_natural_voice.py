@@ -24,7 +24,8 @@ class NaturalVoiceRegression(unittest.TestCase):
             for term in ('自然語音','NaturalVoiceSettingsPage','onNaturalVoice','naturalVoiceOpen'):
                 self.assertNotIn(term,text)
     def test_eew_remains_immediate_and_local(self):
-        for path in ('earthquake/ExpTechSeismicService.kt','earthquake/SeismicWarningOverlay.kt'):
+        self.assertIn('SeismicAlertNotifier.deliver(this,quake,scenario)',code('earthquake/ExpTechSeismicService.kt'))
+        for path in ('earthquake/SeismicAlertNotifier.kt','earthquake/SeismicWarningOverlay.kt'):
             text=code(path)
             self.assertIn('SeismicContinuousWarning.start(',text)
             self.assertIn('SeismicSpeech.speak(',text)

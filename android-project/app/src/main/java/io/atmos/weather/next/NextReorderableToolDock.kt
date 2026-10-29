@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -180,7 +181,7 @@ fun NextReorderableToolDock(
                     )
                     val selected = action.id == (if(scrubbing) visible.getOrNull(activeDisplayIndex)?.id else displayId)
                     Column(
-                        modifier = Modifier.weight(1f).height(58.dp)
+                        modifier = Modifier.weight(1f).heightIn(min=58.dp)
                             .graphicsLayer(scaleX = scale, scaleY = scale, translationX = if (reduceMotion) 0f else localX)
                             .background(Color.Transparent, RoundedCornerShape(22.dp))
                             .semantics {
@@ -204,7 +205,7 @@ fun NextReorderableToolDock(
                             colorFilter = ColorFilter.tint(if (selected) activeInk else inactiveInk))
                         Text(action.label, fontSize = 11.sp,lineHeight=14.sp,
                             fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (selected) activeInk else inactiveInk, maxLines = 1)
+                            color = if (selected) activeInk else inactiveInk, maxLines = 1, modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }

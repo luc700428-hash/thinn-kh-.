@@ -17,7 +17,10 @@ data class EewIncident(
     val latitude: Double?, val longitude: Double?, val cancelled: Boolean,
     val test: Boolean, val urgent: Boolean = false,
     val originAtMs: Long? = null,
-    val localIntensityByCounty: Map<String,String> = emptyMap()
+    val localIntensityByCounty: Map<String,String> = emptyMap(),
+    val arrivalAtMsByCounty: Map<String,Long> = emptyMap(),
+    val maximumIntensity:String?=null,
+    val expiresAtMs:Long?=null
 )
 
 data class RealtimeDisplay(
@@ -45,7 +48,7 @@ object ExpTechRealtimeParser {
             when (item) {
                 is JSONArray -> for (i in 0 until minOf(item.length(), 50)) walk(item.opt(i), depth + 1)
                 is JSONObject -> {
-                    if (item.has("eq") || (item.has("id") && (item.has("magnitude") || item.has("mag")))) candidates.add(item)
+                    if (item.has("eq") || (item.has("id") && (item.has("magnitude") || item.has("mag") || item.optInt("status",-1) in setOf(2,3) || firstBoolean(item,"cancel","cancelled","isCancel","isCancelled")))) candidates.add(item)
                     else for (key in listOf("data", "eew", "events", "items", "list", "result")) if (item.has(key)) walk(item.opt(key), depth + 1)
                 }
             }
@@ -58,7 +61,7 @@ object ExpTechRealtimeParser {
                 item.opt("updated"),eq.opt("time"),eq.opt("originTime")).firstNotNullOfOrNull { parseEpoch(it) } ?: return@mapNotNull null
             val test = firstBoolean(item,"test","isTest","isTraining","replay","isReplay") ||
                 firstString(item,"type","status")?.contains("test",ignoreCase=true)==true
-            val cancel = firstBoolean(item,"cancel","cancelled","isCancel","isCancelled") ||
+            val cancel = item.optInt("status",-1) in setOf(2,3) || firstBoolean(item,"cancel","cancelled","isCancel","isCancelled") ||
                 firstString(item,"status")?.let { it.contains("cancel",true) || it.contains("取消") } == true
             EewIncident(id=id,serial=item.optInt("serial",item.optInt("number",0)),
                 source=firstString(item,"author","source","provider") ?: "ExpTech EEW",
@@ -67,11 +70,19 @@ object ExpTechRealtimeParser {
                 magnitude=number(eq,"mag","magnitude"), depthKm=number(eq,"depth","depthKm"),
                 latitude=number(eq,"lat","latitude"),longitude=number(eq,"lon","longitude","lng"),
                 cancelled=cancel,test=test,
-                urgent=firstBoolean(item,"emergency","isEmergency") ||
+                urgent=item.optInt("status",-1)==1 || firstBoolean(item,"emergency","isEmergency") ||
                     firstString(item,"severity","priority")?.lowercase()?.let { it in setOf("urgent","critical","emergency") } == true,
                 originAtMs=listOf(eq.opt("originTime"),eq.opt("time"),item.opt("originTime")).firstNotNullOfOrNull(::parseEpoch),
-                localIntensityByCounty=countyIntensity(item,eq))
+                localIntensityByCounty=countyIntensity(item,eq),arrivalAtMsByCounty=countyArrival(item,eq,timestamp),
+                maximumIntensity=SeismicWavePhysics.intensityLabel(firstString(item,"maximumIntensity","maxIntensity")),
+                expiresAtMs=parseEpoch(item.opt("expiresAtMillis")))
         }
+    }
+    private fun countyArrival(item:JSONObject,eq:JSONObject,issued:Long):Map<String,Long> {
+        val data=item.optJSONObject("countyArrivalTimes")?:eq.optJSONObject("countyArrivalTimes")?:return emptyMap()
+        return SeismicWarningCounties.counties.mapNotNull{county->
+            parseEpoch(data.opt(county)?:data.opt(county.replace('臺','台')))?.takeIf{it in issued-120_000..issued+300_000}?.let{county to it}
+        }.toMap()
     }
     private fun countyIntensity(item:JSONObject, eq:JSONObject):Map<String,String> {
         // Only explicitly county-keyed intensity fields. A max/epicentral value is NOT local intensity.
@@ -106,7 +117,7 @@ object ExpTechRealtimeParser {
         o.opt(field)?.toString()?.takeIf { it.isNotBlank() && it!="null" && it!="0" }
     }
     private fun firstBoolean(o: JSONObject, vararg fields: String): Boolean = fields.any { name ->
-        o.opt(name) == true || o.optString(name, "false").equals("true",true)
+        o.opt(name) == true || o.optString(name, "false").let{it.equals("true",true)||it=="1"}
     }
     private fun number(o: JSONObject,vararg fields:String):Double? = fields.firstNotNullOfOrNull { name ->
         o.opt(name)?.toString()?.toDoubleOrNull()?.takeIf { it.isFinite() }

@@ -120,6 +120,7 @@ class MainActivity : ComponentActivity() {
                     locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION))
                 }
             })
+            io.atmos.weather.earthquake.SeismicForegroundAlertHost()
             } // ThinnAppTheme
         }
     }

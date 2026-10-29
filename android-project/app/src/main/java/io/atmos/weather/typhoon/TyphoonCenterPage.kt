@@ -34,6 +34,8 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.flow.conflate
+import androidx.compose.ui.graphics.graphicsLayer
 
 /** Official tracks, probability values and regional geography are all usable inside the app. */
 @Composable fun TyphoonCenterPage(warnings:List<CwaWarning>,onClose:()->Unit,
@@ -169,15 +171,28 @@ import java.time.format.DateTimeFormatter
     var fitTrack by remember(points){mutableStateOf(true)}
     var mapZoom by remember{mutableFloatStateOf(1f)};var mapPan by remember{mutableStateOf(Offset.Zero)}
     val padding=with(LocalDensity.current){22.dp.toPx()}
-    val reference=displayPoints.map{it.latitude to it.longitude}+TyphoonGeoBackdrop.keyAnchors.map{it.second to it.first}
+    val reference=remember(displayPoints){displayPoints.map{it.latitude to it.longitude}+TyphoonGeoBackdrop.keyAnchors.map{it.second to it.first}}
+    val timeLabels=remember(displayPoints){val format=DateTimeFormatter.ofPattern("dd日 HH:mm");val zone=ZoneId.of("Asia/Taipei")
+        displayPoints.associateWith{VerifiedTrackPlanner.parseTime(it.timestamp)?.atZone(zone)?.format(format)}}
     val base=remember(reference,canvasSize,fitTrack,padding){
         if(fitTrack)TyphoonViewport.forPoints(reference,canvasSize.width.toFloat().coerceAtLeast(1f),canvasSize.height.toFloat().coerceAtLeast(1f),padding)
         else TyphoonViewport.forTaiwan(canvasSize.width.toFloat().coerceAtLeast(1f),canvasSize.height.toFloat().coerceAtLeast(1f),padding)
     }
     val view=remember(base,mapZoom,mapPan){val scale=base.pxPerKm*mapZoom
         TyphoonViewport(base.originXKm-mapPan.x/scale,base.originYKm+mapPan.y/scale,scale,base.widthPx,base.heightPx,base.cosCenter)}
+    val latestView by rememberUpdatedState(view)
+    var atlasRevision by remember(regional){mutableIntStateOf(0)}
+    LaunchedEffect(regional){val atlas=regional?:return@LaunchedEffect
+        // One worker and conflated camera updates: never concatenate source vectors on the gesture thread.
+        snapshotFlow{latestView}.conflate().collect{camera->atlas.prepare(camera);atlasRevision++}}
     val predicted=if(dark)Color(0xFF69CFFF) else Color(0xFF0059B9)
     val observed=if(dark)Color(0xFFFFD389) else Color(0xFF8F4B00)
+    val labelDensity=LocalDensity.current.density
+    val timePaint=remember(dark,labelDensity){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
+        color=if(dark)0xffeef7fa.toInt() else 0xff143e5e.toInt();textSize=12*labelDensity
+        typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
+        setShadowLayer(2*labelDensity,0f,labelDensity,if(dark)0xff06151c.toInt() else 0xfff7fcff.toInt())
+    }}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Box(Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(25.dp))
             .background(if(dark)Color(0xFF081E31) else Color(0xFFE4F0F7)).border(1.dp,palette.outlineVariant,RoundedCornerShape(25.dp))
@@ -188,8 +203,9 @@ import java.time.format.DateTimeFormatter
                     mapZoom=next;mapPan=Offset(pan.x.coerceIn(-size.width*next,size.width*next),pan.y.coerceIn(-size.height*next,size.height*next))
                 }
             }}) {
-            Canvas(Modifier.matchParentSize().onSizeChanged{canvasSize=it}) {
-                regional?.draw(this,view,dark)
+            Canvas(Modifier.matchParentSize().graphicsLayer().onSizeChanged{canvasSize=it}) {
+                atlasRevision
+                regional?.draw(this,view,dark,preparedOnly=true)
                 taiwan?.draw(this){lon,lat->val p=view.project(lon,lat);Offset(p.first,p.second)}
                 drawRegionalPlaceLabels(view,dark)
                 tracks.forEach {track->for(i in 0 until track.size-1){
@@ -205,8 +221,8 @@ import java.time.format.DateTimeFormatter
                     drawCircle(if(dark)Color(0xFF082139) else Color.White,5.5.dp.toPx(),at)
                     drawCircle(color,4.dp.toPx(),at)
                     if(point.kind==TyphoonFix.Kind.FORECAST&&labelled.none{(it-at).getDistance()<72.dp.toPx()}) {
-                        VerifiedTrackPlanner.parseTime(point.timestamp)?.let {
-                            drawTrackTime(it.atZone(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("dd日 HH:mm")),at);labelled+=at
+                        timeLabels[point]?.let {
+                            drawTrackTime(it,at,timePaint);labelled+=at
                         }
                     }
                 }

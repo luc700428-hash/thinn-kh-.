@@ -21,7 +21,7 @@ class R102UserRequirements(unittest.TestCase):
     def test_simulation_does_not_play_live_alert_or_tts(self):
         ui=self.read('earthquake/SeismicWarningOverlay.kt')
         self.assertIn('if(!replay && !simulation) SeismicContinuousWarning.start',ui)
-        self.assertIn('if(!replay && !simulation) SeismicContinuousWarning.stop',ui)
+        self.assertIn('if(!replay && !simulation && SeismicAlertDelivery.active.value==null) SeismicContinuousWarning.stop',ui)
         self.assertIn('if(!replay && !simulation && SeismicSpeech.enabled',ui)
         self.assertIn('SeismicTrainingVoice(context,incident',ui)
         train=self.read('earthquake/SeismicTrainingVoice.kt')

@@ -27,21 +27,25 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
     private val batches=object:LinkedHashMap<Key,Batch>(4,.75f,true) {
         override fun removeEldestEntry(eldest:MutableMap.MutableEntry<Key,Batch>?)=size>4
     }
-    internal var batchBuildCount=0;private set
-    private fun batch(view:TyphoonViewport):Pair<Key,Batch> {
+    @Volatile internal var batchBuildCount=0;private set
+    private val overview=Batch(Path().apply{fillType=Path.FillType.EVEN_ODD;polygons.forEach{addPath(it.details[0].path)}},
+        polygons.size,polygons.sumOf{it.details[0].vertices},polygons.filter{it.minor})
+    private fun cameraKey(view:TyphoonViewport):Key {
         val ppd=(111.2*view.pxPerKm).toFloat()
         val level=TOLERANCES.indexOfFirst{it*ppd<=.4f}.coerceAtLeast(0)
-        val bounds=view.rasterBounds()
-        val key=Key(level,floor(bounds.west/2).toInt()-1,floor(bounds.south/2).toInt()-1,
-            ceil(bounds.east/2).toInt()+1,ceil(bounds.north/2).toInt()+1)
-        return key to batches.getOrPut(key) {
-            val visible=polygons.filter{it.bounds.right>=key.left*2 && it.bounds.left<=key.right*2 &&
-                it.bounds.bottom>=key.top*2 && it.bounds.top<=key.bottom*2}
-            val path=Path().apply{fillType=Path.FillType.EVEN_ODD;visible.forEach{addPath(it.details[level].path)}}
-            batchBuildCount++
-            Batch(path,visible.size,visible.sumOf{it.details[level].vertices},visible.filter{it.minor})
-        }
+        val b=view.rasterBounds()
+        return Key(level,floor(b.west/2).toInt()-1,floor(b.south/2).toInt()-1,ceil(b.east/2).toInt()+1,ceil(b.north/2).toInt()+1)
     }
+    private fun batch(view:TyphoonViewport):Pair<Key,Batch> {
+        val key=cameraKey(view)
+        synchronized(batches){batches[key]?.let{return key to it}}
+        val visible=polygons.filter{it.bounds.right>=key.left*2&&it.bounds.left<=key.right*2&&it.bounds.bottom>=key.top*2&&it.bounds.top<=key.bottom*2}
+        val path=Path().apply{fillType=Path.FillType.EVEN_ODD;visible.forEach{addPath(it.details[key.level].path)}}
+        val built=Batch(path,visible.size,visible.sumOf{it.details[key.level].vertices},visible.filter{it.minor})
+        return synchronized(batches){key to (batches[key]?:built.also{batches[key]=it;batchBuildCount++})}
+    }
+    suspend fun prepare(view:TyphoonViewport)=withContext(Dispatchers.Default){batch(view);Unit}
+    internal fun prepared(view:TyphoonViewport)=synchronized(batches){batches.containsKey(cameraKey(view))}
     internal fun renderStats(view:TyphoonViewport):RenderStats {
         val (key,batch)=batch(view)
         return RenderStats(batch.vertices,batch.polygons,if(batch.polygons>0)2 else 0,
@@ -54,10 +58,10 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
     fun hasLandNear(lon:Double,lat:Double,tolerance:Double=.08)=polygons.any {
         lon>=it.bounds.left-tolerance&&lon<=it.bounds.right+tolerance&&lat>=it.bounds.top-tolerance&&lat<=it.bounds.bottom+tolerance
     }
-    fun draw(scope:DrawScope,view:TyphoonViewport,dark:Boolean) {
+    fun draw(scope:DrawScope,view:TyphoonViewport,dark:Boolean,preparedOnly:Boolean=false) {
         val pixelsPerDegree=(111.2*view.pxPerKm).toFloat()
         if(!pixelsPerDegree.isFinite()||pixelsPerDegree<=0f)return
-        val (_,batch)=batch(view)
+        val batch=if(preparedOnly)synchronized(batches){batches[cameraKey(view)]}?:overview else batch(view).second
         fill.color=if(dark)0xff294d51.toInt() else 0xffd3e3d1.toInt()
         edge.color=if(dark)0xff8cb6bd.toInt() else 0xff628a91.toInt()
         edge.strokeWidth=(.75f*scope.density/pixelsPerDegree).coerceAtLeast(.000001f)
@@ -125,9 +129,8 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
 }
 
 /** Country, sea and island names use the same geographic camera and avoid text collisions. */
-fun DrawScope.drawRegionalPlaceLabels(view:TyphoonViewport,dark:Boolean) {
-    data class Label(val text:String,val lon:Double,val lat:Double,val sea:Boolean=false,val minScale:Double=0.0)
-    val labels=listOf(
+private data class Label(val text:String,val lon:Double,val lat:Double,val sea:Boolean=false,val minScale:Double=0.0)
+private val regionalLabels=listOf(
         Label("台灣",121.0,23.65),Label("日本",138.0,36.6),Label("菲律賓",122.3,12.8),
         Label("中國",110.0,34.0),Label("南韓",127.7,36.3),Label("北韓",126.6,40.0),Label("越南",106.2,18.5),
         Label("馬來西亞",113.5,3.3),Label("印尼",116.0,-2.5),Label("帛琉",134.55,7.5),
@@ -138,13 +141,14 @@ fun DrawScope.drawRegionalPlaceLabels(view:TyphoonViewport,dark:Boolean) {
         Label("臺灣海峽",119.5,24.5,true,.14),Label("沖繩",127.7,26.3,false,.08),Label("宮古島",125.3,24.8,false,.16),
         Label("石垣島",124.2,24.4,false,.16),Label("釣魚臺（台灣）",123.53,25.75,false,.22),
         Label("綠島",121.49,22.67,false,.30),Label("蘭嶼",121.55,22.04,false,.30))
+fun DrawScope.drawRegionalPlaceLabels(view:TyphoonViewport,dark:Boolean) {
     val canvas=drawContext.canvas.nativeCanvas;val occupied=mutableListOf<RectF>()
     val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
         textSize=12*density
         if(dark)setShadowLayer(2*density,0f,density,0xff06151c.toInt())
     }
-    labels.forEach {label->
+    regionalLabels.forEach {label->
         if(view.pxPerKm<label.minScale)return@forEach
         val (x,y)=view.project(label.lon,label.lat);val w=paint.measureText(label.text)
         if(x<0||x>size.width||y<0||y>size.height)return@forEach

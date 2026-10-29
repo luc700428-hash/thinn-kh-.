@@ -14,7 +14,9 @@ import kotlin.math.abs
 
 /** Offline NLSC county contours. Paths stay vectors at every camera scale. */
 class TaiwanVectorAtlas private constructor(private val levels:List<Level>) {
-    private data class Level(val tolerance:Float,val paths:List<android.graphics.Path>)
+    private data class Level(val tolerance:Float,val path:android.graphics.Path,val sourcePaths:Int)
+    internal val contourDrawCalls get()=2
+    internal val sourceDrawCalls get()=levels.last().sourcePaths*2
     private val land=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=0xff284c52.toInt();style=Paint.Style.FILL }
     private val edge=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=0xff80b5b5.toInt();style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}
 
@@ -26,9 +28,9 @@ class TaiwanVectorAtlas private constructor(private val levels:List<Level>) {
         val pixelsPerDegree=maxOf(abs(sx),abs(sy))
         val level=levels.firstOrNull {it.tolerance*pixelsPerDegree<=.55f} ?: levels.last()
         val canvas=scope.drawContext.canvas.nativeCanvas
-        canvas.save();canvas.translate(origin.x,origin.y);canvas.scale(sx,sy)
+        canvas.save();canvas.clipRect(0f,0f,scope.size.width,scope.size.height);canvas.translate(origin.x,origin.y);canvas.scale(sx,sy)
         edge.strokeWidth=(.8f*scope.density/pixelsPerDegree).coerceAtLeast(.000001f)
-        level.paths.forEach {path ->canvas.drawPath(path,land);canvas.drawPath(path,edge)}
+        canvas.drawPath(level.path,land);canvas.drawPath(level.path,edge)
         canvas.restore()
     }
 
@@ -52,7 +54,7 @@ class TaiwanVectorAtlas private constructor(private val levels:List<Level>) {
                                 };close()
                             }
                         }
-                        Level(tolerance,paths)
+                        Level(tolerance,android.graphics.Path().apply{fillType=android.graphics.Path.FillType.EVEN_ODD;paths.forEach{addPath(it)}},paths.size)
                     }).also {cache=it}
                 }
             }
