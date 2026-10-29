@@ -21,5 +21,6 @@ for sound in light_rain heavy_rain thunder_strike; do
     break
   fi
 done
-"${build_gradle[@]}" --no-daemon :app:testDebugUnitTest :app:assembleDebug
+# Match the release lint gate used by CI before producing a local candidate APK.
+"${build_gradle[@]}" --no-daemon :app:testDebugUnitTest :app:lintRelease :app:assembleDebug
 printf 'APK: %s\n' "$PWD/app/build/outputs/apk/debug/app-debug.apk"

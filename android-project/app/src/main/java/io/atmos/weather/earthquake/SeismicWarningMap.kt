@@ -1,6 +1,7 @@
 package io.atmos.weather.earthquake
 
 import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -48,7 +49,7 @@ internal object SeismicIntensityColors {
     var zoom by remember(incident.id){mutableFloatStateOf(1f)};var pan by remember(incident.id){mutableStateOf(Offset.Zero)}
     val fill=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL}}
     val edge=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}}
-    val labels=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{typeface=android.graphics.Typeface.create("sans-serif-medium",0)}}
+    val labels=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)}}
     Column(modifier){
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){
             (if(historical)listOf("1","2","3","4","5","6","7") else SeismicAlertThreshold.grades).forEach{grade->Box(Modifier.clip(RoundedCornerShape(6.dp)).background(SeismicIntensityColors.color(grade)).padding(horizontal=7.dp,vertical=4.dp)){
