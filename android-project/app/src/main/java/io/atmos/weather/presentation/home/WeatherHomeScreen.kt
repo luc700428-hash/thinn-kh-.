@@ -843,6 +843,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             fontSize=18.sp,fontWeight=FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         val end = hazard.expiresAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
+                        val starts = hazard.startsAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
+                        if(java.time.Instant.now().isBefore(hazard.startsAt))Text(
+                            "預告 · ${starts.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} 起生效",
+                            color=White,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                         Text("${hazard.county} · 有效至 ${end.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))}",
                             color=White.copy(alpha=.9f),fontSize=14.sp)
                         Text("在 App 內查看警戒區域與防護建議 ›",

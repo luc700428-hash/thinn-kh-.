@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
 import javax.net.ssl.HttpsURLConnection
 
 /**
- * Official CWA W-C0033-001 county-level active hazards.
+ * Official CWA W-C0033-001 published hazards, including an explicitly scheduled start.
  * Does not issue any CAP-level tsunami or typhoon warnings. No fake alerts on source failure.
  */
 data class CwaCountyHazard(
@@ -24,7 +24,8 @@ data class CwaCountyHazard(
     val phenomenon: String,
     val county: String,
     val issuedAt: Instant,
-    val expiresAt: Instant
+    val expiresAt: Instant,
+    val startsAt: Instant = issuedAt
 )
 
 data class CwaCountyHazardsResult(
@@ -87,12 +88,12 @@ object CwaCountyHazardFeed {
             val start = parseTime(validity.optString("startTime")) ?: return@mapNotNull null
             val end = parseTime(validity.optString("endTime")) ?: return@mapNotNull null
             if(phenomenon.isBlank() || significance.isBlank() || !start.isBefore(end) ||
-                now.isBefore(start) || !now.isBefore(end)) return@mapNotNull null
+                !now.isBefore(end)) return@mapNotNull null
             // CWA typhoon and tsunami alerts have dedicated, verified state machines.
             if(listOf("颱風","海嘯","解除","取消","測試","演練").any {
                 phenomenon.contains(it) || significance.contains(it)
             }) return@mapNotNull null
-            CwaCountyHazard(phenomenon+significance,phenomenon,countyName,sent,end)
+            CwaCountyHazard(phenomenon+significance,phenomenon,countyName,sent,end,start)
         }.distinctBy { it.title to it.county }.take(8)
     }
 
@@ -117,7 +118,7 @@ object CwaCountyHazardFeed {
                     }
                 }
                 val hazards = parse(JSONObject(bytes.toString("UTF-8")),place,point)
-                CwaCountyHazardsResult(hazards,true,"中央氣象署縣市資料已確認；${hazards.size} 項有效特報")
+                CwaCountyHazardsResult(hazards,true,"中央氣象署縣市資料已確認；${hazards.size} 項已發布特報（含預告時段）")
             } finally { conn.disconnect() }
         } catch(e: kotlinx.coroutines.CancellationException) { throw e }
           catch(e: Exception) {

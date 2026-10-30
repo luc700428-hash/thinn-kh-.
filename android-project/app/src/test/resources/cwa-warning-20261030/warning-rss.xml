@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+<title><![CDATA[ 中央氣象署警報、特報 ]]></title>
+<link>https://www.cwa.gov.tw/</link>
+<description><![CDATA[ 中央氣象署 RSS服務 ]]></description>
+<language>zh-tw</language>
+<copyright><![CDATA[ 使用聲明
+1.本署可授權個人以 RSS reader 方式使用本署RSS。
+2.個人和非營利網站以及Blog，可以在私人、非商業用途內呈現本署 RSS內的標題資訊，詳細內容必須以連結方式連回本署，呈現資訊時必須標明該來源是「中央氣象署」，且不得更改 RSS內容及解析本 RSS 相關資訊用以製作衍生產品。
+3.本署保留適時修改此服務內容及格式的權利。 ]]></copyright>
+<lastBuildDate>Thu, 29 Oct 2026 20:56:30 GMT</lastBuildDate>
+<ttl>1</ttl>
+<image>
+<url>https://www.cwa.gov.tw/rss/img/Mark.jpg</url>
+<title><![CDATA[ 中央氣象署警報、特報 ]]></title>
+<link>https://www.cwa.gov.tw/</link>
+</image>
+	<item>
+		<pubDate>Thu, 29 Oct 2026 20:29:00 GMT</pubDate>
+		<title>10/30 04:29 發布陸上強風特報</title>
+		<link>https://www.cwa.gov.tw/V8/C/P/Warning/W25.html?T=202610300429</link>
+		<guid>https://www.cwa.gov.tw/V8/C/P/Warning/W25.html?T=202610300429</guid>
+		<description><![CDATA[ 東北風增強，30日下午至晚上蘭嶼、綠島、苗栗縣、臺中市、屏東縣局部地區有平均風6級以上或陣風8級以上發生的機率(黃色燈號)，請注意。\n\n ]]></description>
+	</item>
+	<item>
+		<pubDate>Thu, 29 Oct 2026 20:40:25 GMT</pubDate>
+		<title>10/30 04:40 發布第 074 號顯著有感地震報告</title>
+		<link>https://www.cwa.gov.tw/V8/C/E/EQ/EQ115074-1030-043743.html?T=202610300440</link>
+		<guid>https://www.cwa.gov.tw/V8/C/E/EQ/EQ115074-1030-043743.html?T=202610300440</guid>
+		<description><![CDATA[ 發震時間：2026/10/30 04:37:43；震源深度：22.7公里；芮氏規模：4.4；震央位置：北緯24.17°、東經121.83°；相對位置：花蓮縣政府東北方29.6公里(位於臺灣東部海域)；各地震度級：花蓮縣地區最大震度3級(和平3級、太魯閣3級、西寶2級、水璉2級、秀林1級、花蓮市1級、鹽寮1級、銅門1級)、宜蘭縣地區最大震度3級(南澳3級、冬山2級、南山2級、牛鬥2級、蘇澳1級、內城1級、宜蘭市1級)、南投縣地區最大震度1級(合歡山1級)、臺中市地區最大震度1級(梨山1級、德基1級) ]]></description>
+	</item>
+</channel>
+</rss>

@@ -1,0 +1,173 @@
+{
+ "cwaopendata": {
+  "@xmlns": "urn:cwa:gov:tw:cwacommon:0.1",
+  "identifier": "CWA-Weather_location_hazards_20261030043054",
+  "sender": "weather@cwa.gov.tw",
+  "sent": "2026-10-30T04:30:54+08:00",
+  "status": "Actual",
+  "scope": "Public",
+  "msgType": "Update",
+  "dataset": {
+   "location": [
+    {
+     "locationName": "基隆市",
+     "geocode": "10017",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "臺北市",
+     "geocode": "63",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "新北市",
+     "geocode": "65",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "桃園市",
+     "geocode": "68",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "新竹市",
+     "geocode": "10018",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "新竹縣",
+     "geocode": "10004",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "苗栗縣",
+     "geocode": "10005",
+     "hazardConditions": {
+      "hazards": {
+       "info": {
+        "language": "zh-TW",
+        "phenomena": "陸上強風",
+        "significance": "特報"
+       },
+       "validTime": {
+        "startTime": "2026-10-30T17:00:00+08:00",
+        "endTime": "2026-10-30T23:00:00+08:00"
+       }
+      }
+     }
+    },
+    {
+     "locationName": "臺中市",
+     "geocode": "66",
+     "hazardConditions": {
+      "hazards": {
+       "info": {
+        "language": "zh-TW",
+        "phenomena": "陸上強風",
+        "significance": "特報"
+       },
+       "validTime": {
+        "startTime": "2026-10-30T17:00:00+08:00",
+        "endTime": "2026-10-30T23:00:00+08:00"
+       }
+      }
+     }
+    },
+    {
+     "locationName": "彰化縣",
+     "geocode": "10007",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "雲林縣",
+     "geocode": "10009",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "南投縣",
+     "geocode": "10008",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "嘉義縣",
+     "geocode": "10010",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "嘉義市",
+     "geocode": "10020",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "臺南市",
+     "geocode": "67",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "高雄市",
+     "geocode": "64",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "屏東縣",
+     "geocode": "10013",
+     "hazardConditions": {
+      "hazards": {
+       "info": {
+        "language": "zh-TW",
+        "phenomena": "陸上強風",
+        "significance": "特報"
+       },
+       "validTime": {
+        "startTime": "2026-10-30T17:00:00+08:00",
+        "endTime": "2026-10-30T23:00:00+08:00"
+       }
+      }
+     }
+    },
+    {
+     "locationName": "宜蘭縣",
+     "geocode": "10002",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "花蓮縣",
+     "geocode": "10015",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "臺東縣",
+     "geocode": "10014",
+     "hazardConditions": {
+      "hazards": {
+       "info": {
+        "language": "zh-TW",
+        "phenomena": "陸上強風",
+        "significance": "特報"
+       },
+       "validTime": {
+        "startTime": "2026-10-30T17:00:00+08:00",
+        "endTime": "2026-10-30T23:00:00+08:00"
+       }
+      }
+     }
+    },
+    {
+     "locationName": "澎湖縣",
+     "geocode": "10016",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "金門縣",
+     "geocode": "09020",
+     "hazardConditions": null
+    },
+    {
+     "locationName": "連江縣",
+     "geocode": "09007",
+     "hazardConditions": null
+    }
+   ]
+  }
+ }
+}

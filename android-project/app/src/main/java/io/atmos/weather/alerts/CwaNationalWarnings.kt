@@ -47,9 +47,9 @@ object CwaNationalWarningFeed {
                 val start=CwaBulletins.time(validity.getString("startTime"))?:error("警特報開始時間無法驗證")
                 val end=CwaBulletins.time(validity.getString("endTime"))?:error("警特報結束時間無法驗證")
                 require(end.isAfter(start))
-                if(now.isBefore(start)||!now.isBefore(end)||listOf("解除","取消","測試","演練").any{it in phenomenon||it in significance})continue
+                if(!now.isBefore(end)||listOf("解除","取消","測試","演練").any{it in phenomenon||it in significance})continue
                 // This nationwide view displays official scopes; it does not emit CAP alerts.
-                result+=CwaCountyHazard(phenomenon+significance,phenomenon,names[i],sent,end)
+                result+=CwaCountyHazard(phenomenon+significance,phenomenon,names[i],sent,end,start)
             }
         }
         return result.distinctBy{it.title to it.county}
@@ -103,13 +103,19 @@ internal object CwaWarningGeography {
 
 internal data class CwaWarningMapState(val titles:Map<String,List<String>>,val complete:Boolean,
     val checkedAt:Instant?,val cached:Boolean,val expiredSelection:Boolean,val unresolved:List<String>,
-    val sourceAt:Instant?=checkedAt,val sourceMismatch:Boolean=false) {
+    val sourceAt:Instant?=checkedAt,val sourceMismatch:Boolean=false,
+    val upcoming:Map<String,Instant> = emptyMap()) {
     companion object {
         fun build(national:CwaNationalWarnings?,bulletins:List<CwaBulletin>,local:List<CwaCountyHazard>,selected:String?,now:Instant):CwaWarningMapState {
-            val relevant=bulletins.filter{selected==null||selected.contains(it.title)||it.title.contains(selected)}
-            val expired=selected!=null&&relevant.isNotEmpty()&&relevant.none{it.active(now)}
+            val relevant=bulletins.filter{selected==null||CwaWarningTitles.matches(selected,it.title)}
+            val expired=selected!=null&&relevant.isNotEmpty()&&relevant.all{it.cancelled||it.expiresAt?.let{end->!now.isBefore(end)}==true}
             val mapped=linkedMapOf<String,MutableList<String>>()
-            fun add(county:String,title:String){mapped.getOrPut(CwaWarningGeography.county(county)){mutableListOf()}.add(title)}
+            val future=linkedMapOf<String,Instant>();val active=mutableSetOf<String>()
+            fun add(county:String,title:String,start:Instant){
+                val key=CwaWarningGeography.county(county)
+                mapped.getOrPut(key){mutableListOf()}.add(title)
+                if(now.isBefore(start))future[key]=minOf(future[key]?:start,start) else active+=key
+            }
             val age=national?.let{now.epochSecond-it.checkedAt.epochSecond}?:Long.MAX_VALUE
             var complete=national!=null&&!national.failed&&age in 0..600
             val usable=national!=null&&age in 0..7200&&(!national.failed||national.cached)
@@ -117,23 +123,23 @@ internal data class CwaWarningMapState(val titles:Map<String,List<String>>,val c
             val newer=relevant.filter{national!=null&&it.updatedAt.isAfter(national.sourceAt)}
             val cancellations=newer.filter{it.cancelled}
             if(!expired) {
-                if(usable)national!!.hazards.filter{now.isBefore(it.expiresAt)&&(selected==null||selected.contains(it.phenomenon)||it.title.contains(selected))}
-                    .forEach{h->if(cancellations.any{h.phenomenon in it.title})mismatch=true else add(h.county,h.title)}
+                if(usable)national!!.hazards.filter{now.isBefore(it.expiresAt)&&(selected==null||CwaWarningTitles.matches(selected,it.title))}
+                    .forEach{h->if(cancellations.any{CwaWarningTitles.matches(h.title,it.title)})mismatch=true else add(h.county,h.title,h.startsAt)}
                 else {
-                    local.filter{now.isBefore(it.expiresAt)&&(selected==null||selected.contains(it.phenomenon))}.forEach{add(it.county,it.title)}
-                    relevant.filter{it.active(now)}.forEach{b->b.areas.flatMap{CwaWarningGeography.resolve(it)}.distinct().forEach{add(it,b.title)}}
+                    local.filter{now.isBefore(it.expiresAt)&&(selected==null||CwaWarningTitles.matches(selected,it.title))}.forEach{add(it.county,it.title,it.startsAt)}
+                    relevant.filter{it.available(now)}.forEach{b->b.areas.flatMap{CwaWarningGeography.resolve(it)}.distinct().forEach{add(it,b.title,b.startsAt!!)}}
                 }
-                if(usable)newer.filter{it.active(now)}.forEach{b->
+                if(usable)newer.filter{it.available(now)}.forEach{b->
                     val counties=b.areas.flatMap{CwaWarningGeography.resolve(it)}.distinct()
                     counties.forEach{county->if(mapped[county].orEmpty().none{title->title==b.title||title.removeSuffix("特報").removeSuffix("警報") in b.title}) {
-                        add(county,b.title);mismatch=true
+                        add(county,b.title,b.startsAt!!);mismatch=true
                     }}
                     if(counties.isEmpty()&&b.areas.isNotEmpty())mismatch=true
                 }
             }
             if(mismatch)complete=false
-            val unresolved=if(usable&&!mismatch)emptyList() else relevant.filter{it.active(now)}.flatMap{it.areas}.filter{CwaWarningGeography.resolve(it).isEmpty()}.distinct()
-            return CwaWarningMapState(mapped.mapValues{it.value.distinct()},complete,national?.checkedAt,national?.cached==true||(usable&&!complete&&!mismatch),expired,unresolved,national?.sourceAt,mismatch)
+            val unresolved=if(usable&&!mismatch)emptyList() else relevant.filter{it.available(now)}.flatMap{it.areas}.filter{CwaWarningGeography.resolve(it).isEmpty()}.distinct()
+            return CwaWarningMapState(mapped.mapValues{it.value.distinct()},complete,national?.checkedAt,national?.cached==true||(usable&&!complete&&!mismatch),expired,unresolved,national?.sourceAt,mismatch,future.filterKeys{it !in active})
         }
     }
 }

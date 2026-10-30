@@ -29,10 +29,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.*
 
-internal data class WarningMapColours(val background:Int,val land:Int,val edge:Int,val warning:Int,val warningLand:Int,val text:Int,val selected:Int) {
+internal data class WarningMapColours(val background:Int,val land:Int,val edge:Int,val warning:Int,val warningLand:Int,val text:Int,val selected:Int,
+    val upcoming:Int,val upcomingLand:Int) {
     companion object {
-        fun forTheme(dark:Boolean,selected:Int)=if(dark)WarningMapColours(0xFF0D202C.toInt(),0xFF294552.toInt(),0xFF83A6B6.toInt(),0xFFFFB4AB.toInt(),0xFF5F3036.toInt(),0xFFF1F7FA.toInt(),selected)
-            else WarningMapColours(0xFFF1F6F9.toInt(),0xFFD9E5E9.toInt(),0xFF567686.toInt(),0xFF9F231C.toInt(),0xFFFFDAD6.toInt(),0xFF102733.toInt(),selected)
+        fun forTheme(dark:Boolean,selected:Int)=if(dark)WarningMapColours(0xFF0D202C.toInt(),0xFF294552.toInt(),0xFF83A6B6.toInt(),0xFFFFB4AB.toInt(),0xFF5F3036.toInt(),0xFFF1F7FA.toInt(),selected,0xFFFFD88C.toInt(),0xFF57452B.toInt())
+            else WarningMapColours(0xFFF1F6F9.toInt(),0xFFD9E5E9.toInt(),0xFF567686.toInt(),0xFF9F231C.toInt(),0xFFFFDAD6.toInt(),0xFF102733.toInt(),selected,0xFF815100.toInt(),0xFFFFE5AD.toInt())
     }
 }
 
@@ -55,14 +56,16 @@ internal class WarningMapPainter {
             val shapes=atlas.counties.filter{view.county==null||it.name==view.county}
             shapes.forEach{county->
                 val active=county.name in state.titles
+                val upcoming=county.name in state.upcoming
+                val warningInk=if(upcoming)colours.upcoming else colours.warning
                 val pathSaved=canvas.save();canvas.concat(matrix)
-                fill.color=if(active)colours.warningLand else colours.land
-                edge.color=if(active)colours.warning else colours.edge
+                fill.color=if(active){if(upcoming)colours.upcomingLand else colours.warningLand} else colours.land
+                edge.color=if(active)warningInk else colours.edge
                 edge.strokeWidth=(.9f*density/view.scale).toFloat()
                 canvas.drawPath(county.path,fill)
                 if(active) {
                     val clipped=canvas.save();canvas.clipPath(county.path);canvas.concat(inverse)
-                    hatch.color=colours.warning;hatch.strokeWidth=.8f*density
+                    hatch.color=warningInk;hatch.strokeWidth=.8f*density
                     var x=rect.left-rect.height
                     while(x<rect.right){canvas.drawLine(x,rect.bottom,x+rect.height,rect.top,hatch);x+=9*density}
                     canvas.restoreToCount(clipped)
@@ -118,7 +121,7 @@ internal class WarningMapPainter {
     val time=remember{DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei"))}
     GlassSurface {
         Text("臺灣警戒範圍",modifier=Modifier.fillMaxWidth(),fontSize=22.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,color=palette.onSurface)
-        Text(selectedTitle?.let{"顯示：$it"}?:"目前有效的警特報涉及縣市",color=palette.onSurfaceVariant,fontSize=14.sp)
+        Text(selectedTitle?.let{"顯示：$it"}?:"已發布的警特報與預告涉及縣市",color=palette.onSurfaceVariant,fontSize=14.sp)
         val status=when {
             state.expiredSelection->"選定公告已過有效時間，不標示為目前警戒。"
             state.sourceMismatch->"官方資料正在更新，已納入較新公告；請核對原文範圍。"
@@ -150,7 +153,7 @@ internal class WarningMapPainter {
                 }) {
                 painter.draw(drawContext.canvas.nativeCanvas,this.size.width,this.size.height,this.density,density.fontScale,loaded,state,selectedCounty,colours,zoom,pan)
             }
-            Text("紅色斜線：公告涉及縣市 · 灰色：本次未列示",color=palette.onSurface,fontSize=14.sp)
+            Text("紅色：已生效 · 琥珀色：預告時段 · 灰色：本次未列示",color=palette.onSurface,fontSize=14.sp)
             Text("縣市標示不代表全區受影響；山區、沿海與局部地區請核對原文。離島以分圖呈現。",color=palette.onSurfaceVariant,fontSize=14.sp)
             Text("向量底圖 © 國土測繪中心 · 警示資料：中央氣象署",color=palette.onSurfaceVariant,fontSize=14.sp)
             GlassTextButton({zoom=1f;pan=Offset.Zero;selectedCounty=null}){Text("重設地圖視角")}
@@ -159,10 +162,11 @@ internal class WarningMapPainter {
         if(warned.isNotEmpty()) {
             Text("點選縣市查看警示",fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface)
             GlassChoiceGroup(warned,selectedCounty?.let(warned::indexOf)?:-1,{selectedCounty=warned[it]})
-        } else if(state.complete&&!state.expiredSelection)Text("本次全國縣市資料未列有效警特報。",color=palette.onSurface,fontSize=15.sp)
+        } else if(state.complete&&!state.expiredSelection)Text("本次全國縣市資料未列已生效或預告的警特報。",color=palette.onSurface,fontSize=15.sp)
         selectedCounty?.let{county->
             Text(county,modifier=Modifier.fillMaxWidth(),color=palette.onSurface,fontSize=20.sp,lineHeight=28.sp,fontWeight=FontWeight.Bold)
             Text(state.titles[county]?.joinToString("、")?:if(state.complete)"本次資料未列有效警示。" else "此縣市資料尚未完成，請查看官方公告。",color=palette.onSurface,fontSize=16.sp)
+            state.upcoming[county]?.let{Text("預告 · ${time.format(it)} 起生效（臺灣時間）",color=palette.onSurface,fontSize=15.sp)}
         }
         if(state.unresolved.isNotEmpty())Text("另有公告地區尚未對應縣市：${state.unresolved.joinToString("、")}",color=palette.onSurfaceVariant,fontSize=14.sp)
     }

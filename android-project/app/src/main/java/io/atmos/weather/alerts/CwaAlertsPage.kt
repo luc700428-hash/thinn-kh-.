@@ -26,16 +26,21 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import io.atmos.weather.ui.*
 import io.atmos.weather.ui.AppText as Text
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable fun CwaAlertsPage(initialTitle:String?=null,initialUrl:String?=null,
     initialHazards:List<CwaCountyHazard> = emptyList(),initialNotices:List<CwaWarning> = emptyList(),onClose:()->Unit) {
+    // A report has its own official page, not a weather-warning county map.
+    initialUrl?.takeIf{CwaOfficialPages.allowed(it)&&CwaWarningTitles.earthquakeReport(initialTitle.orEmpty(),it)}?.let {
+        OfficialCwaPage(it,onClose)
+        return
+    }
     var result by remember{mutableStateOf<CwaBulletinsResult?>(null)}
     var notices by remember{mutableStateOf(initialNotices)}
     var refresh by remember{mutableIntStateOf(0)}
@@ -49,11 +54,9 @@ import java.time.format.DateTimeFormatter
     LaunchedEffect(refresh) {
         loading=true
         try {coroutineScope {
-            val rss=async{CwaWarningFeed.fetchNational()}
-            val counties=async{CwaNationalWarningFeed.fetch(refresh>0)}
-            result=CwaBulletins.fetch(refresh>0)
-            national=counties.await()
-            val recent=rss.await();if(recent.checkSucceeded)notices=recent.warnings
+            launch{result=CwaBulletins.fetch(refresh>0)}
+            launch{national=CwaNationalWarningFeed.fetch(refresh>0)}
+            launch{val recent=CwaWarningFeed.fetchNational();if(recent.checkSucceeded)notices=recent.warnings}
         }}finally{loading=false;checked=Instant.now();clock=checked}
     }
     LaunchedEffect(lifecycle){lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -78,7 +81,12 @@ import java.time.format.DateTimeFormatter
     onRetry:()->Unit,onBack:()->Unit,onOfficial:(String)->Unit,now:Instant=Instant.now(),national:CwaNationalWarnings?=null) {
     val p=MaterialTheme.colorScheme
     val date=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei"))
-    val bulletin=result?.bulletins?.firstOrNull{selected==null || selected.contains(it.title)||it.title.contains(selected)}
+    val bulletins=result?.bulletins.orEmpty()
+    val bulletin=bulletins.filter{selected!=null&&CwaWarningTitles.matches(selected,it.title)}
+        .maxWithOrNull(compareBy<CwaBulletin>{it.updatedAt}.thenBy{it.issuedAt}.thenBy{it.cancelled})
+    val weatherNotices=notices.filter{CwaWarningTitles.weatherNotice(it.title,it.link)}
+    val notice=weatherNotices.filter{selected!=null&&CwaWarningTitles.matches(selected,it.title)}.maxByOrNull{it.issuedAt}
+    val mapState=CwaWarningMapState.build(national,bulletins,hazards,selected,now)
     Column(Modifier.fillMaxSize().background(p.background).statusBarsPadding().navigationBarsPadding()) {
         IOSSettingsHeader(if(selected==null)"中央氣象署警特報" else "警特報詳情",onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp)
@@ -88,12 +96,12 @@ import java.time.format.DateTimeFormatter
                 Text(if(result.cached)"更新未完成，顯示先前取得的公告；請核對有效時間。" else "官方公告尚未載入，請重試。未載入不代表沒有警報。",color=p.onSurface)
                 GlassTextButton(onRetry,enabled=!loading){Text("重新取得公告")}
             }
-            CwaWarningMapCard(CwaWarningMapState.build(national,result?.bulletins.orEmpty(),hazards,selected,now),selected)
             if(selected==null) {
+                CwaWarningMapCard(mapState,null)
                 result?.checkedAt?.let{Text("最後查詢 ${date.format(it)} · 臺灣時間",color=p.onSurfaceVariant,fontSize=14.sp)}
                 result?.bulletins.orEmpty().forEach {b->
                     GlassSurface {
-                        Text(if(b.active(now))"有效公告" else "公告資訊 · 請核對有效時間",color=p.primary,fontSize=14.sp)
+                        Text(when{b.cancelled->"已解除／取消";b.upcoming(now)->"已發布 · 預告時段";b.active(now)->"目前生效";else->"公告資訊 · 請核對有效時間"},color=p.primary,fontSize=14.sp)
                         GlassAction(b.title,b.areas.joinToString("、")){onSelect(b.title)}
                         Text("${date.format(b.issuedAt)} 發布",color=p.onSurfaceVariant,fontSize=14.sp)
                     }
@@ -102,29 +110,56 @@ import java.time.format.DateTimeFormatter
                 missing.distinctBy{it.title}.forEach{h->GlassSurface{GlassAction(h.title,h.county){onSelect(h.title)}}}
                 if(!loading && result?.failed==false && result.bulletins.isEmpty())
                     Text("本次特報內容資料未列出公告；其他種類警報可在下方官方圖表中查看。",color=p.onSurfaceVariant)
-                if(notices.isNotEmpty()) {
+                if(weatherNotices.isNotEmpty()) {
                     Text("近期官方公告",color=p.onSurface,fontSize=20.sp,fontWeight=FontWeight.SemiBold)
                     Text("近期公告可能包含更新或解除訊息，請核對原文。",color=p.onSurfaceVariant,fontSize=14.sp)
-                    notices.forEach{n->GlassSurface{GlassAction(n.title,date.format(n.issuedAt)){onSelect(n.title)}}}
+                    weatherNotices.forEach{n->GlassSurface{GlassAction(n.title,date.format(n.issuedAt)){onSelect(n.title)}}}
                 }
                 GlassOutlinedButton({onOfficial("")},modifier=Modifier.fillMaxWidth()){Text("在 App 內查看官方警報總覽")}
             } else {
-                val title=bulletin?.title?:selected
+                val header=(hazards+national?.hazards.orEmpty()).firstOrNull{CwaWarningTitles.matches(selected,it.title)}
+                val title=bulletin?.title?:header?.title?:CwaWarningTitles.display(selected)
+                val issued=bulletin?.issuedAt?:notice?.issuedAt?:header?.issuedAt
+                val starts=bulletin?.startsAt?:header?.startsAt
+                val expires=bulletin?.expiresAt?:header?.expiresAt
+                val cancelled=bulletin?.cancelled==true || notice?.let{n->listOf("解除","取消").any{it in n.title} &&
+                    (bulletin==null||!n.issuedAt.isBefore(bulletin.updatedAt))}==true
                 GlassSurface {
                     Text(title,modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=24.sp,lineHeight=34.sp,fontWeight=FontWeight.Bold)
-                    val header=hazards.firstOrNull{selected.contains(it.phenomenon)}
-                    val issued=bulletin?.issuedAt?:header?.issuedAt
-                    val expires=bulletin?.expiresAt?:header?.expiresAt
-                    issued?.let{Text("官方發布 ${date.format(it)}",color=p.onSurfaceVariant,fontSize=15.sp)}
-                    expires?.let{Text("有效至 ${date.format(it)}"+(if(!now.isBefore(it))" · 已超過有效時間" else ""),color=p.onSurface,fontSize=15.sp)}
+                    issued?.let{Text("官方發布 ${date.format(it)}",modifier=Modifier.fillMaxWidth(),color=p.onSurfaceVariant,fontSize=15.sp,lineHeight=23.sp)}
+                    if(bulletin==null&&header!=null)Text("以下時段為 ${CwaWarningGeography.county(header.county)} 的縣市資料",color=p.onSurfaceVariant,fontSize=14.sp)
+                    Text(when {
+                        cancelled->"此公告已解除／取消"
+                        expires!=null&&!now.isBefore(expires)->"此公告已超過有效時間"
+                        starts!=null&&now.isBefore(starts)->"已發布 · 預告時段，尚未生效"
+                        bulletin?.active(now)==true||header!=null->"目前生效"
+                        else->"官方近期公告 · 有效狀態待確認"
+                    },modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=16.sp,lineHeight=24.sp,fontWeight=FontWeight.SemiBold)
+                    starts?.let{Text("開始時間 ${date.format(it)}",modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=15.sp,lineHeight=23.sp)}
+                    expires?.let{Text("有效至 ${date.format(it)}"+(if(!now.isBefore(it))" · 已超過有效時間" else ""),modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=15.sp,lineHeight=23.sp)}
+                    if(starts!=null||expires!=null)Text("以上時間均為臺灣時間",color=p.onSurfaceVariant,fontSize=14.sp)
                     if(bulletin?.areas?.isNotEmpty()==true) {
                         Spacer(Modifier.height(12.dp));Text("警戒地區",color=p.onSurface,fontWeight=FontWeight.SemiBold)
-                        Text(bulletin.areas.joinToString("、"),color=p.onSurface,fontSize=16.sp,lineHeight=25.sp)
+                        Text(bulletin.areas.joinToString("、"),modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=16.sp,lineHeight=25.sp)
+                    } else if(mapState.titles.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp));Text("公告涉及縣市",color=p.onSurface,fontWeight=FontWeight.SemiBold)
+                        Text(mapState.titles.keys.joinToString("、"),color=p.onSurface,fontSize=16.sp,lineHeight=25.sp)
                     }
-                    Spacer(Modifier.height(16.dp))
+                }
+                if(!CwaWarningTitles.earthquakeReport(selected)) {
+                    if(mapState.complete||mapState.titles.isNotEmpty()||mapState.expiredSelection)CwaWarningMapCard(
+                        if(cancelled)mapState.copy(titles=emptyMap(),upcoming=emptyMap(),expiredSelection=true) else mapState,title)
+                    else Text("警戒範圍資料暫未取得；下方保留已載入的官方文字。",color=p.onSurfaceVariant,fontSize=15.sp)
+                }
+                GlassSurface {
+                    Text(if(bulletin!=null)"官方公告全文" else "官方公告摘要",color=p.onSurface,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                    Spacer(Modifier.height(12.dp))
                     if(bulletin!=null) SelectionContainer {
-                        Text(bulletin.text,color=p.onSurface,fontSize=17.sp,lineHeight=28.sp)
-                    } else Text("此公告完整內容與圖表請在下方官方頁面查看。",color=p.onSurfaceVariant,fontSize=16.sp)
+                        Text(bulletin.text,modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=17.sp,lineHeight=28.sp)
+                    } else if(notice?.summary?.isNotBlank()==true)SelectionContainer {
+                        Text(notice.summary,modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=17.sp,lineHeight=28.sp)
+                    } else Text("尚未取得此公告文字。可重新取得，或在 App 內開啟下方官方完整頁面。",color=p.onSurfaceVariant,fontSize=16.sp)
+                    if(bulletin==null&&notice!=null)Text("目前為官方 RSS 摘要；完整公告與圖表可在 App 內開啟。",color=p.onSurfaceVariant,fontSize=14.sp)
                     Spacer(Modifier.height(12.dp))
                     Text("資料來源：中央氣象署 · 官方內容原文",color=p.onSurfaceVariant,fontSize=14.sp)
                 }
@@ -196,8 +231,13 @@ import java.time.format.DateTimeFormatter
             if(!rendererLost) {
                 view.setBackgroundColor(p.background.toArgb())
                 view.settings.textZoom=textZoom
-                if(WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING))
-                    WebSettingsCompat.setAlgorithmicDarkeningAllowed(view.settings,dark)
+                try {
+                    if(WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING))
+                        WebSettingsCompat.setAlgorithmicDarkeningAllowed(view.settings,dark)
+                }catch(_:UnsupportedOperationException) {
+                    // Some WebView providers advertise the optional feature but cannot apply it.
+                    // Keep the official report usable with its own colours.
+                }
             }
         })
         }

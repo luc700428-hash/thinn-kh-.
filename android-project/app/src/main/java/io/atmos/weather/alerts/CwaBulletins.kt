@@ -19,6 +19,8 @@ data class CwaBulletin(val title:String,val text:String,val areas:List<String>,v
     val startsAt:Instant?,val expiresAt:Instant?,val cancelled:Boolean=false,val updatedAt:Instant=issuedAt) {
     fun active(now:Instant)=!cancelled && startsAt?.let{!now.isBefore(it)}==true &&
         expiresAt?.let{now.isBefore(it)}==true
+    fun available(now:Instant)=!cancelled && startsAt!=null && expiresAt?.let{now.isBefore(it)}==true
+    fun upcoming(now:Instant)=available(now) && startsAt?.let{now.isBefore(it)}==true
 }
 data class CwaBulletinsResult(val bulletins:List<CwaBulletin>,val checkedAt:Instant,
     val failed:Boolean=false,val cached:Boolean=false)
@@ -32,7 +34,7 @@ object CwaOfficialPages {
             (u.host=="www.cwa.gov.tw" || u.host=="cwa.gov.tw" || u.host?.endsWith(".cwa.gov.tw")==true)
     }.getOrDefault(false)
     fun forTitle(title:String,notices:List<CwaWarning> = emptyList()):String {
-        notices.firstOrNull{allowed(it.link) && (it.title.contains(title)||title.contains(it.title))}?.let{return it.link}
+        notices.firstOrNull{allowed(it.link) && CwaWarningTitles.matches(it.title,title)}?.let{return it.link}
         // W25 is the current official land-wind page; other products retain their official overview.
         return if("強風" in title)"https://www.cwa.gov.tw/V8/C/P/Warning/W25.html" else overview
     }

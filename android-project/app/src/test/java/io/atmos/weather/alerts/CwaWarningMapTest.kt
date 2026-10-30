@@ -126,4 +126,23 @@ class CwaWarningMapTest {
             assertEquals(0,pixels.count{it==colours.warning||it==colours.warningLand})
         }
     }
+    @Test fun scheduledOfficialAreasUseAmberRatherThanCurrentWarningRedInBothThemes() {
+        val at=Instant.parse("2026-10-29T21:01:00Z")
+        fun captured(name:String)=javaClass.getResourceAsStream("/cwa-warning-20261030/$name")!!.bufferedReader().use{it.readText()}
+        val bulletin=CwaBulletins.parse(captured("bulletins.json"),at).single()
+        val feed=CwaNationalWarnings(CwaNationalWarningFeed.parse(captured("counties.json"),at),at,sourceAt=bulletin.updatedAt)
+        val state=CwaWarningMapState.build(feed,listOf(bulletin),emptyList(),bulletin.title,at)
+        val output=File("build/warning-map-renders").apply{mkdirs()}
+        for(dark in listOf(false,true)) {
+            val colours=WarningMapColours.forTheme(dark,0xff007aff.toInt())
+            val bitmap=Bitmap.createBitmap(720,780,Bitmap.Config.ARGB_8888)
+            WarningMapPainter().draw(android.graphics.Canvas(bitmap),720f,780f,2f,1f,atlas(),state,null,colours)
+            val pixels=IntArray(720*780);bitmap.getPixels(pixels,0,720,0,0,720,780)
+            assertTrue(pixels.count{it==colours.upcomingLand}>200)
+            assertTrue(pixels.count{it==colours.upcoming}>100)
+            assertEquals(0,pixels.count{it==colours.warning||it==colours.warningLand})
+            File(output,"upcoming-warning-$dark.png").outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}
+            bitmap.recycle()
+        }
+    }
 }

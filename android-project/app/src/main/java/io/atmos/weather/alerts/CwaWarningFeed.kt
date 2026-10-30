@@ -89,8 +89,10 @@ object CwaWarningFeed {
                     if (parser.name.equals("item", ignoreCase = true)) {
                         inside = false
                         val issuedAt = runCatching { ZonedDateTime.parse(date.trim(), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant() }.getOrNull()
-                        if (issuedAt != null && title.isNotBlank() && CwaOfficialPages.allowed(link)) {
-                            output += CwaWarning(title.trim(), summary.replace(Regex("<[^>]*>"), " ").trim(), link, issuedAt)
+                        if (issuedAt != null && title.isNotBlank() && CwaOfficialPages.allowed(link) &&
+                            CwaWarningTitles.weatherNotice(title,link)) {
+                            val plain=summary.replace(Regex("<[^>]*>"), " ").replace("\\n", "\n").trim()
+                            output += CwaWarning(title.trim(), plain, link, issuedAt)
                         }
                     }
                     field = null
