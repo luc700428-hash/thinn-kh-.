@@ -1,0 +1,6 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:padding="18dp" android:background="@drawable/widget_buddy_clock_preview_background">
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_buddy_clock_name" android:textColor="#FFFFFF" android:textSize="16sp"/>
+ <TextClock android:layout_width="wrap_content" android:layout_height="80dp" android:layout_marginTop="30dp" android:format12Hour="h:mm" android:format24Hour="HH:mm" android:textSize="48sp" android:textColor="#FFFFFF" android:fontFamily="sans-serif-light"/>
+ <ImageView android:layout_width="96dp" android:layout_height="96dp" android:layout_gravity="end|center_vertical" android:src="@drawable/buddy_vector_still_sun_day" android:contentDescription="@null"/>
+ <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom" android:text="24°　晴朗" android:textColor="#FFFFFF" android:textSize="22sp"/>
+</FrameLayout>

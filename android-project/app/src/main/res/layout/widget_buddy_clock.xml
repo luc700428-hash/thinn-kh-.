@@ -1,0 +1,11 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:clipChildren="true">
+ <TextView android:id="@+id/buddy_clock_city" android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:singleLine="true" android:ellipsize="end"/>
+ <TextClock android:id="@+id/buddy_clock_time" android:layout_width="match_parent" android:layout_height="80dp" android:fontFamily="sans-serif-light" android:gravity="center_vertical" android:singleLine="true"/>
+ <TextClock android:id="@+id/buddy_clock_date" android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:singleLine="true" android:ellipsize="end"/>
+ <FrameLayout android:id="@+id/buddy_clock_scene" android:layout_width="100dp" android:layout_height="100dp"><include layout="@layout/widget_buddy_scene"/></FrameLayout>
+ <TextView android:id="@+id/buddy_clock_temp" android:layout_width="match_parent" android:layout_height="56dp" android:textStyle="bold" android:gravity="center_vertical" android:singleLine="true" android:ellipsize="end"/>
+ <TextView android:id="@+id/buddy_clock_condition" android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:singleLine="true" android:ellipsize="end"/>
+ <TextView android:id="@+id/buddy_clock_info" android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:singleLine="true" android:ellipsize="end"/>
+ <TextView android:id="@+id/buddy_clock_updated" android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center_vertical" android:singleLine="true" android:ellipsize="end"/>
+ <ImageButton android:id="@+id/buddy_clock_refresh" android:layout_width="44dp" android:layout_height="44dp" android:padding="12dp" android:src="@android:drawable/ic_popup_sync" android:background="@android:color/transparent" android:contentDescription="@string/widget_refresh_weather"/>
+</FrameLayout>

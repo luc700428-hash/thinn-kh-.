@@ -6,6 +6,9 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
@@ -42,10 +45,10 @@ internal val LocalAppWindowLayout=staticCompositionLocalOf<AppWindowLayout?>{nul
 /** One bounded root observes rotation, split screen and desktop window resizing. */
 @Composable fun AdaptiveWindowProvider(modifier:Modifier=Modifier,content:@Composable ()->Unit) {
     val density=LocalDensity.current
-    BoxWithConstraints(modifier.fillMaxSize()) {
+    DevicePostureProvider { BoxWithConstraints(modifier.fillMaxSize()) {
         val layout=AppWindowLayout(maxWidth.value,maxHeight.value,density.fontScale)
         CompositionLocalProvider(LocalAppWindowLayout provides layout){content()}
-    }
+    }}
 }
 
 /** Keep reading/forms comfortably bounded, while the parent background stays full-window. */
@@ -59,42 +62,38 @@ internal val LocalAppWindowLayout=staticCompositionLocalOf<AppWindowLayout?>{nul
 
 @Composable internal fun adaptiveMapHeight(phone:Dp):Dp=currentAppWindowLayout().mapHeight(phone.value).dp
 
-/** Movable panes keep sliders, focus and child state when crossing a breakpoint. */
+/** Stable child slots retain form and animation state when the window changes shape. */
 @Composable internal fun AdaptiveScrollingPanes(
-    modifier:Modifier=Modifier,
-    scrollState:ScrollState=rememberScrollState(),
-    horizontalPadding:Dp=20.dp,
-    topPadding:Dp=12.dp,
-    bottomPadding:Dp=132.dp,
-    paneSpacing:Dp=0.dp,
-    applyStatusBars:Boolean=true,
-    leadingFraction:Float=.42f,
-    leading:@Composable ColumnScope.()->Unit,
-    trailing:@Composable ColumnScope.()->Unit
+    modifier:Modifier=Modifier,scrollState:ScrollState=rememberScrollState(),
+    horizontalPadding:Dp=20.dp,topPadding:Dp=12.dp,bottomPadding:Dp=132.dp,
+    paneSpacing:Dp=0.dp,applyStatusBars:Boolean=true,leadingFraction:Float=.42f,
+    leading:@Composable ColumnScope.()->Unit,trailing:@Composable ColumnScope.()->Unit
 ) {
-    val window=currentAppWindowLayout()
-    val scale=LocalDensity.current.fontScale
-    val latestLeading=rememberUpdatedState(leading);val latestTrailing=rememberUpdatedState(trailing)
-    val spacing=rememberUpdatedState(paneSpacing)
-    val first=remember{movableContentOf{Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(spacing.value)){latestLeading.value(this)}}}
-    val second=remember{movableContentOf{Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(spacing.value)){latestTrailing.value(this)}}}
+    val window=currentAppWindowLayout();val scale=LocalDensity.current.fontScale
     val firstScroll=rememberScrollState()
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide=AppWindowLayout(maxWidth.value,window.height,scale).twoPanes
+        val bottom=if(LocalWorkspaceLayout.current.tablet)minOf(bottomPadding,32.dp) else bottomPadding
         val bars=if(applyStatusBars)Modifier.statusBarsPadding() else Modifier
-        if(wide) {
-            Row(Modifier.align(Alignment.TopCenter).widthIn(max=1280.dp).fillMaxSize()
-                .then(bars).padding(horizontal=horizontalPadding,vertical=topPadding),
-                horizontalArrangement=Arrangement.spacedBy(24.dp)) {
-                Column(Modifier.weight(leadingFraction).fillMaxHeight().verticalScroll(firstScroll)
-                    .padding(bottom=bottomPadding)){first()}
-                Column(Modifier.weight(1f-leadingFraction).fillMaxHeight().verticalScroll(scrollState)
-                    .padding(bottom=bottomPadding)){second()}
+        Layout(modifier=Modifier.align(Alignment.TopCenter).widthIn(max=if(wide)1280.dp else 760.dp)
+            .fillMaxSize().then(bars).then(if(!wide)Modifier.verticalScroll(scrollState,overscrollEffect=null) else Modifier)
+            .padding(horizontal=horizontalPadding).padding(top=topPadding),content={
+            Column(Modifier.fillMaxWidth().then(if(wide)Modifier.fillMaxHeight().verticalScroll(firstScroll) else Modifier)
+                .padding(bottom=if(wide)bottom else 0.dp),verticalArrangement=Arrangement.spacedBy(paneSpacing),content=leading)
+            Column(Modifier.fillMaxWidth().then(if(wide)Modifier.fillMaxHeight().verticalScroll(scrollState) else Modifier)
+                .padding(bottom=bottom),verticalArrangement=Arrangement.spacedBy(paneSpacing),content=trailing)
+        }) {children,c->
+            val gap=(if(wide)24.dp else paneSpacing).roundToPx()
+            if(wide) {
+                val firstWidth=((c.maxWidth-gap)*leadingFraction).toInt().coerceAtLeast(0)
+                val a=children[0].measure(Constraints.fixed(firstWidth,c.maxHeight))
+                val b=children[1].measure(Constraints.fixed((c.maxWidth-gap-firstWidth).coerceAtLeast(0),c.maxHeight))
+                layout(c.maxWidth,c.maxHeight){a.placeRelative(0,0);b.placeRelative(firstWidth+gap,0)}
+            } else {
+                val a=children[0].measure(Constraints(minWidth=c.maxWidth,maxWidth=c.maxWidth))
+                val b=children[1].measure(Constraints(minWidth=c.maxWidth,maxWidth=c.maxWidth))
+                layout(c.maxWidth,c.constrainHeight(a.height+gap+b.height)){a.placeRelative(0,0);b.placeRelative(0,a.height+gap)}
             }
-        } else {
-            Column(Modifier.align(Alignment.TopCenter).widthIn(max=760.dp).fillMaxSize()
-                .verticalScroll(scrollState,overscrollEffect=null).padding(horizontal=horizontalPadding)
-                .then(bars).padding(top=topPadding,bottom=bottomPadding)) {first();if(paneSpacing>0.dp)Spacer(Modifier.height(paneSpacing));second()}
         }
     }
 }

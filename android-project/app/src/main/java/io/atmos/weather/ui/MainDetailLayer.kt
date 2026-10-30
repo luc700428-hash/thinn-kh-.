@@ -10,13 +10,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Keeps an outgoing detail alive through its transition. Back gestures seek the same layer. */
 @Composable
-fun MainDetailLayer(visible:Boolean,onBack:()->Unit,content:@Composable ()->Unit) {
+fun MainDetailLayer(visible:Boolean,onBack:()->Unit,inset:Dp=LocalWorkspaceDetailInset.current,content:@Composable ()->Unit) {
     val reduce=rememberAppleReduceMotion()
     val gesture=remember {Animatable(0f)}
     val scope=rememberCoroutineScope()
@@ -30,7 +32,7 @@ fun MainDetailLayer(visible:Boolean,onBack:()->Unit,content:@Composable ()->Unit
             throw cancel
         }
     }
-    AnimatedVisibility(visible=visible,modifier=Modifier.fillMaxSize(),
+    AnimatedVisibility(visible=visible,modifier=Modifier.fillMaxSize().padding(start=inset),
         enter=slideInHorizontally(tween(if(reduce)0 else 420,easing=AppleMotion.fluid)){it}+
             fadeIn(tween(if(reduce)0 else 230),initialAlpha=.65f),
         exit=slideOutHorizontally(tween(if(reduce)0 else 360,easing=AppleMotion.fluid)){it}+

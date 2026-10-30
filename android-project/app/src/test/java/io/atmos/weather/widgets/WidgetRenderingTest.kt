@@ -138,7 +138,7 @@ class WidgetRenderingTest {
         assertEquals(0,android.graphics.Color.alpha(wide.getPixel(0,0)))
         assertTrue("Glass corner expanded into text padding",android.graphics.Color.alpha(wide.getPixel(8,8))>200)
     }
-    private fun render(variant:Int,width:Int,height:Int,scale:Float,name:String,reading:OpticalWidgetData=data) {
+    internal fun render(variant:Int,width:Int,height:Int,scale:Float,name:String,reading:OpticalWidgetData=data,check:(View)->Unit={}) {
         context.getSharedPreferences("thinn_settings",0).edit().putFloat("v4_fontscale",scale).commit()
         val remote=runBlocking {GlanceRemoteViews().compose(context,DpSize(width.dp,height.dp)) {OpticalWidgetContent(context,variant,reading)}.remoteViews}
         val density=context.resources.displayMetrics.density
@@ -167,6 +167,7 @@ class WidgetRenderingTest {
                 }
                 if(v is ViewGroup)for(i in 0 until v.childCount)inspect(v.getChildAt(i))
             }
+            check(view)
             inspect(view)
         } finally {controller.pause().stop().destroy()}
     }

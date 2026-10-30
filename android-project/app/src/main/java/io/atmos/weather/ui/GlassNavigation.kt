@@ -145,7 +145,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
-    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={},onAlerts:()->Unit={},onInsights:()->Unit={}) {
+    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={},onAlerts:()->Unit={},onInsights:()->Unit={},onUtilityOpen:()->Unit={}) {
     val palette=MaterialTheme.colorScheme
     var query by rememberSaveable {mutableStateOf("")}
     var utility by rememberSaveable {mutableStateOf<String?>(null)}
@@ -162,10 +162,11 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,onRadar))),
         EntryGroup("海洋與天文",Color(0xFF007A78),listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,onMarine),
             Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.Nightlight,onSky))),
-        EntryGroup("時間與換算",Color(0xFF5856D6),listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{utility="碼錶"}),
-            Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,{utility="世界時鐘"}),
-            Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{utility="氣象單位換算"})))
+        EntryGroup("時間與換算",Color(0xFF5856D6),listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{onUtilityOpen();utility="碼錶"}),
+            Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,{onUtilityOpen();utility="世界時鐘"}),
+            Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{onUtilityOpen();utility="氣象單位換算"})))
     )
+    Box(Modifier.fillMaxSize()) {
     AdaptivePageFrame(Modifier.background(palette.background).imePadding(),maxContentWidth=1280.dp) {
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()
         .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=18.dp,bottom=120.dp),
@@ -191,7 +192,7 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
                 Text(group.title,color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(horizontal=6.dp))
                 IOSV25SettingsGroup {
                     shown.forEachIndexed {i,item ->IOSV25SettingsCell(item.title,"",item.icon,group.tint,
-                        last=i==shown.lastIndex,onClick=item.action)}
+                        last=i==shown.lastIndex,selected=LocalWorkspaceDetailTitle.current==item.title,onClick=item.action)}
                 }
             }
         }
@@ -199,6 +200,7 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
     }
     }
     EverydayToolsSheet(utility,onDismiss={utility=null})
+    }
 }
 
 @Composable
@@ -263,7 +265,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         }
     }
     AdaptivePageFrame(Modifier.background(palette.background).imePadding(),maxContentWidth=1280.dp) {
-    AppleParallaxStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false},
+    WorkspaceSettingsStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false},
         modifier=Modifier.fillMaxSize(),root={
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
@@ -317,7 +319,9 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     Text(title,fontSize=14.sp,color=palette.onSurfaceVariant,modifier=Modifier.padding(start=16.dp,bottom=8.dp))
                     IOSV25SettingsGroup {
                         shown.forEachIndexed {index,row ->IOSV25SettingsCell(row.title,"",row.icon,row.color,
-                            last=index==shown.lastIndex,onClick=row.action)}
+                            last=index==shown.lastIndex,selected=LocalWorkspaceDetailTitle.current==row.title||
+                                (detailsVisible&&row.title==when(lastDetail){"appearance"->"外觀與亮度";"surfaces"->"小工具與動態島";else->"輔助使用"}),
+                            onClick={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;row.action()})}
                     }
                     Spacer(Modifier.height(20.dp))
                 }
@@ -330,7 +334,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             Spacer(Modifier.height(22.dp))
             Text("thinn-khì",color=palette.onSurfaceVariant,fontSize=12.sp,
                 modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
-            Spacer(Modifier.height(120.dp))
+            Spacer(Modifier.height(if(LocalWorkspaceLayout.current.tablet)24.dp else 120.dp))
         }
     }},detail={AdaptivePageFrame(maxContentWidth=760.dp){when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};else->accessibilityContent()}}})
     }

@@ -24,7 +24,8 @@ class IntegratedTyphoonFallbackTests(unittest.TestCase):
         self.assertNotIn('gdacsCyclones.isNotEmpty() || typhoonPrimaryUnavailable || typhoonBackupUnavailable',h)
         self.assertIn('typhoonPrimaryUnavailable=true',h)
         self.assertIn('typhoonBackupUnavailable=true',h)
-        self.assertIn('onTyphoons = { typhoonPageOpen = true }',h)
+        self.assertIn('onTyphoons = { openWorkspaceDetail("typhoon") }',h)
+        self.assertIn('"typhoon"->typhoonPageOpen=true',h)
         self.assertIn('GdacsCycloneFeed.read()',h)
     def test_cwa_warnings_separate_from_gdacs(self):
         h=read('presentation/home/WeatherHomeScreen.kt')

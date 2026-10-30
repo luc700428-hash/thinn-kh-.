@@ -36,7 +36,7 @@ import kotlinx.coroutines.delay
     LaunchedEffect(query) {if(query.isBlank()){submitted="";onQuery("")}else {delay(280);if(submitted!=query.trim()){submitted=query.trim();onQuery(submitted)}}}
     val shown=results.filter {val tw=it.name.startsWith("台灣")||LocationLabels.probablyTaiwan(it.coordinate)||LocationLabels.isDiaoyutai(it.coordinate)
         scope==0||scope==1&&tw||scope==2&&!tw}
-    ThinnDialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+    WorkspaceSearchDialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         AppSystemBars(palette.background.red<.5f)
         Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding().imePadding()) {
             IOSSettingsHeader("地點與城市",onClose)

@@ -11,10 +11,10 @@ import androidx.glance.layout.*
 import io.atmos.weather.R
 
 class WeatherBuddyWidget:AtmosWidget(27)
-class WeatherBuddyWidgetReceiver:GlanceAppWidgetReceiver(){override val glanceAppWidget:GlanceAppWidget=WeatherBuddyWidget()}
+class WeatherBuddyWidgetReceiver:SyncedWidgetReceiver(){override val glanceAppWidget:GlanceAppWidget=WeatherBuddyWidget()}
 
 /** Native vectors resolve at the launcher's final dimensions, including after a resize. */
-internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed:Int,sizeDp:Float=112f):RemoteViews {
+internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed:Int,sizeDp:Float=112f,layoutId:Int=R.layout.widget_buddy_scene):RemoteViews {
     val kind=WeatherBuddyArt.kind(d.condition,d.day)
     val side=sizeDp.takeIf{it.isFinite()}?.coerceIn(16f,1000f)?:112f
     val wet=kind in listOf(WeatherBuddyArt.Kind.RAIN,WeatherBuddyArt.Kind.STORM,WeatherBuddyArt.Kind.SNOW)
@@ -24,7 +24,7 @@ internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed
         setViewLayoutMargin(id,RemoteViews.MARGIN_LEFT,side*left,unit)
         setViewLayoutMargin(id,RemoteViews.MARGIN_TOP,side*top,unit)
     }
-    return RemoteViews(context.packageName,R.layout.widget_buddy_scene).apply {
+    return RemoteViews(context.packageName,layoutId).apply {
         setContentDescription(R.id.buddy_root,"天氣夥伴 · ${d.description()}")
         setViewVisibility(R.id.buddy_float,if(motion)View.VISIBLE else View.GONE)
         setViewVisibility(R.id.buddy_rain,if(motion)View.VISIBLE else View.GONE)

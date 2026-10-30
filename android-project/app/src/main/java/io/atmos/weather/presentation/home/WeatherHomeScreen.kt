@@ -2,6 +2,7 @@ package io.atmos.weather.presentation.home
 import io.atmos.weather.ui.IOSActivityIndicator as CircularProgressIndicator
 import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
+import io.atmos.weather.ui.*
 import io.atmos.weather.ui.appleBouncingScroll
 import io.atmos.weather.ui.thinnBackdrop
 import io.atmos.weather.ui.LocalWeatherCardPalette
@@ -253,7 +254,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         mainTabJob?.cancel()
         mainTabJob=mainPagerScope.launch {
             if(exitDelay>0)delay(exitDelay)
-            mainPager.animateScrollToPage(index.coerceIn(0,3))
+            if(reduceCityMotion)mainPager.scrollToPage(index.coerceIn(0,3))
+            else mainPager.animateScrollToPage(index.coerceIn(0,3))
             dockRequestedTab=null
         }
     }
@@ -526,6 +528,42 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
 
+    val rootWindow=currentAppWindowLayout()
+    val tabletWindow=LocalDevicePosture.current?.kind!=DeviceKind.PHONE&&rootWindow.width>=600f
+    fun clearWorkspaceDetails() {
+        marineOpen=false;skyOpen=false;alertsOpen=false;insightsOpen=false
+        typhoonPageOpen=false;earthquakePageOpen=false;tasksOpen=false;briefingOpen=false
+        diagnosticsOpen=false;pushSettingsOpen=false;lifestyleSettingsOpen=false;settingsOpen=false
+        locationOpen=false;weatherAlarmOpen=false;updatePageOpen=false;nativeRadarOpen=false
+        showLifestyleDetails=false;details=null;settingsDetailOpen=false
+    }
+    fun openWorkspaceDetail(name:String,category:String?=null) {
+        clearWorkspaceDetails()
+        when(name) {
+            "marine"->marineOpen=true;"sky"->skyOpen=true;"alerts"->{alertTitle=null;alertUrl=null;alertsOpen=true}
+            "insights"->insightsOpen=true;"typhoon"->typhoonPageOpen=true;"tasks"->tasksOpen=true
+            "briefing"->briefingOpen=true;"diagnostics"->diagnosticsOpen=true;"push"->pushSettingsOpen=true
+            "lifestyle"->lifestyleSettingsOpen=true;"alarm"->weatherAlarmOpen=true;"update"->updatePageOpen=true
+            "radar"->nativeRadarOpen=true;"advanced"->{advancedCategory=category?:"聲音";settingsOpen=true}
+        }
+    }
+    fun navigateWorkspace(requested:Int) {
+        val leaving=marineOpen||skyOpen||alertsOpen||insightsOpen||typhoonPageOpen||earthquakePageOpen||
+            tasksOpen||briefingOpen||diagnosticsOpen||pushSettingsOpen||lifestyleSettingsOpen||settingsOpen||
+            settingsDetailOpen||weatherAlarmOpen||updatePageOpen||locationOpen||nativeRadarOpen
+        clearWorkspaceDetails()
+        val target=requested.coerceIn(0,3);dockRequestedTab=target
+        if(!tabletWindow)setOf(mainPager.currentPage,target).forEach{tab->tabResetEpochs[tab]=tabResetEpochs[tab]+1}
+        showMainTab(target,if(leaving&&!reducedMotion)160L else 0L)
+    }
+    val workspaceDetailTitle=when {
+        marineOpen->"海象與浪況";skyOpen->"日月與月相";alertsOpen->"中央氣象署警特報";insightsOpen->"氣象詳解與外出時段"
+        typhoonPageOpen->"颱風動向";tasksOpen->"我的事項";briefingOpen->"天氣定時通知";weatherAlarmOpen->"天氣鬧鐘"
+        diagnosticsOpen->"權限與系統健康";pushSettingsOpen->"地震警報與通知";lifestyleSettingsOpen->"穿搭與生活偏好"
+        updatePageOpen->"軟體更新";settingsOpen->when(advancedCategory){"外觀"->"字體與閱讀";"聲音"->"聲音與觸覺";"資料"->"資料更新頻率";else->"通知音效與背景提醒"}
+        else->null
+    }
+
     val renderedCondition=demoCondition ?: snapshot?.condition
     val renderedSnow=renderedCondition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)
     val renderedRain=renderedCondition in setOf(WeatherCondition.RAIN,WeatherCondition.FREEZING_RAIN,WeatherCondition.HAIL,WeatherCondition.THUNDERSTORM)
@@ -537,7 +575,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val themedPage=mainPager.currentPage!=0||settingsOpen||settingsDetailOpen||lifestyleSettingsOpen||
             pushSettingsOpen||diagnosticsOpen||briefingOpen||tasksOpen||updatePageOpen||
             earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen
-        io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f || !themedPage)
+        io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f || (!themedPage&&!tabletWindow))
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
@@ -549,19 +587,30 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 else -> io.atmos.weather.ui.TkPrecipitationMood.CLEAR
             }
         ) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow)))) {
+        TabletWorkspaceShell(selected=dockRequestedTab?:mainPager.targetPage,onSelect=::navigateWorkspace,
+            onSearch={locationOpen=true},cities=state.savedCities,selectedCity=state.city,
+            onCity={clearWorkspaceDetails();viewModel.onIntent(WeatherIntent.SelectCity(it));showMainTab(0)},
+            overview=snapshot?.let{"${it.temperatureC.toInt()}° · ${io.atmos.weather.domain.model.WeatherDescriptions.label(it.condition,it.weatherCode,it.visibilityM,it.isDay)}"}?:"正在更新天氣") {
+        val workspace=LocalWorkspaceLayout.current
+        val detailInset=if(workspace.listDetail&&mainPager.currentPage in 2..3&&workspaceDetailTitle!=null)
+            (if(appDensity.fontScale>1.25f)366.dp else 316.dp) else 0.dp
+        CompositionLocalProvider(LocalWorkspaceDetailInset provides detailInset,LocalWorkspaceDetailTitle provides workspaceDetailTitle) {
+        val workspaceBrush=if(workspace.tablet&&mainPager.currentPage!=0)
+            Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background,MaterialTheme.colorScheme.background))
+            else Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))
+        Box(Modifier.fillMaxSize().background(workspaceBrush)) {
             // Independent scene -> page capture -> dock. No control samples a
             // layer which contains itself, including during deferred RenderNode draws.
             io.atmos.weather.ui.ThinnBackdropCapture(sceneBackdrop,Modifier.matchParentSize()) {
-                Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))))
+                Box(Modifier.matchParentSize().background(workspaceBrush))
             }
             io.atmos.weather.ui.ThinnBackdropCapture(backdrop,Modifier.fillMaxSize()) {
             HorizontalPager(
                 state = mainPager,
-                modifier = Modifier.fillMaxSize()
-                    .background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))),
+                modifier = (if(detailInset>0.dp)Modifier.width(detailInset-16.dp).fillMaxHeight() else Modifier.fillMaxSize())
+                    .background(workspaceBrush),
                 beyondViewportPageCount = 0,
-                userScrollEnabled = !locationOpen && !settingsOpen && !settingsDetailOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen && !typhoonPageOpen && !earthquakePageOpen && !weatherAlarmOpen && !pushSettingsOpen && !lifestyleSettingsOpen && !nativeRadarOpen && !marineOpen && !skyOpen
+                userScrollEnabled = !workspace.tablet && !locationOpen && !settingsOpen && !settingsDetailOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen && !typhoonPageOpen && !earthquakePageOpen && !weatherAlarmOpen && !pushSettingsOpen && !lifestyleSettingsOpen && !nativeRadarOpen && !marineOpen && !skyOpen
             ) { page ->
             key(page,tabResetEpochs[page]) {
             when (page) {
@@ -961,16 +1010,16 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         // 四頁由單一 Foundation HorizontalPager 承接，頁面與底部分頁保持同步。
             1 -> SeismicPrimaryTab(onExit = { showMainTab(0) })
             2 -> AppGlassToolsPage(
-                onBriefings = { briefingOpen = true },
-                onUpdates = { updatePageOpen = true },
-                onDiagnostics = { diagnosticsOpen = true },
-                onSeismic = { showMainTab(1) },
-                onTasks = { tasksOpen = true },
-                onWeatherAlarms = { weatherAlarmOpen = true },
-                onTyphoons = { typhoonPageOpen = true },
-                onRadar = {nativeRadarOpen=true},
-                onMarine={marineOpen=true},onSky={skyOpen=true},
-                onAlerts={alertTitle=null;alertUrl=null;alertsOpen=true},onInsights={insightsOpen=true})
+                onBriefings = { openWorkspaceDetail("briefing") },
+                onUpdates = { openWorkspaceDetail("update") },
+                onDiagnostics = { openWorkspaceDetail("diagnostics") },
+                onSeismic = { navigateWorkspace(1) },
+                onTasks = { openWorkspaceDetail("tasks") },
+                onWeatherAlarms = { openWorkspaceDetail("alarm") },
+                onTyphoons = { openWorkspaceDetail("typhoon") },
+                onRadar = {openWorkspaceDetail("radar")},
+                onMarine={openWorkspaceDetail("marine")},onSky={openWorkspaceDetail("sky")},
+                onAlerts={openWorkspaceDetail("alerts")},onInsights={openWorkspaceDetail("insights")},onUtilityOpen={clearWorkspaceDetails()})
             3 -> AppGlassSettingsPage(
                 appearance = appearance,
                 onAppearance = { appearance = it },
@@ -980,15 +1029,15 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     settingsPrefs.edit().putBoolean("check_updates_automatically", enabled).apply()
                     io.atmos.weather.update.UpdateCheckWorker.schedule(context)
                 },
-                onAdvanced = { advancedCategory="聲音";settingsOpen = true },
-                onAdvancedCategory = {advancedCategory=it;settingsOpen=true},
-                onDiagnostics = { diagnosticsOpen = true },
-                onLifestyle = { lifestyleSettingsOpen = true },
-                onPushSettings = { pushSettingsOpen = true },
-                onUpdateCenter = { updatePageOpen = true },
-                onWeatherAlarms = { weatherAlarmOpen = true },
-                onTyphoons = { typhoonPageOpen = true },
-                onDetailVisibility = {settingsDetailOpen=it})
+                onAdvanced = { openWorkspaceDetail("advanced","聲音") },
+                onAdvancedCategory = {openWorkspaceDetail("advanced",it)},
+                onDiagnostics = { openWorkspaceDetail("diagnostics") },
+                onLifestyle = { openWorkspaceDetail("lifestyle") },
+                onPushSettings = { openWorkspaceDetail("push") },
+                onUpdateCenter = { openWorkspaceDetail("update") },
+                onWeatherAlarms = { openWorkspaceDetail("alarm") },
+                onTyphoons = { openWorkspaceDetail("typhoon") },
+                onDetailVisibility = {if(it&&workspaceDetailTitle!=null)clearWorkspaceDetails();settingsDetailOpen=it})
             } // when(page)
             } // destination root identity
             } // HorizontalPager
@@ -997,7 +1046,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (locationOpen) LocationSheet(state.city,state.savedCities,state.searchResults,state.searching,
             state.searchExecuted,state.searchError,state.locationFeedback,onLocate=onLocate,
             onQuery=viewModel::search,
-            onSelect={ viewModel.addSavedCity(it);viewModel.onIntent(WeatherIntent.SelectCity(it));locationOpen=false },
+            onSelect={ clearWorkspaceDetails();viewModel.addSavedCity(it);viewModel.onIntent(WeatherIntent.SelectCity(it));showMainTab(0) },
             onRemove=viewModel::removeSavedCity,onClose={locationOpen=false})
         io.atmos.weather.ui.MainDetailLayer(settingsOpen,{settingsOpen=false}) {
             val preferencePalette=androidx.compose.material3.MaterialTheme.colorScheme
@@ -1268,27 +1317,17 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         io.atmos.weather.ui.MainDetailLayer(skyOpen,{skyOpen=false}) {
             io.atmos.weather.sky.SkyPlannerPage(state.city,snapshot?.timeZoneId){skyOpen=false}
         }
-        CompositionLocalProvider(
+        if(!workspace.tablet) CompositionLocalProvider(
             io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) { AppGlassNavigation(
             selected = dockRequestedTab ?: mainPager.targetPage,
-            onSelect = {requested ->
-                val leavingDetail=typhoonPageOpen||earthquakePageOpen||tasksOpen||briefingOpen||
-                    diagnosticsOpen||pushSettingsOpen||lifestyleSettingsOpen||settingsOpen||settingsDetailOpen||weatherAlarmOpen||updatePageOpen||locationOpen||nativeRadarOpen||marineOpen||skyOpen||alertsOpen||insightsOpen
-                marineOpen=false;skyOpen=false;alertsOpen=false;insightsOpen=false
-                typhoonPageOpen=false;earthquakePageOpen=false;tasksOpen=false;briefingOpen=false
-                diagnosticsOpen=false;pushSettingsOpen=false;lifestyleSettingsOpen=false;settingsOpen=false
-                locationOpen=false;weatherAlarmOpen=false;updatePageOpen=false;nativeRadarOpen=false
-                showLifestyleDetails=false;details=null;settingsDetailOpen=false
-                val target=requested.coerceIn(0,3)
-                dockRequestedTab=target
-                setOf(mainPager.currentPage,target).forEach{tab->tabResetEpochs[tab]=tabResetEpochs[tab]+1}
-                showMainTab(target,if(leavingDetail&&!reducedMotion)160L else 0L)
-            },
+            onSelect = ::navigateWorkspace,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp)) }
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
             title={Text(info.first)},text={Text(info.second)}) }
-        } // 根 Box：底部分頁列為 BoxScope 子元素，Modifier.align 在此合法。
+        } // root page
+        } // detail layout locals
+        } // workspace shell
         } // Close precipitation CompositionLocalProvider inside GlassAppTheme.
     }
     }

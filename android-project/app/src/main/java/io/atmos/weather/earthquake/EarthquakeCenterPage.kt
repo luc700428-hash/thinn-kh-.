@@ -35,7 +35,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.atmos.weather.ui.ThinnDialog as Dialog
+import io.atmos.weather.ui.WorkspacePageDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine

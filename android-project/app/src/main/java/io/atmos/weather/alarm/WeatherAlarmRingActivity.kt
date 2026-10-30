@@ -136,6 +136,7 @@ internal fun AlarmFullScreen(
     onSnooze: () -> Unit,
     onStop: () -> Unit
 ) {
+    io.atmos.weather.ui.DevicePostureProvider { io.atmos.weather.ui.FoldSafeContent {
     val haptics = LocalHapticFeedback.current
     BoxWithConstraints(
         Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()
@@ -305,6 +306,7 @@ internal fun AlarmFullScreen(
             }
         }
     }
+    }}
 }
 
 @Composable

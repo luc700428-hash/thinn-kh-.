@@ -29,4 +29,7 @@
 <string name="widget_precision_description">thinn-khì · 光曜指針時鐘與天氣</string>
 <string name="widget_safety_description">thinn-khì · 安心天氣與地震</string>
     <string name="widget_buddy_description">thinn-khì Q 版天氣夥伴</string>
+    <string name="widget_buddy_clock_name">時光與天氣夥伴</string>
+    <string name="widget_buddy_clock_description">即時時鐘、Q 版動態天氣與更新狀態</string>
+    <string name="widget_refresh_weather">更新天氣</string>
 </resources>

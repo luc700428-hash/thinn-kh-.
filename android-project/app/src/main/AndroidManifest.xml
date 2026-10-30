@@ -181,5 +181,20 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/atmos_24_info" />
         </receiver>
+        <receiver android:name=".widgets.BuddyClockWidgetReceiver" android:exported="true" android:label="@string/widget_buddy_clock_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/thinn_buddy_clock_widget_info"/>
+        </receiver>
+        <receiver android:name=".widgets.BuddyClockRefreshReceiver" android:exported="false"/>
+        <receiver android:name=".widgets.WidgetMaintenanceReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.USER_UNLOCKED"/>
+                <action android:name="android.intent.action.TIMEZONE_CHANGED"/>
+                <action android:name="android.intent.action.TIME_SET"/>
+                <action android:name="android.intent.action.LOCALE_CHANGED"/>
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

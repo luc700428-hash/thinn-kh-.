@@ -109,6 +109,8 @@ class WeatherViewModel(
                 .putLong("lat",startCity.coordinate.latitude.toBits())
                 .putLong("lon",startCity.coordinate.longitude.toBits()).apply()
         }
+        WidgetSnapshotStore.select(context,normalizedStartCity)
+        WidgetSync.refreshCached(context)
         load(false); loadWarnings()
     }
     fun onIntent(intent: WeatherIntent) = when (intent) {
@@ -127,7 +129,8 @@ class WeatherViewModel(
                     .putLong("lat", c.coordinate.latitude.toBits()).putLong("lon", c.coordinate.longitude.toBits())
             }
             edit.apply()
-            WidgetSnapshotStore.clear(context)
+            WidgetSnapshotStore.select(context,c)
+            WidgetSync.refreshCached(context)
             mutableState.update { it.copy(city=c, weather=null, scene=null, error=null, officialHazards=emptyList(), cwaWarnings=emptyList(), searchResults= emptyList(),searchExecuted=false) }
             load(false)
             loadWarnings()
@@ -204,8 +207,7 @@ class WeatherViewModel(
                         setLocationFeedback(LocationPhase.SUCCESS,"已定位至 ${city.name}，天氣更新完成")
                     }
                     if(mutableState.value.city.id == city.id) {
-                        WidgetSnapshotStore.publish(context,result.value)
-                        WidgetSync.updateVisible(context)
+                        if(WidgetSnapshotStore.publish(context,result.value))WidgetSync.updateVisible(context)
                     }
                 }
                 is WeatherLoadResult.Failure -> {

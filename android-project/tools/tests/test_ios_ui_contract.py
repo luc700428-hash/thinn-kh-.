@@ -18,8 +18,11 @@ class IOSUIContractTests(unittest.TestCase):
         weather=self.source('presentation/home/WeatherHomeScreen.kt')
         self.assertIn('onUpdateCenter',settings)
         self.assertIn('onTasks',settings)
-        self.assertIn('onTasks = { tasksOpen = true }',weather)
-        self.assertIn('onUpdateCenter = { updatePageOpen = true }',weather)
+        self.assertIn('onTasks = { openWorkspaceDetail("tasks") }',weather)
+        self.assertIn('"tasks"->tasksOpen=true',weather)
+        self.assertIn('onUpdateCenter = { openWorkspaceDetail("update") }',weather)
+        self.assertIn('"update"->updatePageOpen=true',weather)
+        self.assertIn('clearWorkspaceDetails()',weather)
         self.assertIn('TaskCenterPage(onClose={tasksOpen=false})',weather)
 
     def test_time_selector_is_not_canvas_only(self):

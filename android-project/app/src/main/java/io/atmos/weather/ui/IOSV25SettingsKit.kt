@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -83,18 +84,18 @@ fun IOSSegmentedControl(labels:List<String>,selected:Int,onSelect:(Int)->Unit,mo
 @Composable
 fun IOSV25SettingsCell(
     title:String, subtitle:String, icon:ImageVector, iconColor:Color,
-    trailing:String="", last:Boolean=false, badgeCount:Int=0, onClick:()->Unit
+    trailing:String="", last:Boolean=false, badgeCount:Int=0, selected:Boolean=false,onClick:()->Unit
 ) {
     val palette=MaterialTheme.colorScheme
     val feedback=io.atmos.weather.haptics.LocalHapticEngine.current
     val interactions=remember { MutableInteractionSource() }
     val held by interactions.collectIsPressedAsState()
     val fill by animateColorAsState(
-        if(held) { if(palette.background.red > .5f) Color(0xFFE5E5EA) else Color(0xFF2C2C2E) } else Color.Transparent,
+        if(held) { if(palette.background.red > .5f) Color(0xFFE5E5EA) else Color(0xFF2C2C2E) } else if(selected)palette.primaryContainer else Color.Transparent,
         tween(if(held)80 else 250),label="settings-cell-highlight")
     Column {
         Row(Modifier.fillMaxWidth().iosJellyPress().background(fill)
-            .semantics(mergeDescendants=true) {contentDescription=listOf(title,subtitle,trailing).filter {it.isNotBlank()}.joinToString("，")}
+            .semantics(mergeDescendants=true) {contentDescription=listOf(title,subtitle,trailing).filter {it.isNotBlank()}.joinToString("，");this.selected=selected}
             .clickable(interactionSource=interactions,indication=null,role=Role.Button,onClick={
                 feedback?.play(io.atmos.weather.haptics.HapticEngine.Event.TAP);onClick()
             })

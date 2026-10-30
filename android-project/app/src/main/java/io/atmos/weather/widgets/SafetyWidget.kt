@@ -6,4 +6,4 @@ class SafetyWidget:GlanceAppWidget(){
  override val sizeMode:SizeMode=SizeMode.Exact
  override suspend fun provideGlance(context:Context,id:GlanceId){val data=OpticalWidgetData.read(context);provideContent{OpticalWidgetContent(context,25,data)}}
 }
-class SafetyWidgetReceiver:GlanceAppWidgetReceiver(){override val glanceAppWidget:GlanceAppWidget=SafetyWidget()}
+class SafetyWidgetReceiver:SyncedWidgetReceiver(){override val glanceAppWidget:GlanceAppWidget=SafetyWidget()}

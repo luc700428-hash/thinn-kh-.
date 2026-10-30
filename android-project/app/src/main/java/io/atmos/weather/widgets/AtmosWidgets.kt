@@ -9,6 +9,8 @@ import android.view.View
 import android.widget.RemoteViews
 import android.text.format.DateFormat
 import androidx.compose.runtime.*
+import androidx.datastore.preferences.core.Preferences
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +32,14 @@ import java.time.format.DateTimeFormatter
 /** Rebuilt content tree; stable receiver identities upgrade placed widgets in situ. */
 open class AtmosWidget(private val variant:Int):GlanceAppWidget() {
     override val sizeMode:SizeMode=SizeMode.Exact
+    override val stateDefinition=PreferencesGlanceStateDefinition
     override suspend fun provideGlance(context:Context,id:GlanceId) {
-        val data=OpticalWidgetData.read(context)
-        provideContent {OpticalWidgetContent(context,variant,data)}
+        provideContent {
+            val revision=currentState<Preferences>()[WidgetSync.VIEW_REVISION]?:0L
+            val size=LocalSize.current
+            val data=remember(revision,size){OpticalWidgetData.read(context)}
+            OpticalWidgetContent(context,variant,data)
+        }
     }
 }
 class WidgetRefreshAction:ActionCallback {
@@ -45,8 +52,8 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     val size=LocalSize.current
     val prefs=context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
     val plan=WidgetLayoutPlan.create(size.width.value,size.height.value,prefs.getFloat("v4_fontscale",1f),context.resources.configuration.fontScale)
-    val family=when(variant){25->5;26->6;27->7;else->variant/5}
-    val index=when(variant){25->0;26->3;27->if(data.day)0 else 1;else->variant%5}
+    val family=when(variant){25->5;26->6;27->7;28->8;else->variant/5}
+    val index=when(variant){25->0;26->3;27,28->if(data.day)0 else 1;else->variant%5}
     val alert=data.alertRecent&&(family==4||family==5)
     val palette=WidgetGlassRenderer.palette(index,alert)
     val style=WidgetStyle(plan,palette,prefs.getFloat("v4_fontweight",400f)>=620f)
@@ -65,7 +72,10 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     }
     Box(GlanceModifier.fillMaxSize().cornerRadius(cornerDp.dp).clickable(actionStartActivity(open))) {
         Image(ImageProvider(bitmap),null,GlanceModifier.fillMaxSize(),ContentScale.FillBounds)
-        Column(GlanceModifier.fillMaxSize().padding(plan.padding.dp)) {
+        if(family==8) {
+            val remote=remember(data,plan,palette,animated){buddyClockRemote(context,data,plan,palette,animated)}
+            AndroidRemoteViews(remote,GlanceModifier.fillMaxSize().padding(plan.padding.dp))
+        } else Column(GlanceModifier.fillMaxSize().padding(plan.padding.dp)) {
             if(family==7) BuddyContent(context,data,style,animated)
             else if(plan.strip) CompactWidget(context,family,data,style,animated)
             else when(family) {

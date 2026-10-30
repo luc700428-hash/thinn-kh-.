@@ -146,8 +146,11 @@ private fun Context.activity():Activity?=when(this) {
     Dialog(onDismissRequest,properties=properties){
         CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){
             HighRefreshHost()
-            if(!properties.usePlatformDefaultWidth && adaptiveContentWidth!=null) {
-                AdaptiveWindowProvider { AdaptivePageFrame(maxContentWidth=adaptiveContentWidth){content()} }
+            if(!properties.usePlatformDefaultWidth) {
+                DevicePostureProvider { FoldSafeContent {
+                    if(adaptiveContentWidth!=null) AdaptiveWindowProvider { AdaptivePageFrame(maxContentWidth=adaptiveContentWidth){content()} }
+                    else content()
+                }}
             } else content()
         }
     }

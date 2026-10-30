@@ -2,7 +2,9 @@ package io.atmos.weather.widgets
 
 import android.content.Context
 import androidx.work.*
-import androidx.glance.appwidget.updateAll
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.datastore.preferences.core.longPreferencesKey
 import io.atmos.weather.AppContainer
 import io.atmos.weather.domain.model.*
 import io.atmos.weather.domain.repository.WeatherLoadResult
@@ -13,6 +15,7 @@ import java.util.concurrent.TimeUnit
 object WidgetSync {
     private const val PERIODIC = "thinn-khi-widget-interval-v3"
     private const val NOW = "thinn-khi-widget-now"
+    internal val VIEW_REVISION=longPreferencesKey("view_revision")
     fun schedule(context:Context) {
         val prefs=context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         val requested=prefs.getInt("refresh_minutes",30).coerceIn(5,120)
@@ -26,8 +29,10 @@ object WidgetSync {
         }
     }
     fun request(context:Context) {
-        WorkManager.getInstance(context).enqueueUniqueWork(NOW,ExistingWorkPolicy.REPLACE,
-            OneTimeWorkRequestBuilder<WeatherWidgetWorker>().build())
+        WorkManager.getInstance(context).enqueueUniqueWork(NOW,ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<WeatherWidgetWorker>()
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL,30,TimeUnit.SECONDS).build())
     }
     suspend fun refreshAll(context:Context) {
         val widgets=listOf(
@@ -36,34 +41,37 @@ object WidgetSync {
             AtmosWidget10(), AtmosWidget11(), AtmosWidget12(), AtmosWidget13(), AtmosWidget14(),
             AtmosWidget15(), AtmosWidget16(), AtmosWidget17(), AtmosWidget18(), AtmosWidget19(),
             AtmosWidget20(), AtmosWidget21(), AtmosWidget22(), AtmosWidget23(), AtmosWidget24(),
-            SafetyWidget(),PrecisionClockWidget(),WeatherBuddyWidget()
+            SafetyWidget(),PrecisionClockWidget(),WeatherBuddyWidget(),BuddyClockWidget()
         )
+        val manager=GlanceAppWidgetManager(context)
+        var failure:Exception?=null
         for(widget in widgets) {
-            try{ widget.updateAll(context) }
-            catch (cancel:CancellationException){throw cancel}
-            catch (_:Exception){ /* some launchers reject updates while widget not placed */ }
+            try {
+                for(id in manager.getGlanceIds(widget.javaClass)) {
+                    updateAppWidgetState(context,id){p->p[VIEW_REVISION]=(p[VIEW_REVISION]?:0L)+1L}
+                    widget.update(context,id)
+                }
+            } catch(cancel:CancellationException){throw cancel}
+            catch(error:Exception){failure=error}
         }
+        failure?.let{throw it}
     }
-    fun updateVisible(context:Context) { request(context) }
+    fun updateVisible(context:Context) { refreshCached(context) }
     fun refreshCached(context:Context){
-        WorkManager.getInstance(context).enqueueUniqueWork("thinn-widget-cached-view",ExistingWorkPolicy.REPLACE,
+        WorkManager.getInstance(context).enqueueUniqueWork("thinn-widget-cached-view",ExistingWorkPolicy.APPEND_OR_REPLACE,
             OneTimeWorkRequestBuilder<WidgetCachedViewWorker>().build())
     }
 }
 class WeatherWidgetWorker(context:Context,params:WorkerParameters):CoroutineWorker(context,params){
     override suspend fun doWork():Result {
-        val prefs=applicationContext.getSharedPreferences("atmos_settings",Context.MODE_PRIVATE)
-        val id=prefs.getString("city_id",null)
-        val city=SampleCities.all.find { it.id == id } ?: if(id!=null && prefs.contains("lat")) {
-            WeatherCity(id,prefs.getString("city_name","目前位置") ?: "目前位置",
-                GeoPoint(Double.fromBits(prefs.getLong("lat",0L)),Double.fromBits(prefs.getLong("lon",0L))))
-        } else SampleCities.all.first()
+        val target=WidgetSnapshotStore.target(applicationContext)
+        val city=target.city
         return try {
-            val result=AppContainer.repository(applicationContext).load(city,false)
+            val result=AppContainer.repository(applicationContext).load(city,true)
+            if(WidgetSnapshotStore.target(applicationContext).revision!=target.revision)return Result.retry()
             if(result is WeatherLoadResult.Success) {
                 // Avoid a background request overwriting a newly selected city.
-                if (prefs.getString("city_id",null)==id) {
-                    WidgetSnapshotStore.publish(applicationContext,result.value)
+                if (WidgetSnapshotStore.publish(applicationContext,result.value,target.revision)) {
                     io.atmos.weather.alarm.WeatherAlarmSpeechCache.save(applicationContext,result.value)
                 }
             }

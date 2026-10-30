@@ -52,7 +52,7 @@ fun WeatherBriefingSettingsPage(onClose:()->Unit) {
     var showAdd by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<WeatherBriefingSlot?>(null) }
     fun change(next:List<WeatherBriefingSlot>) { WeatherBriefingStore.save(context,next);slots=next }
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=ink) {
+    io.atmos.weather.ui.WorkspacePageSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=ink) {
         Column(Modifier.fillMaxWidth().heightIn(max=750.dp).appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=22.dp).padding(bottom=36.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             io.atmos.weather.ui.IOSSettingsHeader("天氣定時通知",onClose)
