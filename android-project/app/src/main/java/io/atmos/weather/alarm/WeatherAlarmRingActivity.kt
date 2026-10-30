@@ -128,7 +128,7 @@ class WeatherAlarmRingActivity : ComponentActivity() {
 }
 
 @Composable
-private fun AlarmFullScreen(
+internal fun AlarmFullScreen(
     timeText: String,
     label: String,
     allowSnooze: Boolean,
@@ -141,6 +141,7 @@ private fun AlarmFullScreen(
         Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()
     ) {
         val compact = maxHeight < 620.dp
+        val shortWide = maxWidth >= 600.dp && maxHeight < 420.dp
         val titleTop = maxHeight * (if (compact) .12f else .20f)
         val controlsBottom = maxHeight * (if (compact) .045f else .085f)
         // The new reference is proportional: large clock and deep capsules.
@@ -157,7 +158,8 @@ private fun AlarmFullScreen(
 
         // Pure-black background and uncluttered clock face, matching the reference hierarchy.
         Column(
-            Modifier.align(Alignment.TopCenter).offset(y = titleTop),
+            (if(shortWide)Modifier.align(Alignment.CenterStart).fillMaxWidth(.44f).padding(horizontal=16.dp)
+                else Modifier.align(Alignment.TopCenter).widthIn(max=600.dp).fillMaxWidth(.90f).offset(y = titleTop)),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -180,7 +182,8 @@ private fun AlarmFullScreen(
         }
 
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth(.86f).padding(bottom = controlsBottom),
+            (if(shortWide)Modifier.align(Alignment.CenterEnd).width((maxWidth*.52f).coerceAtMost(584.dp)).padding(end=24.dp)
+                else Modifier.align(Alignment.BottomCenter).widthIn(max=560.dp).fillMaxWidth(.86f).padding(bottom = controlsBottom)),
             verticalArrangement = Arrangement.spacedBy(controlsGap),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

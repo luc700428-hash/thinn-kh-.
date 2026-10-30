@@ -17,6 +17,9 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Wi-Fi tablets can use network location or choose a city without a GPS chip. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
     <!-- Android 11+ visibility of installed system TTS services, Samsung included. -->
     <queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>
     <application android:name=".ThinnApplication" android:allowBackup="false" android:usesCleartextTraffic="false"
@@ -33,7 +36,8 @@
             android:foregroundServiceType="dataSync" />
         <service android:name=".alarm.WeatherAlarmAudioService" android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
-        <activity android:name=".alarm.WeatherAlarmRingActivity" android:exported="false"
+        <activity android:name=".alarm.WeatherAlarmRingActivity" android:exported="false" android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:showWhenLocked="true" android:turnScreenOn="true" />
         <receiver android:name=".briefing.WeatherBriefingTimeReceiver" android:exported="false">
             <intent-filter>
@@ -70,9 +74,11 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/thinn_safety_widget_info" />
         </receiver>
-        <activity android:name=".earthquake.SeismicAlertActivity" android:exported="false"
+        <activity android:name=".earthquake.SeismicAlertActivity" android:exported="false" android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:excludeFromRecents="true" android:launchMode="singleTop" />
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true" android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity>
         <receiver android:name=".widgets.Widget00Receiver" android:exported="true" android:label="@string/widget_00_description">

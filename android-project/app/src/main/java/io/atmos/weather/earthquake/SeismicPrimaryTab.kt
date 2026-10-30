@@ -3,6 +3,7 @@ package io.atmos.weather.earthquake
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.dp
 
 /** 第二個主分頁：直接打開地震監測地圖，不需要從天氣頁頂部按鈕進入。 */
 @Composable
@@ -33,10 +34,12 @@ fun SeismicPrimaryTab(onExit:()->Unit) {
                 .onFailure { error="背景監測啟動受限制，請檢查通知及省電權限" }
         }
     }
+    io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=1280.dp) {
     if(settingsOpen) EarthquakeSettingsPage(onClose={settingsOpen=false})
     else SeismicLiveMapPage(
         onClose=onExit,
         onSettings={settingsOpen=true},
         reports=reports, reportSource=reportSource,
         onRefreshReports={refresh()})
+    }
 }

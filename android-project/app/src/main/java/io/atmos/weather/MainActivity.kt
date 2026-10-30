@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
             }
             // Presentation tree only. Does not change WeatherViewModel or app state.
             io.atmos.weather.ui.ThinnAppTheme {
+            io.atmos.weather.ui.AdaptiveWindowProvider {
             if (!introComplete) FirstRunGuide(onContinue={
                 consent.edit().putBoolean("v8_intro_completed",true).apply()
                 introComplete = true
@@ -121,6 +122,7 @@ class MainActivity : ComponentActivity() {
                 }
             })
             io.atmos.weather.earthquake.SeismicForegroundAlertHost()
+            } // Current resizable app window; no physical-tablet or pixel-ratio flag.
             } // ThinnAppTheme
         }
     }

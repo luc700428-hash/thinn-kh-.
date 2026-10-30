@@ -107,8 +107,8 @@ fun IOSV25SettingsCell(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)) {
-                Text(title,color=palette.onSurface,fontSize=17.sp,
-                    fontWeight=FontWeight.Normal,lineHeight=22.sp)
+                Text(title,modifier=Modifier.fillMaxWidth(),color=palette.onSurface,fontSize=17.sp,
+                    fontWeight=FontWeight.Normal,lineHeight=26.sp)
 
             }
             if(badgeCount>0) {

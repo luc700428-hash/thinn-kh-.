@@ -253,8 +253,9 @@ fun SeismicLiveMapPage(
                 Spacer(Modifier.width(8.dp))
                 IconButton(onClick=onSettings) {Icon(Icons.Rounded.Tune,"地震設定",tint=light)}
             }
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()
-                .padding(horizontal=16.dp).padding(bottom=114.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+            io.atmos.weather.ui.AdaptiveScrollingPanes(Modifier.weight(1f).navigationBarsPadding(),
+                horizontalPadding=16.dp,topPadding=0.dp,bottomPadding=114.dp,paneSpacing=16.dp,
+                applyStatusBars=false,leadingFraction=.55f,leading={
                 MapGlass {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text("臺灣與離島",fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=light,modifier=Modifier.weight(1f))
@@ -271,7 +272,7 @@ fun SeismicLiveMapPage(
                         reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
                         reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency())
                     Spacer(Modifier.height(12.dp))
-                    Box(Modifier.fillMaxWidth().height(380.dp).clip(RoundedCornerShape(19.dp))
+                    Box(Modifier.fillMaxWidth().height(io.atmos.weather.ui.adaptiveMapHeight(380.dp)).clip(RoundedCornerShape(19.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xFF0A1D34),Color(0xFF152A41))))) {
                         val pins=if(layer=="震央") emptyList() else stations.take(900)
                         Canvas(Modifier.fillMaxSize().onSizeChanged { baseMapSize=it }
@@ -418,6 +419,7 @@ fun SeismicLiveMapPage(
                         Text("PGA ${station.accelerationGal?.let {"%.2f".format(Locale.US,it)} ?: "—"} gal · ${StationFreshness.label(StationFreshness.state(station,timestamp,live.lastRtsAt))}",color=muted,fontSize=14.sp)
                     }
                 }
+            },trailing={
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     SeismicMetricCard("有效測站",if(hasObservedFrame)currentStations.size.toString() else "—",readingLabel,modifier=Modifier.weight(1f))
                     SeismicMetricCard("最大震度",maxI?.let {"%.1f".format(Locale.US,it)} ?: "—",readingLabel,modifier=Modifier.weight(1f))
@@ -552,7 +554,7 @@ fun SeismicLiveMapPage(
                     }
                 }
                 Text("速報可能受網路、資料時效與系統省電影響；請以官方災防告警為準。",color=muted,fontSize=14.sp,lineHeight=18.sp,modifier=Modifier.padding(horizontal=8.dp))
-            }
+            })
         }
         overlay?.let { event ->
             SeismicWarningOverlay(event,overlayReplay,devicePlace?.name,onClose={overlay=null})

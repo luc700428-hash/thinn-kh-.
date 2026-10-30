@@ -32,10 +32,12 @@ internal val LocalOpticalFormDark=compositionLocalOf {false}
  LaunchedEffect(Unit){shown=true}
  val y by animateFloatAsState(if(shown)drag else hidden,if(reduced||dragging)snap() else if(closing)tween(240,easing=AppleMotion.snap) else spring(.84f,390f),label="共用表單進退場")
  fun finish(commit:Boolean){if(closing||(commit&&!validate()))return;closing=true;shown=false;scope.launch{if(!reduced)delay(240);if(commit){onDone?.invoke();closing=false;shown=true} else onDismiss()}}
- ThinnDialog(onDismissRequest={finish(false)},properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)){
-  Box(Modifier.fillMaxSize().statusBarsPadding().imePadding(),contentAlignment=Alignment.BottomCenter){
+ ThinnDialog(onDismissRequest={finish(false)},properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false),adaptiveContentWidth=null){
+  BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
+   val floating=maxWidth>=600.dp && maxHeight>=480.dp
+   val shape=if(floating)RoundedCornerShape(32.dp) else RoundedCornerShape(topStart=32.dp,topEnd=32.dp)
    CompositionLocalProvider(LocalDrumEnabled provides !closing,LocalOpticalFormDark provides (MaterialTheme.colorScheme.background.red<.5f)){
-    Column(Modifier.widthIn(max=600.dp).fillMaxWidth().heightIn(max=screen-28.dp).graphicsLayer{translationY=y}.clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp)).background(MaterialTheme.colorScheme.background).thinnSpecularEdge(32.dp).navigationBarsPadding()){
+    Column(Modifier.align(if(floating)Alignment.Center else Alignment.BottomCenter).padding(horizontal=if(floating)24.dp else 0.dp).widthIn(max=600.dp).fillMaxWidth().heightIn(max=(maxHeight-28.dp).coerceAtLeast(0.dp)).graphicsLayer{translationY=y}.clip(shape).background(MaterialTheme.colorScheme.background).thinnSpecularEdge(32.dp).navigationBarsPadding()){
      Box(Modifier.fillMaxWidth().height(24.dp).pointerInput(hidden){detectVerticalDragGestures(onDragStart={dragging=true},onVerticalDrag={c,d->c.consume();drag=(drag+d).coerceAtLeast(0f)},onDragEnd={dragging=false;if(drag>hidden*.15f)finish(false) else drag=0f},onDragCancel={dragging=false;drag=0f})},contentAlignment=Alignment.Center){Box(Modifier.size(36.dp,5.dp).clip(RoundedCornerShape(50)).background(Color(0xFF636366)))}
      Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal=20.dp),verticalAlignment=Alignment.CenterVertically){IOS27RoundControl("×",onClick={finish(false)},fill=MaterialTheme.colorScheme.surfaceVariant,foreground=MaterialTheme.colorScheme.onSurface);Text(title,color=MaterialTheme.colorScheme.onSurface,fontSize=18.sp,fontWeight=FontWeight.SemiBold,textAlign=TextAlign.Center,modifier=Modifier.weight(1f));if(onDone!=null)IOS27RoundControl("✓",onClick={finish(true)},fill=accent,foreground=Color.White) else Spacer(Modifier.size(42.dp))}
      Column(Modifier.fillMaxWidth().weight(1f,fill=false).appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(top=8.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),content=content)

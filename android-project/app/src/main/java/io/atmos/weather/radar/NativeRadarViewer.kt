@@ -173,16 +173,8 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
     val tileFailure=baseFailure||radarFailure
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         IOSSettingsHeader("降雨雷達",onClose)
-        GlassChoiceGroup(listOf("臺灣高解析","全球雷達"),if(cwa)0 else 1,{index->
-            val next=index==0
-            if(next!=cwa) {
-                playing=false;frames=emptyList();position=0f;cwa=next;status="正在取得雷達時間軸…"
-                if(next && !CwaHighDefinitionRadar.covers(camera.latitude,camera.longitude))camera=RadarCamera()
-                else if(next)camera=camera.copy(zoom=camera.zoom.coerceAtMost(9.0))
-            }
-        },modifier=Modifier.padding(horizontal=16.dp,vertical=5.dp))
-        Text(status,color=palette.onSurfaceVariant,modifier=Modifier.padding(horizontal=18.dp),fontSize=14.sp)
-        Box(Modifier.fillMaxWidth().weight(1f).padding(12.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
+        io.atmos.weather.ui.AdaptiveMapInspector(Modifier.weight(1f),map={mapModifier->
+        Box(mapModifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
             .background(if(dark)RadarMapStyle.darkBackground else RadarMapStyle.lightBackground).onSizeChanged{size=it}) {
             Canvas(Modifier.fillMaxSize().pointerInput(density,cwa) {
                 detectTransformGestures {centroid,pan,zoom,_->
@@ -211,7 +203,17 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
             if(tileFailure&&!fetching)Text("部分圖資未完整，可查看已載入時段或重新讀取",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.TopStart).padding(10.dp).background(Color(0xE017334B)))
             Text("底圖 © OpenStreetMap contributors",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xD017334B)).clickable{uri.openUri("https://www.openstreetmap.org/copyright")}.padding(7.dp))
         }
-        Column(Modifier.padding(horizontal=16.dp)) {
+        },controls={
+        GlassChoiceGroup(listOf("臺灣高解析","全球雷達"),if(cwa)0 else 1,{index->
+            val next=index==0
+            if(next!=cwa) {
+                playing=false;frames=emptyList();position=0f;cwa=next;status="正在取得雷達時間軸…"
+                if(next && !CwaHighDefinitionRadar.covers(camera.latitude,camera.longitude))camera=RadarCamera()
+                else if(next)camera=camera.copy(zoom=camera.zoom.coerceAtMost(9.0))
+            }
+        },modifier=Modifier.padding(horizontal=16.dp,vertical=5.dp))
+        Text(status,color=palette.onSurfaceVariant,modifier=Modifier.padding(horizontal=18.dp),fontSize=14.sp)
+        Column(Modifier.padding(horizontal=4.dp)) {
             val timeFormat=remember{DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei"))}
             val displayTime=scene?.let{it.first.time+((it.second.time-it.first.time)*it.fraction).roundToLong()}
             val time=displayTime?.let{timeFormat.format(Instant.ofEpochSecond(it))}?:"尚無時間資料"
@@ -229,5 +231,6 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
             else Text("Weather data by RainViewer ↗",color=palette.primary,fontSize=14.sp,modifier=Modifier.clickable{uri.openUri("https://www.rainviewer.com")}.padding(vertical=4.dp))
             Text("原始圖層時間為回波合成時間；中間僅為動畫過渡，非新增觀測或未來預測。空白亦可能是圖資不足。",color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(bottom=7.dp))
         }
+        })
     }
 }

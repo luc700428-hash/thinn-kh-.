@@ -134,7 +134,7 @@ internal class WarningMapPainter {
         val loaded=atlas
         if(loaded!=null) {
             val activeNames=state.titles.keys.joinToString("、")
-            Canvas(Modifier.fillMaxWidth().aspectRatio(.94f).clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            Canvas(Modifier.fillMaxWidth().then(if(io.atmos.weather.ui.currentAppWindowLayout().width>=600f)Modifier.height(io.atmos.weather.ui.adaptiveMapHeight(460.dp)) else Modifier.aspectRatio(.94f)).clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
                 .background(Color(colours.background)).onSizeChanged{size=it}
                 .semantics{contentDescription="臺灣警戒範圍地圖；"+if(activeNames.isBlank())"請查看查詢狀態" else "涉及 $activeNames"}
                 .pointerInput(loaded,size,density.density,zoom,pan) {

@@ -194,7 +194,7 @@ import androidx.compose.ui.graphics.graphicsLayer
         setShadowLayer(2*labelDensity,0f,labelDensity,if(dark)0xff06151c.toInt() else 0xfff7fcff.toInt())
     }}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(25.dp))
+        Box(Modifier.fillMaxWidth().height(io.atmos.weather.ui.adaptiveMapHeight(440.dp)).clip(RoundedCornerShape(25.dp))
             .background(if(dark)Color(0xFF081E31) else Color(0xFFE4F0F7)).border(1.dp,palette.outlineVariant,RoundedCornerShape(25.dp))
             .pointerInput(Unit){detectTransformGestures {centroid,move,factor,_->
                 if(factor.isFinite()&&factor>0&&move.x.isFinite()&&move.y.isFinite()) {

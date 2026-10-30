@@ -42,6 +42,7 @@ fun FirstRunGuide(onContinue:()->Unit) {
     var visible by remember {mutableStateOf(false)}
     LaunchedEffect(Unit){visible=true}
     ThinnAppTheme {
+        AdaptivePageFrame(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF0B1A2C),Color(0xFF1D435F),Color(0xFF2A6484)))),maxContentWidth=760.dp) {
         Column(Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFF0B1A2C),Color(0xFF1D435F),Color(0xFF2A6484))))
             .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=25.dp,vertical=36.dp),
@@ -72,6 +73,7 @@ fun FirstRunGuide(onContinue:()->Unit) {
             Spacer(Modifier.height(15.dp))
             Text("不必註冊帳號 · 不會要求 GitHub 登入",fontSize=14.sp,
                 color=ThinnDesignTokens.secondaryInkDark,textAlign=TextAlign.Center)
+        }
         }
     }
 }

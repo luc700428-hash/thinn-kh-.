@@ -148,7 +148,9 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     val scroll=rememberScrollState()
     LaunchedEffect(tab){scroll.scrollTo(0)}
     DisposableEffect(Unit) { onDispose { SeismicPreviewPlayer.stop() } }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false),adaptiveContentWidth=null) {
+        io.atmos.weather.ui.AdaptiveWindowProvider(Modifier.background(MaterialTheme.colorScheme.background)) {
+        io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=840.dp) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
             io.atmos.weather.ui.IOSSettingsHeader("地震監測設定",onClose)
             Spacer(Modifier.height(8.dp))
@@ -332,6 +334,8 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                 }
                 Spacer(Modifier.height(25.dp))
             }
+        }
+        }
         }
     }
 }

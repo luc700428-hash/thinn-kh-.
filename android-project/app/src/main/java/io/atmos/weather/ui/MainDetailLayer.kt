@@ -39,7 +39,9 @@ fun MainDetailLayer(visible:Boolean,onBack:()->Unit,content:@Composable ()->Unit
             val width=constraints.maxWidth.toFloat()
             Box(Modifier.fillMaxSize().graphicsLayer {
                 translationX=gesture.value*width;alpha=1f-.12f*gesture.value
-            }.background(MaterialTheme.colorScheme.background)){content()}
+            }.background(MaterialTheme.colorScheme.background)){
+                AdaptivePageFrame{content()}
+            }
         }
     }
 }

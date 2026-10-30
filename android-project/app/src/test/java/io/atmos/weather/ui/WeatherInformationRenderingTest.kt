@@ -48,6 +48,8 @@ import java.time.Instant
 // class/process per interactive scenario prevents a cached Compose dispatcher from
 // targeting a disposed Looper. All five scenarios remain active in the full suite.
 abstract class WeatherInformationRenderingFixture {
+    protected open val windowWidth:Int=400
+    protected open val windowHeight:Int=1100
     protected val now=Instant.parse("2026-10-28T11:33:30Z")
     protected fun resource(name:String)=javaClass.getResourceAsStream("/weather-info/$name")!!.use{it.readBytes()}
     protected fun weather()=WeatherSnapshot(SampleCities.all.first(),now,now,"test",24.0,22.0,83,35.0,1012.0,WeatherCondition.RAIN,false,null,null,
@@ -67,8 +69,8 @@ abstract class WeatherInformationRenderingFixture {
     }
     protected fun pump(view:View):Bitmap {
         repeat(3){shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
-            view.measure(View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(1100,View.MeasureSpec.EXACTLY));view.layout(0,0,400,1100)}
-        return Bitmap.createBitmap(400,1100,Bitmap.Config.ARGB_8888).also{view.draw(Canvas(it))}
+            view.measure(View.MeasureSpec.makeMeasureSpec(windowWidth,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(windowHeight,View.MeasureSpec.EXACTLY));view.layout(0,0,windowWidth,windowHeight)}
+        return Bitmap.createBitmap(windowWidth,windowHeight,Bitmap.Config.ARGB_8888).also{view.draw(Canvas(it))}
     }
     protected fun save(view:View,name:String) {
         val b=pump(view);val dir=File("build/weather-info-renders").apply{mkdirs()}
@@ -95,7 +97,7 @@ abstract class WeatherInformationRenderingFixture {
         var palette:ColorScheme?=null
         try {
             view.setContent{ThinnAppTheme{val current=MaterialTheme.colorScheme;SideEffect{palette=current};content()}}
-            val parent=FrameLayout(a).apply{addView(view,ViewGroup.LayoutParams(400,1100))};a.setContentView(parent)
+            val parent=FrameLayout(a).apply{addView(view,ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT))};a.setContentView(parent)
             pump(parent).recycle();check(parent,palette!!);save(parent,"$name-$dark-${(scale*100).toInt()}")
         }finally{view.disposeComposition();controller.pause().stop().destroy()}
     }

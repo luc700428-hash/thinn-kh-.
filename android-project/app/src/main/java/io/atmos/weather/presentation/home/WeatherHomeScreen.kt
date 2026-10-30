@@ -605,9 +605,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         hapticEngine.play(HapticEngine.Event.RELEASE)
                         viewModel.onIntent(WeatherIntent.Refresh)
                     },Modifier.fillMaxSize().zIndex(1f)) {
-                    Column(Modifier.fillMaxSize().zIndex(1f)
-                        .verticalScroll(weatherScrollState,overscrollEffect=null)
-                        .padding(horizontal=20.dp).statusBarsPadding().padding(top=18.dp,bottom=176.dp)) {
+                    io.atmos.weather.ui.AdaptiveScrollingPanes(
+                        modifier=Modifier.fillMaxSize().zIndex(1f),scrollState=weatherScrollState,
+                        horizontalPadding=20.dp,topPadding=18.dp,bottomPadding=176.dp,
+                        leading={
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Row(Modifier.weight(1f).heightIn(min=54.dp).clip(RoundedCornerShape(999.dp))
                         .background(White.copy(alpha=.12f)).border(1.dp,White.copy(alpha=.32f),RoundedCornerShape(999.dp))
@@ -879,6 +880,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                 }
 
+                    },trailing={
                 if (snapshot != null) {
                     // Weather always takes precedence over decor: show real six-hour facts
                     // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.
@@ -951,7 +953,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text("天氣是預測資訊，請以當地官方警報為準。",color=TextSoft,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
-                    } // forecast Column: always overlays the animation
+                    }) // forecast panes: one shared state, responsive single/dual columns
                     } // elastic pull-to-refresh
                 } // page Box: one measurable root for HorizontalPager
                 } // weather background material provider

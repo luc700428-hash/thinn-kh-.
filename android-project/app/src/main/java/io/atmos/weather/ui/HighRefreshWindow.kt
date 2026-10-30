@@ -20,6 +20,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 
 /** Hardware, battery/thermal policy and the launcher remain authoritative. No synthetic FPS. */
@@ -137,11 +139,17 @@ private fun Context.activity():Activity?=when(this) {
     return hz
 }
 /** App windows, sheets and popup menus share one refresh-rate preference. */
-@Composable fun ThinnDialog(onDismissRequest:()->Unit,properties:DialogProperties=DialogProperties(),content:@Composable ()->Unit) {
+@Composable fun ThinnDialog(onDismissRequest:()->Unit,properties:DialogProperties=DialogProperties(),
+    adaptiveContentWidth:Dp?=960.dp,content:@Composable ()->Unit) {
     val readingDensity=LocalDensity.current
     val contentColor=LocalContentColor.current
     Dialog(onDismissRequest,properties=properties){
-        CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){HighRefreshHost();content()}
+        CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){
+            HighRefreshHost()
+            if(!properties.usePlatformDefaultWidth && adaptiveContentWidth!=null) {
+                AdaptiveWindowProvider { AdaptivePageFrame(maxContentWidth=adaptiveContentWidth){content()} }
+            } else content()
+        }
     }
 }
 @Composable fun ThinnPopup(alignment:Alignment=Alignment.TopStart,offset:IntOffset=IntOffset.Zero,

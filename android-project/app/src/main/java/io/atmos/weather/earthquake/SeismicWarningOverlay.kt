@@ -103,7 +103,9 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     val arrival=if(historical)estimate?.let{started+(it.arrivalSeconds*1000).toLong()} else
         incident.arrivalAtMsByCounty.entries.firstOrNull{county.isNotBlank()&&(county==it.key||county.contains(it.key))}?.value
     val arrivalText=arrival?.let{if(it<=now)"已抵達" else "${kotlin.math.ceil((it-now)/1000.0).toInt()} s"}?:"—"
-    Dialog(onDismissRequest=onClose,properties=DialogProperties(dismissOnClickOutside=false,usePlatformDefaultWidth=false,decorFitsSystemWindows=false)){
+    Dialog(onDismissRequest=onClose,properties=DialogProperties(dismissOnClickOutside=false,usePlatformDefaultWidth=false,decorFitsSystemWindows=false),adaptiveContentWidth=null){
+        io.atmos.weather.ui.AdaptiveWindowProvider(Modifier.background(palette.background)) {
+        io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=1280.dp) {
         Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding().graphicsLayer{alpha=reveal;scaleX=reveal;scaleY=reveal}){
             Row(Modifier.fillMaxWidth().padding(horizontal=18.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
@@ -112,11 +114,13 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                 }
                 GlassIconButton(onClick=onClose){Icon(Icons.Rounded.Close,"關閉速報",tint=palette.onSurface)}
             }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+            io.atmos.weather.ui.AdaptiveScrollingPanes(Modifier.weight(1f),horizontalPadding=18.dp,
+                topPadding=0.dp,bottomPadding=16.dp,paneSpacing=14.dp,applyStatusBars=false,leading={
                 if(simulation||replay)WarningPlate{
                     Text(if(historical)"演練中，非即時警報。震源採官方歷史資料；當地預估為本機模型，並非當年的即時速報。" else if(simulation)"演練中：所有震央與震度均為虛構。" else "歷史回放中：不是目前發生的地震。",color=palette.onSurface,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 }
                 SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,place,historical,frameNow,Modifier.fillMaxWidth())
+            },trailing={
                 Text("收到地震速報 · 慎防強烈搖晃",color=palette.onSurface,fontSize=20.sp,lineHeight=28.sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth())
                 Text(county.ifBlank{"所在地尚未設定"},color=palette.onSurfaceVariant,fontSize=15.sp,lineHeight=22.sp,modifier=Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)){
@@ -157,7 +161,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                     Text(if(historical)"歷史縣市最大值不是每個地點的震度；舊制 5、6 級不換算成現制強弱。— 為歷史報告未列示。" else "灰色與 — 表示來源尚未提供，並非震度為零。",color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 }
                 Spacer(Modifier.height(8.dp))
-            }
+            })
             Column(Modifier.fillMaxWidth().background(palette.surface).padding(horizontal=18.dp,vertical=12.dp),horizontalAlignment=Alignment.CenterHorizontally){
                 Text("趴下 · 掩護 · 穩住",fontSize=23.sp,lineHeight=31.sp,fontWeight=FontWeight.Bold,color=palette.onSurface,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
@@ -165,6 +169,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                     Text(if(simulation)"結束模擬演練" else if(replay)"結束歷史回放" else "我已採取避難措施",fontSize=16.sp,fontWeight=FontWeight.SemiBold)
                 }
             }
+        }
+        }
         }
     }
 }

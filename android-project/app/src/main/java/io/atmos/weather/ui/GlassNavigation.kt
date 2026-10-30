@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -138,7 +139,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         allowReorder=false,
         reduceMotion=rememberAppleReduceMotion(),
         reduceTransparency=rememberAppleReduceTransparency(),
-        modifier=modifier.fillMaxWidth().padding(horizontal=24.dp).height(68.dp)
+        modifier=modifier.widthIn(max=560.dp).fillMaxWidth().padding(horizontal=24.dp).height(68.dp)
     )
 }
 
@@ -146,8 +147,8 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
     onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={},onAlerts:()->Unit={},onInsights:()->Unit={}) {
     val palette=MaterialTheme.colorScheme
-    var query by remember {mutableStateOf("")}
-    var utility by remember {mutableStateOf<String?>(null)}
+    var query by rememberSaveable {mutableStateOf("")}
+    var utility by rememberSaveable {mutableStateOf<String?>(null)}
     data class Entry(val title:String,val subtitle:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,val action:()->Unit)
     data class EntryGroup(val title:String,val tint:Color,val entries:List<Entry>)
     val groups=listOf(
@@ -165,6 +166,7 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,{utility="世界時鐘"}),
             Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{utility="氣象單位換算"})))
     )
+    AdaptivePageFrame(Modifier.background(palette.background).imePadding(),maxContentWidth=1280.dp) {
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()
         .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=18.dp,bottom=120.dp),
         verticalArrangement=Arrangement.spacedBy(18.dp)) {
@@ -180,11 +182,12 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
                     textStyle=androidx.compose.ui.text.TextStyle(color=palette.onSurface,fontSize=16.sp),modifier=Modifier.fillMaxWidth())
             }
         }
-        var count=0
-        groups.forEach {group ->
-            val shown=group.entries.filter {query.isBlank() || (it.title+it.subtitle).contains(query.trim(),ignoreCase=true)}
-            count+=shown.size
-            if(shown.isNotEmpty()) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        val filtered=groups.map{group->group to group.entries.filter {query.isBlank() || (it.title+it.subtitle).contains(query.trim(),ignoreCase=true)}}
+            .filter{it.second.isNotEmpty()}
+        val count=filtered.sumOf{it.second.size}
+        AdaptiveCardGrid(filtered.size,itemKey={filtered[it].first.title}) {index->
+            val (group,shown)=filtered[index]
+            Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(group.title,color=palette.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(horizontal=6.dp))
                 IOSV25SettingsGroup {
                     shown.forEachIndexed {i,item ->IOSV25SettingsCell(item.title,"",item.icon,group.tint,
@@ -193,6 +196,7 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             }
         }
         if(count==0)Text("找不到符合的工具",color=palette.onSurfaceVariant,fontSize=15.sp)
+    }
     }
     EverydayToolsSheet(utility,onDismiss={utility=null})
 }
@@ -206,10 +210,10 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     val prefs=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE) }
     var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion",false)) }
     var reduceTransparency by remember { mutableStateOf(prefs.getBoolean("reduce_transparency",false)) }
-    var appearanceOpen by remember { mutableStateOf(false) }
-    var accessibilityOpen by remember {mutableStateOf(false)}
-    var surfacesOpen by remember {mutableStateOf(false)}
-    var lastDetail by remember {mutableStateOf("appearance")}
+    var appearanceOpen by rememberSaveable { mutableStateOf(false) }
+    var accessibilityOpen by rememberSaveable {mutableStateOf(false)}
+    var surfacesOpen by rememberSaveable {mutableStateOf(false)}
+    var lastDetail by rememberSaveable {mutableStateOf("appearance")}
     val settingsScroll=rememberScrollState()
     val currentAutomatic=rememberBooleanSetting("check_updates_automatically",automaticUpdates)
     val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen
@@ -236,8 +240,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         })
     }
     val palette=MaterialTheme.colorScheme
-    var search by remember {mutableStateOf("")}
-    var searching by remember {mutableStateOf(false)}
+    var search by rememberSaveable {mutableStateOf("")}
+    var searching by rememberSaveable {mutableStateOf(false)}
     val match:(String)->Boolean={search.isBlank() || it.contains(search.trim(),ignoreCase=true)}
     val accessibilityContent:@Composable ()->Unit = {
         Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
@@ -258,6 +262,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             }
         }
     }
+    AdaptivePageFrame(Modifier.background(palette.background).imePadding(),maxContentWidth=1280.dp) {
     AppleParallaxStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false},
         modifier=Modifier.fillMaxSize(),root={
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
@@ -304,10 +309,11 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     SettingsEntry("軟體更新",SettingsSymbols.update,Color(0xFF8E8E93),onUpdateCenter),
                     SettingsEntry("權限與系統健康",SettingsSymbols.controls,Color(0xFF34C759),onDiagnostics))
             )
-            var resultCount=0
-            categories.forEach {(title,rows) ->
-                val shown=rows.filter {match(it.title)};resultCount+=shown.size
-                if(shown.isNotEmpty()) {
+            val filtered=categories.map{(title,rows)->title to rows.filter{match(it.title)}}.filter{it.second.isNotEmpty()}
+            val resultCount=filtered.sumOf{it.second.size}
+            AdaptiveCardGrid(filtered.size,itemKey={filtered[it].first}) {index->
+                val (title,shown)=filtered[index]
+                Column {
                     Text(title,fontSize=14.sp,color=palette.onSurfaceVariant,modifier=Modifier.padding(start=16.dp,bottom=8.dp))
                     IOSV25SettingsGroup {
                         shown.forEachIndexed {index,row ->IOSV25SettingsCell(row.title,"",row.icon,row.color,
@@ -326,7 +332,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
             Spacer(Modifier.height(120.dp))
         }
-    }},detail={when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};else->accessibilityContent()}})
+    }},detail={AdaptivePageFrame(maxContentWidth=760.dp){when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};else->accessibilityContent()}}})
+    }
 }
 private data class SettingsEntry(val title:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,
     val color:Color,val action:()->Unit)
