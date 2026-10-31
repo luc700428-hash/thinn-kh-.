@@ -110,7 +110,7 @@ private val navTabs=listOf(
 )
 
 @Composable
-fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier) {
+fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier,vertical:Boolean=false,edgeSized:Boolean=false) {
     // NEXT navigation remains aligned to the existing four main Pager pages.
     // Fixed canonical destinations; migrate away from the old saved ordering.
     val context=LocalContext.current
@@ -136,10 +136,10 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         },
         onOrderChanged={ _ -> /* Main tabs have a fixed canonical order. */ },
         maxVisible=4,
-        allowReorder=false,
+        allowReorder=false,vertical=vertical,fillAvailableHeight=edgeSized,
         reduceMotion=rememberAppleReduceMotion(),
         reduceTransparency=rememberAppleReduceTransparency(),
-        modifier=modifier.widthIn(max=560.dp).fillMaxWidth().padding(horizontal=24.dp).height(68.dp)
+        modifier=if(edgeSized)modifier else modifier.widthIn(max=560.dp).fillMaxWidth().padding(horizontal=24.dp).height(maxOf(68f,44f+24f*androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
     )
 }
 
@@ -215,13 +215,15 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     var appearanceOpen by rememberSaveable { mutableStateOf(false) }
     var accessibilityOpen by rememberSaveable {mutableStateOf(false)}
     var surfacesOpen by rememberSaveable {mutableStateOf(false)}
+    var dockOpen by rememberSaveable {mutableStateOf(false)}
+    val dockPosition=rememberTabletDockPosition()
     var lastDetail by rememberSaveable {mutableStateOf("appearance")}
     val settingsScroll=rememberScrollState()
     val currentAutomatic=rememberBooleanSetting("check_updates_automatically",automaticUpdates)
-    val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen
+    val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen || dockOpen
     SideEffect {onDetailVisibility(detailsVisible)}
     DisposableEffect(Unit) {onDispose {onDetailVisibility(false)}}
-    androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false}
+    androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false}
     val appearanceContent:@Composable ()->Unit = {
         IOS27AppearancePage(onBack={appearanceOpen=false},advancedSettings={
             ThinnSection("進階外觀與動態") {
@@ -265,7 +267,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         }
     }
     AdaptivePageFrame(Modifier.background(palette.background).imePadding(),maxContentWidth=1280.dp) {
-    WorkspaceSettingsStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false},
+    WorkspaceSettingsStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false},
         modifier=Modifier.fillMaxSize(),root={
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
@@ -296,6 +298,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             Spacer(Modifier.height(20.dp))
             val categories=listOf(
                 "外觀與操作" to listOf(
+                    SettingsEntry("平板 Dock 位置",SettingsSymbols.controls,Color(0xFF007AFF),{lastDetail="dock";dockOpen=true}),
                     SettingsEntry("外觀與亮度",SettingsSymbols.display,Color(0xFF007AFF),{lastDetail="appearance";appearanceOpen=true}),
                     SettingsEntry("字體與閱讀",SettingsSymbols.general,Color(0xFF8E8E93),{onAdvancedCategory("外觀")}),
                     SettingsEntry("聲音與觸覺",SettingsSymbols.wallpaper,Color(0xFF32ADE6),{onAdvancedCategory("聲音")}),
@@ -319,9 +322,9 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     Text(title,fontSize=14.sp,color=palette.onSurfaceVariant,modifier=Modifier.padding(start=16.dp,bottom=8.dp))
                     IOSV25SettingsGroup {
                         shown.forEachIndexed {index,row ->IOSV25SettingsCell(row.title,"",row.icon,row.color,
-                            last=index==shown.lastIndex,selected=LocalWorkspaceDetailTitle.current==row.title||
-                                (detailsVisible&&row.title==when(lastDetail){"appearance"->"外觀與亮度";"surfaces"->"小工具與動態島";else->"輔助使用"}),
-                            onClick={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;row.action()})}
+                            trailing=if(row.title=="平板 Dock 位置")dockPosition.title else "",last=index==shown.lastIndex,selected=LocalWorkspaceDetailTitle.current==row.title||
+                                (detailsVisible&&row.title==when(lastDetail){"appearance"->"外觀與亮度";"surfaces"->"小工具與動態島";"dock"->"平板 Dock 位置";else->"輔助使用"}),
+                            onClick={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false;row.action()})}
                     }
                     Spacer(Modifier.height(20.dp))
                 }
@@ -336,7 +339,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
             Spacer(Modifier.height(if(LocalWorkspaceLayout.current.tablet)24.dp else 120.dp))
         }
-    }},detail={AdaptivePageFrame(maxContentWidth=760.dp){when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};else->accessibilityContent()}}})
+    }},detail={AdaptivePageFrame(maxContentWidth=760.dp){when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};"dock"->TabletDockSettingsPage{dockOpen=false};else->accessibilityContent()}}})
     }
 }
 private data class SettingsEntry(val title:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,

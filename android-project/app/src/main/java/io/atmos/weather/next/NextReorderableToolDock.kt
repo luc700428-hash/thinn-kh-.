@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -13,12 +14,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,7 +67,7 @@ import androidx.compose.ui.window.PopupProperties
 data class NextToolAction(val id: String, val label: String, val icon: ImageVector)
 
 /**
- * Fixed container; only the selection lens follows horizontal scrubbing.
+ * Fixed container; only the selection lens follows scrubbing on the active axis.
  * Optional accessible ordering is reserved for non-navigation tool palettes.
  * The main app explicitly disables it and always uses the four canonical tabs.
  */
@@ -77,7 +81,9 @@ fun NextReorderableToolDock(
     maxVisible: Int = 4,
     reduceMotion: Boolean = false,
     reduceTransparency: Boolean = false,
-    allowReorder: Boolean = false
+    allowReorder: Boolean = false,
+    vertical:Boolean = false,
+    fillAvailableHeight:Boolean = false
 ) {
     require(maxVisible >= 1) { "At least one dock item must be visible" }
     val actionIds = actions.map { it.id }
@@ -96,6 +102,7 @@ fun NextReorderableToolDock(
     var dockDragOffsetPx by remember { mutableFloatStateOf(0f) }
     var showOverflow by remember { mutableStateOf(false) }
     var dockWidthPx by remember { mutableIntStateOf(0) }
+    var dockHeightPx by remember {mutableIntStateOf(0)}
     var scrubbing by remember { mutableStateOf(false) }
     var scrubX by remember { mutableFloatStateOf(0f) }
     var displayId by remember {mutableStateOf(selectedId)}
@@ -108,6 +115,12 @@ fun NextReorderableToolDock(
     val currentIndex = visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)
     val geometry=DockScrubGeometry(dockWidthPx.toFloat(),dockInsetPx,visible.size.coerceAtLeast(1))
     val slotPx=geometry.slot
+    val cellHeight=if(vertical)((dockWidthPx/density.density-10f)/visible.size.coerceAtLeast(1)).takeIf{it>0}?:64f
+        else (dockHeightPx/density.density-10f).takeIf{it>0}?:58f
+    val captionHeight=24f*density.fontScale+4f
+    val cellPadding=((cellHeight-captionHeight-27f)/2f).coerceIn(2f,6f)
+    val iconSize=(cellHeight-captionHeight-cellPadding*2-2f).coerceIn(18f,25f)
+
     fun previewIndex(): Int = geometry.nearest(scrubX)
 
     fun move(id: String, delta: Int): Boolean {
@@ -129,41 +142,31 @@ fun NextReorderableToolDock(
     val lightX=if(scrubbing) (scrubX/dockWidthPx.coerceAtLeast(1)).coerceIn(0f,1f) else if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/visible.size
     NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
-        cornerRadiusDp = 9999f, useBackdrop = true, touchX = lightX, calm = true,
+        cornerRadiusDp = 9999f, useBackdrop = true, touchX = if(vertical).5f else lightX, touchY=if(vertical)lightX else .08f,calm = true,
         pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency) {
-        Box(Modifier.fillMaxWidth()
-            .onSizeChanged { dockWidthPx=it.width }
-            .pointerInput(visible.map { it.id }, dockWidthPx) {
-                if(visible.isNotEmpty()) detectHorizontalDragGestures(
-                    onDragStart={ start ->
-                        scrubbing=true
-                        scrubX=geometry.clamp(start.x)
-                    },
-                    onHorizontalDrag={ change,_ ->
-                        scrubX=geometry.clamp(change.position.x)
-                        change.consume()
-                    },
-                    onDragEnd={
-                        val destination=visible.getOrNull(previewIndex())
-                        scrubbing=false
-                        if(destination != null) {
-                            displayId=destination.id
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            latestOnSelected(destination.id)
-                        }
-                    },
-                    onDragCancel={scrubbing=false}
-                )
+        Box((if(fillAvailableHeight)Modifier.fillMaxSize() else Modifier.fillMaxWidth())
+            .onSizeChanged { dockWidthPx=if(vertical)it.height else it.width;dockHeightPx=it.height }
+            .pointerInput(visible.map { it.id }, dockWidthPx,vertical) {
+                val start:(androidx.compose.ui.geometry.Offset)->Unit={point->
+                    scrubbing=true;scrubX=geometry.clamp(if(vertical)point.y else point.x)
+                }
+                val drag:(androidx.compose.ui.input.pointer.PointerInputChange,Float)->Unit={change,_->
+                    scrubX=geometry.clamp(if(vertical)change.position.y else change.position.x);change.consume()
+                }
+                val finish:()->Unit={
+                    val destination=visible.getOrNull(previewIndex());scrubbing=false
+                    if(destination!=null){displayId=destination.id;haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove);latestOnSelected(destination.id)}
+                }
+                if(visible.isNotEmpty()) {
+                    if(vertical)detectVerticalDragGestures(onDragStart=start,onDragEnd=finish,onDragCancel={scrubbing=false},onVerticalDrag=drag)
+                    else detectHorizontalDragGestures(onDragStart=start,onDragEnd=finish,onDragCancel={scrubbing=false},onHorizontalDrag=drag)
+                }
             }) {
             AppleLiquidDockPaint(selectedIndex=lightIndex,tabCount=visible.size.coerceAtLeast(1),
                 dragging=scrubbing || draggingId != null,
                 dragOffsetPx=if(scrubbing) scrubX - (dockInsetPx+(lightIndex+.5f)*slotPx) else dockDragOffsetPx,
-                reduceMotion=reduceMotion)
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
+                reduceMotion=reduceMotion,vertical=vertical)
+        DockAxisLayout(vertical,fillAvailableHeight) {
             visible.forEach { action ->
                 key(action.id) {
                     var localX by remember { mutableFloatStateOf(0f) }
@@ -181,7 +184,7 @@ fun NextReorderableToolDock(
                     )
                     val selected = action.id == (if(scrubbing) visible.getOrNull(activeDisplayIndex)?.id else displayId)
                     Column(
-                        modifier = Modifier.weight(1f).heightIn(min=58.dp)
+                        modifier = Modifier.fillMaxSize()
                             .graphicsLayer(scaleX = scale, scaleY = scale, translationX = if (reduceMotion) 0f else localX)
                             .background(Color.Transparent, RoundedCornerShape(22.dp))
                             .semantics {
@@ -197,15 +200,15 @@ fun NextReorderableToolDock(
                                 indication = null,
                                 role = Role.Tab,
                                 onClick = { displayId=action.id;latestOnSelected(action.id) }
-                            ).padding(vertical = 6.dp),
+                            ).padding(vertical = cellPadding.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp,Alignment.CenterVertically)
                     ) {
-                        Image(action.icon, null, modifier = Modifier.size(25.dp),
+                        Image(action.icon, null, modifier = Modifier.size(iconSize.dp),
                             colorFilter = ColorFilter.tint(if (selected) activeInk else inactiveInk))
-                        Text(action.label, fontSize = 11.sp,lineHeight=14.sp,
+                        Text(action.label, fontSize = 14.sp,lineHeight=24.sp,
                             fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (selected) activeInk else inactiveInk, maxLines = 1, modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+                            color = if (selected) activeInk else inactiveInk, maxLines = 1, modifier=Modifier.fillMaxWidth().height(captionHeight.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }
@@ -254,5 +257,23 @@ fun NextReorderableToolDock(
             }
         }
         } // AppleLiquidDockPaint Box wrapper
+    }
+}
+
+
+/** Fixed child slots; text stays upright when the dock changes axis. */
+@Composable private fun DockAxisLayout(vertical:Boolean,stretch:Boolean,content:@Composable ()->Unit) {
+    Layout(content=content,modifier=Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=5.dp)) {children,c->
+        val width=c.maxWidth
+        val height=if((vertical||stretch)&&c.hasBoundedHeight)c.maxHeight else maxOf(58.dp.roundToPx(),(34f+24f*fontScale).dp.roundToPx()).coerceIn(c.minHeight,c.maxHeight)
+        val count=children.size.coerceAtLeast(1)
+        val cells=children.mapIndexed {i,child->
+            val begin=if(vertical)height*i/count else width*i/count
+            val end=if(vertical)height*(i+1)/count else width*(i+1)/count
+            child.measure(if(vertical)Constraints.fixed(width,end-begin) else Constraints.fixed(end-begin,height))
+        }
+        layout(width,height){cells.forEachIndexed {i,cell->
+            if(vertical)cell.placeRelative(0,height*i/count) else cell.placeRelative(width*i/count,0)
+        }}
     }
 }

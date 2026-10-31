@@ -75,8 +75,10 @@ internal class NextLoopTrack private constructor(private val track: AudioTrack) 
             var out: AudioTrack? = null
             return try {
                 out = AudioTrack(attr,format,decoded.pcm.size,AudioTrack.MODE_STATIC,AudioManager.AUDIO_SESSION_ID_GENERATE)
-                check(out.state == AudioTrack.STATE_INITIALIZED)
+                // MODE_STATIC is successfully allocated but has no data until its first write.
+                check(out.state != AudioTrack.STATE_UNINITIALIZED)
                 check(out.write(decoded.pcm,0,decoded.pcm.size,AudioTrack.WRITE_BLOCKING) == decoded.pcm.size)
+                check(out.state == AudioTrack.STATE_INITIALIZED)
                 check(out.setLoopPoints(0,decoded.frames,-1) == AudioTrack.SUCCESS)
                 NextLoopTrack(out)
             } catch (_: Exception) {
@@ -144,14 +146,14 @@ internal class NextAmbienceController(private val context:Context) {
         }
         refreshStatus()
     }
-    suspend fun configure(next:String?,on:Boolean,volume:Float)=lock.withLock {
+    suspend fun configure(next:String?,on:Boolean,volume:Float,forceRestart:Boolean=false)=lock.withLock {
         if(closed)return@withLock
         enabled=on;requested=next
         level=volume.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
         if(!on||next==null||level<=0) {
             track?.pause();incomingTrack?.pause();abandon();refreshStatus();return@withLock
         }
-        if(scene==next&&track!=null) {failed=false;track?.volume(level*duck);foreground(active);return@withLock}
+        if(!forceRestart&&scene==next&&track!=null) {failed=false;track?.volume(level*duck);foreground(active);return@withLock}
         val incoming=NextLoopTrack.open(context,next,AudioAttributes.USAGE_MEDIA)
         if(incoming==null){failed=true;track?.pause();refreshStatus();return@withLock}
         failed=false;incomingTrack=incoming;val old=track
@@ -191,7 +193,7 @@ internal class NextAmbienceController(private val context:Context) {
 
 @Composable
 fun NextWeatherAmbience(condition:WeatherCondition?,enabled:Boolean,volume:Float,
-    weatherCode:Int?=null,visibilityM:Double?=null,thunderCue:Int=0,isNight:Boolean=false):androidx.compose.runtime.State<AmbientPlaybackState> {
+    weatherCode:Int?=null,visibilityM:Double?=null,thunderCue:Int=0,isNight:Boolean=false,retryToken:Int=0):androidx.compose.runtime.State<AmbientPlaybackState> {
     val context=LocalContext.current;val owner=LocalLifecycleOwner.current
     val controller=remember(context,owner){NextAmbienceController(context)}
     val scene=WeatherScenes.classify(condition,weatherCode,visibilityM)
@@ -205,7 +207,12 @@ fun NextWeatherAmbience(condition:WeatherCondition?,enabled:Boolean,volume:Float
         controller.foreground(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         onDispose{owner.lifecycle.removeObserver(listener);controller.close()}
     }
-    LaunchedEffect(controller,path,enabled,volume){controller.configure(path,enabled,volume)}
+    val handledRetry=remember(controller){intArrayOf(retryToken)}
+    LaunchedEffect(controller,path,enabled,volume,retryToken) {
+        val restart=handledRetry[0]!=retryToken
+        handledRetry[0]=retryToken
+        controller.configure(path,enabled,volume,forceRestart=restart)
+    }
     LaunchedEffect(controller,owner) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while(kotlinx.coroutines.currentCoroutineContext().isActive){controller.refreshStatus();delay(1500)}

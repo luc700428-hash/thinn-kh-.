@@ -382,6 +382,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     var soundOn by remember { mutableStateOf(settingsPrefs.getBoolean("sound_enabled",true)) }
     var soundVolume by remember {mutableFloatStateOf(settingsPrefs.getFloat("sound_volume",.50f).takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f)}
     var soundPreviewActive by remember {mutableStateOf(false)}
+    var soundRetryToken by remember {mutableIntStateOf(0)}
     LaunchedEffect(soundPreviewActive){if(soundPreviewActive){delay(8_000);soundPreviewActive=false}}
     LaunchedEffect(settingsPrefs){if(!settingsPrefs.contains("sound_enabled"))settingsPrefs.edit().putBoolean("sound_enabled",true).apply()}
     var refreshMinutes by remember { mutableIntStateOf(settingsPrefs.getInt("refresh_minutes", 30).coerceIn(5,120)) }
@@ -492,7 +493,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val ambientPlayback=NextWeatherAmbience(demoCondition ?: snapshot?.condition ?: if(soundPreviewActive)WeatherCondition.CLEAR else null, soundOn || demoRemaining>0 || soundPreviewActive,
         if(demoRemaining>0||soundPreviewActive)soundVolume.coerceAtLeast(.65f) else soundVolume,
         if (demoCondition == WeatherCondition.THUNDERSTORM) 95 else if (demoCondition == WeatherCondition.RAIN) 61 else snapshot?.weatherCode,
-        snapshot?.visibilityM, thunderCue + demoThunderCue,isNight=snapshot?.isDay==false)
+        snapshot?.visibilityM, thunderCue + demoThunderCue,isNight=snapshot?.isDay==false,retryToken=soundRetryToken)
     var nativeRadarOpen by remember {mutableStateOf(false)}
     var details by remember { mutableStateOf<Pair<String,String>?>(null) }
     var showLifestyleDetails by remember { mutableStateOf(false) }
@@ -1208,7 +1209,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     settingsPrefs.edit().putFloat("sound_volume",it).putBoolean("sound_enabled",soundOn).apply()
                 }
                 Text(ambientPlayback.value.message,color=White,fontSize=14.sp)
-                OutlinedButton(onClick={soundPreviewActive=!soundPreviewActive},modifier=Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick={if(soundPreviewActive)soundPreviewActive=false else {soundRetryToken++;soundPreviewActive=true}},modifier=Modifier.fillMaxWidth()) {
                     Icon(if(soundPreviewActive)Icons.Rounded.Stop else Icons.Rounded.PlayArrow,null)
                     Spacer(Modifier.width(8.dp))
                     Text(if(soundPreviewActive)"停止試聽" else "試聽目前天氣音效 · 8 秒")

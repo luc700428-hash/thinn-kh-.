@@ -35,6 +35,7 @@ fun NextOpticalSurface(
     reduceTransparency: Boolean = false,
     useBackdrop: Boolean = false,
     calm: Boolean = false,
+    touchY:Float=.08f,
     content: @Composable () -> Unit
 ) {
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
@@ -66,7 +67,7 @@ fun NextOpticalSurface(
         val h = size.height
         // A small, localized lens flare on touch; never blanket-flood content.
         if (!reduceTransparency && !calm) {
-            val light = Offset(w * x, h * .08f)
+            val light = Offset(w * x,h*touchY.coerceIn(0f,1f))
             val radius = w.coerceAtLeast(h) * .82f
             drawRoundRect(
                 brush = Brush.radialGradient(

@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -23,7 +24,7 @@ import kotlin.math.abs
 @Composable
 fun BoxScope.AppleLiquidDockPaint(
     selectedIndex:Int,tabCount:Int,dragging:Boolean,dragOffsetPx:Float,
-    reduceMotion:Boolean,modifier:Modifier=Modifier
+    reduceMotion:Boolean,modifier:Modifier=Modifier,vertical:Boolean=false
 ) {
     if(tabCount<1)return
     val density=LocalDensity.current.density
@@ -37,8 +38,10 @@ fun BoxScope.AppleLiquidDockPaint(
     val tail by animateFloatAsState(location,animationSpec=if(reduceMotion)snap()
         else spring(dampingRatio=.88f,stiffness=62f),label="dock-equal-liquid-tail")
     val light=MaterialTheme.colorScheme.background.red>.5f
-    Canvas(modifier.matchParentSize().onSizeChanged {widthPx=it.width}) {
-        val shape=DockLiquidGeometry.shape(size.width,size.height,density,tabCount,location,
+    Canvas(modifier.matchParentSize().onSizeChanged {widthPx=if(vertical)it.height else it.width}) {
+        val logicalWidth=if(vertical)size.height else size.width
+        val logicalHeight=if(vertical)size.width else size.height
+        val shape=DockLiquidGeometry.shape(logicalWidth,logicalHeight,density,tabCount,location,
             if(reduceMotion)location else tail) ?: return@Canvas
         val w=shape.width;val h=shape.height;val y=shape.centerY
         val x=shape.headX;val tx=shape.tailX
@@ -62,7 +65,8 @@ fun BoxScope.AppleLiquidDockPaint(
                 liquid=Path.combine(PathOperation.Union,liquid,bridge)
             }
         }
-        clipRect {
+        withTransform({if(vertical){translate(left=size.width,top=0f);rotate(90f,pivot=Offset.Zero)}}) {
+        clipRect(right=logicalWidth,bottom=logicalHeight) {
             drawPath(liquid,if(light)Color.White.copy(alpha=.19f) else Color.White.copy(alpha=.10f))
             drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=if(light).45f else .17f),
                 Color.Transparent,Color.White.copy(alpha=.07f)),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)))
@@ -70,6 +74,7 @@ fun BoxScope.AppleLiquidDockPaint(
             drawPath(liquid,rainbow,style=Stroke(.85.dp.toPx()))
             drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=.65f),
                 Color.White.copy(alpha=.15f),Color.Transparent),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)),style=Stroke(.65.dp.toPx()))
+        }
         }
     }
 }

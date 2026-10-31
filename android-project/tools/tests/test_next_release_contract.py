@@ -52,7 +52,8 @@ class NextIntegrationReleaseContract(unittest.TestCase):
             self.assertIn(word,nav)
         self.assertNotIn('actions=orderedActions',nav)
         for word in ('detectHorizontalDragGestures', 'if(allowReorder)',
-                     'onDragEnd=', 'latestOnSelected(destination.id)', 'touchX = lightX'):
+                     'detectVerticalDragGestures', 'onDragEnd=', 'latestOnSelected(destination.id)',
+                     'touchX = if(vertical).5f else lightX', 'touchY=if(vertical)lightX else .08f'):
             self.assertIn(word,dock)
 
     def test_alarm_retains_background_service_and_fallback(self):

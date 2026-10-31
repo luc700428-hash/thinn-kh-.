@@ -127,10 +127,29 @@ class TabletSettingsRenderingTest:TabletRenderingFixture() {
             }}){view,_->
                 for((w,h) in listOf(1280 to 800,800 to 1280,480 to 800,1280 to 400)) {
                     resize(view,w,h)
-                    val first=nodes(view).single{text(it,"外觀與操作")}.boundsInRoot
-                    val second=nodes(view).single{text(it,"桌面與即時資訊")}.boundsInRoot
-                    if(h>=480&&(w==1280||(w==800&&scale==1f)))assertTrue(second.left>first.right)
-                    else assertEquals(first.left,second.left,1f)
+                    val first=nodes(view).single{text(it,"外觀與操作")}
+                    val second=nodes(view).single{text(it,"桌面與即時資訊")}
+                    // A new Dock preference makes the first group taller. The next
+                    // heading can be below a short viewport: compare its actual
+                    // placement, rather than the empty clipped semantics bounds.
+                    assertTrue(first.size.width>0&&second.size.width>0)
+                    if(h>=480&&(w==1280||(w==800&&scale==1f)))assertTrue(second.positionInRoot.x>first.positionInRoot.x+first.size.width)
+                    else assertEquals(first.positionInRoot.x,second.positionInRoot.x,1f)
+                    // Verify every group remains reachable by scrolling, including
+                    // 150% text in the short landscape window.
+                    for(label in listOf("桌面與即時資訊","提醒與生活","系統與資料","字體與閱讀")) {
+                        repeat(4) {
+                            val target=nodes(view).single{text(it,label)}
+                            val b=target.boundsInRoot
+                            if(b.width>0&&b.height>=target.size.height-1&&b.top>=53f&&b.bottom<=h) return@repeat
+                            val scroller=nodes(view).single{it.config.contains(SemanticsActions.ScrollBy)}
+                            assertTrue(scroller.config[SemanticsActions.ScrollBy].action!!.invoke(0f,target.positionInRoot.y-h*.5f))
+                            pump(view).recycle()
+                        }
+                        val target=nodes(view).single{text(it,label)}
+                        assertTrue("Unreachable $label at $w x $h, font=$scale",target.boundsInRoot.width>0&&target.boundsInRoot.height>=target.size.height-1&&target.boundsInRoot.top>=53f)
+                        visible(target.boundsInRoot)
+                    }
                     click(view,"字體與閱讀");assertEquals("外觀",category)
                     save(view,"tablet-settings-${w}x$h-$dark-$scale")
                 }

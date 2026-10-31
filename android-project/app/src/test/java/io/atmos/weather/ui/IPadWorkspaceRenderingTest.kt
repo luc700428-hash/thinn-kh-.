@@ -89,12 +89,7 @@ class IPadFoldPostureRenderingTest:IPadFixture() {
                 if(fold!=null){noTextOnHinge(view,fold.bounds);if(fold.vertical)assertTrue(bounds.left>=fold.bounds.right||bounds.right<=fold.bounds.left) else assertTrue(bounds.top>=fold.bounds.bottom||bounds.bottom<=fold.bounds.top)}
                 assertEquals("阿里山",tagged(view,"preserved-query").config[SemanticsProperties.EditableText].text)
                 assertEquals(.8f,tagged(view,"preserved-slider").config[SemanticsProperties.ProgressBarRangeInfo].current,.01f)
-                if(w==768) {
-                    val menu=nodes(view).single{it.config.contains(SemanticsProperties.ContentDescription)&&"開啟側邊欄" in it.config[SemanticsProperties.ContentDescription]&&it.config.contains(SemanticsActions.OnClick)}
-                    assertTrue(menu.config[SemanticsActions.OnClick].action!!.invoke());pump(view).recycle()
-                    tapVisible(view,"設定");assertEquals(3,tab)
-                    settle(view){nodes(view).none{text(it,"我的城市")}}
-                }
+                if(w==768) {tapVisible(view,"設定");assertEquals(3,tab)}
                 save(view,"ipad-posture-${w}x$h")
             }
             assertEquals(1,starts)
