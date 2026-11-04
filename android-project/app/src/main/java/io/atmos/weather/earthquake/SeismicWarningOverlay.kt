@@ -33,9 +33,8 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-/** Native Android warning sheet. No copied DPIP source or assets.
- * County intensities are NEVER fabricated: only validated source fields are shown.
- * Animated P/S radii use illustrative constant speeds, NOT arrival predictions.
+/** Native warning sheet. County shading stays source-only; local model values are labeled.
+ * Animated P/S rings remain illustrative and do not drive the independent S-arrival table.
  */
 @Composable
 fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?,onClose:()->Unit,
@@ -43,7 +42,10 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     val context=LocalContext.current
     val palette=MaterialTheme.colorScheme
     val historical=simulation && ChiChi921.isScenario(incident)
-    val place=remember(incident.id){SeismicUserLocation.current(context)}
+    // A location that arrives after the first report must update this same warning.
+    val place by produceState(SeismicUserLocation.current(context),context,incident.id) {
+        while(true){value=SeismicUserLocation.current(context);delay(1000)}
+    }
     val estimate=remember(historical,place){if(historical)ChiChi921.estimate(place) else null}
     val reduce=context.getSharedPreferences("thinn_settings",0).getBoolean("reduce_motion",false)
     val accent=if(replay || simulation)palette.tertiary else palette.error
@@ -51,11 +53,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     LaunchedEffect(Unit) {entered=true}
     val reveal by androidx.compose.animation.core.animateFloatAsState(if(entered)1f else .96f,
         androidx.compose.animation.core.tween(if(reduce)0 else 180,easing=io.atmos.weather.ui.AppleMotion.snap),label="速報光學入場")
-    val county=userCounty.orEmpty().replace('台','臺')
-    val supplied=remember(incident) { SeismicWarningCounties.fromProvider(incident.localIntensityByCounty) }
+    val county=(place?.name?:userCounty).orEmpty().replace('台','臺')
     val allCounties=remember(incident) { SeismicWarningCounties.allFromProvider(incident.localIntensityByCounty) }
-    val providerLocal=supplied.firstOrNull { it.county==county || (county.isNotEmpty() && county.contains(it.county)) }?.intensity
-    val local=if(historical)estimate?.intensity else providerLocal
     val eventKey="${incident.id}:${incident.serial}:$replay:$simulation"
     val frameNow=io.atmos.weather.ui.rememberDisplayWallClock(!reduce)
     // A true incident plays a bounded looping alert tone and one descriptive spoken warning.
@@ -99,10 +98,13 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     LaunchedEffect(eventKey) {if(simulation){delay(120_000);close()}}
     var now by remember(eventKey){mutableLongStateOf(System.currentTimeMillis())}
     LaunchedEffect(eventKey){while(true){delay(1000);now=System.currentTimeMillis()}}
+    val prediction=remember(incident,place,now/1000){SeismicLocalPrediction.resolve(incident,place,now)}
+    val local=if(historical)estimate?.intensity else prediction.intensity
     val started=remember(incident.id){System.currentTimeMillis()}
-    val arrival=if(historical)estimate?.let{started+(it.arrivalSeconds*1000).toLong()} else
-        incident.arrivalAtMsByCounty.entries.firstOrNull{county.isNotBlank()&&(county==it.key||county.contains(it.key))}?.value
-    val arrivalText=arrival?.let{if(it<=now)"已抵達" else "${kotlin.math.ceil((it-now)/1000.0).toInt()} s"}?:"—"
+    // Explicit arrivalAtMsByCounty takes precedence inside the resolver. New reports do
+    // not reset a locally calculated arrival: it is anchored to the earthquake origin.
+    val arrival=if(historical)estimate?.let{started+(it.arrivalSeconds*1000).toLong()} else prediction.arrivalAtMs
+    val arrivalText=if(historical)arrival?.let{if(it<=now)"已抵達" else "${kotlin.math.ceil((it-now)/1000.0).toInt()} s"}?:"—" else prediction.arrivalText(now)
     Dialog(onDismissRequest=onClose,properties=DialogProperties(dismissOnClickOutside=false,usePlatformDefaultWidth=false,decorFitsSystemWindows=false),adaptiveContentWidth=null){
         io.atmos.weather.ui.AdaptiveWindowProvider(Modifier.background(palette.background)) {
         io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=1280.dp) {
@@ -119,23 +121,27 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                 if(simulation||replay)WarningPlate{
                     Text(if(historical)"演練中，非即時警報。震源採官方歷史資料；當地預估為本機模型，並非當年的即時速報。" else if(simulation)"演練中：所有震央與震度均為虛構。" else "歷史回放中：不是目前發生的地震。",color=palette.onSurface,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 }
-                SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,place,historical,frameNow,Modifier.fillMaxWidth())
-            },trailing={
                 Text("收到地震速報 · 慎防強烈搖晃",color=palette.onSurface,fontSize=20.sp,lineHeight=28.sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth())
-                Text(county.ifBlank{"所在地尚未設定"},color=palette.onSurfaceVariant,fontSize=15.sp,lineHeight=22.sp,modifier=Modifier.fillMaxWidth())
-                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                    WarningHero("預估震度",local?.let{if(it.contains("以上"))it else "${SeismicDisplayFormat.symbol(it)} 級"}?:"—",
-                        if(historical)if(estimate==null)"請在地震設定選擇所在地" else "本機模型估算 · 僅供演練" else if(local==null)"待來源提供" else "來源提供的所在地震度",accent,Modifier.weight(1f).fillMaxHeight())
-                    WarningHero(if(historical)"演練示意倒數" else "預估抵達",arrivalText,
-                        if(historical)"模型示意 · 非官方預測" else if(arrival==null)"待來源提供" else "來源提供的所在地時間",palette.primary,Modifier.weight(1f).fillMaxHeight())
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    Text(county.ifBlank{"所在地尚未設定"},color=palette.onSurfaceVariant,fontSize=15.sp,lineHeight=22.sp,modifier=Modifier.weight(1f))
+                    if(place==null)WarningLocationChoice{selected->
+                        SeismicUserLocation.choose(context,selected)
+                    }
                 }
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                    WarningHero("預估震度",local?.let{if(it.contains("以上"))it.replace("級"," 級") else "${SeismicDisplayFormat.symbol(it)} 級"}?:"—",
+                        if(historical)if(estimate==null)"請在地震設定選擇所在地" else "本機模型估算 · 僅供演練" else prediction.intensityReason,accent,Modifier.weight(1f).fillMaxHeight())
+                    WarningHero(if(historical)"演練示意倒數" else "預估抵達",arrivalText,
+                        if(historical)"模型示意 · 非官方預測" else prediction.arrivalReason,palette.primary,Modifier.weight(1f).fillMaxHeight())
+                }
+                if(place!=null)Text(place!!.source,color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 WarningPlate{
-                    Text(SeismicDisplayFormat.location(incident.epicenter),fontSize=21.sp,lineHeight=29.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(14.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
                         WarningStatistic("規模",SeismicDisplayFormat.magnitude(incident.magnitude),Modifier.weight(1f))
                         WarningStatistic("深度",SeismicDisplayFormat.depth(incident.depthKm),Modifier.weight(1f))
                     }
+                    Spacer(Modifier.height(14.dp))
+                    Text(SeismicDisplayFormat.location(incident.epicenter),fontSize=21.sp,lineHeight=29.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
                     Spacer(Modifier.height(14.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
                         WarningStatistic("最大震度",if(historical)"7 級" else incident.maximumIntensity?.let{"${SeismicDisplayFormat.symbol(it)} 級"}?:"待來源提供",Modifier.weight(1f))
@@ -146,6 +152,10 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                         "發布："+java.time.Instant.ofEpochMilli(incident.issuedAtMs).atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm:ss")),color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 }
                 if(historical)Text("演練估算無法精確到街道；實際搖晃會受地形、土壤與斷層影響。",color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+                else if(prediction.intensityOrigin==PredictionOrigin.LOCAL_MODEL||prediction.arrivalOrigin==PredictionOrigin.LOCAL_MODEL)
+                    Text("本機估算可能有誤差；縣市灰色不代表無震。請立即避難，勿等待倒數。",color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+            },trailing={
+                SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,place,historical,frameNow,Modifier.fillMaxWidth())
                 WarningPlate{
                     Text(if(historical)"921 歷史縣市最大震度（舊制）" else if(simulation)"演練情境震度（虛構）" else "各縣市預估震度",fontSize=17.sp,lineHeight=25.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
@@ -174,6 +184,18 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
         }
     }
 }
+@Composable private fun WarningLocationChoice(onChoose:(String)->Unit){
+    var expanded by remember{mutableStateOf(false)}
+    Box{
+        TextButton(onClick={expanded=true}){Text("選擇所在地")}
+        DropdownMenu(expanded=expanded,onDismissRequest={expanded=false},modifier=Modifier.heightIn(max=300.dp)){
+            SeismicUserLocation.options().drop(1).forEach{county->
+                DropdownMenuItem(text={Text(county,color=MaterialTheme.colorScheme.onSurface)},
+                    onClick={onChoose(county);expanded=false})
+            }
+        }
+    }
+}
 @Composable private fun WarningPlate(content:@Composable ColumnScope.()->Unit){
     val p=MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.surface).border(1.dp,p.outlineVariant.copy(alpha=.5f),RoundedCornerShape(24.dp)).padding(16.dp),content=content)
@@ -182,7 +204,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     val p=MaterialTheme.colorScheme
     Column(modifier.clip(RoundedCornerShape(24.dp)).background(p.surface).border(1.dp,p.outlineVariant.copy(alpha=.5f),RoundedCornerShape(24.dp)).padding(14.dp)){
         Text(label,color=p.onSurfaceVariant,fontSize=15.sp,lineHeight=22.sp,modifier=Modifier.fillMaxWidth())
-        Text(value,color=accent,fontSize=if(value.length>5||value=="已抵達")27.sp else 38.sp,lineHeight=if(value.length>5||value=="已抵達")38.sp else 48.sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth(),style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
+        val longValue=value.length>5||value.contains("以上")||value=="已抵達"||value=="可能已抵達"
+        Text(value,color=accent,fontSize=if(longValue)25.sp else 38.sp,lineHeight=if(longValue)36.sp else 48.sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth(),style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
         Text(caption,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
     }
 }

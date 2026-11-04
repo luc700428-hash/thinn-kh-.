@@ -24,12 +24,12 @@ import kotlin.math.abs
 @Composable
 fun BoxScope.AppleLiquidDockPaint(
     selectedIndex:Int,tabCount:Int,dragging:Boolean,dragOffsetPx:Float,
-    reduceMotion:Boolean,modifier:Modifier=Modifier,vertical:Boolean=false
+    reduceMotion:Boolean,modifier:Modifier=Modifier,vertical:Boolean=false,darkBackdrop:Boolean?=null
 ) {
     if(tabCount<1)return
     val density=LocalDensity.current.density
     var widthPx by remember {mutableIntStateOf(0)}
-    val inset=6f*density
+    val inset=(if(vertical)5f else 6f)*density
     val step=((widthPx-2*inset)/tabCount).coerceAtLeast(1f)
     val target=(selectedIndex.toFloat()+if(dragging)dragOffsetPx/step else 0f).coerceIn(0f,tabCount-1f)
     val location by animateFloatAsState(target,
@@ -37,12 +37,12 @@ fun BoxScope.AppleLiquidDockPaint(
         label="dock-continuous-position")
     val tail by animateFloatAsState(location,animationSpec=if(reduceMotion)snap()
         else spring(dampingRatio=.88f,stiffness=62f),label="dock-equal-liquid-tail")
-    val light=MaterialTheme.colorScheme.background.red>.5f
+    val light=!(darkBackdrop ?: (MaterialTheme.colorScheme.background.red<.5f))
     Canvas(modifier.matchParentSize().onSizeChanged {widthPx=if(vertical)it.height else it.width}) {
         val logicalWidth=if(vertical)size.height else size.width
         val logicalHeight=if(vertical)size.width else size.height
         val shape=DockLiquidGeometry.shape(logicalWidth,logicalHeight,density,tabCount,location,
-            if(reduceMotion)location else tail) ?: return@Canvas
+            if(reduceMotion)location else tail,vertical=vertical) ?: return@Canvas
         val w=shape.width;val h=shape.height;val y=shape.centerY
         val x=shape.headX;val tx=shape.tailX
         fun body(center:Float)=Path().apply {

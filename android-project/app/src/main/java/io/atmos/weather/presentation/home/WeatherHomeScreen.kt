@@ -491,7 +491,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (demoCompleted) { delay(2500L); demoCompleted = false }
     }
     val ambientPlayback=NextWeatherAmbience(demoCondition ?: snapshot?.condition ?: if(soundPreviewActive)WeatherCondition.CLEAR else null, soundOn || demoRemaining>0 || soundPreviewActive,
-        if(demoRemaining>0||soundPreviewActive)soundVolume.coerceAtLeast(.65f) else soundVolume,
+        if(demoRemaining>0)soundVolume.coerceAtLeast(.65f) else soundVolume,
         if (demoCondition == WeatherCondition.THUNDERSTORM) 95 else if (demoCondition == WeatherCondition.RAIN) 61 else snapshot?.weatherCode,
         snapshot?.visibilityM, thunderCue + demoThunderCue,isNight=snapshot?.isDay==false,retryToken=soundRetryToken)
     var nativeRadarOpen by remember {mutableStateOf(false)}
@@ -576,7 +576,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val themedPage=mainPager.currentPage!=0||settingsOpen||settingsDetailOpen||lifestyleSettingsOpen||
             pushSettingsOpen||diagnosticsOpen||briefingOpen||tasksOpen||updatePageOpen||
             earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen
-        io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f || (!themedPage&&!tabletWindow))
+        io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f || !themedPage)
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
@@ -591,7 +591,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         TabletWorkspaceShell(selected=dockRequestedTab?:mainPager.targetPage,onSelect=::navigateWorkspace,
             onSearch={locationOpen=true},cities=state.savedCities,selectedCity=state.city,
             onCity={clearWorkspaceDetails();viewModel.onIntent(WeatherIntent.SelectCity(it));showMainTab(0)},
-            overview=snapshot?.let{"${it.temperatureC.toInt()}° · ${io.atmos.weather.domain.model.WeatherDescriptions.label(it.condition,it.weatherCode,it.visibilityM,it.isDay)}"}?:"正在更新天氣") {
+            overview=snapshot?.let{"${it.temperatureC.toInt()}° · ${io.atmos.weather.domain.model.WeatherDescriptions.label(it.condition,it.weatherCode,it.visibilityM,it.isDay)}"}?:"正在更新天氣",
+            background=if(themedPage)SolidColor(MaterialTheme.colorScheme.background) else Brush.verticalGradient(listOf(
+                Color(0x9807192C).compositeOver(blendTop),Color(0x4207192C).compositeOver(blendMid),Color(0x9B07192C).compositeOver(blendLow))),
+            darkBackdrop=if(themedPage)null else true) {
         val workspace=LocalWorkspaceLayout.current
         val detailInset=if(workspace.listDetail&&mainPager.currentPage in 2..3&&workspaceDetailTitle!=null)
             (if(appDensity.fontScale>1.25f)366.dp else 316.dp) else 0.dp
@@ -1322,6 +1325,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) { AppGlassNavigation(
             selected = dockRequestedTab ?: mainPager.targetPage,
             onSelect = ::navigateWorkspace,
+            darkBackdrop=if(themedPage)null else true,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp)) }
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },

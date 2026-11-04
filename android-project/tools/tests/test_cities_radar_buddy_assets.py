@@ -10,7 +10,7 @@ class CitiesRadarBuddy(unittest.TestCase):
   for r in rows:
    self.assertTrue(21.5<r['lat']<26.5 and 118<r['lon']<123);self.assertTrue(r['aliases'])
   self.assertTrue(any(s.get('license')=='CC BY 4.0' for s in j['sources']))
- def test_original_non_rain_loops_are_audible_and_closed(self):
+ def test_natural_non_rain_loops_are_audible_restrained_and_closed(self):
   m=json.loads((ASSETS/'next_weather/non_rain_ambience_manifest.json').read_text());self.assertEqual(4,len(m['assets']))
   self.assertFalse(m['human_listening_or_wake_efficacy_verified'])
   for a in m['assets']:
@@ -19,11 +19,13 @@ class CitiesRadarBuddy(unittest.TestCase):
     self.assertEqual((1,2,44100),(w.getnchannels(),w.getsampwidth(),w.getframerate()))
     data=array.array('h',w.readframes(w.getnframes()))
    rms=math.sqrt(sum(x*x for x in data)/len(data))/32768
-   self.assertTrue(.06<rms<.10);self.assertTrue(max(abs(x) for x in data)/32768<.71)
+   # The remaster deliberately lowers the former -22 dBFS bed to -27.5..-31.5.
+   self.assertTrue(.02<rms<.05);self.assertTrue(max(abs(x) for x in data)/32768<.30)
    self.assertEqual(data[0],data[-1]);self.assertLessEqual(abs((data[1]-data[0])-(data[-1]-data[-2])),1)
    # Midrange motion is present, rather than an almost inaudible low-frequency drone.
    derivative=math.sqrt(sum((b-a)**2 for a,b in zip(data,data[1:]))/(len(data)-1))/32768
-   self.assertGreater(derivative,.006)
+   self.assertGreater(derivative,.0008)
+   self.assertLess(derivative/rms,.55)
  def test_header_pull_refresh_and_shared_earthquake_dock_are_wired(self):
   h=(SRC/'presentation/home/WeatherHomeScreen.kt').read_text()
   header=h[h.index('Text("搜尋城市、鄉鎮或地點"')-800:h.index('Text("搜尋城市、鄉鎮或地點"')+300]

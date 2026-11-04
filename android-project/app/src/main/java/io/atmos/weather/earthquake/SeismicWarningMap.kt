@@ -51,6 +51,10 @@ internal object SeismicIntensityColors {
     val edge=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}}
     val labels=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)}}
     Column(modifier){
+        if(!historical&&values.isEmpty()){
+            Text("此速報未附縣市震度；灰色不代表無震。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+        }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){
             (if(historical)listOf("1","2","3","4","5","6","7") else SeismicAlertThreshold.grades).forEach{grade->Box(Modifier.clip(RoundedCornerShape(6.dp)).background(SeismicIntensityColors.color(grade)).padding(horizontal=7.dp,vertical=4.dp)){
                 Text(SeismicDisplayFormat.symbol(grade),fontSize=14.sp,color=if(grade in listOf("6強","7"))Color.White else Color(0xFF101B22))

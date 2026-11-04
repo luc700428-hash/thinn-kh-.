@@ -13,7 +13,7 @@ object WeatherAlarmSpeechCache {
     fun save(ctx:Context,w:WeatherSnapshot) {
         if(!w.temperatureC.isFinite() || w.fetchedAt.toEpochMilli()<=0 || w.observedAt.toEpochMilli()<=0) return
         val payload=JSONObject().apply {
-            put("city",w.city.name)
+            put("city",io.atmos.weather.location.LocationLabels.city(w.city).name)
             put("fetched",w.fetchedAt.toEpochMilli())
             put("observed",w.observedAt.toEpochMilli())
             put("condition",w.condition.name)
@@ -51,7 +51,7 @@ object WeatherAlarmSpeechCache {
         fun optNumber(key:String):Double?=if(j.isNull(key) || !j.has(key)) null else
             j.optDouble(key,Double.NaN).takeIf(Double::isFinite)
         AlarmWeatherReading(
-            city=j.optString("city"),fetchedEpochMs=j.optLong("fetched"),
+            city=io.atmos.weather.location.LocationLabels.clean(j.optString("city")),fetchedEpochMs=j.optLong("fetched"),
             observedEpochMs=j.optLong("observed"),condition=j.optString("condition"),
             temperatureC=j.optDouble("temperature",Double.NaN),
             feelsLikeC=optNumber("feels"),humidityPct=j.optInt("humidity",-1).takeIf{it in 0..100},

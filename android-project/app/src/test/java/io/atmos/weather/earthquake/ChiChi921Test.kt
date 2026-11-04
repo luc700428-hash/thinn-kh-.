@@ -24,7 +24,7 @@ class ChiChi921Test {
         assertNull(ChiChi921.estimate(SeismicPlace("無效",Double.NaN,121.0,"test")))
         val near=ChiChi921.estimate(SeismicPlace("南投縣",23.85,120.82,"test"))!!
         val far=ChiChi921.estimate(SeismicPlace("臺北市",25.04,121.54,"test"))!!
-        assertEquals("5弱以上",near.intensity)
+        assertEquals("4級以上",near.intensity)
         assertTrue(near.epicentralKm<far.epicentralKm)
         assertTrue(near.arrivalSeconds<far.arrivalSeconds)
         assertEquals("4",far.intensity)

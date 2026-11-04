@@ -55,7 +55,8 @@ object ExpTechRealtimeParser {
         }
         walk(root, 0)
         return candidates.mapNotNull { item ->
-            val eq = item.optJSONObject("eq") ?: item
+            val nestedEq = item.optJSONObject("eq")
+            val eq = nestedEq ?: item
             val id = firstString(item,"id","eventId","event_id","eewId") ?: return@mapNotNull null
             val timestamp = listOf(item.opt("timestamp"),item.opt("issueTime"),item.opt("reportTime"),item.opt("time"),
                 item.opt("updated"),eq.opt("time"),eq.opt("originTime")).firstNotNullOfOrNull { parseEpoch(it) } ?: return@mapNotNull null
@@ -63,6 +64,7 @@ object ExpTechRealtimeParser {
                 firstString(item,"type","status")?.contains("test",ignoreCase=true)==true
             val cancel = item.optInt("status",-1) in setOf(2,3) || firstBoolean(item,"cancel","cancelled","isCancel","isCancelled") ||
                 firstString(item,"status")?.let { it.contains("cancel",true) || it.contains("取消") } == true
+            val origin=listOf(eq.opt("originTime"),nestedEq?.opt("time"),item.opt("originTime")).firstNotNullOfOrNull(::parseEpoch)
             EewIncident(id=id,serial=item.optInt("serial",item.optInt("number",0)),
                 source=firstString(item,"author","source","provider") ?: "ExpTech EEW",
                 issuedAtMs=timestamp,
@@ -72,11 +74,21 @@ object ExpTechRealtimeParser {
                 cancelled=cancel,test=test,
                 urgent=item.optInt("status",-1)==1 || firstBoolean(item,"emergency","isEmergency") ||
                     firstString(item,"severity","priority")?.lowercase()?.let { it in setOf("urgent","critical","emergency") } == true,
-                originAtMs=listOf(eq.opt("originTime"),eq.opt("time"),item.opt("originTime")).firstNotNullOfOrNull(::parseEpoch),
+                // In the public nested schema eq.time is origin; top-level time is report issue.
+                // Flat payloads must explicitly name originTime. Never restart ETA from receipt/issue time.
+                originAtMs=origin,
                 localIntensityByCounty=countyIntensity(item,eq),arrivalAtMsByCounty=countyArrival(item,eq,timestamp),
-                maximumIntensity=SeismicWavePhysics.intensityLabel(firstString(item,"maximumIntensity","maxIntensity")),
+                maximumIntensity=SeismicWavePhysics.intensityLabel(firstString(item,"maximumIntensity","maxIntensity"))
+                    ?:nestedEq?.let{indexedMaximum(it,origin?:timestamp)},
                 expiresAtMs=parseEpoch(item.opt("expiresAtMillis")))
         }
+    }
+    private fun indexedMaximum(eq:JSONObject,origin:Long):String? {
+        // Public ExpTech EewInfo.max is a discrete 0..9 index, not a county intensity.
+        // Modern mapping is documented by the provider's shared/seismic/intensity.dart.
+        val raw=number(eq,"max")?.takeIf{it%1.0==0.0&&it in 0.0..9.0}?.toInt()?:return null
+        if(origin<1_577_808_000_000L)return when(raw){5->"5";6->"6";9->"7";in 0..4->raw.toString();else->null}
+        return (listOf("0")+SeismicAlertThreshold.grades)[raw]
     }
     private fun countyArrival(item:JSONObject,eq:JSONObject,issued:Long):Map<String,Long> {
         val data=item.optJSONObject("countyArrivalTimes")?:eq.optJSONObject("countyArrivalTimes")?:return emptyMap()

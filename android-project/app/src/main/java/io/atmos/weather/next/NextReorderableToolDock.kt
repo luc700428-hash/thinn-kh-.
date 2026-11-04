@@ -83,7 +83,8 @@ fun NextReorderableToolDock(
     reduceTransparency: Boolean = false,
     allowReorder: Boolean = false,
     vertical:Boolean = false,
-    fillAvailableHeight:Boolean = false
+    fillAvailableHeight:Boolean = false,
+    darkBackdrop:Boolean? = null
 ) {
     require(maxVisible >= 1) { "At least one dock item must be visible" }
     val actionIds = actions.map { it.id }
@@ -108,10 +109,10 @@ fun NextReorderableToolDock(
     var displayId by remember {mutableStateOf(selectedId)}
     LaunchedEffect(selectedId) {displayId=selectedId}
     val density = LocalDensity.current
-    val lightTheme=MaterialTheme.colorScheme.background.red > .5f
-    val activeInk=if(lightTheme) Color(0xFF0059B9) else Color(0xFF0A84FF)
+    val lightTheme=!(darkBackdrop ?: (MaterialTheme.colorScheme.background.red < .5f))
+    val activeInk=if(lightTheme) Color(0xFF0059B9) else Color(0xFF7DCEFF)
     val inactiveInk=if(lightTheme) Color(0xFF2C2C2E) else Color(0xFFEBEBF0)
-    val dockInsetPx = with(density) { 6.dp.toPx() }
+    val dockInsetPx = with(density) { (if(vertical)5.dp else 6.dp).toPx() }
     val currentIndex = visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)
     val geometry=DockScrubGeometry(dockWidthPx.toFloat(),dockInsetPx,visible.size.coerceAtLeast(1))
     val slotPx=geometry.slot
@@ -143,7 +144,7 @@ fun NextReorderableToolDock(
     NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
         cornerRadiusDp = 9999f, useBackdrop = true, touchX = if(vertical).5f else lightX, touchY=if(vertical)lightX else .08f,calm = true,
-        pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency) {
+        pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency,darkBackdrop=darkBackdrop) {
         Box((if(fillAvailableHeight)Modifier.fillMaxSize() else Modifier.fillMaxWidth())
             .onSizeChanged { dockWidthPx=if(vertical)it.height else it.width;dockHeightPx=it.height }
             .pointerInput(visible.map { it.id }, dockWidthPx,vertical) {
@@ -165,7 +166,7 @@ fun NextReorderableToolDock(
             AppleLiquidDockPaint(selectedIndex=lightIndex,tabCount=visible.size.coerceAtLeast(1),
                 dragging=scrubbing || draggingId != null,
                 dragOffsetPx=if(scrubbing) scrubX - (dockInsetPx+(lightIndex+.5f)*slotPx) else dockDragOffsetPx,
-                reduceMotion=reduceMotion,vertical=vertical)
+                reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop)
         DockAxisLayout(vertical,fillAvailableHeight) {
             visible.forEach { action ->
                 key(action.id) {

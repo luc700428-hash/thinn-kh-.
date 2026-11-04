@@ -20,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -60,7 +63,7 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
 /** One permanent content root, plus the same liquid dock on all four tablet edges. */
 @Composable internal fun TabletWorkspaceShell(selected:Int,onSelect:(Int)->Unit,onSearch:()->Unit,
     cities:List<WeatherCity>,selectedCity:WeatherCity,onCity:(WeatherCity)->Unit,
-    overview:String,content:@Composable ()->Unit) {
+    overview:String,background:Brush?=null,darkBackdrop:Boolean?=null,content:@Composable ()->Unit) {
     val posture=LocalDevicePosture.current?:DevicePosture(DeviceKind.PHONE)
     val preferred=rememberTabletDockPosition();val reduce=rememberAppleReduceMotion()
     val density=LocalDensity.current
@@ -105,7 +108,9 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
         val body=TabletDockGeometry.fit(if(paneChanged)target.content else contentMotion.value,pane)
         val dock=TabletDockGeometry.fit(if(paneChanged)target.dock else dockMotion.value,pane)
         val palette=MaterialTheme.colorScheme
-        Box(Modifier.fillMaxSize().then(if(layout.tablet)Modifier.background(palette.background)
+        val shellBrush=background?:SolidColor(palette.background)
+        val shellBackdrop=rememberThinnBackdrop()
+        Box(Modifier.fillMaxSize().then(if(layout.tablet)Modifier.background(shellBrush)
             .windowInsetsPadding(insets).imePadding() else Modifier)
             .onPreviewKeyEvent {event->
                 if(!layout.tablet||event.type!=KeyEventType.KeyDown)false
@@ -114,6 +119,9 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
                     Key.F->{onSearch();true};else->false
                 }}else false
             }.focusable()) {
+            if(layout.tablet)ThinnBackdropCapture(shellBackdrop,Modifier.matchParentSize()) {
+                Box(Modifier.matchParentSize().background(shellBrush))
+            }
             CompositionLocalProvider(LocalWorkspaceLayout provides layout) {
                 Box(Modifier.fillMaxSize().padding(start=body.left.dp,top=body.top.dp,
                     end=(width-body.right).coerceAtLeast(0f).dp,bottom=(height-body.bottom).coerceAtLeast(0f).dp)
@@ -121,13 +129,16 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
                 if(layout.tablet) {
                     layout.overview?.let {area->
                         Box(Modifier.offset(area.left.dp,area.top.dp).size(area.width.dp,area.height.dp)
-                            .background(palette.surfaceContainerLow)) {TabletWeatherOverview(selectedCity,overview,onSearch)}
+                            .background(if(darkBackdrop==true)Color.White.copy(alpha=.025f) else palette.surfaceContainerLow)) {
+                            TabletWeatherOverview(selectedCity,overview,onSearch,darkBackdrop==true)}
                     }
+                    CompositionLocalProvider(LocalThinnBackdrop provides shellBackdrop) {
                     AppGlassNavigation(selected,onSelect,
                         Modifier.offset(dock.left.dp,dock.top.dp).size(dock.width.dp,dock.height.dp)
                             .graphicsLayer{alpha=if(paneChanged)1f else opacity.value}
                             .semantics{contentDescription="主導覽 Dock · ${target.position.title}"}.testTag("tablet-navigation-dock"),
-                        vertical=if(paneChanged)target.position.vertical else renderedVertical,edgeSized=true)
+                        vertical=if(paneChanged)target.position.vertical else renderedVertical,edgeSized=true,darkBackdrop=darkBackdrop)
+                    }
                 }
             }
         }
@@ -135,20 +146,22 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
 }
 
 /** Folded panes keep useful weather context, without duplicating the four navigation tabs. */
-@Composable private fun TabletWeatherOverview(city:WeatherCity,overview:String,onSearch:()->Unit) {
+@Composable private fun TabletWeatherOverview(city:WeatherCity,overview:String,onSearch:()->Unit,dark:Boolean) {
     val p=MaterialTheme.colorScheme
+    val ink=if(dark)Color.White else p.onSurface
+    val accent=if(dark)Color(0xFF9ADFFF) else p.primary
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.Center) {
         Row(verticalAlignment=Alignment.CenterVertically) {
-            Icon(Icons.Rounded.CloudQueue,null,Modifier.size(30.dp),tint=p.primary)
-            AppText("thinn-khì",fontSize=23.sp,lineHeight=36.sp,fontWeight=FontWeight.Bold,color=p.onSurface,modifier=Modifier.padding(start=12.dp))
+            Icon(Icons.Rounded.CloudQueue,null,Modifier.size(30.dp),tint=accent)
+            AppText("thinn-khì",fontSize=23.sp,lineHeight=36.sp,fontWeight=FontWeight.Bold,color=ink,modifier=Modifier.padding(start=12.dp))
         }
         Spacer(Modifier.height(24.dp))
-        AppText(city.name,fontSize=22.sp,lineHeight=34.sp,fontWeight=FontWeight.SemiBold,color=p.onSurface)
-        AppText(overview,fontSize=34.sp,lineHeight=48.sp,color=p.onSurface)
+        AppText(io.atmos.weather.location.LocationLabels.clean(city.name),fontSize=22.sp,lineHeight=34.sp,fontWeight=FontWeight.SemiBold,color=ink)
+        AppText(overview,fontSize=34.sp,lineHeight=48.sp,color=ink)
         Spacer(Modifier.height(20.dp))
         Row(Modifier.heightIn(min=48.dp).iosJellyPress().clickable(onClick=onSearch).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Search,null,Modifier.size(22.dp),tint=p.primary)
-            AppText("搜尋城市",fontSize=16.sp,lineHeight=26.sp,color=p.primary,modifier=Modifier.padding(start=10.dp))
+            Icon(Icons.Rounded.Search,null,Modifier.size(22.dp),tint=accent)
+            AppText("搜尋城市",fontSize=16.sp,lineHeight=26.sp,color=accent,modifier=Modifier.padding(start=10.dp))
         }
     }
 }

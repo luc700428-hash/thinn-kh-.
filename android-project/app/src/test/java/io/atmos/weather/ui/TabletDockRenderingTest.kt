@@ -29,7 +29,7 @@ import org.robolectric.annotation.*
 abstract class TabletDockFixture:IPadFixture() {
     @Composable protected fun DockHost(selected:Int,onSelect:(Int)->Unit,content:@Composable ()->Unit) {
         CompositionLocalProvider(LocalDevicePosture provides DevicePosture(DeviceKind.TABLET)) {
-            TabletWorkspaceShell(selected,onSelect,{},SampleCities.all.take(2),SampleCities.all.first(),{},"24° · 小雨",content)
+            TabletWorkspaceShell(selected,onSelect,{},SampleCities.all.take(2),SampleCities.all.first(),{},"24° · 小雨",content=content)
         }
     }
     protected fun composeOwner(v:View):View?=if(v is RootForTest)v else if(v is ViewGroup)(0 until v.childCount).firstNotNullOfOrNull{composeOwner(v.getChildAt(it))} else null

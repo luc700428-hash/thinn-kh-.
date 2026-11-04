@@ -37,7 +37,7 @@ class SeismicForegroundRenderingTest:WeatherInformationRenderingFixture(){
                     val node=nodes(sheet).filter{text(it,label)}.minBy{it.boundsInRoot.top};assertFalse("Clipped $label at $scale",layout(node).hasVisualOverflow)
                     contrast(node,if(label in listOf("3 級","M 6.2","18 km"))p.surface else p.background)
                 }
-                assertTrue(nodes(sheet).any{text(it,"待來源提供")})
+                assertTrue(nodes(sheet).any{text(it,"本機 IASP91 模型估算")})
                 assertTrue(nodes(sheet).any{text(it,"花蓮縣近海")})
                 settle(sheet){nodes(sheet).any{text(it,"© 國土測繪中心 · 灰：未提供")}}
                 save(sheet,"live-eew-$dark-${(scale*100).toInt()}")

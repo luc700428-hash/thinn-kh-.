@@ -57,7 +57,7 @@ class WeatherBriefingWorker(context:Context,params:WorkerParameters):CoroutineWo
                 Intent(ctx,MainActivity::class.java).putExtra("open_briefing_settings",true)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            val title="${city.name} · ${summary.title}"
+            val title="${io.atmos.weather.location.LocationLabels.city(city).name} · ${summary.title}"
             val n=NotificationCompat.Builder(ctx,ThinnNotificationChannels.channelId(ctx,ThinnNotificationChannels.Type.BRIEFINGS))
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(title).setContentText(summary.subtitle)

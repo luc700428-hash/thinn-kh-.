@@ -17,9 +17,12 @@ object SeismicSpeech {
     fun setEnabled(ctx:Context,key:String,value:Boolean) {
         ctx.getSharedPreferences("thinn_seismic_v15",Context.MODE_PRIVATE).edit().putBoolean(key,value).apply()
     }
-    fun warning(incident:EewIncident,place:SeismicPlace?):String =
-        SeismicWarningNarration.build(
-            incident.epicenter,incident.magnitude,incident.localIntensityByCounty,place?.name,incident.depthKm)
+    fun warning(incident:EewIncident,place:SeismicPlace?):String {
+        val local=SeismicLocalPrediction.resolve(incident,place)
+        return SeismicWarningNarration.build(
+            incident.epicenter,incident.magnitude,incident.localIntensityByCounty,place?.name,incident.depthKm,
+            modeledLocal=local.intensity.takeIf{local.intensityOrigin==PredictionOrigin.LOCAL_MODEL})
+    }
     fun replay(report:EarthquakeReport, incident:EewIncident):String {
         val magnitude=incident.magnitude ?: report.magnitude
         return "歷史地震回放，這不是現在發生的地震，也不是即時預警。" +

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "birds",
+    "author": "Magnesus",
+    "source_page": "https://freesound.org/people/Magnesus/sounds/723913/",
+    "download_url": "https://cdn.freesound.org/previews/723/723913_2008500-lq.mp3",
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_format": "Public MP3 preview of the CC0 field recording; not the original lossless WAV",
+    "sha256": "daca5077c4f6ba256b1762822bada3bb01da522fada6a3e0965ba7a15f84e0b4",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "id": "leaves",
+    "author": "Mjeno",
+    "source_page": "https://freesound.org/people/Mjeno/sounds/405134/",
+    "download_url": "https://cdn.freesound.org/previews/405/405134_3958938-lq.mp3",
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_format": "Public MP3 preview of the CC0 field recording; not the original lossless WAV",
+    "sha256": "67853a49b419c54807acbee6a5cf9fa652c398c0b549ad058a3fb11524c7010e",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "id": "night",
+    "author": "Defelozedd94",
+    "source_page": "https://freesound.org/people/Defelozedd94/sounds/522298/",
+    "download_url": "https://cdn.freesound.org/previews/522/522298_9084007-lq.mp3",
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_format": "Public MP3 preview of the CC0 field recording; not the original lossless WAV",
+    "sha256": "35caa4fb2088d38dd751de7e5beb05ab289ecd49738b21ec744887befc11cc67",
+    "retrieved": "2026-10-31"
+  }
+]

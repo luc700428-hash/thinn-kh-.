@@ -18,7 +18,8 @@ class SeismicR6Tests(unittest.TestCase):
         self.assertIn('allFromProvider',source)
         self.assertNotIn('epicentralKm(',source)
         ui=src('earthquake/SeismicWarningOverlay.kt')
-        self.assertIn('待來源提供',ui)
+        self.assertIn('prediction.intensityReason',ui)
+        self.assertIn('待來源提供',src('earthquake/SeismicLocalPrediction.kt'))
     def test_map_p_s_is_not_a_fake_countdown(self):
         ui=src('earthquake/SeismicWarningOverlay.kt')
         map_ui=src('earthquake/SeismicWarningMap.kt')

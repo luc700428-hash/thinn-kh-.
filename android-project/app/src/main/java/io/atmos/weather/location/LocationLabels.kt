@@ -4,15 +4,15 @@ import io.atmos.weather.domain.model.GeoPoint
 
 /** Presentation policy: always use「台灣」, never the spurious province suffix. */
 object LocationLabels {
-    private val unwanted = Regex("(?i)(Taiwan\\s*,?\\s*Province\\s*of\\s*China|Taiwan Province|Province of Taiwan|Taiwan, China|臺灣省|台灣省|台湾省)")
-    private val taiwanNames = setOf("TW", "Taiwan", "台灣", "臺灣", "台湾", "Taiwan, Province of China")
+    private val unwanted = Regex("(?i)(Taiwan\\s*[,，(（]?\\s*(?:(?:Province|Republic)\\s*(?:of\\s*)?)?China(?:\\s*[)）])?|China\\s*[,，/-]?\\s*Taiwan|Chinese\\s+Taipei|Taiwan\\s+Province|Province\\s+of\\s+Taiwan|中[國国]\\s*[,，·/（(-]?\\s*台[灣湾](?:省)?(?:\\s*[)）])?|台[灣湾]\\s*[,，(（]\\s*中[國国](?:\\s*[)）])?|中[華华]\\s*[台臺]北|台[灣湾]省|\\bTaiwan\\b)")
     fun isTaiwan(countryCode: String?, countryName: String?): Boolean =
-        countryCode.equals("TW", ignoreCase = true) || countryName?.trim() in taiwanNames ||
-            countryName?.contains("Taiwan", ignoreCase = true) == true ||
-            countryName?.contains("台灣") == true || countryName?.contains("臺灣") == true
+        countryCode?.uppercase(java.util.Locale.ROOT) in setOf("TW","TWN","TPE") ||
+            countryName?.trim()?.uppercase(java.util.Locale.ROOT) in setOf("TW","TWN","TPE") ||
+            countryName?.let(::clean)?.contains("台灣") == true
 
-    fun clean(raw: String): String = unwanted.replace(raw, "台灣")
-        .replace("臺灣", "台灣")
+    fun clean(raw: String): String = unwanted.replace(raw.replace("臺灣","台灣").replace('\u3000',' '), "台灣")
+        .replace("台湾", "台灣")
+        .replace(Regex("台灣\\s*[(（]\\s*台灣\\s*[)）]"),"台灣")
         .replace(Regex("台灣(?:\\s*[,·/-]\\s*台灣)+"), "台灣")
         .trim(' ', ',', '·', '-', '/')
 

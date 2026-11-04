@@ -8,21 +8,22 @@ import io.atmos.weather.domain.visual.sceneFor
 data class WidgetTarget(val city:WeatherCity,val revision:Long)
 object WidgetSnapshotStore {
     @Synchronized fun select(context:Context,city:WeatherCity):WidgetTarget {
+        val label=io.atmos.weather.location.LocationLabels.city(city)
         val prefs=context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE)
         val current=readTarget(context)
         if(current!=null&&current.city.id==city.id&&current.city.coordinate==city.coordinate)return current
         val revision=(prefs.getLong("widget_target_revision",0)+1).coerceAtLeast(1)
-        prefs.edit().putString("widget_target_id",city.id).putString("widget_target_name",city.name)
+        prefs.edit().putString("widget_target_id",city.id).putString("widget_target_name",label.name)
             .putLong("widget_target_lat",city.coordinate.latitude.toBits()).putLong("widget_target_lon",city.coordinate.longitude.toBits())
-            .putLong("widget_target_revision",revision).putString("widget_city",city.name)
+            .putLong("widget_target_revision",revision).putString("widget_city",label.name)
             .remove("widget_time").remove("widget_city_id").apply()
-        return WidgetTarget(city,revision)
+        return WidgetTarget(label,revision)
     }
     private fun readTarget(context:Context):WidgetTarget? {
         val p=context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE)
         val id=p.getString("widget_target_id",null)?:return null
-        return WidgetTarget(WeatherCity(id,p.getString("widget_target_name","目前位置")?:"目前位置",
-            GeoPoint(Double.fromBits(p.getLong("widget_target_lat",0)),Double.fromBits(p.getLong("widget_target_lon",0)))),p.getLong("widget_target_revision",1))
+        return WidgetTarget(io.atmos.weather.location.LocationLabels.city(WeatherCity(id,p.getString("widget_target_name","目前位置")?:"目前位置",
+            GeoPoint(Double.fromBits(p.getLong("widget_target_lat",0)),Double.fromBits(p.getLong("widget_target_lon",0))))),p.getLong("widget_target_revision",1))
     }
     @Synchronized fun target(context:Context):WidgetTarget {
         readTarget(context)?.let{return it}
@@ -50,7 +51,7 @@ object WidgetSnapshotStore {
             put("day",if(rise!=null&&set!=null&&rise<set)local>=rise&&local<set else weather.isDay)
         })}}
         context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE).edit()
-            .putString("widget_city",weather.city.name)
+            .putString("widget_city",io.atmos.weather.location.LocationLabels.city(weather.city).name)
             .putString("widget_city_id",weather.city.id)
             .putInt("widget_temp",weather.temperatureC.toInt())
             .putString("widget_condition",weather.condition.name)

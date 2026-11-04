@@ -40,4 +40,18 @@ class DockLiquidGeometryTest {
         assertNull(DockLiquidGeometry.shape(360f,68f,1f,0,0f,0f))
         assertNull(DockLiquidGeometry.shape(360f,68f,1f,4,Float.NaN,0f))
     }
+    @Test fun tabletLensesUseTheFullCellAtEveryDensityAndOrientation() {
+        for(density in listOf(1f,2.75f))for(vertical in listOf(false,true))for(size in listOf(320f to 76f,560f to 90f,360f to 110f)) {
+            val (axis,cross)=size
+            val inset=if(vertical)5f else 6f
+            val slot=(axis-2*inset)/4
+            for(index in 0..3) {
+                val g=DockLiquidGeometry.shape(axis*density,cross*density,density,4,index.toFloat(),index.toFloat(),vertical)!!
+                assertEquals((inset+(index+.5f)*slot)*density,g.headX,.001f)
+                assertEquals((slot-4f)*density,g.width,.001f)
+                assertEquals((cross-12f)*density,g.height,.001f)
+                assertEquals(g.headX,g.tailX,0f)
+            }
+        }
+    }
 }

@@ -1,0 +1,4 @@
+Public historical interoperability fixture, not a live event.
+Fetched 2026-11-04 from https://api.core-tyo1.exptech.dev/api/v2/eq/eew/1793521249
+Official incident id 1150080; report 4. No personal location data.
+Tests use an explicitly injected historical clock; NEVER submit this fixture to a live notification service.

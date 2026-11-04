@@ -22,7 +22,7 @@ object ChiChi921 {
      * Taiwan EEW empirical PGA relation (cm/s²), site factor fixed to 1.
      * Coefficients: MOI Architecture and Building Research Institute 2023 report, p.136;
      * no site/rupture model.
-     * At PGA >=80 gal, PGV is unavailable, so modern 5/6 subdivisions cannot be inferred.
+     * At PGA >=80 gal, PGV is unavailable; the new scale can still yield 4, not necessarily 5−.
      */
     fun estimate(place:SeismicPlace?):LocalEstimate? {
         place?:return null
@@ -30,7 +30,7 @@ object ChiChi921 {
         val distance=SeismicWavePhysics.epicentralKm(place.lat,place.lon,23.85,120.82)
         val r=hypot(distance,8.0)
         val pga=1.657*exp(1.533*7.3)*r.pow(-1.607)
-        val grade=when {pga<.8->"0";pga<2.5->"1";pga<8->"2";pga<25->"3";pga<80->"4";else->"5弱以上"}
+        val grade=when {pga<.8->"0";pga<2.5->"1";pga<8->"2";pga<25->"3";pga<80->"4";else->"4級以上"}
         return LocalEstimate(grade,distance,r/3.5)
     }
     fun trainingNarration(incident:EewIncident,place:SeismicPlace?):String {

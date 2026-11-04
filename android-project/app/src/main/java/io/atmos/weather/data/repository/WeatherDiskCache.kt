@@ -12,7 +12,7 @@ class WeatherDiskCache(context: Context) {
     private val prefs = context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
 
     fun save(value: WeatherSnapshot) {
-        val city = value.city
+        val city = io.atmos.weather.location.LocationLabels.city(value.city)
         val json = JSONObject().apply {
             put("city", city.name)
             put("lat", city.coordinate.latitude)
@@ -70,7 +70,7 @@ class WeatherDiskCache(context: Context) {
         val o = JSONObject(raw)
         val hours = o.optJSONArray("hourly") ?: JSONArray()
         WeatherSnapshot(
-            city = city,
+            city = io.atmos.weather.location.LocationLabels.city(city),
             observedAt = Instant.ofEpochMilli(o.getLong("observed")),
             fetchedAt = Instant.ofEpochMilli(o.getLong("fetched")),
             sourceId = o.optString("source", "open-meteo"),

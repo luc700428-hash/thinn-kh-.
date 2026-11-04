@@ -27,7 +27,7 @@ object SavedCityStore {
     fun add(context: Context,city: WeatherCity): List<WeatherCity> {
         if(city.id=="gps") return all(context)
         val others=all(context).filterNot { it.id==city.id }
-        val saved=(listOf(city)+others).take(30)
+        val saved=(listOf(LocationLabels.city(city))+others).take(30)
         save(context,saved)
         return saved
     }

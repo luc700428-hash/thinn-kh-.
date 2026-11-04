@@ -1,0 +1,339 @@
+{
+  "schema": 1,
+  "description": "Natural field-recording soundscapes, 24 s crossfaded loops; no musical notes or generated animal calls.",
+  "human_listening_or_wake_efficacy_verified": false,
+  "source_recordings": [
+    {
+      "id": "birds",
+      "author": "Magnesus",
+      "source_page": "https://freesound.org/people/Magnesus/sounds/723913/",
+      "download_url": "https://cdn.freesound.org/previews/723/723913_2008500-lq.mp3",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source_format": "Public MP3 preview of the CC0 field recording; not the original lossless WAV",
+      "sha256": "daca5077c4f6ba256b1762822bada3bb01da522fada6a3e0965ba7a15f84e0b4",
+      "retrieved": "2026-10-31"
+    },
+    {
+      "id": "leaves",
+      "author": "Mjeno",
+      "source_page": "https://freesound.org/people/Mjeno/sounds/405134/",
+      "download_url": "https://cdn.freesound.org/previews/405/405134_3958938-lq.mp3",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source_format": "Public MP3 preview of the CC0 field recording; not the original lossless WAV",
+      "sha256": "67853a49b419c54807acbee6a5cf9fa652c398c0b549ad058a3fb11524c7010e",
+      "retrieved": "2026-10-31"
+    },
+    {
+      "id": "night",
+      "author": "Defelozedd94",
+      "source_page": "https://freesound.org/people/Defelozedd94/sounds/522298/",
+      "download_url": "https://cdn.freesound.org/previews/522/522298_9084007-lq.mp3",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source_format": "Public MP3 preview of the CC0 field recording; not the original lossless WAV",
+      "sha256": "35caa4fb2088d38dd751de7e5beb05ab289ecd49738b21ec744887befc11cc67",
+      "retrieved": "2026-10-31"
+    }
+  ],
+  "assets": [
+    {
+      "path": "next_weather/ambience/sunny.wav",
+      "scene": "sunny",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "birds",
+        "leaves"
+      ],
+      "sha256": "a657166909d998676e43419ceac0639049065ded293be32d9dc3e7f7fb4b370c",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -27.5,
+      "peak_dbfs": -14.102,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/clear_night.wav",
+      "scene": "clear_night",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves",
+        "night"
+      ],
+      "sha256": "78969bcd307da2e62f9e97e5caebe39822aff056a1e93563ae9836bfb5b5bb02",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.0,
+      "peak_dbfs": -17.64,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/cloudy_day.wav",
+      "scene": "cloudy_day",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "birds",
+        "leaves"
+      ],
+      "sha256": "2a5dae42f6e213ff96027c0cbd188d5aaf12728c9537c4b1a59e6587c0c28e6e",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -29.0,
+      "peak_dbfs": -15.611,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/cloudy_night.wav",
+      "scene": "cloudy_night",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves",
+        "night"
+      ],
+      "sha256": "ff14a4c059eb5fa307384f7d1815d47369e3de93b233cf74dba025b3201a9126",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.499,
+      "peak_dbfs": -18.117,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/drizzle.wav",
+      "scene": "drizzle",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves",
+        "rain"
+      ],
+      "sha256": "cc1c17a3cbedd57670328090a851785ae82b88d6bfbbe998810a7eff8b7e1d68",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -30.0,
+      "peak_dbfs": -16.567,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/light_rain.wav",
+      "scene": "light_rain",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "rain"
+      ],
+      "sha256": "0c7aaec629c7acb6361a2e3489662521df74fb3d6be1ea263b9e687713135d6c",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -28.501,
+      "peak_dbfs": -15.055,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/moderate_rain.wav",
+      "scene": "moderate_rain",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "downpour",
+        "rain"
+      ],
+      "sha256": "4be0f9d074ce50cd4cf34cb14e84f6eac61bc91b5d01feb0abd1bf1b149b1253",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -27.0,
+      "peak_dbfs": -13.547,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/heavy_rain.wav",
+      "scene": "heavy_rain",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "downpour"
+      ],
+      "sha256": "fbafe29a24340ee88980f64ea98eaf01f675dcb7881f31f3444b72309956714e",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -25.5,
+      "peak_dbfs": -12.533,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/thunderstorm.wav",
+      "scene": "thunderstorm",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "downpour",
+        "leaves"
+      ],
+      "sha256": "f559989e85fc01b5f44a2ec82f1c92c149712bd9feec3ed0a128d20b97e3f3f7",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -26.0,
+      "peak_dbfs": -12.823,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/severe_thunderstorm.wav",
+      "scene": "severe_thunderstorm",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "downpour",
+        "leaves"
+      ],
+      "sha256": "b8303b433654713a68f356bdbc0ec6d5c003a9dda964b83eabec82e82c098423",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -25.0,
+      "peak_dbfs": -11.847,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/haze.wav",
+      "scene": "haze",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves"
+      ],
+      "sha256": "7640b1f2407952c0a6768ce795d2aa9e8a6a63fc66e2a21e347c620200f49906",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -30.0,
+      "peak_dbfs": -16.623,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/fog.wav",
+      "scene": "fog",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves"
+      ],
+      "sha256": "d28c8c6e335516824fa35702b61a97a783efbc54faa9f810386ad6991b15032c",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -30.999,
+      "peak_dbfs": -17.601,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/dense_fog.wav",
+      "scene": "dense_fog",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves"
+      ],
+      "sha256": "eaaa6fc581a31ff76402a03e730679e15de42c02e23928de69980a11b5ff7ef1",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -32.0,
+      "peak_dbfs": -18.616,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/dust_storm.wav",
+      "scene": "dust_storm",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves"
+      ],
+      "sha256": "5f13c2c2851e235cbc58698c660e9b89be399c218c8840c4d431556ed007220c",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -28.0,
+      "peak_dbfs": -14.627,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/light_snow.wav",
+      "scene": "light_snow",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves"
+      ],
+      "sha256": "713bde5387e75cd6884317de774f1788081539dcd37b1948e5d7b18c06f54224",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.0,
+      "peak_dbfs": -17.638,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/moderate_snow.wav",
+      "scene": "moderate_snow",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves"
+      ],
+      "sha256": "e2cd055f247ab84455c6f6976c3f8f00ebfad228cc020ae984eb008f4ccf2c93",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -30.0,
+      "peak_dbfs": -16.63,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/heavy_snow.wav",
+      "scene": "heavy_snow",
+      "category": "ambience",
+      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "sources": [
+        "leaves"
+      ],
+      "sha256": "e32531db14809d8341e15cbcfc2539fa58df826d5155180541738b861ae84610",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -29.0,
+      "peak_dbfs": -15.594,
+      "loop_jump_pcm": 0
+    }
+  ]
+}

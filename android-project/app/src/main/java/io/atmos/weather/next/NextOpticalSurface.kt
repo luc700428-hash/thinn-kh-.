@@ -36,11 +36,12 @@ fun NextOpticalSurface(
     useBackdrop: Boolean = false,
     calm: Boolean = false,
     touchY:Float=.08f,
+    darkBackdrop:Boolean?=null,
     content: @Composable () -> Unit
 ) {
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
     val shape = RoundedCornerShape(cornerRadiusDp.dp)
-    val lightTheme=MaterialTheme.colorScheme.background.red > .5f
+    val lightTheme=!(darkBackdrop ?: (MaterialTheme.colorScheme.background.red < .5f))
     val ctx=LocalContext.current
     val reducedMotion=ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
         .getBoolean("reduce_motion",false)
@@ -52,7 +53,8 @@ fun NextOpticalSurface(
         t
     }
     val x = NextMotionTokens.clampedTouchX(touchX)
-    val glassTint=(.62f-.30f*appearance.glassOpacity.coerceIn(0f,1f))
+    val glassTint=if(calm)(if(lightTheme).22f else .38f)-.12f*appearance.glassOpacity.coerceIn(0f,1f)
+        else (.62f-.30f*appearance.glassOpacity.coerceIn(0f,1f))
     val background = if (reduceTransparency) {
         if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF1C1C1E),Color(0xFF1C1C1E)))
     } else if(lightTheme) {
@@ -62,7 +64,7 @@ fun NextOpticalSurface(
         Brush.verticalGradient(listOf(Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint)))
     }
     Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x).background(background)
-        .thinnSpecularEdge(cornerRadiusDp.dp).drawWithContent {
+        .then(if(calm)Modifier else Modifier.thinnSpecularEdge(cornerRadiusDp.dp)).drawWithContent {
         val w = size.width
         val h = size.height
         // A small, localized lens flare on touch; never blanket-flood content.
@@ -84,8 +86,8 @@ fun NextOpticalSurface(
         drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = if (pressed) .72f else .42f),
-                    Color.White.copy(alpha = .13f),
+                    Color.White.copy(alpha = if(calm) {if(pressed).22f else .12f} else if (pressed) .72f else .42f),
+                    Color.White.copy(alpha = if(calm).03f else .13f),
                     Color.White.copy(alpha = if(calm) 0f else if(lightTheme) .56f else .24f)
                 ), start = Offset(0f, 0f), end = Offset(w, h)
             ),

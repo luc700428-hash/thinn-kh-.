@@ -256,7 +256,8 @@ class TabletSeismicWarningRenderingTest:TabletRenderingFixture() {
                 val heading=nodes(sheet).single{text(it,"臺灣 921 大地震演練")}
                 val warning=nodes(sheet).single{text(it,"收到地震速報 · 慎防強烈搖晃")}
                 visible(heading.boundsInRoot);assertFalse(layout(heading).hasVisualOverflow)
-                if(w>=840){visible(warning.boundsInRoot);assertTrue(warning.boundsInRoot.left>w/3)}
+                // Critical text now precedes the map, including the first pane on a tablet.
+                if(w>=840){visible(warning.boundsInRoot);assertTrue(warning.boundsInRoot.left<w/2)}
                 val close=nodes(sheet).single{text(it,"結束模擬演練")&&it.config.contains(SemanticsActions.OnClick)}
                 visible(close.boundsInRoot)
                 save(sheet,"tablet-eew-${w}x$h")

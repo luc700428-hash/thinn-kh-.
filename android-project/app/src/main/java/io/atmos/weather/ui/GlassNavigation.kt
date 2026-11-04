@@ -110,7 +110,7 @@ private val navTabs=listOf(
 )
 
 @Composable
-fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier,vertical:Boolean=false,edgeSized:Boolean=false) {
+fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier,vertical:Boolean=false,edgeSized:Boolean=false,darkBackdrop:Boolean?=null) {
     // NEXT navigation remains aligned to the existing four main Pager pages.
     // Fixed canonical destinations; migrate away from the old saved ordering.
     val context=LocalContext.current
@@ -136,7 +136,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         },
         onOrderChanged={ _ -> /* Main tabs have a fixed canonical order. */ },
         maxVisible=4,
-        allowReorder=false,vertical=vertical,fillAvailableHeight=edgeSized,
+        allowReorder=false,vertical=vertical,fillAvailableHeight=edgeSized,darkBackdrop=darkBackdrop,
         reduceMotion=rememberAppleReduceMotion(),
         reduceTransparency=rememberAppleReduceTransparency(),
         modifier=if(edgeSized)modifier else modifier.widthIn(max=560.dp).fillMaxWidth().padding(horizontal=24.dp).height(maxOf(68f,44f+24f*androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
@@ -216,11 +216,15 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     var accessibilityOpen by rememberSaveable {mutableStateOf(false)}
     var surfacesOpen by rememberSaveable {mutableStateOf(false)}
     var dockOpen by rememberSaveable {mutableStateOf(false)}
+    val dockDevice=LocalDevicePosture.current?.kind
+    val showDockPosition=dockDevice==DeviceKind.TABLET||dockDevice==DeviceKind.FOLDABLE||
+        (dockDevice==null&&LocalWorkspaceLayout.current.tablet)
+    LaunchedEffect(showDockPosition){if(!showDockPosition)dockOpen=false}
     val dockPosition=rememberTabletDockPosition()
     var lastDetail by rememberSaveable {mutableStateOf("appearance")}
     val settingsScroll=rememberScrollState()
     val currentAutomatic=rememberBooleanSetting("check_updates_automatically",automaticUpdates)
-    val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen || dockOpen
+    val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen || (dockOpen&&showDockPosition)
     SideEffect {onDetailVisibility(detailsVisible)}
     DisposableEffect(Unit) {onDispose {onDetailVisibility(false)}}
     androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false}
@@ -297,8 +301,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             }
             Spacer(Modifier.height(20.dp))
             val categories=listOf(
-                "外觀與操作" to listOf(
-                    SettingsEntry("平板 Dock 位置",SettingsSymbols.controls,Color(0xFF007AFF),{lastDetail="dock";dockOpen=true}),
+                "外觀與操作" to listOfNotNull(
+                    if(showDockPosition)SettingsEntry("平板 Dock 位置",SettingsSymbols.controls,Color(0xFF007AFF),{lastDetail="dock";dockOpen=true}) else null,
                     SettingsEntry("外觀與亮度",SettingsSymbols.display,Color(0xFF007AFF),{lastDetail="appearance";appearanceOpen=true}),
                     SettingsEntry("字體與閱讀",SettingsSymbols.general,Color(0xFF8E8E93),{onAdvancedCategory("外觀")}),
                     SettingsEntry("聲音與觸覺",SettingsSymbols.wallpaper,Color(0xFF32ADE6),{onAdvancedCategory("聲音")}),

@@ -20,7 +20,9 @@ object SeismicWavePhysics {
         return 6371.0*2*atan2(sqrt(a),sqrt(max(0.0,1.0-a)))
     }
     fun intensityLabel(raw:String?):String? {
-        val trimmed=raw?.replace("級","")?.trim() ?: return null
+        val trimmed=raw?.replace("級","")?.trim()?.let {
+            when(it){"5-","5−"->"5弱";"5+"->"5強";"6-","6−"->"6弱";"6+"->"6強";else->it}
+        } ?: return null
         return trimmed.takeIf { it in setOf("0","1","2","3","4","5弱","5強","6弱","6強","7") }
     }
 }
