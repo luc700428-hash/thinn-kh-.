@@ -28,7 +28,7 @@ class NaturalVoiceRegression(unittest.TestCase):
         for path in ('earthquake/SeismicAlertNotifier.kt','earthquake/SeismicWarningOverlay.kt'):
             text=code(path)
             self.assertIn('SeismicContinuousWarning.start(',text)
-            self.assertIn('SeismicSpeech.speak(',text)
+            self.assertIn('SeismicSpeech.speakWarning(',text)
             self.assertNotIn('resolveAudio(',text)
     def test_alarm_fallback_and_fullscreen_remain(self):
         service=code('alarm/WeatherAlarmAudioService.kt')

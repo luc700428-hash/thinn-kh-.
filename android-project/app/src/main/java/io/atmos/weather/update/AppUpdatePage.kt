@@ -215,7 +215,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
                     .padding(horizontal=16.dp)) {
                     Spacer(Modifier.height(14.dp))
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(palette.surface)) {
-                        ApplePullDownMenu(label="自動更新",choices=listOf("開啟","關閉"),
+                        ApplePullDownMenu(label="檢查新版本通知",choices=listOf("開啟","關閉"),
                             selected=if(automatic)"開啟" else "關閉",onChoose={choice ->
                                 automatic=choice=="開啟"
                                 prefs.edit().putBoolean("check_updates_automatically",automatic).apply()

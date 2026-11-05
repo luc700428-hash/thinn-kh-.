@@ -20,7 +20,9 @@ class TaiwanVectorAtlas private constructor(private val levels:List<Level>) {
     private val land=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=0xff284c52.toInt();style=Paint.Style.FILL }
     private val edge=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=0xff80b5b5.toInt();style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}
 
-    fun draw(scope:DrawScope,project:(Double,Double)->Offset) {
+    fun draw(scope:DrawScope,dark:Boolean=true,project:(Double,Double)->Offset) {
+        land.color=if(dark)0xff284c52.toInt() else 0xffb4d8d1.toInt()
+        edge.color=if(dark)0xff80b5b5.toInt() else 0xff476e70.toInt()
         val origin=project(118.0,30.0)
         val unit=project(119.0,29.0)
         val sx=unit.x-origin.x;val sy=unit.y-origin.y

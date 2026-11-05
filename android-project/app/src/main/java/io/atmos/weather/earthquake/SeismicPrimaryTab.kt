@@ -3,6 +3,7 @@ package io.atmos.weather.earthquake
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.unit.dp
 
 /** 第二個主分頁：直接打開地震監測地圖，不需要從天氣頁頂部按鈕進入。 */
@@ -13,17 +14,25 @@ fun SeismicPrimaryTab(onExit:()->Unit) {
     var reports by remember { mutableStateOf<List<EarthquakeReport>>(emptyList()) }
     var settingsOpen by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
     var reportSource by remember { mutableStateOf("中央氣象署官方報告") }
     fun refresh() {
+        if(loading)return
+        loading=true
         scope.launch {
-            val official = runCatching { CwaEarthquakeRepository.latest(ctx) }.getOrNull()
-            if(!official.isNullOrEmpty()) {
-                reports=official;reportSource="中央氣象署官方震後報告";error=null
-            } else {
-                runCatching { ExpTechPublicEarthquakeReports.latest() }
-                    .onSuccess { reports=it;reportSource="ExpTech 第三方彙整報告";error=null }
-                    .onFailure { error="地震報告暫不可用：${it.message.orEmpty()}" }
-            }
+            try {
+                val official=try { CwaEarthquakeRepository.latest(ctx) }
+                    catch(cancel:CancellationException){throw cancel}
+                    catch(_:Exception){null}
+                if(!official.isNullOrEmpty()) {
+                    reports=official;reportSource="中央氣象署官方震後報告";error=null
+                } else {
+                    reports=ExpTechPublicEarthquakeReports.latest()
+                    reportSource="ExpTech 第三方彙整報告";error=null
+                }
+            } catch(cancel:CancellationException){throw cancel}
+            catch(_:Exception){error="地震報告暫時無法更新，請稍後重試"}
+            finally {loading=false}
         }
     }
     LaunchedEffect(Unit) {
@@ -35,11 +44,11 @@ fun SeismicPrimaryTab(onExit:()->Unit) {
         }
     }
     io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=1280.dp) {
-    if(settingsOpen) EarthquakeSettingsPage(onClose={settingsOpen=false})
-    else SeismicLiveMapPage(
+    SeismicLiveMapPage(
         onClose=onExit,
         onSettings={settingsOpen=true},
-        reports=reports, reportSource=reportSource,
+        reports=reports, reportSource=reportSource,reportsLoading=loading,reportError=error,
         onRefreshReports={refresh()})
+    if(settingsOpen) EarthquakeSettingsPage(onClose={settingsOpen=false})
     }
 }

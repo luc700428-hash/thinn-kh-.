@@ -8,8 +8,8 @@ import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 
-/** A foreground-only, event-bounded attention tone. Respects alert settings,
- * silent/DND and stops on dialog dismissal. Notification sounds are separate.
+/** Event-bounded attention tone; critical mode uses the permitted alarm route.
+ * Global ringer, volume and DND settings remain under system/user control.
  */
 object SeismicContinuousWarning {
     private val main=Handler(Looper.getMainLooper())
@@ -20,18 +20,16 @@ object SeismicContinuousWarning {
         val key="${incident.id}:${incident.serial}"
         if(eventKey==key && player?.isPlaying==true) return
         stop()
+        if(!ExpTechRealtimeParser.isFresh(incident)||incident.test||incident.cancelled)return
         if(!SeismicAlertPolicy.alertEnabled(ctx,scenario) || !SeismicAlertThreshold.accepts(ctx,incident) ||
             !io.atmos.weather.permission.PermissionGuide.canNotify(ctx) || !SeismicAlertPolicy.soundEnabled(ctx,scenario)) return
-        val audio=ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val notifications=ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         SeismicAlertPolicy.ensureChannels(ctx)
         val channel=notifications.getNotificationChannel(SeismicAlertPolicy.channelId(ctx,scenario))
         if(channel?.importance==NotificationManager.IMPORTANCE_NONE || channel?.sound==null)return
-        if(audio.ringerMode!=AudioManager.RINGER_MODE_NORMAL ||
-            notifications.currentInterruptionFilter!=NotificationManager.INTERRUPTION_FILTER_ALL) return
-        if(audio.getStreamVolume(AudioManager.STREAM_NOTIFICATION)==0)return
+        val route=SeismicCriticalMode.route(ctx,scenario)?:return
         runCatching {
-            val attributes=AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+            val attributes=AudioAttributes.Builder().setUsage(route.usage)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
             player=MediaPlayer.create(ctx.applicationContext,scenario.sound,attributes,AudioManager.AUDIO_SESSION_ID_GENERATE)?.apply {
                 isLooping=true

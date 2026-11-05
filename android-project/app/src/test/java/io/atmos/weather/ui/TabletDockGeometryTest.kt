@@ -5,6 +5,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TabletDockGeometryTest {
+    @Test fun floatingCapsuleFitsFourCellsInsteadOfGrowingWithTheWindow() {
+        for(scale in listOf(1f,1.5f,2f))for(position in TabletDockPosition.entries) {
+            val small=TabletDockGeometry.place(Rect(0f,0f,768f,1024f),scale,position)
+            val large=TabletDockGeometry.place(Rect(0f,0f,1600f,1200f),scale,position)
+            assertEquals(small.dock.width,large.dock.width,.01f);assertEquals(small.dock.height,large.dock.height,.01f)
+            val length=if(position.vertical)large.dock.height else large.dock.width
+            val cross=if(position.vertical)large.dock.width else large.dock.height
+            assertTrue(length/cross<4.6f);assertTrue(length<minOf(large.content.width,large.content.height)*.70f)
+        }
+    }
     @Test fun everyEdgeReservesASeparateLaneAtTabletAndFoldedPaneSizes() {
         for(pane in listOf(Rect(0f,0f,1280f,800f),Rect(0f,0f,768f,1024f),Rect(0f,0f,600f,960f),
             Rect(526f,0f,1000f,900f),Rect(0f,506f,1000f,1000f),Rect(0f,0f,1200f,360f),Rect(0f,0f,260f,200f)))

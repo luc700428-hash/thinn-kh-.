@@ -50,6 +50,7 @@ internal object TabletDockPreference {
 internal data class TabletDockPlacement(val position:TabletDockPosition,val dock:Rect,val content:Rect)
 /** All dimensions are available dp. A reserved lane keeps the dock outside readable content. */
 internal object TabletDockGeometry {
+    fun contentLength(items:Int,fontScale:Float,vertical:Boolean=false)=FloatingDockContent.length(items,fontScale,vertical)
     fun place(pane:Rect,fontScale:Float,preferred:TabletDockPosition):TabletDockPlacement {
         val scale=fontScale.takeIf{it.isFinite()}?.coerceIn(1f,3f)?:1f
         val width=pane.width.coerceAtLeast(1f);val height=pane.height.coerceAtLeast(1f)
@@ -58,8 +59,8 @@ internal object TabletDockGeometry {
         val minVerticalHeight=4*maxOf(58f,41f+24f*scale)+10f+24f
         val position=if(preferred.vertical&&(width-verticalWidth-24f<300f||height<minVerticalHeight))TabletDockPosition.BOTTOM else preferred
         val margin=12f.coerceAtMost(minOf(width,height)*.04f)
-        val dockWidth=if(position.vertical)verticalWidth.coerceAtMost(width-margin*2) else minOf(560f,width-margin*2)
-        val dockHeight=if(position.vertical)minOf(4*maxOf(64f,47f+24f*scale)+10f,height-margin*2) else horizontalHeight.coerceAtMost(height-margin*2)
+        val dockWidth=if(position.vertical)verticalWidth.coerceAtMost(width-margin*2) else contentLength(4,scale).coerceAtMost(width-margin*2)
+        val dockHeight=if(position.vertical)contentLength(4,scale,true).coerceAtMost(height-margin*2) else horizontalHeight.coerceAtMost(height-margin*2)
         val x=when(position){TabletDockPosition.LEFT->pane.left+margin;TabletDockPosition.RIGHT->pane.right-margin-dockWidth;else->pane.left+(width-dockWidth)/2}
         val y=when(position){TabletDockPosition.TOP->pane.top+margin;TabletDockPosition.BOTTOM->pane.bottom-margin-dockHeight;else->pane.top+(height-dockHeight)/2}
         val dock=Rect(x,y,x+dockWidth,y+dockHeight)

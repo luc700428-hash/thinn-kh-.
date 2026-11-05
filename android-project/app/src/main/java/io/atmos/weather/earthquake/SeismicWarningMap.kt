@@ -25,6 +25,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.atmos.weather.alerts.WarningCountyAtlas
@@ -40,7 +42,7 @@ internal object SeismicIntensityColors {
     }
 }
 /** County detail stays vector. Advancing rings redraw independently of static polygon/label layers. */
-@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier) {
+@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier,viewportHeight:Dp=310.dp) {
     val ctx=LocalContext.current.applicationContext
     val atlas by produceState<WarningCountyAtlas?>(null,ctx){value=WarningCountyAtlas.load(ctx)}
     val dark=MaterialTheme.colorScheme.background.red<.5f
@@ -61,7 +63,7 @@ internal object SeismicIntensityColors {
             }}
         }
         Spacer(Modifier.height(8.dp))
-        Box(Modifier.fillMaxWidth().height(310.dp).clip(RoundedCornerShape(24.dp)).background(sea)
+        Box(Modifier.fillMaxWidth().height(viewportHeight).testTag("seismic-warning-map").clip(RoundedCornerShape(24.dp)).background(sea)
             .semantics{contentDescription="可縮放的臺灣縣市震度地圖；依來源縣市震度著色，灰色為未提供"}
             .pointerInput(incident.id){detectTransformGestures{centroid,move,factor,_->
                 if(factor.isFinite()&&factor>0&&move.x.isFinite()&&move.y.isFinite()){

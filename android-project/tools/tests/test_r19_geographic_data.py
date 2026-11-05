@@ -14,7 +14,7 @@ class R19GeographicDataTests(unittest.TestCase):
         for p in ("typhoon/TyphoonCenterPage.kt","typhoon/StormTimelineOverlay.kt",
                   "earthquake/SeismicLiveMapPage.kt"):
             self.assertIn("rememberTaiwanVectorAtlas()",code(p))
-            self.assertTrue("atlas.draw(this)" in code(p) or "taiwan?.draw(this)" in code(p))
+            self.assertTrue("atlas.draw(this" in code(p) or "taiwan?.draw(this)" in code(p))
         for p in ("typhoon/TyphoonCenterPage.kt","typhoon/StormTimelineOverlay.kt"):
             self.assertIn("rememberRegionalVectorAtlas()",code(p))
             self.assertIn("regional?.draw(this",code(p))

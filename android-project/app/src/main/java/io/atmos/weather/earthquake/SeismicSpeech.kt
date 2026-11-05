@@ -37,21 +37,34 @@ object SeismicSpeech {
     // and destroying one engine per message caused race conditions and missing speech.
     private var engine:TextToSpeech?=null
     private var starting=false
-    private var queued:String?=null
+    private data class Utterance(val text:String,val usage:Int,val permitted:()->Boolean)
+    private var queued:Utterance?=null
     private var lastSpoken=""
     private var lastAt=0L
 
-    fun speak(ctx:Context,message:String) {
+    fun speakWarning(ctx:Context,incident:EewIncident,place:SeismicPlace?) {
+        if(!ExpTechRealtimeParser.isFresh(incident)||!SeismicAlertNotifier.mayAnnounce(ctx,incident))return
+        val scenario=SeismicAlertDelivery.scenario(ctx,incident)
+        val critical=SeismicCriticalMode.applies(ctx,scenario)
+        val route=if(critical)SeismicCriticalMode.route(ctx,scenario,forVoice=true) else null
+        if(critical&&route==null)return
+        speakInternal(ctx,warning(incident,place),route){
+            ExpTechRealtimeParser.isFresh(incident)&&SeismicAlertNotifier.mayAnnounce(ctx,incident)&&enabled(ctx,"eew_voice_enabled")&&
+                (!critical||SeismicCriticalMode.route(ctx,scenario,forVoice=true)!=null)
+        }
+    }
+    fun speak(ctx:Context,message:String)=speakInternal(ctx,message,null){true}
+    private fun speakInternal(ctx:Context,message:String,route:SeismicAudioRoute?,permitted:()->Boolean) {
         val app=ctx.applicationContext
         val audio=app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val notifications=app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         // Follow user silent/DND settings. This is not the government's PWS system.
-        if(audio.ringerMode!=AudioManager.RINGER_MODE_NORMAL ||
-            notifications.currentInterruptionFilter!=NotificationManager.INTERRUPTION_FILTER_ALL) return
+        if(route==null&&(audio.ringerMode!=AudioManager.RINGER_MODE_NORMAL ||
+            notifications.currentInterruptionFilter!=NotificationManager.INTERRUPTION_FILTER_ALL)) return
         main.post {
             val now=System.currentTimeMillis()
             if(message==lastSpoken && now-lastAt<6_000L) return@post
-            queued=message
+            queued=Utterance(message,route?.usage?:AudioAttributes.USAGE_NOTIFICATION_EVENT,permitted)
             engine?.let { speakQueued(it);return@post }
             if(starting) return@post
             starting=true
@@ -74,10 +87,13 @@ object SeismicSpeech {
     }
     fun stop() {main.post{queued=null;engine?.stop()}}
     private fun speakQueued(tts:TextToSpeech) {
-        val message=queued ?: return
+        val request=queued ?: return
         queued=null
+        if(!request.permitted())return
+        val message=request.text
         lastSpoken=message
         lastAt=System.currentTimeMillis()
+        tts.setAudioAttributes(AudioAttributes.Builder().setUsage(request.usage).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
         tts.speak(message,TextToSpeech.QUEUE_FLUSH,null,"thinn_eq_${System.nanoTime()}")
     }
 }

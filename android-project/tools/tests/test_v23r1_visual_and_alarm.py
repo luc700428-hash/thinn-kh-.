@@ -34,7 +34,8 @@ class VisualAlarmTyphoonV23R1(unittest.TestCase):
         self.assertIn('SeismicGeo.kmPerPixel(',screen)
         self.assertNotIn('SeismicGeo.x(',screen)
         self.assertNotIn('SeismicGeo.y(',screen)
-        self.assertIn('minLines=2,maxLines=2',screen)
+        summary=(JAVA/'earthquake/SeismicObservationSummary.kt').read_text()
+        self.assertNotIn('TextOverflow.Ellipsis',summary)
     def test_weather_metric_tiles_share_adaptive_height(self):
         ui=(JAVA/'presentation/home/WeatherGauges.kt').read_text()
         self.assertIn('height(136.dp)',ui)

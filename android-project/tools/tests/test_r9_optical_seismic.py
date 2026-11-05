@@ -18,9 +18,12 @@ class R9Contracts(unittest.TestCase):
 
     def test_service_cards_adapt_to_text_and_keep_observation_status(self):
         self.assertIn('heightIn(min=72.dp)',self.map)
-        self.assertIn('heightIn(min=122.dp)',self.map)
         self.assertIn('readingLabel',self.map)
-        self.assertIn('SeismicMetricCard("有效測站"',self.map)
+        summary=(SRC/'earthquake/SeismicObservationSummary.kt').read_text()
+        self.assertIn('SeismicObservationSummary(',self.map)
+        for label in ('有效測站','最大震度','最大 PGA','最新觀測'):
+            self.assertIn(label,summary)
+        self.assertNotIn('TextOverflow.Ellipsis',summary)
 
     def test_no_stale_readings_as_live(self):
         self.assertIn('上次觀測，非即時', self.map)

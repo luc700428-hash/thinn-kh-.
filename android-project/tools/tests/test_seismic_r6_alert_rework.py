@@ -33,10 +33,15 @@ class SeismicR6Tests(unittest.TestCase):
         service=src('earthquake/SeismicContinuousWarning.kt')
         self.assertIn('postDelayed(timeout,35_000L)',service)
         self.assertIn('SeismicAlertPolicy.soundEnabled',service)
-        self.assertIn('ringerMode',service)
-        self.assertIn('AudioAttributes.USAGE_NOTIFICATION_EVENT',service)
-        self.assertIn('getStreamVolume(AudioManager.STREAM_NOTIFICATION)',service)
-        self.assertIn('currentInterruptionFilter',service)
+        self.assertIn('SeismicCriticalMode.route(ctx,scenario)',service)
+        self.assertIn('ExpTechRealtimeParser.isFresh(incident)',service)
+        bridge=src('earthquake/SeismicCriticalMode.kt')
+        for term in ('ringerMode','getStreamVolume(AudioManager.STREAM_NOTIFICATION)',
+                     'currentInterruptionFilter','AudioAttributes.USAGE_NOTIFICATION_EVENT','AudioAttributes.USAGE_ALARM'):
+            self.assertIn(term,bridge)
+        policy=src('earthquake/SeismicCriticalAudioPolicy.kt')
+        for term in ('SeismicInterruption.NONE','notificationVolume>0','alarmVolume>0','policyAccess&&channelBypass'):
+            self.assertIn(term,policy)
         ui=src('earthquake/SeismicWarningOverlay.kt')
         self.assertIn('if(!replay && !simulation && SeismicAlertDelivery.active.value==null) SeismicContinuousWarning.stop()',ui)
         self.assertIn('SeismicContinuousWarning.stop()',src('earthquake/SeismicAlertDelivery.kt'))

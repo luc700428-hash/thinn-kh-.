@@ -78,7 +78,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     LaunchedEffect(eventKey) {
         if(!replay && !simulation && SeismicSpeech.enabled(context,"eew_voice_enabled") && SeismicAlertNotifier.mayAnnounce(context,incident)) {
             io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
-            SeismicSpeech.speak(context,SeismicSpeech.warning(incident,SeismicUserLocation.current(context)))
+            SeismicSpeech.speakWarning(context,incident,SeismicUserLocation.current(context))
         }
     }
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -116,8 +116,7 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                 }
                 GlassIconButton(onClick=onClose){Icon(Icons.Rounded.Close,"關閉速報",tint=palette.onSurface)}
             }
-            io.atmos.weather.ui.AdaptiveScrollingPanes(Modifier.weight(1f),horizontalPadding=18.dp,
-                topPadding=0.dp,bottomPadding=16.dp,paneSpacing=14.dp,applyStatusBars=false,leading={
+            SeismicAdaptivePanels(Modifier.weight(1f),criticalFirst=true,leading={_->
                 if(simulation||replay)WarningPlate{
                     Text(if(historical)"演練中，非即時警報。震源採官方歷史資料；當地預估為本機模型，並非當年的即時速報。" else if(simulation)"演練中：所有震央與震度均為虛構。" else "歷史回放中：不是目前發生的地震。",color=palette.onSurface,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 }
@@ -154,8 +153,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                 if(historical)Text("演練估算無法精確到街道；實際搖晃會受地形、土壤與斷層影響。",color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 else if(prediction.intensityOrigin==PredictionOrigin.LOCAL_MODEL||prediction.arrivalOrigin==PredictionOrigin.LOCAL_MODEL)
                     Text("本機估算可能有誤差；縣市灰色不代表無震。請立即避難，勿等待倒數。",color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
-            },trailing={
-                SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,place,historical,frameNow,Modifier.fillMaxWidth())
+            },trailing={mapHeight->
+                SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,place,historical,frameNow,Modifier.fillMaxWidth(),viewportHeight=mapHeight)
                 WarningPlate{
                     Text(if(historical)"921 歷史縣市最大震度（舊制）" else if(simulation)"演練情境震度（虛構）" else "各縣市預估震度",fontSize=17.sp,lineHeight=25.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))

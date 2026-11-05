@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,10 +58,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.hypot
 
-private val iceBlue = Color(0xFF82E5FF)
-private val light = Color.White
-private val muted = Color(0xFFC5D6E4)
-
 /** A distinct map-first page. The NLSC offline atlas is shared; station and epicenter markers
  * are rendered ONLY if provider supplied valid geodetic coordinates.
  */
@@ -69,10 +67,13 @@ fun SeismicLiveMapPage(
     onSettings: () -> Unit,
     reports: List<EarthquakeReport>,
     reportSource: String = "ExpTech 第三方彙整報告",
+    reportsLoading:Boolean=false,
+    reportError:String?=null,
     onRefreshReports: () -> Unit
 ) {
     val ctx = LocalContext.current
     val palette=MaterialTheme.colorScheme
+    val dark=palette.background.red<.5f
     val light=palette.onSurface
     val muted=palette.onSurfaceVariant
     val iceBlue=palette.primary
@@ -104,6 +105,15 @@ fun SeismicLiveMapPage(
     var replaySpoken by remember { mutableStateOf(false) }
     var lastReplayShown by remember { mutableStateOf("") }
     var baseMapSize by remember { mutableStateOf(IntSize.Zero) }
+    var previousMapSize by remember {mutableStateOf(IntSize.Zero)}
+    LaunchedEffect(baseMapSize){
+        val old=previousMapSize;val current=baseMapSize
+        if(old.width>0&&old.height>0&&current.width>0&&current.height>0&&old!=current){
+            panX=(panX*current.width/old.width).coerceIn(-current.width*zoom,current.width*zoom)
+            panY=(panY*current.height/old.height).coerceIn(-current.height*zoom,current.height*zoom)
+        }
+        previousMapSize=current
+    }
     val inReplay = replayStatus == "回放中"
 
     // No fake history frames. Only replay archive EEW records actually matching a past report.
@@ -247,40 +257,45 @@ fun SeismicLiveMapPage(
                 Column(Modifier.weight(1f)) {
                     Text("地震",fontSize=34.sp,fontWeight=FontWeight.Bold,color=light,letterSpacing=(-1).sp)
                     Text(if(inReplay) "歷史回放 · 非即時" else if(fresh) "即時觀測更新中" else "等待有效觀測",fontSize=14.sp,
-                        color=if(fresh)Color(0xFF34C759) else muted)
+                        color=if(fresh)seismicHealthyInk else muted)
                 }
-                IconButton(onClick=onRefreshReports) {Icon(Icons.Rounded.Refresh,"重新整理地震報告",tint=iceBlue)}
+                IconButton(onClick=onRefreshReports,enabled=!reportsLoading) {Icon(Icons.Rounded.Refresh,"重新整理地震報告",tint=iceBlue)}
                 Spacer(Modifier.width(8.dp))
                 IconButton(onClick=onSettings) {Icon(Icons.Rounded.Tune,"地震設定",tint=light)}
             }
-            io.atmos.weather.ui.AdaptiveScrollingPanes(Modifier.weight(1f).navigationBarsPadding(),
-                horizontalPadding=16.dp,topPadding=0.dp,bottomPadding=114.dp,paneSpacing=16.dp,
-                applyStatusBars=false,leadingFraction=.55f,leading={
-                MapGlass {
+            SeismicAdaptivePanels(Modifier.weight(1f).navigationBarsPadding(),
+                overview={SeismicObservationSummary(if(hasObservedFrame)currentStations.size.toString() else "—",
+                    maxI?.let {"%.1f".format(Locale.US,it)}?:"—",maxPga?.let {"%.1f".format(Locale.US,it)}?:"—",readingLabel)},
+                leading={mapHeight->
+                MapGlass(Modifier.testTag("seismic-monitor-map-card")) {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text("臺灣與離島",fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=light,modifier=Modifier.weight(1f))
                         Text("TREM-Net",fontSize=14.sp,color=muted)
                     }
                     Spacer(Modifier.height(12.dp))
+                    Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
                     io.atmos.weather.next.NextReorderableToolDock(
                         actions=listOf(
                             io.atmos.weather.next.NextToolAction("綜合","綜合",Icons.Rounded.Layers),
                             io.atmos.weather.next.NextToolAction("測站","測站",Icons.Rounded.Sensors),
                             io.atmos.weather.next.NextToolAction("震央","震央",Icons.Rounded.MyLocation)),
                         selectedId=layer,onSelected={layer=it;selected=null},onOrderChanged={},
-                        modifier=Modifier.fillMaxWidth(),maxVisible=3,
+                        modifier=Modifier.widthIn(max=io.atmos.weather.ui.TabletDockGeometry.contentLength(3,androidx.compose.ui.platform.LocalDensity.current.fontScale).dp).fillMaxWidth(),maxVisible=3,
                         reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
                         reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency())
+                    }
                     Spacer(Modifier.height(12.dp))
-                    Box(Modifier.fillMaxWidth().height(io.atmos.weather.ui.adaptiveMapHeight(380.dp)).clip(RoundedCornerShape(19.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xFF0A1D34),Color(0xFF152A41))))) {
+                    Box(Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(19.dp))
+                        .background(Brush.verticalGradient(if(dark)listOf(Color(0xFF0A1D34),Color(0xFF152A41)) else listOf(Color(0xFFE1EEF5),Color(0xFFD1E5EE))))) {
                         val pins=if(layer=="震央") emptyList() else stations.take(900)
+                        val latestPins by rememberUpdatedState(pins)
                         Canvas(Modifier.fillMaxSize().onSizeChanged { baseMapSize=it }
-                            .pointerInput(pins,zoom,panX,panY) {
+                            .testTag("seismic-monitor-map").semantics{contentDescription="臺灣測站與震央地圖，可雙指縮放與點選測站";stateDescription="縮放 %.1f×".format(Locale.US,zoom)}
+                            .pointerInput(Unit) {
                             detectTapGestures { clicked ->
                                 val unscaledX = (clicked.x - panX - size.width*0.5f) / zoom + size.width*0.5f
                                 val unscaledY = (clicked.y - panY - size.height*0.5f) / zoom + size.height*0.5f
-                                selected = pins.minByOrNull { point ->
+                                selected = latestPins.minByOrNull { point ->
                                     val dx = SeismicGeo.screenX(point.longitude!!,size.width.toFloat(),size.height.toFloat()) - unscaledX
                                     val dy = SeismicGeo.screenY(point.latitude!!,size.width.toFloat(),size.height.toFloat()) - unscaledY
                                     hypot(dx,dy)
@@ -291,6 +306,7 @@ fun SeismicLiveMapPage(
                             }
                         }.pointerInput(Unit) {
                             detectTransformGestures {centroid,pan,zoomChange,_ ->
+                                if(!zoomChange.isFinite()||zoomChange<=0||!centroid.x.isFinite()||!centroid.y.isFinite()||!pan.x.isFinite()||!pan.y.isFinite())return@detectTransformGestures
                                 val next=(zoom*zoomChange).coerceIn(1f,32f)
                                 val anchor=centroid-Offset(size.width/2f,size.height/2f)
                                 val ratio=next/zoom
@@ -301,7 +317,7 @@ fun SeismicLiveMapPage(
                         }) {
                             withTransform({ translate(panX,panY)
                                 scale(zoom,zoom,pivot=Offset(size.width/2f,size.height/2f)) }) {
-                                if(atlas!=null) atlas.draw(this) {lon,lat ->
+                                if(atlas!=null) atlas.draw(this,dark=dark) {lon,lat ->
                                     Offset(SeismicGeo.screenX(lon,size.width,size.height),SeismicGeo.screenY(lat,size.width,size.height))
                                 }
                                 val wavefront = if(SeismicGeo.visible(waveLat,waveLon) && originMillis!=null)
@@ -327,8 +343,8 @@ fun SeismicLiveMapPage(
                                 if(userPlace!=null && SeismicGeo.visible(userPlace.lat,userPlace.lon)) {
                                     val here=Offset(SeismicGeo.screenX(userPlace.lon,size.width,size.height),
                                         SeismicGeo.screenY(userPlace.lat,size.width,size.height))
-                                    drawCircle(Color(0xAAFFFFFF),9.dp.toPx(),here,style=Stroke(2.dp.toPx()))
-                                    drawCircle(Color(0xFF78EFFF),4.dp.toPx(),here)
+                                    drawCircle(if(dark)Color(0xAAFFFFFF) else Color(0xFF186CB6),9.dp.toPx(),here,style=Stroke(2.dp.toPx()))
+                                    drawCircle(if(dark)Color(0xFF78EFFF) else Color(0xFF005CB8),4.dp.toPx(),here)
                                 }
                                 pins.forEach { station ->
                                     val p=Offset(SeismicGeo.screenX(station.longitude!!,size.width,size.height),SeismicGeo.screenY(station.latitude!!,size.width,size.height))
@@ -371,11 +387,11 @@ fun SeismicLiveMapPage(
                             }
                         }
                         androidx.compose.foundation.text.BasicText("底圖 © 國土測繪中心",Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                            style=androidx.compose.ui.text.TextStyle(color=Color(0xFFB8CDD5),fontSize=14.sp))
+                            style=androidx.compose.ui.text.TextStyle(color=if(dark)Color(0xFFB8CDD5) else Color(0xFF304D59),fontSize=14.sp))
                         Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
-                            Text("TREM-Net 測站",color=Color.White,fontSize=15.sp,fontWeight=FontWeight.SemiBold)
+                            Text("TREM-Net 測站",color=if(dark)Color.White else Color(0xFF173C50),fontSize=15.sp,fontWeight=FontWeight.SemiBold)
                             Text("${stations.size} 站 · ${currentStations.size} 站有效觀測",
-                                color=Color(0xFFC5E5F4),fontSize=14.sp,
+                                color=if(dark)Color(0xFFC5E5F4) else Color(0xFF305A6D),fontSize=14.sp,
                                 maxLines=1)
                         }
                         Column(Modifier.align(Alignment.TopEnd).padding(10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -391,7 +407,7 @@ fun SeismicLiveMapPage(
                         }
                         if (!fresh || expiredStationCount>0 || (stations.isEmpty() && layer!="震央")) {
                             Text(when {
-                                !live.enabled -> "可在下方開啟即時監測"
+                                !live.enabled -> "可在監測面板開啟即時監測"
                                 live.lastRtsAt>timestamp+2_000L -> "測站時間與手機不同步，等待確認"
                                 rtsHealth==SeismicFeedState.STALE -> "超過 20 秒未更新 · 測站觀測暫時失效"
                                 live.lastRtsAt<=0L -> "正在連接測站，等待第一筆觀測…"
@@ -404,7 +420,7 @@ fun SeismicLiveMapPage(
                     }
 
                     Spacer(Modifier.height(10.dp))
-                    Text("● 0　● 1–2　● 3–4　● 5+    ✚ 震央",fontSize=14.sp,color=muted)
+                    SeismicStationLegend()
                     Text("雙指縮放、點選測站 · 波圈為時間驅動示意",fontSize=14.sp,color=muted)
                     (stations.firstOrNull{it.id==selected?.id}?:selected)?.let {station ->
                         Spacer(Modifier.height(12.dp))
@@ -419,12 +435,7 @@ fun SeismicLiveMapPage(
                         Text("PGA ${station.accelerationGal?.let {"%.2f".format(Locale.US,it)} ?: "—"} gal · ${StationFreshness.label(StationFreshness.state(station,timestamp,live.lastRtsAt))}",color=muted,fontSize=14.sp)
                     }
                 }
-            },trailing={
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    SeismicMetricCard("有效測站",if(hasObservedFrame)currentStations.size.toString() else "—",readingLabel,modifier=Modifier.weight(1f))
-                    SeismicMetricCard("最大震度",maxI?.let {"%.1f".format(Locale.US,it)} ?: "—",readingLabel,modifier=Modifier.weight(1f))
-                    SeismicMetricCard("最大 PGA",maxPga?.let {"%.1f".format(Locale.US,it)} ?: "—",readingLabel,"gal",Modifier.weight(1f))
-                }
+            },trailing={_->
                 MapGlass {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -448,16 +459,18 @@ fun SeismicLiveMapPage(
                     Text("${devicePlace?.name ?: "尚未定位"} · 最後觀測 ${if(hasObservedFrame)formatted(live.lastRtsAt) else "—"}",fontSize=14.sp,color=muted)
                 }
                 if(incidentRecent || inReplay) MapGlass {
-                    Text(if(inReplay)"歷史資料回放中" else "收到地震預警 · 第三方來源",color=Color(0xFFFF9F0A),fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                    Text(if(inReplay)"歷史資料回放中" else "收到地震預警 · 第三方來源",color=seismicCautionInk,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
                     Text(SeismicDisplayFormat.location(quake?.epicenter ?: replayReport?.location ?: "震央位置待來源確認"),fontSize=21.sp,color=light,fontWeight=FontWeight.SemiBold)
                     Text(if(inReplay)"過去事件的教育回放，並非目前警報。" else "立即趴下、掩護、穩住。",fontSize=14.sp,color=muted)
                 }
                 MapGlass {
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         Text("最近地震",color=light,fontSize=17.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-                        TextButton(onClick=onRefreshReports) { Text("更新",color=iceBlue) }
+                        TextButton(onClick=onRefreshReports,enabled=!reportsLoading) { Text(if(reportsLoading)"更新中" else "更新",color=iceBlue) }
                     }
-                    if(reports.isEmpty()) Text("尚未取得震後報告，請檢查網路連線",color=muted,fontSize=14.sp)
+                    if(reportsLoading&&reports.isEmpty())Text("正在取得最新震後報告…",color=muted,fontSize=14.sp)
+                    else if(reports.isEmpty()&&reportError==null)Text("尚未取得震後報告，請檢查網路連線",color=muted,fontSize=14.sp)
+                    if(reportError!=null)Text(reportError,color=seismicCautionInk,fontSize=14.sp,lineHeight=21.sp)
                     reports.take(8).forEach { report ->
                         HorizontalDivider(color=light.copy(alpha=.12f),modifier=Modifier.padding(vertical=7.dp))
                         Row(Modifier.fillMaxWidth().clickable { details=report }.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -491,7 +504,7 @@ fun SeismicLiveMapPage(
                     if(replayStatus.isNotBlank()) {
                         Spacer(Modifier.height(7.dp))
                         Text(if(inReplay)"歷史回放中 · 非即時預警" else replayStatus,
-                            color=if(inReplay)Color(0xFFFFD09E) else iceBlue,
+                            color=if(inReplay)seismicCautionInk else iceBlue,
                             fontSize=15.sp,fontWeight=FontWeight.Bold)
                     }
                     if(inReplay) {
@@ -584,39 +597,9 @@ private fun SeismicStatusMiniCard(title:String,value:String,active:Boolean,modif
         .border(1.dp,if(active) Color(0xFF8BEFBE).copy(alpha=.36f) else Color.White.copy(alpha=.14f),RoundedCornerShape(22.dp))
         .padding(13.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text(title,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,maxLines=1)
-        Text(value,color=if(active) Color(0xFF98F6C9) else Color(0xFFFFD09E),
+        Text(value,color=if(active) seismicHealthyInk else seismicCautionInk,
             fontSize=14.sp,lineHeight=19.sp,fontWeight=FontWeight.SemiBold,
             maxLines=3,overflow=TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun SeismicInfoPill(title:String,detail:String,accent:Color,modifier:Modifier=Modifier) {
-    Column(modifier.heightIn(min=72.dp).clip(RoundedCornerShape(22.dp))
-        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.55f))
-        .border(1.dp,accent.copy(alpha=.25f),RoundedCornerShape(22.dp))
-        .padding(13.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        Text(title,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,maxLines=1)
-        Text(detail,color=MaterialTheme.colorScheme.onSurface,fontSize=14.sp,lineHeight=19.sp,
-            maxLines=4,overflow=TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun SeismicMetricCard(title:String,value:String,status:String,suffix:String?=null,modifier:Modifier=Modifier) {
-    Column(modifier.heightIn(min=122.dp).clip(RoundedCornerShape(24.dp))
-        .background(MaterialTheme.colorScheme.surface)
-        .border(1.dp,Color.White.copy(alpha=.20f),RoundedCornerShape(24.dp))
-        .padding(horizontal=11.dp,vertical=14.dp),verticalArrangement=Arrangement.SpaceBetween) {
-        Text(title,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=17.sp,
-            minLines=2,maxLines=2,overflow=TextOverflow.Ellipsis)
-        Row(verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-            Text(value,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold,fontSize=28.sp,
-                lineHeight=34.sp,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false))
-            if(!suffix.isNullOrBlank()) Text(suffix,color=iceBlue,fontSize=14.sp,maxLines=1)
-        }
-        Text(status,color=if(status=="最新觀測") Color(0xFF8BEFBE) else muted,
-            fontSize=14.sp,lineHeight=15.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
     }
 }
 

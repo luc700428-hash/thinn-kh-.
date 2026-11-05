@@ -31,14 +31,14 @@ object SeismicAlertNotifier {
             .setPriority(NotificationCompat.PRIORITY_MAX).setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setAutoCancel(true).setContentIntent(pi)
             .setTimeoutAfter((SeismicAlertDelivery.expires(e)-System.currentTimeMillis()).coerceIn(1,120_000))
-        if(SeismicAlertDelivery.mayUseFullScreen(ctx))builder.setFullScreenIntent(pi,true)
+        if(SeismicAlertDelivery.mayUseFullScreen(ctx)&&(ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).getNotificationChannel(channel)?.importance?.let{it>=NotificationManager.IMPORTANCE_HIGH}==true)builder.setFullScreenIntent(pi,true)
         val sent=runCatching{WeatherNotificationDispatcher.post(ctx,29200,builder.build(),title,detail,XiaomiFocusBridge.Kind.SEISMIC_EEW)}.isSuccess
         if(!sent)return true // Permission may have changed between checking and posting.
         SeismicAlertDelivery.markNotification(ctx,ticket.key)
         SeismicSound.stop() // Stop a local drill/replay before the real event tone.
         SeismicContinuousWarning.start(ctx,e,scenario)
         io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
-        if(SeismicSpeech.enabled(ctx,"eew_voice_enabled"))SeismicSpeech.speak(ctx,SeismicSpeech.warning(e,SeismicUserLocation.current(ctx)))
+        if(SeismicSpeech.enabled(ctx,"eew_voice_enabled"))SeismicSpeech.speakWarning(ctx,e,SeismicUserLocation.current(ctx))
         return true
     }
 }

@@ -33,7 +33,10 @@ abstract class TabletDockFixture:IPadFixture() {
         }
     }
     protected fun composeOwner(v:View):View?=if(v is RootForTest)v else if(v is ViewGroup)(0 until v.childCount).firstNotNullOfOrNull{composeOwner(v.getChildAt(it))} else null
-    protected fun tabs(view:View)=nodes(view).filter{it.config.contains(SemanticsProperties.Role)&&it.config[SemanticsProperties.Role]==Role.Tab}
+    protected fun tabs(view:View):List<SemanticsNode> {
+        val dock=tagged(view,"tablet-navigation-dock").boundsInRoot
+        return nodes(view).filter{it.config.contains(SemanticsProperties.Role)&&it.config[SemanticsProperties.Role]==Role.Tab&&dock.contains(it.boundsInRoot.center)}
+    }
     protected fun assertDockOutsideContent(view:View) {
         val dock=tagged(view,"tablet-navigation-dock").boundsInRoot
         val body=tagged(view,"tablet-main-content").boundsInRoot
@@ -72,6 +75,8 @@ class TabletDockPositionsRenderingTest:TabletDockFixture() {
                         TabletDockPreference.save(context,position);pump(view).recycle()
                         assertDockOutsideContent(view)
                         val dock=tagged(view,"tablet-navigation-dock").boundsInRoot
+                        val major=if(position.vertical)dock.height else dock.width
+                        assertTrue("Dock must fit its four buttons",major<=TabletDockGeometry.contentLength(4,scale,position.vertical)+2)
                         when(position){
                             TabletDockPosition.RIGHT->assertTrue(dock.center.x>w*.75f)
                             TabletDockPosition.LEFT->assertTrue(dock.center.x<w*.25f)

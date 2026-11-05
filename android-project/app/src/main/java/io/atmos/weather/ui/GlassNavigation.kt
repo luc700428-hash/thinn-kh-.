@@ -223,7 +223,6 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     val dockPosition=rememberTabletDockPosition()
     var lastDetail by rememberSaveable {mutableStateOf("appearance")}
     val settingsScroll=rememberScrollState()
-    val currentAutomatic=rememberBooleanSetting("check_updates_automatically",automaticUpdates)
     val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen || (dockOpen&&showDockPosition)
     SideEffect {onDetailVisibility(detailsVisible)}
     DisposableEffect(Unit) {onDispose {onDetailVisibility(false)}}
@@ -334,10 +333,6 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 }
             }
             if(resultCount==0 && search.isNotBlank())Text("找不到符合的設定",fontSize=15.sp,color=palette.onSurfaceVariant,modifier=Modifier.padding(16.dp))
-            if(match("自動檢查更新")) IOSV25SettingsGroup {
-                IOSV25SettingsCell("自動檢查更新","",SettingsSymbols.update,Color(0xFF34C759),
-                    trailing=if(currentAutomatic)"開啟" else "關閉",last=true,onClick={onUpdates(!currentAutomatic)})
-            }
             Spacer(Modifier.height(22.dp))
             Text("thinn-khì",color=palette.onSurfaceVariant,fontSize=12.sp,
                 modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)

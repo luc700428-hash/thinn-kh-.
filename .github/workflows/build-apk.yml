@@ -22,7 +22,61 @@ concurrency:
   group: thinn-official-ota-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  tablet-seismic-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Android API 36 and tools
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Source and delivery contracts
+        run: python3 -m unittest discover -s android-project/tools/tests -p 'test_*.py'
+      - name: Verify all JVM tests, tablet layouts, alert delivery and release lint
+        timeout-minutes: 38
+        run: |
+          cat > "$RUNNER_TEMP/thinn-test-memory.gradle" <<'GRADLE'
+          allprojects {
+            tasks.withType(Test).configureEach {
+              maxHeapSize = '768m'
+              maxParallelForks = 2
+              jvmArgs '-XX:ActiveProcessorCount=2'
+            }
+          }
+          GRADLE
+          gradle --no-daemon --no-configuration-cache --console=plain \
+            --project-dir android-project --max-workers=2 \
+            --init-script "$RUNNER_TEMP/thinn-test-memory.gradle" \
+            '-Dorg.gradle.jvmargs=-Xmx2300m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            :app:testDebugUnitTest :app:lintRelease
+      - name: Require completed tablet and seismic results
+        run: python3 android-project/tools/verify_tablet_seismic_results.py android-project/app/build/test-results/testDebugUnitTest
+      - name: Retain tablet and seismic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thinn-khi-tablet-seismic-regression
+          path: |
+            android-project/app/build/test-results/testDebugUnitTest/
+            android-project/app/build/reports/tests/testDebugUnitTest/
+            android-project/app/build/weather-info-renders/
+            android-project/app/build/reports/lint-results-release.*
+          if-no-files-found: ignore
   rendering-regression:
+    needs: tablet-seismic-regression
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
