@@ -1,5 +1,7 @@
 package io.atmos.weather.ui
 
+import androidx.compose.ui.graphics.toArgb
+
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -85,13 +87,19 @@ private fun Context.activity():Activity?=when(this) {
 @Suppress("DEPRECATION")
 @Composable internal fun AppSystemBars(darkBackground:Boolean) {
     val view=LocalView.current
+    val navigationColor=if(darkBackground)BrandPalette.dark.background.toArgb() else BrandPalette.light.background.toArgb()
     SideEffect {
-        val window=(view.parent as? DialogWindowProvider)?.window?:view.context.activity()?.window
+        val dialogWindow=(view.parent as? DialogWindowProvider)?.window
+        val window=dialogWindow?:view.context.activity()?.window
         window?.let {
             val flags=android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
                 android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
             it.insetsController?.setSystemBarsAppearance(if(darkBackground)0 else flags,flags)
-            it.navigationBarColor=if(darkBackground)android.graphics.Color.BLACK else 0xfff2f2f7.toInt()
+            // Android 15+ draws gesture bars transparently over the app window.
+            // Keep the underlay themed instead of relying on the retired color API.
+            if(dialogWindow==null)it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(navigationColor))
+            it.navigationBarColor=if(Build.VERSION.SDK_INT>=35)android.graphics.Color.TRANSPARENT else navigationColor
+            if(Build.VERSION.SDK_INT>=35)it.isNavigationBarContrastEnforced=false
         }
     }
 }

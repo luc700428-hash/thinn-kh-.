@@ -1,5 +1,7 @@
 package io.atmos.weather.alarm
 
+import io.atmos.weather.ui.brandColor
+
 import android.content.Context
 import android.media.MediaPlayer
 import android.media.AudioAttributes
@@ -68,34 +70,34 @@ private val night:Color @Composable get()=MaterialTheme.colorScheme.background
 private val group:Color @Composable get()=MaterialTheme.colorScheme.surface
 private val secondary:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 private val ink:Color @Composable get()=MaterialTheme.colorScheme.onSurface
-private val amber=Color(0xFFFF9F0A)
-private val amberInk:Color @Composable get()=if(MaterialTheme.colorScheme.background.red<.5f)Color(0xFFFFB340) else Color(0xFF8F4800)
+private val amber get() =brandColor(0xFF5FC7AA)
+private val amberInk:Color @Composable get()=if(MaterialTheme.colorScheme.background.red<.5f)brandColor(0xFF7ED2BA) else brandColor(0xFF246653)
 private val weekdays=listOf("一","二","三","四","五","六","日")
 
 object R10AlarmTones {
     const val prefix="thinn://alarm/"
     data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color)
-    val choices=listOf(
-        Choice("citypop","城市晨光","City Pop · 電鋼琴與彈跳貝斯 · 104 BPM",Color(0xFFFDB6B7),Color(0xFF6059A6)),
-        Choice("tropical","海風假期","Tropical Pop · 木琴與熱帶節拍 · 110 BPM",Color(0xFF7CDBD3),Color(0xFF3575A8)),
-        Choice("indiepop","晴空出走","Indie Pop · 吉他與輕快鼓組 · 116 BPM",Color(0xFFF6D28F),Color(0xFFBF6869)),
-        Choice("rnb","雨後慢拍","Neo Soul · 慵懶律動與七和弦 · 86 BPM",Color(0xFFB9ACE6),Color(0xFF514A88)),
-        Choice("futurepop","極光派對","Future Pop · 電子鈴音與明亮副歌 · 120 BPM",Color(0xFF89CFF2),Color(0xFF8B60B0)),
-        Choice("daybreak","日出情歌","Piano Pop · 鋼琴與溫暖和聲 · 92 BPM",Color(0xFFF6CBA3),Color(0xFF9A798C)),
-        Choice("guitar","晨光吉他","木吉他撥弦 · 94 BPM",Color(0xFFFFD7A0),Color(0xFF9D6454)),
-        Choice("flute","竹林笛語","竹笛三拍 · 88 BPM",Color(0xFF9CD8B7),Color(0xFF347B75)),
-        Choice("rhodes","雨窗爵士","電鋼琴與刷鼓 · 76 BPM",Color(0xFFB2C4E7),Color(0xFF4E618F)),
-        Choice("kalimba","雨滴拇指琴","交錯六拍 · 102 BPM",Color(0xFF9ADDDC),Color(0xFF357D9E)),
-        Choice("strings","山嵐弦樂","弦樂三拍 · 82 BPM",Color(0xFFC9B8DD),Color(0xFF76618D)),
-        Choice("musicbox","星露八音盒","晶亮八音盒 · 108 BPM",Color(0xFFECC1DC),Color(0xFF91649F)),
-        Choice("synth","極光合成","空氣合成器 · 84 BPM",Color(0xFF9BDCD5),Color(0xFF536FC1)),
-        Choice("groove","晴日律動","撥奏與輕鼓 · 118 BPM",Color(0xFFF6C18B),Color(0xFFC16670)),
-        Choice("dawn","晨光序曲","鋼琴旋律 · 14 種天氣編曲",Color(0xFFEF7AB0),Color(0xFF9D428F)),
-        Choice("rain","雨光節拍","柔鋼琴與明確節拍 · 天氣自適應",Color(0xFF90EFF3),Color(0xFF258FC1)),
-        Choice("wood","森間晨行","木琴與撥弦 · 天氣自適應",Color(0xFF74D1B9),Color(0xFF286E69)),
-        Choice("water","水漣初醒","豎琴與水紋旋律 · 天氣自適應",Color(0xFF99C1F4),Color(0xFF516BBB)),
-        Choice("fire","晴日躍動","溫暖撥弦與輕節奏 · 天氣自適應",Color(0xFFFFB877),Color(0xFFD16B68)),
-        Choice("metal","霜光鈴奏","柔亮鐘琴與旋律回應 · 天氣自適應",Color(0xFFC9B4F8),Color(0xFF6C5AA8))
+    val choices get() =listOf(
+        Choice("citypop","城市晨光","City Pop · 電鋼琴與彈跳貝斯 · 104 BPM",brandColor(0xFF8CD6C1),brandColor(0xFF3A6C5E)),
+        Choice("tropical","海風假期","Tropical Pop · 木琴與熱帶節拍 · 110 BPM",brandColor(0xFF92D9C5),brandColor(0xFF2C7E67)),
+        Choice("indiepop","晴空出走","Indie Pop · 吉他與輕快鼓組 · 116 BPM",brandColor(0xFFACE2D3),brandColor(0xFF3D8F78)),
+        Choice("rnb","雨後慢拍","Neo Soul · 慵懶律動與七和弦 · 86 BPM",brandColor(0xFF5DC6A8),brandColor(0xFF31594E)),
+        Choice("futurepop","極光派對","Future Pop · 電子鈴音與明亮副歌 · 120 BPM",brandColor(0xFF87D5BF),brandColor(0xFF3E7E6C)),
+        Choice("daybreak","日出情歌","Piano Pop · 鋼琴與溫暖和聲 · 92 BPM",brandColor(0xFFA3DFCE),brandColor(0xFF678980)),
+        Choice("guitar","晨光吉他","木吉他撥弦 · 94 BPM",brandColor(0xFFBAE7DA),brandColor(0xFF437D6D)),
+        Choice("flute","竹林笛語","竹笛三拍 · 88 BPM",brandColor(0xFF9AD7C6),brandColor(0xFF347C68)),
+        Choice("rhodes","雨窗爵士","電鋼琴與刷鼓 · 76 BPM",brandColor(0xFF81D3BC),brandColor(0xFF3A6B5D)),
+        Choice("kalimba","雨滴拇指琴","交錯六拍 · 102 BPM",brandColor(0xFFA0DDCC),brandColor(0xFF2E836B)),
+        Choice("strings","山嵐弦樂","弦樂三拍 · 82 BPM",brandColor(0xFF91CABA),brandColor(0xFF4E7167)),
+        Choice("musicbox","星露八音盒","晶亮八音盒 · 108 BPM",brandColor(0xFF97DAC8),brandColor(0xFF4E7E70)),
+        Choice("synth","極光合成","空氣合成器 · 84 BPM",brandColor(0xFF9DDDCB),brandColor(0xFF2E8069)),
+        Choice("groove","晴日律動","撥奏與輕鼓 · 118 BPM",brandColor(0xFF92D9C5),brandColor(0xFF3A8F77)),
+        Choice("dawn","晨光序曲","鋼琴旋律 · 14 種天氣編曲",brandColor(0xFF3FB392),brandColor(0xFF2F705E)),
+        Choice("rain","雨光節拍","柔鋼琴與明確節拍 · 天氣自適應",brandColor(0xFFBFE8DD),brandColor(0xFF35967A)),
+        Choice("wood","森間晨行","木琴與撥弦 · 天氣自適應",brandColor(0xFF7AD0B8),brandColor(0xFF286F5B)),
+        Choice("water","水漣初醒","豎琴與水紋旋律 · 天氣自適應",brandColor(0xFF75CEB5),brandColor(0xFF307B66)),
+        Choice("fire","晴日躍動","溫暖撥弦與輕節奏 · 天氣自適應",brandColor(0xFF89D5C0),brandColor(0xFF36997D)),
+        Choice("metal","霜光鈴奏","柔亮鐘琴與旋律回應 · 天氣自適應",brandColor(0xFF76CFB6),brandColor(0xFF3B7061))
     )
     fun isBuiltIn(uri:String?):Boolean=uri?.startsWith(prefix)==true && choices.any { prefix+it.id==uri }
     fun resource(uri:String?, weather:AlarmWeatherReading?, nowMs:Long):Int? {
@@ -137,8 +139,8 @@ object R10AlarmTones {
 fun R10Switch(checked:Boolean,onCheckedChange:(Boolean)->Unit) {
     // One consistent optically highlighted switch and hardware-calibrated haptic feedback.
     io.atmos.weather.ui.GlassSwitch(checked=checked,onCheckedChange=onCheckedChange,
-        colors=androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor=Color(0xFF34C759),
-            uncheckedTrackColor=Color(0xFF39393D)))
+        colors=androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor=brandColor(0xFF4EC1A1),
+            uncheckedTrackColor=brandColor(0xFF363A39)))
 }
 
 @Composable
@@ -219,7 +221,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                     val saved=WeatherAlarm(id,hour,minute,label.take(30),repeat,initial?.enabled ?: true,voice,snooze,uri,
                         WeatherAlarmTime.validSnoozeMinutes(snoozeMinutes))
                     finishSheet {onSave(saved)}
-                },fill=Color(0xFFFF9F0A),foreground=Color.Black)
+                },fill=brandColor(0xFF5FC7AA),foreground=Color.Black)
             }
             AppleAlarmTimeSelector(hour=hour,minute=minute,
                 onHour={hour=it},onMinute={minute=it},
@@ -366,7 +368,7 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                             Column(Modifier.weight(1f).heightIn(min=184.dp).iosJellyPress().clip(RoundedCornerShape(22.dp))
                                 .background(Brush.linearGradient(listOf(choice.upper,choice.lower)))
                                 .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.45f),Color.Black.copy(alpha=.72f))))
-                                .border(if(chosen) 2.dp else 1.dp,if(chosen) Color(0xFF79CBFF) else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
+                                .border(if(chosen) 2.dp else 1.dp,if(chosen) brandColor(0xFF7ED2BA) else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
                                 .semantics{stateDescription=if(chosen)"已選取" else "未選取"}
                                 .selectable(chosen,role=Role.RadioButton,onClick={
                                     active=R10AlarmTones.prefix+choice.id
@@ -382,7 +384,7 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                                     ToneArtwork(choice.id,Modifier.fillMaxSize())
                                     Text(if(chosen) "✓ 已選擇" else "▶ 試聽",color=Color.White,fontSize=14.sp,
                                         modifier=Modifier.align(Alignment.TopStart)
-                                            .background(if(chosen)Color(0xFF0866CC) else Color(0xCC172332),RoundedCornerShape(14.dp))
+                                            .background(if(chosen)brandColor(0xFF29755F) else brandColor(0xCC112620),RoundedCornerShape(14.dp))
                                             .padding(horizontal=8.dp,vertical=4.dp))
                                 }
                                 Column {
@@ -430,7 +432,7 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
             "rhodes","rnb","daybreak" -> {
                 for(i in 0..6){val x=c.x-r+i*r*.29f
                     drawRoundRect(Color.White.copy(alpha=.84f),Offset(x,c.y-r*.54f),androidx.compose.ui.geometry.Size(r*.24f,r*1.2f),androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
-                    if(i%3!=0)drawRect(Color(0xFF45597E),Offset(x-r*.045f,c.y-r*.54f),androidx.compose.ui.geometry.Size(r*.15f,r*.65f))}
+                    if(i%3!=0)drawRect(brandColor(0xFF356155),Offset(x-r*.045f,c.y-r*.54f),androidx.compose.ui.geometry.Size(r*.15f,r*.65f))}
             }
             "strings","synth" -> {
                 for(i in 0..4){val path=Path();for(j in 0..40){val x=c.x-r+j*r/20;val y=c.y+(i-2)*r*.30f+kotlin.math.sin(j*.16f+i*.5f)*r*.28f
@@ -478,10 +480,10 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
                 for(i in 0..6){
                     val x=size.width*(.15f+.11f*i)
                     val y=size.height*(.25f+.08f*(i%3))
-                    drawLine(Color(0xFFD9FCFF).copy(alpha=.74f),Offset(x,y),
+                    drawLine(brandColor(0xFFECF8F5).copy(alpha=.74f),Offset(x,y),
                         Offset(x-8.dp.toPx(),y+22.dp.toPx()),2.2.dp.toPx())
                 }
-                drawCircle(Color(0xFFE2FAFF).copy(alpha=.24f),r,c)
+                drawCircle(brandColor(0xFFECF8F5).copy(alpha=.24f),r,c)
                 drawCircle(Color.White.copy(alpha=.68f),r*.24f,c)
             }
             "wood" -> {
@@ -504,7 +506,7 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
                     lineTo(c.x-r*.74f,c.y-r*.35f)
                     close()
                 }
-                drawPath(crystal,Color(0xFFE6F9FF).copy(alpha=.75f))
+                drawPath(crystal,brandColor(0xFFECF8F5).copy(alpha=.75f))
                 drawLine(Color.White.copy(alpha=.8f),c+Offset(0f,-r*1.2f),c+Offset(0f,r*1.2f),1.dp.toPx())
             }
         }

@@ -1,5 +1,7 @@
 package io.atmos.weather.sky
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -38,8 +40,8 @@ import kotlin.math.*
 @Composable internal fun SkyPlannerScreen(city:WeatherCity,timeZoneId:String?,onClose:()->Unit,computationDispatcher:CoroutineDispatcher) {
     val base=MaterialTheme.colorScheme
     val dark=base.background.luminance()<.5f
-    MaterialTheme(colorScheme=base.copy(primary=if(dark)Color(0xFF90D7FF) else Color(0xFF0066CC),
-        onSurfaceVariant=if(dark)Color(0xFFC7C7CC) else Color(0xFF5C5C64))) {
+    MaterialTheme(colorScheme=base.copy(primary=if(dark)brandColor(0xFF99DBC9) else brandColor(0xFF29745F),
+        onSurfaceVariant=if(dark)Color(0xFFC7C7CC) else brandColor(0xFF575E5C))) {
         CompositionLocalProvider(LocalWeatherCardPalette provides null){SkyPlannerContent(city,timeZoneId,onClose,computationDispatcher)}
     }
 }
@@ -167,17 +169,17 @@ import kotlin.math.*
     val lit by animateFloatAsState(fraction.toFloat().coerceIn(0f,1f),tween(if(reduce)0 else 500,easing=AppleMotion.fluid),label="lunar terminator")
     Canvas(modifier) {
         val r=minOf(size.width,size.height)*.34f;val c=Offset(size.width/2,size.height/2)
-        drawCircle(Brush.radialGradient(listOf(Color(0x554C8FCB),Color.Transparent),c,r*1.48f),r*1.48f,c)
-        drawCircle(Brush.radialGradient(if(dark)listOf(Color(0xFF708EAE),Color(0xFF435E7E))
-            else listOf(Color(0xFF415975),Color(0xFF1C2C45)),c,r),r,c)
+        drawCircle(Brush.radialGradient(listOf(brandColor(0x55369A7E),Color.Transparent),c,r*1.48f),r*1.48f,c)
+        drawCircle(Brush.radialGradient(if(dark)listOf(brandColor(0xFF569785),brandColor(0xFF366557))
+            else listOf(brandColor(0xFF355F53),brandColor(0xFF143129)),c,r),r,c)
         val path=Path();val sign=if(phase<0)1 else -1
         for(i in 0..100){val y=-r+2*r*i/100;val x=sqrt((r*r-y*y).coerceAtLeast(0f))*sign
             if(i==0)path.moveTo(c.x+x,c.y+y) else path.lineTo(c.x+x,c.y+y)}
         for(i in 100 downTo 0){val y=-r+2*r*i/100;val x=sqrt((r*r-y*y).coerceAtLeast(0f))*(1-2*lit)*sign
             path.lineTo(c.x+x,c.y+y)};path.close()
-        drawPath(path,Brush.radialGradient(listOf(Color(0xFFFFF4D0),Color(0xFFE0E7E7),Color(0xFFABC9DE)),c-Offset(r*.2f,r*.3f),r*1.6f))
-        if(dark)drawCircle(Color(0xFFB7CBDD),r,c,style=androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx()))
+        drawPath(path,Brush.radialGradient(listOf(Color(0xFFFFF4D0),Color(0xFFE0E7E7),brandColor(0xFF8DD2BF)),c-Offset(r*.2f,r*.3f),r*1.6f))
+        if(dark)drawCircle(brandColor(0xFFA1D3C5),r,c,style=androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx()))
         listOf(Triple(-.35f,-.25f,.14f),Triple(.25f,.30f,.18f),Triple(-.05f,.50f,.09f)).forEach {(x,y,s)->
-            drawCircle(Color(0x20516F8F),r*s,c+Offset(x*r,y*r))}
+            drawCircle(brandColor(0x20437668),r*s,c+Offset(x*r,y*r))}
     }
 }

@@ -1,5 +1,7 @@
 package io.atmos.weather.next
 
+import io.atmos.weather.ui.brandColor
+
 import io.atmos.weather.ui.thinnBackdrop
 import io.atmos.weather.ui.thinnSpecularEdge
 
@@ -58,12 +60,12 @@ fun NextOpticalSurface(
         else if(calm)(if(lightTheme).22f else .38f)-.12f*appearance.glassOpacity.coerceIn(0f,1f)
         else (.62f-.30f*appearance.glassOpacity.coerceIn(0f,1f))
     val background = if (reduceTransparency) {
-        if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF1C1C1E),Color(0xFF1C1C1E)))
+        if(lightTheme) Brush.verticalGradient(listOf(Color.White,brandColor(0xFFF7FAF7))) else Brush.verticalGradient(listOf(brandColor(0xFF1B1D1C),brandColor(0xFF1B1D1C)))
     } else if(lightTheme) {
         // Pale cool-tinted glass; no heavy dark blue fill on the white Settings page.
         Brush.verticalGradient(listOf(Color.White.copy(alpha=glassTint), Color.White.copy(alpha=glassTint), Color.White.copy(alpha=glassTint)))
     } else {
-        Brush.verticalGradient(listOf(Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint)))
+        Brush.verticalGradient(listOf(brandColor(0xFF1B1D1C).copy(alpha=glassTint), brandColor(0xFF1B1D1C).copy(alpha=glassTint), brandColor(0xFF1B1D1C).copy(alpha=glassTint)))
     }
     Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x,frostScale=if(clearGlass).35f else 1f).background(background)
         .then(if(calm)Modifier else Modifier.thinnSpecularEdge(cornerRadiusDp.dp)).drawWithContent {
@@ -77,7 +79,7 @@ fun NextOpticalSurface(
                 brush = Brush.radialGradient(
                     colors = listOf(
                         Color.White.copy(alpha = if(clearGlass) {if(pressed).055f else .018f} else if (pressed) .39f else .13f + opticalPhase*.08f),
-                        Color(0xFF9FDFF7).copy(alpha = if(clearGlass).015f else if (pressed) .11f else .03f),
+                        brandColor(0xFFA9E1D1).copy(alpha = if(clearGlass).015f else if (pressed) .11f else .03f),
                         Color.Transparent
                     ), center = light, radius = radius
                 ),

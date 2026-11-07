@@ -1,5 +1,7 @@
 package io.atmos.weather.alarm
 
+import io.atmos.weather.ui.brandColor
+
 import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioManager
@@ -240,7 +242,7 @@ internal fun AlarmFullScreen(
                 Modifier.fillMaxWidth().height(trackHeight)
                     .onSizeChanged { trackWidth = it.width }
                     .clip(RoundedCornerShape(9999.dp))
-                    .background(Color(0xFF1C1C1E))
+                    .background(brandColor(0xFF1B1D1C))
                     .border(.7.dp, Color.White.copy(alpha = .075f), RoundedCornerShape(9999.dp))
                     .thinnSpecularEdge(trackHeight/2)
                     .semantics {
@@ -267,7 +269,7 @@ internal fun AlarmFullScreen(
                         .size(thumbSize)
                         .clip(CircleShape)
                         .background(Brush.verticalGradient(listOf(
-                            Color(0xFF3B3935), Color(0xFF242426))))
+                            Color(0xFF3B3935), brandColor(0xFF232524))))
                         .border(.8.dp, Color.White.copy(alpha = .24f), CircleShape)
                         .thinnSpecularEdge(thumbSize/2)
                     .pointerInput(maxDrag) {

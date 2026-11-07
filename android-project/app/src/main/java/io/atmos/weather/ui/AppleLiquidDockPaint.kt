@@ -70,7 +70,7 @@ fun BoxScope.AppleLiquidDockPaint(
             drawPath(liquid,Color.White.copy(alpha=if(light).045f else .035f))
             drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=if(light).08f else .06f),
                 Color.Transparent,Color.White.copy(alpha=.015f)),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)))
-            val rainbow=Brush.sweepGradient(listOf(Color(0x447BDFFF),Color(0x337F91FF),Color(0x44EBA9DB),Color(0x33FFE1A8),Color(0x447BDFFF)),Offset((x+tx)/2,y))
+            val rainbow=Brush.sweepGradient(listOf(brandColor(0x44A1DECD),brandColor(0x333CAB8C),brandColor(0x44B9DBB9),brandColor(0x33E2EBD5),brandColor(0x44A1DECD)),Offset((x+tx)/2,y))
             drawPath(liquid,rainbow,style=Stroke(.7.dp.toPx()))
             drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=.32f),
                 Color.White.copy(alpha=.08f),Color.Transparent),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)),style=Stroke(.55.dp.toPx()))

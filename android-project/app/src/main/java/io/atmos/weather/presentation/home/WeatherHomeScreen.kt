@@ -1,4 +1,6 @@
 package io.atmos.weather.presentation.home
+
+import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.IOSActivityIndicator as CircularProgressIndicator
 import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
@@ -119,7 +121,7 @@ import kotlin.math.sin
 import kotlin.math.cos
 
 private val White = Color.White
-private val TextSoft = Color(0xFFE5F2FC)
+private val TextSoft get() = brandColor(0xFFE1F4EF)
 private val GlassShape = RoundedCornerShape(30.dp)
 
 /** Center the temperature DIGITS; position the degree glyph on their right. */
@@ -161,15 +163,15 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val snow = (snapshot?.temperatureC ?: 100.0) <= 5.0 && snapshot?.condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)
     val hazy = (snapshot?.aerosolOpticalDepth ?: 0.0) >= .45 || snapshot?.condition in setOf(WeatherCondition.HAZE, WeatherCondition.DUST, WeatherCondition.DUST_STORM)
     val colors = when {
-        snapshot?.condition == WeatherCondition.DUST_STORM -> listOf(Color(0xFF57412F), Color(0xFFAB8055), Color(0xFFE0B884))
-        snapshot?.condition == WeatherCondition.DUST -> listOf(Color(0xFF78654E),Color(0xFFB89B74),Color(0xFFE7D7B6))
-        stormy -> listOf(Color(0xFF0C1930), Color(0xFF273E59), Color(0xFF526E86))
-        isNight -> listOf(Color(0xFF071328), Color(0xFF1B3556), Color(0xFF465776))
-        snapshot?.condition == WeatherCondition.FOG -> listOf(Color(0xFF677E8F), Color(0xFF9AABB4), Color(0xFFC4CDD1))
-        rainy -> listOf(Color(0xFF102F48), Color(0xFF386883), Color(0xFF82A6B6))
-        hazy -> listOf(Color(0xFF738497), Color(0xFF9BA3AA), Color(0xFFD5C8B9))
-        snow -> listOf(Color(0xFF4A7296), Color(0xFF88AEC8), Color(0xFFCAE2F0))
-        else -> listOf(Color(0xFF1F67A0), Color(0xFF64B5DD), Color(0xFFA8DDEC))
+        snapshot?.condition == WeatherCondition.DUST_STORM -> listOf(brandColor(0xFF294C42), brandColor(0xFF4A9680), brandColor(0xFF76CFB6))
+        snapshot?.condition == WeatherCondition.DUST -> listOf(brandColor(0xFF497065),brandColor(0xFF60AE98),brandColor(0xFFB0E3D5))
+        stormy -> listOf(brandColor(0xFF0A1D17), brandColor(0xFF1D4339), brandColor(0xFF477367))
+        isNight -> listOf(brandColor(0xFF081612), brandColor(0xFF153B30), brandColor(0xFF385E53))
+        snapshot?.condition == WeatherCondition.FOG -> listOf(brandColor(0xFF5E8278), brandColor(0xFF92AEA6), brandColor(0xFFC1CFCB))
+        rainy -> listOf(brandColor(0xFF123229), brandColor(0xFF2F6D5C), brandColor(0xFF71AC9B))
+        hazy -> listOf(brandColor(0xFF66897F), brandColor(0xFF96A5A1), brandColor(0xFFB2D1C8))
+        snow -> listOf(brandColor(0xFF3C7968), brandColor(0xFF66B8A1), brandColor(0xFFBCE7DB))
+        else -> listOf(brandColor(0xFF276F5B), brandColor(0xFF48BF9D), brandColor(0xFFA7E0D0))
     }
     val blendTop by animateColorAsState(colors[0], animationSpec=tween(1600), label="sky top")
     val blendMid by animateColorAsState(colors[1], animationSpec=tween(1600), label="sky middle")
@@ -601,7 +603,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         hazy,appearance.liquidMotion,motionState,if(reducedMotion)0f else lightningAlpha,
                         lightningBolt,snapshot?.windKmh ?: 0.0,snapshot?.weatherCode,snapshot?.visibilityM)
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
-                        Color(0x9807192C),Color(0x4207192C),Color(0x9B07192C)))))
+                        brandColor(0x980A1B16),brandColor(0x420A1B16),brandColor(0x9B0A1B16)))))
                 }
             }) {
         val workspace=LocalWorkspaceLayout.current
@@ -659,7 +661,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         lightningBolt, snapshot?.windKmh ?: 0.0, snapshot?.weatherCode, snapshot?.visibilityM)
                     // A fixed dark scrim prevents white copy washing out against bright daylight skies.
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
-                        Color(0x9807192C),Color(0x4207192C),Color(0x9B07192C)))))
+                        brandColor(0x980A1B16),brandColor(0x420A1B16),brandColor(0x9B0A1B16)))))
                     }
                     // Keep location, temperature, cards, loading and errors above
                     // the background, independently of whether weather data loads.
@@ -703,7 +705,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             Text(demoDescription,color=TextSoft,fontSize=14.sp)
                             Spacer(Modifier.height(8.dp))
                             LinearProgressIndicator(progress={ (10-demoRemaining)/10f },
-                                modifier=Modifier.fillMaxWidth(),color=Color(0xFF9ADFFF),trackColor=White.copy(alpha=.22f))
+                                modifier=Modifier.fillMaxWidth(),color=brandColor(0xFFA9E1D1),trackColor=White.copy(alpha=.22f))
                         }
                     }
                 }
@@ -811,7 +813,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Spacer(Modifier.height(20.dp))
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
                         .background(weatherCards.brush)
-                        .border(1.dp, Color(0xFF94D7EE).copy(alpha=.56f), RoundedCornerShape(22.dp))
+                        .border(1.dp, brandColor(0xFF97DAC7).copy(alpha=.56f), RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
                         .padding(horizontal=17.dp, vertical=18.dp), verticalAlignment=Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Cyclone, contentDescription=null,
@@ -830,7 +832,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             }
                             if (verifiedTyphoonWarning!=null)
                                 Text("已發布正式颱風警報 · 點選查看",color=Color(0xFFFFD8B9),fontSize=14.sp)
-                            else Text("尚非正式海上／陸上颱風警報",color=Color(0xFFBDE4F6),fontSize=14.sp)
+                            else Text("尚非正式海上／陸上颱風警報",color=brandColor(0xFFBBE7DB),fontSize=14.sp)
                             Text("七級風暴風圈通過機率 · ${io.atmos.weather.location.LocationLabels.microcity(state.city.name)}：${homeWindProbability ?: "暫無官方機率"}",
                                 color=Color(0xFFFFDEA7),fontSize=14.sp,maxLines=2)
 
@@ -843,11 +845,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
                         .background(weatherCards.brush)
-                        .border(1.dp,Color(0xFFB1E3F5).copy(alpha=.35f),RoundedCornerShape(22.dp))
+                        .border(1.dp,brandColor(0xFFB5E5D8).copy(alpha=.35f),RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
                         .padding(horizontal=17.dp,vertical=15.dp),
                         verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Cyclone,null,tint=Color(0xFF9ED8F1),modifier=Modifier.size(24.dp))
+                        Icon(Icons.Rounded.Cyclone,null,tint=brandColor(0xFF9CDCCA),modifier=Modifier.size(24.dp))
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                             Text("颱風資訊",fontSize=18.sp,fontWeight=FontWeight.SemiBold,color=White)
@@ -1120,8 +1122,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             .padding(start=9.dp,end=9.dp,top=4.dp,bottom=4.dp),
                             verticalAlignment=Alignment.CenterVertically) {
                             Box(Modifier.size(22.dp).clip(CircleShape)
-                                .border(1.4.dp,if(selected) Color(0xFF8EDFFF) else TextSoft,CircleShape)
-                                .background(if(selected) Color(0xFF3486B5) else Color.Transparent),
+                                .border(1.4.dp,if(selected) brandColor(0xFFA6E0CF) else TextSoft,CircleShape)
+                                .background(if(selected) brandColor(0xFF328D74) else Color.Transparent),
                                 contentAlignment=Alignment.Center) {
                                 if(selected) Box(Modifier.size(9.dp).background(White,CircleShape))
                             }
@@ -1135,7 +1137,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                     hapticEngine.play(HapticEngine.Event.TAP)
                                     ThinnNotificationChannels.playPreview(context,tone.id)
                                 },contentAlignment=Alignment.Center) {
-                                Text("▶",color=Color(0xFF8EDFFF),fontSize=18.sp)
+                                Text("▶",color=brandColor(0xFFA6E0CF),fontSize=18.sp)
                             }
                         }
                     }
@@ -1381,7 +1383,7 @@ private fun HapticSlider(label:String, value:Float, setValue:(Float)->Unit,
         Text("${(value*100).roundToInt()}%",color=TextSoft,fontSize=15.sp)
     }
     Slider(value=value,valueRange=0f..1f,
-        colors=SliderDefaults.colors(thumbColor=White,activeTrackColor=Color(0xFF3779FA),
+        colors=SliderDefaults.colors(thumbColor=White,activeTrackColor=brandColor(0xFF328E74),
             inactiveTrackColor=White.copy(alpha=.21f)),onValueChange={
         setValue(it)
         engine.play(HapticEngine.Event.DRAG)
@@ -1497,7 +1499,7 @@ private fun LocationFeedbackBanner(status: LocationFeedback, onRetry: () -> Unit
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (busy) {
-            CircularProgressIndicator(modifier=Modifier.size(20.dp),color=Color(0xFF9CE4FF),strokeWidth=2.dp)
+            CircularProgressIndicator(modifier=Modifier.size(20.dp),color=brandColor(0xFFB2E4D6),strokeWidth=2.dp)
         } else {
             val image = when (status.phase) {
                 LocationPhase.SUCCESS -> Icons.Rounded.CheckCircle
@@ -1575,7 +1577,7 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
         Canvas(Modifier.fillMaxSize()) {
             val w=size.width; val h=size.height
             val x=w*(.22f + (boltSeed % 5)*.13f)
-            drawRect(Color(0xFFDCE8FF).copy(alpha=lightningAlpha))
+            drawRect(brandColor(0xFFCFEEE5).copy(alpha=lightningAlpha))
             val p=Path().apply {
                 moveTo(x,h*.045f)
                 lineTo(x+w*.035f,h*.18f)
@@ -1583,7 +1585,7 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
                 lineTo(x+w*.042f,h*.37f)
                 lineTo(x-w*.031f,h*.56f)
             }
-            drawPath(p,Color(0xFFE8F4FF).copy(alpha=(lightningAlpha*2.1f).coerceAtMost(.83f)),
+            drawPath(p,brandColor(0xFFE6F6F1).copy(alpha=(lightningAlpha*2.1f).coerceAtMost(.83f)),
                 style=Stroke(width=2.8.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round))
         }
     }
@@ -1600,8 +1602,8 @@ private fun AtmosphereCanvas(condition:WeatherCondition, isNight:Boolean, phase:
         }
         if (isNight) {
             val moon = Offset(w*.77f,h*.13f)
-            drawCircle(Color(0xFFEDF4FB).copy(alpha=.72f),radius=w*.043f,center=moon)
-            drawCircle(Color(0xFF143259),radius=w*.037f,center=Offset(moon.x+w*.017f,moon.y-w*.011f))
+            drawCircle(brandColor(0xFFE7F7F2).copy(alpha=.72f),radius=w*.043f,center=moon)
+            drawCircle(brandColor(0xFF14382E),radius=w*.037f,center=Offset(moon.x+w*.017f,moon.y-w*.011f))
         }
         if (isNight) for(i in 0 until 34) {
             val x=((i*.618033f)%1f)*w
@@ -1654,7 +1656,7 @@ private fun ContinuousRain(heavy: Boolean, modifier: Modifier = Modifier) {
             val dx=d.slant * width
             val alpha=(d.alpha * (if (heavy) 1.36f else 1f)).coerceAtMost(.39f)
             drawLine(
-                color=Color(0xFFD8ECFF).copy(alpha=alpha),
+                color=brandColor(0xFFD3F0E8).copy(alpha=alpha),
                 start=Offset(x,y),end=Offset(x-dx,y+len),
                 strokeWidth=(d.thickness * density / 400f).coerceIn(.55f,2.2f),
                 cap=StrokeCap.Round
@@ -1668,12 +1670,12 @@ private fun ContinuousRain(heavy: Boolean, modifier: Modifier = Modifier) {
                     val progress = ((yn-plane)/.085f).coerceIn(0f,1f)
                     val yImpact = plane*height
                     val opacity=(1f-progress)*.23f
-                    drawCircle(Color(0xFFE6F7FF).copy(alpha=opacity),
+                    drawCircle(brandColor(0xFFE9F7F3).copy(alpha=opacity),
                         radius=(1.5f+progress*9f)*density/400f,
                         center=Offset(x-dx*.66f,yImpact),
                         style=Stroke(width=(.7f*density/400f).coerceAtLeast(.5f)))
                     val bounce = kotlin.math.sin(progress*kotlin.math.PI.toFloat()) * (5f + d.depth*8f)
-                    drawCircle(Color(0xFFE6F7FF).copy(alpha=opacity*.8f),
+                    drawCircle(brandColor(0xFFE9F7F3).copy(alpha=opacity*.8f),
                         radius=(.6f+d.depth)*density/400f,
                         center=Offset(x+progress*6f, yImpact-bounce))
                 }
@@ -1703,7 +1705,7 @@ private fun ContinuousSnow(modifier:Modifier=Modifier) {
         }
         val accumulated=(elapsed/120f).coerceIn(0f,1f)
         val shelf=(.6f+3.6f*accumulated).dp.toPx()
-        drawRect(Color(0xFFF5FAFF).copy(alpha=.18f+.36f*accumulated),
+        drawRect(brandColor(0xFFF4FBF9).copy(alpha=.18f+.36f*accumulated),
             topLeft=Offset(0f,h-shelf),size=Size(w,shelf))
     }
 }
@@ -1769,7 +1771,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
             localWarning!=null -> "已發布海上颱風警報。避免海邊、港口與海上活動，持續關注氣象署是否升級陸警。"
             stale -> "目前顯示舊資料，請重新整理後再確認外出安排。"
             else -> critical?.detail ?: plan.reminder
-        },color=Color(0xFFF0F6FB),fontSize=16.sp,lineHeight=24.sp,maxLines=7)
+        },color=brandColor(0xFFEBF8F4),fontSize=16.sp,lineHeight=24.sp,maxLines=7)
         if(localWarning!=null) {
             Spacer(Modifier.height(6.dp))
             Text("依中央氣象署已核對公告產生的規則式安全提醒；非 AI 推測警戒範圍。",
@@ -1779,7 +1781,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
         Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha=.14f)))
         Spacer(Modifier.height(17.dp))
         // These are not optional fine print: clothing and rain decisions are always visible.
-        Text(if(stale) "資料較舊，請先更新再決定穿搭" else plan.temperatureSummary,color=Color(0xFFE6F3FC),fontSize=15.sp,lineHeight=22.sp)
+        Text(if(stale) "資料較舊，請先更新再決定穿搭" else plan.temperatureSummary,color=brandColor(0xFFE3F5F0),fontSize=15.sp,lineHeight=22.sp)
         Spacer(Modifier.height(12.dp))
         io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
             {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
@@ -1797,7 +1799,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
         }
         Spacer(Modifier.height(9.dp))
         TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
-            Text("完整穿搭清單與個人偏好",color=Color(0xFFC9EBFF),fontSize=15.sp,fontWeight=FontWeight.Medium)
+            Text("完整穿搭清單與個人偏好",color=brandColor(0xFFCCEDE4),fontSize=15.sp,fontWeight=FontWeight.Medium)
         }
         }
     }
@@ -1806,7 +1808,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
 @Composable
 private fun HomeAdviceRow(label:String,value:String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.Top) {
-        Text(label,color=Color(0xFFBBDDF1),fontSize=16.sp,fontWeight=FontWeight.SemiBold,
+        Text(label,color=brandColor(0xFFAFE3D4),fontSize=16.sp,fontWeight=FontWeight.SemiBold,
             modifier=Modifier.width((84*LocalDensity.current.fontScale).dp))
         Text(value,color=White,fontSize=16.sp,lineHeight=24.sp,modifier=Modifier.weight(1f))
     }
@@ -1816,13 +1818,13 @@ private fun HomeAdviceRow(label:String,value:String) {
 private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
     // The four actionable facts are ALWAYS on the homepage: no collapsed detail sheet.
     val highlights = remember(weather) { HomeWeatherBriefing.build(weather) }
-    io.atmos.weather.ui.ThinnAtmospherePanel(accent=Color(0xFF9ADAFE)) {
+    io.atmos.weather.ui.ThinnAtmospherePanel(accent=brandColor(0xFFA1DECD)) {
         Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Text("現在最重要的天氣", color = White, fontSize = 21.sp,
                 lineHeight = 29.sp, fontWeight = FontWeight.SemiBold)
-            Text("未來 6 小時", color = Color(0xFFC4E8FC), fontSize = 14.sp)
+            Text("未來 6 小時", color = brandColor(0xFFC5EBE0), fontSize = 14.sp)
         }
         if (stale) {
             Text("目前使用離線快取，資訊可能過時", color = Color(0xFFFFDB9F),
@@ -1836,14 +1838,14 @@ private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
                 facts.forEach { fact ->
                     Column(Modifier.weight(1f)
                         .padding(horizontal = 16.dp, vertical = 15.dp)) {
-                        Text(fact.label, color = Color(0xFFD6EAF7), fontSize = 15.sp,
+                        Text(fact.label, color = brandColor(0xFFCEEEE5), fontSize = 15.sp,
                             fontWeight = FontWeight.Medium, lineHeight = 22.sp)
                         Spacer(Modifier.height(5.dp))
                         Text(fact.value, color = White, fontSize = 26.sp,
                             fontWeight = FontWeight.SemiBold, lineHeight = 35.sp,
                             maxLines = 2)
                         Spacer(Modifier.height(3.dp))
-                        Text(fact.note, color = Color(0xFFDBEAF5), fontSize = 14.sp,
+                        Text(fact.note, color = brandColor(0xFFD0EEE6), fontSize = 14.sp,
                             lineHeight = 20.sp, maxLines = 2)
                     }
                 }

@@ -1,5 +1,8 @@
 package io.atmos.weather.earthquake
 
+import io.atmos.weather.ui.brandColor
+import io.atmos.weather.ui.brandArgb
+
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
@@ -47,7 +50,7 @@ internal object SeismicIntensityColors {
     val atlas by produceState<WarningCountyAtlas?>(null,ctx){value=WarningCountyAtlas.load(ctx)}
     val dark=MaterialTheme.colorScheme.background.red<.5f
     val readingScale=LocalDensity.current.fontScale.coerceIn(1f,1.3f)
-    val sea=if(dark)Color(0xFF092233) else Color(0xFFDEEEF6)
+    val sea=if(dark)brandColor(0xFF0D241E) else brandColor(0xFFD7F1EA)
     var zoom by remember(incident.id){mutableFloatStateOf(1f)};var pan by remember(incident.id){mutableStateOf(Offset.Zero)}
     val fill=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL}}
     val edge=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}}
@@ -59,7 +62,7 @@ internal object SeismicIntensityColors {
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){
             (if(historical)listOf("1","2","3","4","5","6","7") else SeismicAlertThreshold.grades).forEach{grade->Box(Modifier.clip(RoundedCornerShape(6.dp)).background(SeismicIntensityColors.color(grade)).padding(horizontal=7.dp,vertical=4.dp)){
-                Text(SeismicDisplayFormat.symbol(grade),fontSize=14.sp,color=if(grade in listOf("6強","7"))Color.White else Color(0xFF101B22))
+                Text(SeismicDisplayFormat.symbol(grade),fontSize=14.sp,color=if(grade in listOf("6強","7"))Color.White else brandColor(0xFF0D1C18))
             }}
         }
         Spacer(Modifier.height(8.dp))
@@ -76,7 +79,7 @@ internal object SeismicIntensityColors {
                 val loaded=atlas?:return@Canvas;val canvas=drawContext.canvas.nativeCanvas
                 WarningMapLayout.viewports(size.width,size.height,density,zoom,pan).forEach{view->
                     canvas.save();canvas.clipRect(view.rectangle.left,view.rectangle.top,view.rectangle.right,view.rectangle.bottom);canvas.concat(view.matrix())
-                    edge.color=if(dark)0xff163741.toInt() else 0xff4c6e77.toInt();edge.strokeWidth=(.75f*density/view.scale).toFloat()
+                    edge.color=if(dark)brandArgb(0xFF14392F) else brandArgb(0xFF487165);edge.strokeWidth=(.75f*density/view.scale).toFloat()
                     loaded.counties.filter{view.county==null||view.county==it.name}.forEach{shape->
                         val color=SeismicIntensityColors.color(values[shape.name]?:values[shape.name.replace('臺','台')])
                         fill.color=android.graphics.Color.rgb((color.red*255).toInt(),(color.green*255).toInt(),(color.blue*255).toInt())
@@ -84,12 +87,12 @@ internal object SeismicIntensityColors {
                     };canvas.restore()
                     val occupied=mutableListOf<android.graphics.RectF>()
                     labels.textSize=12*density*readingScale
-                    labels.setShadowLayer(2*density,0f,0f,if(dark)0xff081924.toInt() else 0xffeffaff.toInt())
+                    labels.setShadowLayer(2*density,0f,0f,if(dark)brandArgb(0xFF091A16) else brandArgb(0xFFF1FAF8))
                     loaded.counties.filter{if(view.county==null)it.name !in setOf("澎湖縣","金門縣","連江縣") else it.name==view.county}.forEach{shape->
                         val ground=SeismicIntensityColors.color(values[shape.name]?:values[shape.name.replace('臺','台')])
                         val lightInk=if(view.county!=null)dark else ground.luminance()<.18f
                         labels.color=if(lightInk)android.graphics.Color.WHITE else android.graphics.Color.BLACK
-                        labels.setShadowLayer(1.5f*density,0f,0f,if(lightInk)0xff071923.toInt() else 0xfff6fcff.toInt())
+                        labels.setShadowLayer(1.5f*density,0f,0f,if(lightInk)brandArgb(0xFF091A15) else brandArgb(0xFFF7FCFB))
                         val at=view.project(shape.label.first,shape.label.second);val w=labels.measureText(shape.name)
                         val box=android.graphics.RectF(at.x-w/2,at.y-labels.textSize-2*density,at.x+w/2,at.y+2*density)
                         if(view.rectangle.contains(at)&&occupied.none{android.graphics.RectF.intersects(it,box)}){canvas.drawText(shape.name,box.left,at.y,labels);occupied+=box}
@@ -110,10 +113,10 @@ internal object SeismicIntensityColors {
                         drawLine(Color(0xFFD32630),at+Offset(-d,n*d),at+Offset(d,-n*d),3.5.dp.toPx())
                     }
                 }
-                place?.let{val at=main.project(it.lon,it.lat);drawCircle(Color.White,6.dp.toPx(),at);drawCircle(Color(0xFF007AFF),4.dp.toPx(),at)}
+                place?.let{val at=main.project(it.lon,it.lat);drawCircle(Color.White,6.dp.toPx(),at);drawCircle(brandColor(0xFF328E74),4.dp.toPx(),at)}
             }
             GlassTextButton({zoom=1f;pan=Offset.Zero},modifier=Modifier.align(Alignment.TopEnd).padding(8.dp)){Text("重設地圖")}
-            Text(if(atlas==null)"載入縣市向量地圖…" else "© 國土測繪中心 · 灰：未提供",fontSize=14.sp,color=if(dark)Color(0xFFD2E8F6) else Color(0xFF1C465D),
+            Text(if(atlas==null)"載入縣市向量地圖…" else "© 國土測繪中心 · 灰：未提供",fontSize=14.sp,color=if(dark)brandColor(0xFFC9ECE2) else brandColor(0xFF1A4A3C),
                 modifier=Modifier.align(Alignment.BottomStart).background(sea.copy(alpha=.94f)).padding(8.dp))
         }
         Spacer(Modifier.height(6.dp))

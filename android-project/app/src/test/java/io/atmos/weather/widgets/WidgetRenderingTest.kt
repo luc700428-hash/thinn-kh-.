@@ -57,6 +57,14 @@ class WidgetRenderingTest {
             val width=if(family in 1..5)320 else 180
             render(variant,width,180,1f,"catalogue_${variant.toString().padStart(2,'0')}")
         }
+        val qualifiers=RuntimeEnvironment.getQualifiers()
+        try {
+            RuntimeEnvironment.setQualifiers("zh-rTW-xxhdpi")
+            for(variant in 0..27) {
+                val family=if(variant==25)5 else if(variant==26)6 else if(variant==27)7 else variant/5
+                render(variant,if(family in 1..5)320 else 180,180,1f,"catalogue_hd_${variant.toString().padStart(2,'0')}")
+            }
+        } finally {RuntimeEnvironment.setQualifiers(qualifiers)}
     }
     @Test(timeout=240_000) fun everyFamilyFitsSmallWideTallAndLargeText() {
         val failures=mutableListOf<String>()

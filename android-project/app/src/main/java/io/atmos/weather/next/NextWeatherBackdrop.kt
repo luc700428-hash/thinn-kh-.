@@ -1,5 +1,7 @@
 package io.atmos.weather.next
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -58,7 +60,7 @@ fun NextWeatherBackdrop(scene:WeatherScene?, phase:Float, night:Boolean, modifie
             }
             WeatherScene.HAZE,WeatherScene.FOG,WeatherScene.DENSE_FOG -> {
                 val strength=when(scene){WeatherScene.HAZE->.06f;WeatherScene.FOG->.10f;else->.17f}
-                val tint=if(scene==WeatherScene.HAZE)Color(0xFFD8C4A2) else Color(0xFFDDEAF0)
+                val tint=if(scene==WeatherScene.HAZE)Color(0xFFD8C4A2) else brandColor(0xFFD6EDE6)
                 for(i in 0 until 7) {
                     val x=(i*.20f-.25f+sin(t*tau + i)*.06f)*w
                     val y=(.16f+i*.115f)*h

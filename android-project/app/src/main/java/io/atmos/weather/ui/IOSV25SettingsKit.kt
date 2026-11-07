@@ -69,7 +69,7 @@ fun IOSSegmentedControl(labels:List<String>,selected:Int,onSelect:(Int)->Unit,mo
             if(reduce)tween(0) else spring(response.damping,response.stiffness),label="分段控制滑動")
         Box(Modifier.padding(4.dp).offset(x=position).width(cell).fillMaxHeight()
             .clip(RoundedCornerShape(9999.dp)).thinnBackdrop(rememberAppleReduceTransparency(),9999.dp)
-            .background(Color(0xFF0866CC)).thinnSpecularEdge(9999.dp))
+            .background(BrandPalette.selection).thinnSpecularEdge(9999.dp))
         Row(Modifier.fillMaxSize().padding(4.dp).selectableGroup()) {
             labels.forEachIndexed { index,label ->
                 Box(Modifier.weight(1f).fillMaxHeight().iosJellyPress().selectable(
@@ -91,7 +91,7 @@ fun IOSV25SettingsCell(
     val interactions=remember { MutableInteractionSource() }
     val held by interactions.collectIsPressedAsState()
     val fill by animateColorAsState(
-        if(held) { if(palette.background.red > .5f) Color(0xFFE5E5EA) else Color(0xFF2C2C2E) } else if(selected)palette.primaryContainer else Color.Transparent,
+        if(held) { if(palette.background.red > .5f) Color(0xFFE5E5EA) else brandColor(0xFF2B2D2C) } else if(selected)palette.primaryContainer else Color.Transparent,
         tween(if(held)80 else 250),label="settings-cell-highlight")
     Column {
         Row(Modifier.fillMaxWidth().iosJellyPress().background(fill)

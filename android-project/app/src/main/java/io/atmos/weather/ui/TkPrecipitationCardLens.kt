@@ -70,12 +70,12 @@ val TkCardWeatherClock=compositionLocalOf<State<Float>> {stillClock}
                 }
             }
             path.lineTo(w-inset,3.dp.toPx());path.quadraticTo(w*.5f,depth*.55f,inset,3.dp.toPx());path.close()
-            drawPath(path,Brush.verticalGradient(listOf(Color(0xFFF9FDFF),Color(0xFFE2F1F9),Color(0xA6BACEDC)),
+            drawPath(path,Brush.verticalGradient(listOf(Color(0xFFF9FDFF),brandColor(0xFFDEF3ED),brandColor(0xA6AAD4C8)),
                 startY=-depth,endY=depth*.65f),alpha=(snow*5).coerceIn(0f,1f))
             drawPath(path,Color.White.copy(alpha=.48f*snow),style=Stroke(.6.dp.toPx()))
             if(mood!=TkPrecipitationMood.SNOW) {
                 repeat(4) {i ->val x=inset+(w-inset*2)*(i+1)/5f
-                    drawOval(Color(0xA3E2F5FF),Offset(x,depth*.15f),Size(2.dp.toPx(),(3+7*snow).dp.toPx()))}
+                    drawOval(brandColor(0xA3E5F6F1),Offset(x,depth*.15f),Size(2.dp.toPx(),(3+7*snow).dp.toPx()))}
             }
         }
     }

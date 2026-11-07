@@ -1,4 +1,6 @@
 package io.atmos.weather.permission
+
+import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.animation.AnimatedVisibility
@@ -42,9 +44,9 @@ fun FirstRunGuide(onContinue:()->Unit) {
     var visible by remember {mutableStateOf(false)}
     LaunchedEffect(Unit){visible=true}
     ThinnAppTheme {
-        AdaptivePageFrame(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF0B1A2C),Color(0xFF1D435F),Color(0xFF2A6484)))),maxContentWidth=760.dp) {
+        AdaptivePageFrame(Modifier.background(Brush.verticalGradient(listOf(brandColor(0xFF0A1D17),brandColor(0xFF19483B),brandColor(0xFF256956)))),maxContentWidth=760.dp) {
         Column(Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B1A2C),Color(0xFF1D435F),Color(0xFF2A6484))))
+            .background(Brush.verticalGradient(listOf(brandColor(0xFF0A1D17),brandColor(0xFF19483B),brandColor(0xFF256956))))
             .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=25.dp,vertical=36.dp),
             horizontalAlignment=Alignment.CenterHorizontally) {
             Spacer(Modifier.height(35.dp))

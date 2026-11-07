@@ -83,13 +83,13 @@ private val surfaceIds=AtomicInteger(1)
                     val p=Offset(drop.x*density,drop.y*density)
                     if(drop.drip) {
                         val r=drop.radius*density
-                        drawOval(Color(0x8FCDEEFF),Offset(p.x-r,p.y-r),Size(r*2,r*2.5f))
+                        drawOval(brandColor(0x8FD2EFE7),Offset(p.x-r,p.y-r),Size(r*2,r*2.5f))
                         drawCircle(Color(0xDBFFFFFF),r*.23f,Offset(p.x-r*.3f,p.y-r*.3f))
                     } else {
                         val speed=hypot(drop.vx,drop.vy).coerceAtLeast(1f)
                         val length=(11f+drop.vy*.018f)*density
                         val tail=Offset(drop.vx/speed*length,drop.vy/speed*length)
-                        drawLine(Color(0x70D8F1FF),p-tail,p,(drop.radius*.7f).coerceAtLeast(.55f)*density,StrokeCap.Round)
+                        drawLine(brandColor(0x70DBF2EC),p-tail,p,(drop.radius*.7f).coerceAtLeast(.55f)*density,StrokeCap.Round)
                     }
                 }
                 world.sparks.forEach {spark ->
@@ -99,7 +99,7 @@ private val surfaceIds=AtomicInteger(1)
                 }
                 world.surfaces.values.forEach {surface ->
                     if(surface.wet>.005f) {
-                        drawLine(Color(0xFFB4E6FA).copy(alpha=surface.wet*.45f),
+                        drawLine(brandColor(0xFFBCE7DB).copy(alpha=surface.wet*.45f),
                             Offset((surface.left+surface.r)*density,surface.top*density),
                             Offset((surface.right-surface.r)*density,surface.top*density),1.1f*density,StrokeCap.Round)
                     }
@@ -114,9 +114,9 @@ private val surfaceIds=AtomicInteger(1)
                                 cubicTo(center.x-r*.15f,center.y-r,center.x-r,center.y,center.x,center.y+r)
                                 cubicTo(center.x+r,center.y,center.x+r*.15f,center.y-r,center.x+r*.65f,point.y*density);close()
                             }
-                            drawPath(neck,Color(0x8BC7EBFF))
+                            drawPath(neck,brandColor(0x8BCBEDE3))
                         }
-                        drawOval(Color(0x7F8FC9E9),center-Offset(r,r*.8f),Size(r*2,r*(1.6f+stretch*.5f)))
+                        drawOval(brandColor(0x7F7CD1B9),center-Offset(r,r*.8f),Size(r*2,r*(1.6f+stretch*.5f)))
                         drawOval(Color.White.copy(alpha=.53f),center-Offset(r,r*.8f),Size(r*2,r*(1.6f+stretch*.5f)),style=Stroke(.5f*density))
                         drawCircle(Color.White.copy(alpha=.88f),r*.23f,center-Offset(r*.28f,r*.32f))
                     }

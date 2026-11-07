@@ -12,6 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.node.RootForTest
+import androidx.compose.ui.semantics.*
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,6 +33,11 @@ import java.time.Duration
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class ToolsPageRenderingTest {
+    private fun nodes(view:View):List<SemanticsNode> {
+        fun walk(n:SemanticsNode):List<SemanticsNode> = listOf(n)+n.children.flatMap{walk(it)}
+        if(view is RootForTest)return walk(view.semanticsOwner.rootSemanticsNode)
+        return if(view is ViewGroup)(0 until view.childCount).flatMap{nodes(view.getChildAt(it))} else emptyList()
+    }
     @Test fun completeCatalogueRendersEveryGroupInLightAndDark() {
         val context=RuntimeEnvironment.getApplication()
         context.getSharedPreferences("thinn_settings",0).edit().clear()
@@ -56,11 +63,17 @@ class ToolsPageRenderingTest {
                 shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(80))
                 val bitmap=Bitmap.createBitmap(400,1600,Bitmap.Config.ARGB_8888)
                 parent.draw(Canvas(bitmap))
-                // Distinct category icons prove that the entire catalogue reached the real draw path.
-                for(tint in listOf(0xffff9500.toInt(),0xff007aff.toInt(),0xff007a78.toInt(),0xff5856d6.toInt())) {
+                // Each visible category must draw its own icons in the unified forest identity.
+                val headings=listOf("日常生活","天氣與防災","海洋與天文","時間與換算").map{title->
+                    nodes(parent).single{it.config.contains(SemanticsProperties.Text)&&
+                        it.config[SemanticsProperties.Text].any{t->t.text==title}}.boundsInRoot
+                }
+                for((index,heading) in headings.withIndex()) {
+                    val top=heading.bottom.toInt();val bottom=headings.getOrNull(index+1)?.top?.toInt()?:bitmap.height
+                    assertTrue("Category was outside the visible catalogue",top>=0&&bottom<=bitmap.height&&bottom>top)
                     var pixels=0
-                    for(y in 0 until bitmap.height)for(x in 0 until bitmap.width)if(bitmap.getPixel(x,y)==tint)pixels++
-                    assertTrue("Missing category icon in ${if(dark)"dark" else "light"} catalogue: ${Integer.toHexString(tint)}",pixels>100)
+                    for(y in top until bottom)for(x in 0 until 100)if(bitmap.getPixel(x,y)==0xff2f6858.toInt())pixels++
+                    assertTrue("Missing green category icon $index in ${if(dark)"dark" else "light"} catalogue",pixels>100)
                 }
                 val output=File("build/tools-renders").apply{mkdirs()}
                 File(output,"tools_${if(dark)"dark" else "light"}.png").outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}

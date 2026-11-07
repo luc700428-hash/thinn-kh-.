@@ -1,5 +1,7 @@
 package io.atmos.weather.earthquake
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.ui.platform.testTag
 import io.atmos.weather.ui.appleBouncingScroll
 
@@ -138,7 +140,7 @@ object SeismicPreviewPlayer {
 
 private val ice:Color @Composable get()=MaterialTheme.colorScheme.primary
 private val pale:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
-private val blue = Color(0xFF0D2C48)
+private val blue get() = brandColor(0xFF113027)
 
 /** Earthquake-specific settings, separate from the weather app's eight ordinary tones. */
 @Composable

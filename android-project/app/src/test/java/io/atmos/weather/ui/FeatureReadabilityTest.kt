@@ -87,10 +87,10 @@ class FeatureReadabilityTest {
             assertEquals("Sky content: "+nodes(view).mapNotNull{if(it.config.contains(SemanticsProperties.Text))it.config[SemanticsProperties.Text] else null},1,found.size)
             val label=found.single()
             val layouts=mutableListOf<TextLayoutResult>();assertTrue(label.config[SemanticsActions.GetTextLayoutResult].action!!.invoke(layouts))
-            val ink=layouts.first().layoutInput.style.color.luminance();val bg=Color(0xFF1C1C1E).luminance()
+            val ink=layouts.first().layoutInput.style.color.luminance();val bg=BrandPalette.dark.surface.luminance()
             assertTrue((ink+.05f)/(bg+.05f)>=4.5f)
             val image=pump(view);var contour=0
-            for(y in 0 until image.height)for(x in 0 until image.width)if(image.getPixel(x,y)==0xffb7cbdd.toInt())contour++
+            for(y in 0 until image.height)for(x in 0 until image.width)if(image.getPixel(x,y)==brandArgb(0xFFA1D3C5))contour++
             assertTrue("Dark moon lost its visible outline",contour>15)
         }
     }

@@ -4,7 +4,10 @@ from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 
-EXPECTED = {'io.atmos.weather.ui.TransparentDockTransmissionRenderingTest': {'liveBackgroundRemainsVisibleThroughEveryDockEdgeInBothThemes'},
+EXPECTED = {'io.atmos.weather.ui.AppThemeColorTest': {'missingOrUnknownPreferencesDefaultToForest','textRolesRemainReadableInEveryThemeAndAppearance','tintKeepsGlassAlphaAndMaterialLuminance','warningRolesDoNotChangeWithTheTheme','allFilledSelectionsKeepWhiteTextReadable'},
+ 'io.atmos.weather.ui.ThemeColorPickerRenderingTest': {'everyColorAppliesAndPersistsWithoutResettingFormState'},
+ 'io.atmos.weather.ui.ThemeWorkspaceRenderingTest': {'weatherToolsSettingsAndQuakesFollowTheSelectedTheme'},
+ 'io.atmos.weather.ui.TransparentDockTransmissionRenderingTest': {'liveBackgroundRemainsVisibleThroughEveryDockEdgeInBothThemes'},
  'io.atmos.weather.ui.RealWeatherDockContinuityRenderingTest': {'realWeatherHasNoBackgroundSeamAlongAnyReservedDockLane'},
  'io.atmos.weather.earthquake.SeismicCriticalAudioPolicyTest': {'alarmsOnlyModePermitsCriticalAlarmAudio',
                                                                 'criticalModeCannotRaiseAZeroAlarmVolume',

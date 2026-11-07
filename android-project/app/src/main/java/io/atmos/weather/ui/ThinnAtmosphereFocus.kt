@@ -36,10 +36,10 @@ import kotlin.math.roundToInt
 fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMotion: Boolean) {
     val highlighted = when (snapshot.condition) {
         WeatherCondition.THUNDERSTORM -> Color(0xFFFFB497)
-        WeatherCondition.RAIN, WeatherCondition.FREEZING_RAIN -> Color(0xFF90D9F9)
-        WeatherCondition.SNOW, WeatherCondition.SLEET -> Color(0xFFE7F4FF)
+        WeatherCondition.RAIN, WeatherCondition.FREEZING_RAIN -> brandColor(0xFF9BDCCA)
+        WeatherCondition.SNOW, WeatherCondition.SLEET -> brandColor(0xFFE5F6F1)
         WeatherCondition.DUST, WeatherCondition.DUST_STORM, WeatherCondition.HAZE -> Color(0xFFFFD3A2)
-        else -> if (snapshot.isDay) Color(0xFFFFE2A9) else Color(0xFFADC8FF)
+        else -> if (snapshot.isDay) Color(0xFFFFE2A9) else brandColor(0xFF8AD6C1)
     }
     val phase = remember { Animatable(.24f) }
     LaunchedEffect(reducedMotion) {
@@ -73,7 +73,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
                 val secondaryCenter=Offset(w*.84f,h*.96f)
                 drawCircle(
                     brush=Brush.radialGradient(
-                        listOf(Color(0xFF80D7FF).copy(alpha=.28f),Color.Transparent),
+                        listOf(brandColor(0xFF95DAC6).copy(alpha=.28f),Color.Transparent),
                         center=secondaryCenter,radius=w*.42f),
                     radius=w*.42f,center=secondaryCenter)
                 for (i in 0..3) {
@@ -87,7 +87,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
             }
             Column(Modifier.align(Alignment.CenterStart).padding(horizontal=21.dp, vertical=22.dp),
                 verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                Text("現在的天氣光景",color=Color(0xFFE6F4FC),fontSize=14.sp,fontWeight=FontWeight.Medium)
+                Text("現在的天氣光景",color=brandColor(0xFFE4F6F1),fontSize=14.sp,fontWeight=FontWeight.Medium)
                 Text(when(snapshot.condition) {
                     WeatherCondition.CLEAR -> if(snapshot.isDay) "天空晴朗" else "夜色清朗"
                     WeatherCondition.PARTLY_CLOUDY -> "晴時多雲"
@@ -100,7 +100,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
                     WeatherCondition.HAZE, WeatherCondition.DUST, WeatherCondition.DUST_STORM -> "天空較為混濁"
                     else -> "觀察現在的天空"
                 },fontSize=27.sp,lineHeight=36.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
-                Text("依目前天氣狀態呈現的光影效果",fontSize=14.sp,color=Color(0xFFE0EAF3))
+                Text("依目前天氣狀態呈現的光影效果",fontSize=14.sp,color=brandColor(0xFFD4EEE7))
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp, vertical=15.dp),
@@ -118,7 +118,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
 @Composable
 private fun FocusMetric(label:String,value:String,modifier:Modifier=Modifier) {
     Column(modifier,horizontalAlignment=Alignment.Start,verticalArrangement=Arrangement.spacedBy(3.dp)) {
-        Text(label,fontSize=14.sp,color=Color(0xFFC7DBEA))
+        Text(label,fontSize=14.sp,color=brandColor(0xFFB2E2D5))
         Text(value,fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=Color.White,maxLines=1)
     }
 }

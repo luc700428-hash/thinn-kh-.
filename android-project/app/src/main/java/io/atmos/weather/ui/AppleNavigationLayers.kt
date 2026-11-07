@@ -202,7 +202,7 @@ fun AppleDepthSheetHost(
                     translationY=(1f-p)*heightPx+dismissDrag
                     clip=true;shape=RoundedCornerShape(topStart=26.dp,topEnd=26.dp)
                 }
-                .background(Color(0xFF1C1C1E))) {
+                .background(brandColor(0xFF1B1D1C))) {
                 Column {
                     Box(Modifier.fillMaxWidth().height(40.dp)
                         .pointerInput(open) {

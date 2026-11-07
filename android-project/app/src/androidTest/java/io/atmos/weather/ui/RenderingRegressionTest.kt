@@ -62,6 +62,7 @@ class RenderingRegressionTest {
         IdlingPolicies.setIdlingResourceTimeout(30,TimeUnit.SECONDS)
         context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).edit()
             .putBoolean("reduce_motion",false).putBoolean("reduce_transparency",false)
+            .putString(AppThemeColors.KEY,AppThemeColor.FOREST.id)
             .putBoolean("sound_enabled",false).putFloat("v4_fontscale",1f).putFloat("v4_fontweight",400f).commit()
         context.getSharedPreferences("thinn_crash_diagnostics",Context.MODE_PRIVATE).edit().clear().commit()
     }
@@ -70,6 +71,35 @@ class RenderingRegressionTest {
         Log.i("ThinnUiRegression",stage)
         val dir=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
         File(dir,"progress.txt").appendText("${Instant.now()} $stage\n")
+    }
+
+    @Test(timeout=120_000) fun themeColorChoicesUpdateVisibleMaterialsAndPersist() {
+        val originalMode=IOS27AppearanceMode.value
+        IOS27AppearanceMode.update(context,"light")
+        try {
+            compose.setContent {
+                ThinnAppTheme {
+                    Column(Modifier.width(340.dp)) {
+                        ThemeColorPicker()
+                        Box(Modifier.size(64.dp).background(MaterialTheme.colorScheme.primary).testTag("theme-swatch"))
+                    }
+                }
+            }
+            frame()
+            for(theme in AppThemeColor.entries) {
+                compose.onNodeWithContentDescription("主題顏色：${theme.title}").performClick();frame()
+                compose.onNodeWithContentDescription("主題顏色：${theme.title}").assertIsSelected()
+                val pixels=compose.onNodeWithTag("theme-swatch").captureToImage().toPixelMap()
+                val actual=pixels[pixels.width/2,pixels.height/2];val expected=Color(theme.primaryArgb)
+                assertEquals(expected.red,actual.red,.02f);assertEquals(expected.green,actual.green,.02f);assertEquals(expected.blue,actual.blue,.02f)
+                assertEquals(theme.id,context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).getString(AppThemeColors.KEY,null)?:AppThemeColor.FOREST.id)
+            }
+            assertNull(CrashDiagnostics.graphics(context))
+            checkpoint("theme: all five colors visibly applied and persisted")
+        } finally {
+            AppThemeColors.update(context,AppThemeColor.FOREST)
+            IOS27AppearanceMode.update(context,originalMode)
+        }
     }
 
     @Test(timeout=120_000) fun preferenceChoicesExposeOneSelectionInBothAppearances() {
@@ -99,15 +129,15 @@ class RenderingRegressionTest {
             compose.onAllNodes(isSelected()).assertCountEquals(1)
             val active=compose.onNodeWithText("怕熱").captureToImage().toPixelMap()
             val inactive=compose.onNodeWithText("一般").captureToImage().toPixelMap()
-            fun blueFraction(p:androidx.compose.ui.graphics.PixelMap):Float {
-                var blue=0
+            fun greenFraction(p:androidx.compose.ui.graphics.PixelMap):Float {
+                var green=0
                 for(y in 0 until p.height)for(x in 0 until p.width) {
-                    val c=p[x,y];if(c.blue>c.red+.25f&&c.blue>c.green+.1f)blue++
+                    val c=p[x,y];if(c.green>c.red+.10f&&c.green>c.blue+.03f)green++
                 }
-                return blue.toFloat()/(p.width*p.height)
+                return green.toFloat()/(p.width*p.height)
             }
-            assertTrue("Selected choice lost its clear blue fill",blueFraction(active)>.35f)
-            assertTrue("Unselected choice still looked selected",blueFraction(inactive)<.08f)
+            assertTrue("Selected choice lost its clear green fill",greenFraction(active)>.35f)
+            assertTrue("Unselected choice still looked selected",greenFraction(inactive)<.08f)
         }
         checkpoint("preference choices: passed light and dark, 150% text")
     }
@@ -317,7 +347,7 @@ class RenderingRegressionTest {
             compose.onNodeWithContentDescription("設定").performClick()
             frame()
             checkpoint("weather: round $iteration appearance")
-            compose.onNodeWithText("外觀與亮度").performClick()
+            compose.onNodeWithText("外觀與主題顏色").performClick()
             frame();compose.onNodeWithText("深色").assertIsDisplayed()
             checkpoint("weather: round $iteration return")
             // Switching the root Dock must also dismiss an open settings detail.

@@ -1,5 +1,7 @@
 package io.atmos.weather.earthquake
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -51,7 +53,7 @@ internal val seismicCautionInk:Color @Composable get()=if(MaterialTheme.colorSch
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun SeismicStationLegend() {
     FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        listOf("0" to Color(0xFF269D72),"1–2" to Color(0xFF147AB9),"3–4" to Color(0xFFB86B00),"5+" to Color(0xFFD84946)).forEach{(label,color)->
+        listOf("0" to Color(0xFF269D72),"1–2" to brandColor(0xFF2E826A),"3–4" to Color(0xFFB86B00),"5+" to Color(0xFFD84946)).forEach{(label,color)->
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                 Box(Modifier.size(8.dp).background(color,CircleShape));Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp)
             }

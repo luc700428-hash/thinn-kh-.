@@ -1,5 +1,7 @@
 package io.atmos.weather.presentation.home
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -177,15 +179,15 @@ private fun MetricTile(id:Int,position:Int,weather:WeatherSnapshot,modifier:Modi
             if((weather.currentUv ?: 0.0)>=8) "過量" else "目前紫外線",
             ((weather.currentUv ?: 0.0)/11.0).toFloat(),Color(0xFFFFBD71),applied)
         1 -> WeatherDial("濕度",weather.humidityPct?.let { "$it%" } ?: "—","相對濕度",
-            (weather.humidityPct ?: 0)/100f,Color(0xFF46C4FF),applied)
+            (weather.humidityPct ?: 0)/100f,brandColor(0xFF67CAAE),applied)
         2 -> WeatherDial("體感",weather.feelsLikeC?.let { "${it.roundToInt()}°" } ?: "—","體感溫度",
-            (((weather.feelsLikeC ?: 15.0)+10)/50).toFloat(),Color(0xFF80D1E7),applied)
+            (((weather.feelsLikeC ?: 15.0)+10)/50).toFloat(),brandColor(0xFF85D4BE),applied)
         3 -> WeatherDial("風向 · ${windDirectionLabel(weather.windDirectionDeg)}",
             weather.windKmh?.let { "${it.roundToInt()}" } ?: "—","km/h",
             ((weather.windKmh ?: 0.0)/60).toFloat(),Color(0xFF78D6B4),applied)
         4 -> WeatherDial("氣壓",weather.pressureHpa?.let { "${it.roundToInt()}" } ?: "—",
             "hPa · 地表氣壓",((weather.pressureHpa ?: 980.0)-950.0).toFloat()/100f,
-            Color(0xFF7DC9FA),applied)
+            brandColor(0xFF7BD1B8),applied)
         else -> {
             val zone=remember(weather.timeZoneId) {
                 runCatching { ZoneId.of(weather.timeZoneId ?: "Asia/Taipei") }.getOrDefault(ZoneId.of("Asia/Taipei"))

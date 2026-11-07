@@ -1,5 +1,7 @@
 package io.atmos.weather.earthquake
 
+import io.atmos.weather.ui.brandColor
+
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
 import io.atmos.weather.ui.GlassIconButton as FilledTonalIconButton
 import io.atmos.weather.ui.GlassAlertDialog as AlertDialog
@@ -289,7 +291,7 @@ fun SeismicLiveMapPage(
                     }
                     Spacer(Modifier.height(12.dp))
                     Box(Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(19.dp))
-                        .background(Brush.verticalGradient(if(dark)listOf(Color(0xFF0A1D34),Color(0xFF152A41)) else listOf(Color(0xFFE1EEF5),Color(0xFFD1E5EE))))) {
+                        .background(Brush.verticalGradient(if(dark)listOf(brandColor(0xFF0B201A),brandColor(0xFF102E26)) else listOf(brandColor(0xFFD8F1EA),brandColor(0xFFC5EADF))))) {
                         val pins=if(layer=="震央") emptyList() else stations.take(900)
                         val latestPins by rememberUpdatedState(pins)
                         Canvas(Modifier.fillMaxSize().onSizeChanged { baseMapSize=it }
@@ -346,8 +348,8 @@ fun SeismicLiveMapPage(
                                 if(userPlace!=null && SeismicGeo.visible(userPlace.lat,userPlace.lon)) {
                                     val here=Offset(SeismicGeo.screenX(userPlace.lon,size.width,size.height),
                                         SeismicGeo.screenY(userPlace.lat,size.width,size.height))
-                                    drawCircle(if(dark)Color(0xAAFFFFFF) else Color(0xFF186CB6),9.dp.toPx(),here,style=Stroke(2.dp.toPx()))
-                                    drawCircle(if(dark)Color(0xFF78EFFF) else Color(0xFF005CB8),4.dp.toPx(),here)
+                                    drawCircle(if(dark)Color(0xAAFFFFFF) else brandColor(0xFF297661),9.dp.toPx(),here,style=Stroke(2.dp.toPx()))
+                                    drawCircle(if(dark)brandColor(0xFFBBE7DB) else brandColor(0xFF256956),4.dp.toPx(),here)
                                 }
                                 pins.forEach { station ->
                                     val p=Offset(SeismicGeo.screenX(station.longitude!!,size.width,size.height),SeismicGeo.screenY(station.latitude!!,size.width,size.height))
@@ -370,7 +372,7 @@ fun SeismicLiveMapPage(
                                         drawCircle(Color(0xFFFF7682).copy(alpha=if(!fresh || reduceMotion) .55f else .25f+.6f*pulse),
                                             (5f+3f*pulse).dp.toPx(),p,style=Stroke(1.8.dp.toPx()))
                                     } else if(fresh && stationFlash.value>.001f && stationState==StationViewState.LIVE) {
-                                        drawCircle(Color(0xFF77CFFF).copy(alpha=StationUpdateMotion.opacity(stationFlash.value)),
+                                        drawCircle(brandColor(0xFF85D4BE).copy(alpha=StationUpdateMotion.opacity(stationFlash.value)),
                                             StationUpdateMotion.radiusDp(stationFlash.value).dp.toPx(),p,
                                             style=Stroke(1.4.dp.toPx()))
                                     }
@@ -390,11 +392,11 @@ fun SeismicLiveMapPage(
                             }
                         }
                         androidx.compose.foundation.text.BasicText("底圖 © 國土測繪中心",Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                            style=androidx.compose.ui.text.TextStyle(color=if(dark)Color(0xFFB8CDD5) else Color(0xFF304D59),fontSize=14.sp))
+                            style=androidx.compose.ui.text.TextStyle(color=if(dark)brandColor(0xFFB0D0C7) else brandColor(0xFF2B5045),fontSize=14.sp))
                         Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
-                            Text("TREM-Net 測站",color=if(dark)Color.White else Color(0xFF173C50),fontSize=15.sp,fontWeight=FontWeight.SemiBold)
+                            Text("TREM-Net 測站",color=if(dark)Color.White else brandColor(0xFF163F34),fontSize=15.sp,fontWeight=FontWeight.SemiBold)
                             Text("${stations.size} 站 · ${currentStations.size} 站有效觀測",
-                                color=if(dark)Color(0xFFC5E5F4) else Color(0xFF305A6D),fontSize=14.sp,
+                                color=if(dark)brandColor(0xFFBFE9DD) else brandColor(0xFF295E4F),fontSize=14.sp,
                                 maxLines=1)
                         }
                         Column(Modifier.align(Alignment.TopEnd).padding(10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -418,7 +420,7 @@ fun SeismicLiveMapPage(
                                 else -> "尚未取得可定位的測站資料"
                             },
                                 color=Color.White,modifier=Modifier.align(Alignment.BottomCenter).padding(12.dp)
-                                    .clip(RoundedCornerShape(12.dp)).background(Color(0xC80B223A)).padding(10.dp),fontSize=14.sp)
+                                    .clip(RoundedCornerShape(12.dp)).background(brandColor(0xC80D251E)).padding(10.dp),fontSize=14.sp)
                         }
                     }
 

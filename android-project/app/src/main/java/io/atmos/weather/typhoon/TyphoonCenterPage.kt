@@ -1,5 +1,8 @@
 package io.atmos.weather.typhoon
 
+import io.atmos.weather.ui.brandColor
+import io.atmos.weather.ui.brandArgb
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -185,17 +188,17 @@ import androidx.compose.ui.graphics.graphicsLayer
     LaunchedEffect(regional){val atlas=regional?:return@LaunchedEffect
         // One worker and conflated camera updates: never concatenate source vectors on the gesture thread.
         snapshotFlow{latestView}.conflate().collect{camera->atlas.prepare(camera);atlasRevision++}}
-    val predicted=if(dark)Color(0xFF69CFFF) else Color(0xFF0059B9)
+    val predicted=if(dark)brandColor(0xFF81D3BC) else brandColor(0xFF246754)
     val observed=if(dark)Color(0xFFFFD389) else Color(0xFF8F4B00)
     val labelDensity=LocalDensity.current.density
-    val timePaint=remember(dark,labelDensity){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
-        color=if(dark)0xffeef7fa.toInt() else 0xff143e5e.toInt();textSize=12*labelDensity
+    val timePaint=remember(dark,labelDensity,io.atmos.weather.ui.AppThemeColors.value){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
+        color=if(dark)brandArgb(0xFFECF8F5) else brandArgb(0xFF174236);textSize=12*labelDensity
         typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
-        setShadowLayer(2*labelDensity,0f,labelDensity,if(dark)0xff06151c.toInt() else 0xfff7fcff.toInt())
+        setShadowLayer(2*labelDensity,0f,labelDensity,if(dark)brandArgb(0xFF081612) else 0xfff7fcff.toInt())
     }}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Box(Modifier.fillMaxWidth().height(io.atmos.weather.ui.adaptiveMapHeight(440.dp)).clip(RoundedCornerShape(25.dp))
-            .background(if(dark)Color(0xFF081E31) else Color(0xFFE4F0F7)).border(1.dp,palette.outlineVariant,RoundedCornerShape(25.dp))
+            .background(if(dark)brandColor(0xFF0B201A) else brandColor(0xFFDDF3ED)).border(1.dp,palette.outlineVariant,RoundedCornerShape(25.dp))
             .pointerInput(Unit){detectTransformGestures {centroid,move,factor,_->
                 if(factor.isFinite()&&factor>0&&move.x.isFinite()&&move.y.isFinite()) {
                     val next=(mapZoom*factor).coerceIn(1f,32f);val anchor=centroid-Offset(size.width/2f,size.height/2f)
@@ -218,7 +221,7 @@ import androidx.compose.ui.graphics.graphicsLayer
                     if(at.x !in 0f..size.width||at.y !in 0f..size.height)return@forEach
                     val color=if(point.kind==TyphoonFix.Kind.OBSERVED)observed else predicted
                     drawCircle(color.copy(alpha=.28f),9.dp.toPx(),at,style=Stroke(1.dp.toPx()))
-                    drawCircle(if(dark)Color(0xFF082139) else Color.White,5.5.dp.toPx(),at)
+                    drawCircle(if(dark)brandColor(0xFF0D241D) else Color.White,5.5.dp.toPx(),at)
                     drawCircle(color,4.dp.toPx(),at)
                     if(point.kind==TyphoonFix.Kind.FORECAST&&labelled.none{(it-at).getDistance()<72.dp.toPx()}) {
                         timeLabels[point]?.let {
@@ -232,8 +235,8 @@ import androidx.compose.ui.graphics.graphicsLayer
                 GlassIconButton({mapZoom=(mapZoom*1.5f).coerceAtMost(32f)}){Icon(Icons.Rounded.Add,"放大颱風地圖")}
                 GlassIconButton({mapZoom=(mapZoom/1.5f).coerceAtLeast(1f)}){Icon(Icons.Rounded.Remove,"縮小颱風地圖")}
             }
-            Text("Natural Earth 10m · © 國土測繪中心",color=if(dark)Color(0xFFD9EBF5) else Color(0xFF234353),fontSize=14.sp,
-                modifier=Modifier.align(Alignment.BottomStart).background(if(dark)Color(0xD9081E31) else Color(0xDEE4F0F7)).padding(7.dp))
+            Text("Natural Earth 10m · © 國土測繪中心",color=if(dark)brandColor(0xFFD1EFE6) else brandColor(0xFF1E463B),fontSize=14.sp,
+                modifier=Modifier.align(Alignment.BottomStart).background(if(dark)brandColor(0xD90B201A) else brandColor(0xDEDDF3ED)).padding(7.dp))
         }
         Row(horizontalArrangement=Arrangement.spacedBy(16.dp)) {
             Text("● 實測位置",color=observed,fontSize=14.sp);Text("┄ 官方預報 →",color=predicted,fontSize=14.sp)

@@ -26,7 +26,7 @@ object ThinnOpticalMaterial {
         MaterialTheme.colorScheme.surface,MaterialTheme.colorScheme.surface))
     // Floating lens for the navigation/interactive layer.
     val raised: Brush get() = Brush.linearGradient(listOf(
-        Color(0xD9F1F1F3), Color(0x8A8E8E93), Color(0xB02C2C2E), Color(0xB9B3B3B8)
+        Color(0xD9F1F1F3), Color(0x8A8E8E93), brandColor(0xB02B2D2C), Color(0xB9B3B3B8)
     ))
     val opaque: Brush @Composable get() = Brush.verticalGradient(listOf(
         MaterialTheme.colorScheme.surfaceVariant,MaterialTheme.colorScheme.surface))
@@ -34,12 +34,12 @@ object ThinnOpticalMaterial {
         Color.White.copy(alpha=.65f),Color.White.copy(alpha=.15f),Color.Transparent
     ))
     val luminousPill: Brush get() = Brush.linearGradient(listOf(
-        Color(0xFFDBF4FF), Color(0xFF92D9FF), Color(0xFF55B5EF)
+        brandColor(0xFFE0F4EF), brandColor(0xFF9DDDCB), brandColor(0xFF49BF9E)
     ))
     val subtlePill: Brush @Composable get() = Brush.linearGradient(listOf(
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.92f),MaterialTheme.colorScheme.surface.copy(alpha=.96f)))
     val selectedLens: Brush get() = Brush.verticalGradient(listOf(
-        Color.White.copy(alpha=.34f), Color(0xFFB5E7FF).copy(alpha=.21f),
+        Color.White.copy(alpha=.34f), brandColor(0xFFBFE8DD).copy(alpha=.21f),
         Color.White.copy(alpha=.09f)
     ))
 }

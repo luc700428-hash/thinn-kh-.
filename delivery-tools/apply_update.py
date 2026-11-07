@@ -34,7 +34,10 @@ def apply(package,checkout):
     text_remaining=[p for p in remaining if p not in binary]
     if text_remaining:
         run(['git','fetch','--depth=1','origin',manifest['base_commit']],checkout)
-        args=['git','apply','--3way','--index','--binary']+['--exclude='+p for p in applied]+[str(package/'UPDATE.patch')]
+        # Binary payloads are applied once below, after every preflight check.
+        # Letting git stage a deletion here made the later git add lose its path.
+        excluded=sorted(set(applied)|binary)
+        args=['git','apply','--3way','--index','--binary']+['--exclude='+p for p in excluded]+[str(package/'UPDATE.patch')]
         run(args,checkout)
         if subprocess.run(['git','diff','--name-only','--diff-filter=U'],cwd=checkout,capture_output=True,text=True,check=True).stdout.strip():
             raise RuntimeError('上游同一段程式已有不同修改，已停止，未推送任何內容。')

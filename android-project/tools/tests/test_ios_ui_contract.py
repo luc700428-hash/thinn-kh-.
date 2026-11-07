@@ -10,7 +10,8 @@ class IOSUIContractTests(unittest.TestCase):
     def test_shared_tokens_used_by_theme(self):
         tokens=self.source('ui/ThinnDesignTokens.kt')
         self.assertIn('fun ThinnAppTheme',tokens)
-        self.assertIn('darkColorScheme',tokens)
+        self.assertIn('BrandPalette.dark',tokens)
+        self.assertIn('darkColorScheme',self.source('ui/BrandPalette.kt'))
         self.assertIn('fun GlassAppTheme',self.source('ui/GlassSheets.kt'))
 
     def test_settings_update_and_tools_tasks_are_wired(self):

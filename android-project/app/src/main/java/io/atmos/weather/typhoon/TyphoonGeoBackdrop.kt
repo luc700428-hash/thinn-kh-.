@@ -1,5 +1,7 @@
 package io.atmos.weather.typhoon
 
+import io.atmos.weather.ui.brandColor
+
 import io.atmos.weather.maps.drawTaiwanPlaceLabels
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -52,7 +54,7 @@ object TyphoonGeoBackdrop {
     }
 
     fun DrawScope.draw(viewport:TyphoonViewport) {
-        val fill=Color(0xFF3E776F)
+        val fill=brandColor(0xFF3E7868)
         val edge=Color(0xFF8AE9D7)
         fun polygon(positions:List<Pair<Double,Double>>) {
             if(positions.size<3) return

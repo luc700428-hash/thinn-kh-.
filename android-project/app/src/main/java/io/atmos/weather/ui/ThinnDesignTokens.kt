@@ -7,8 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -33,18 +31,18 @@ object ThinnDesignTokens {
     val spacingSmall = 8.dp
     val spacingMedium = 16.dp
     val spacingLarge = 24.dp
-    val lightBackground = Color(0xFFF2F2F7)
-    val darkBackground = Color(0xFF000000)
-    val separatorLight = Color(0x2E3C3C43)
-    val separatorDark = Color(0xA6545458)
+    val lightBackground get() = BrandPalette.light.background
+    val darkBackground get() = BrandPalette.dark.background
+    val separatorLight get() = brandColor(0x2E383E3C)
+    val separatorDark get() = brandColor(0xA6515554)
     val lightGlass = Color(0xECFFFFFF)
-    val darkGlass = Color(0xDB1C1C1E)
-    val accent = Color(0xFF0A84FF)
+    val darkGlass get() = brandColor(0xDB15291F)
+    val accent get() = BrandPalette.primary
     val positive = Color(0xFF34C759)
     val caution = Color(0xFFFFC65A)
     val critical = Color(0xFFFF5A52)
     val primaryInkDark = Color.White
-    val secondaryInkDark = Color(0xFFC7C7CC)
+    val secondaryInkDark get() = BrandPalette.dark.onSurfaceVariant
     const val shortMotionMillis = 180
     const val mediumMotionMillis = 320
     const val longMotionMillis = 480
@@ -52,37 +50,8 @@ object ThinnDesignTokens {
     const val springStiffness = 190f
 }
 
-private val thinnScheme = darkColorScheme(
-    primary = Color(0xFF75BFFF),
-    onPrimary = Color(0xFF081828),
-    background = ThinnDesignTokens.darkBackground,
-    onBackground = Color.White,
-    surface = Color(0xFF1C1C1E),
-    onSurface = Color.White,
-    surfaceVariant = Color(0xFF2C2C2E),
-    onSurfaceVariant = ThinnDesignTokens.secondaryInkDark,
-    secondary = Color(0xFF9FD8FF), onSecondary = Color(0xFF081828),
-    primaryContainer = Color(0xFF183D62), onPrimaryContainer = Color(0xFFD9EDFF),
-    secondaryContainer = Color(0xFF253442), onSecondaryContainer = Color(0xFFE3EDF5),
-    surfaceContainer = Color(0xFF242426), surfaceContainerHigh = Color(0xFF2C2C2E),
-    inverseSurface = Color(0xFFF2F2F7), inverseOnSurface = Color(0xFF1C1C1E),
-    error = ThinnDesignTokens.critical,
-    outline = Color(0xFF8098AE)
-)
-
-private val thinnLightScheme = lightColorScheme(
-    primary = Color(0xFF0066CC), onPrimary = Color.White,
-    background = ThinnDesignTokens.lightBackground, onBackground = Color.Black,
-    surface = Color.White, onSurface = Color(0xFF1C1C1E),
-    surfaceVariant = Color(0xFFE8EAF0), onSurfaceVariant = Color(0xFF5C5C64),
-    secondary = Color(0xFF0066CC), onSecondary = Color.White,
-    primaryContainer = Color(0xFFDCEBFF), onPrimaryContainer = Color(0xFF12395E),
-    secondaryContainer = Color(0xFFE8EDF4), onSecondaryContainer = Color(0xFF243C50),
-    surfaceContainer = Color.White, surfaceContainerHigh = Color(0xFFE8EAF0),
-    inverseSurface = Color(0xFF1C1C1E), inverseOnSurface = Color.White,
-    error = Color(0xFFB42318),
-    outline = Color(0xFFC7C7CC)
-)
+private val thinnScheme get() = BrandPalette.dark
+private val thinnLightScheme get() = BrandPalette.light
 
 private val thinnTypography = Typography(
     displaySmall = TextStyle(fontSize=34.sp, lineHeight=42.sp, letterSpacing=(-.8).sp, fontWeight=FontWeight.Bold),
@@ -115,6 +84,7 @@ fun ThinnAppTheme(content:@Composable ()->Unit) {
     // complete light/dark palette, including selected controls and secondary copy.
     val context=androidx.compose.ui.platform.LocalContext.current
     IOS27AppearanceMode.initialize(context)
+    AppThemeColors.initialize(context)
     val requested=IOS27AppearanceMode.value
     val dark=when(requested) {
         "light" -> false

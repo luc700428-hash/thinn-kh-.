@@ -93,12 +93,12 @@ fun IOS27RoundControl(label: String, onClick: () -> Unit, modifier: Modifier = M
 
 @Composable
 private fun LockPreview(dark: Boolean, chosen: Boolean, onChoose: () -> Unit) {
-    val background = if (dark) Color(0xFF070F22) else Color(0xFFBBDCE8)
+    val background = if (dark) brandColor(0xFF06120F) else brandColor(0xFFABE2D2)
     val label = if (dark) "深色" else "淺色"
     Column(horizontalAlignment=Alignment.CenterHorizontally, modifier=Modifier.iosJellyPress().clickable(
         interactionSource=remember {MutableInteractionSource()},indication=null,onClick=onChoose)) {
         Box(Modifier.width(111.dp).height(181.dp).clip(RoundedCornerShape(20.dp))
-            .background(Brush.verticalGradient(listOf(background, Color(0xFF126DA5), Color(0xFF20B2A0))))
+            .background(Brush.verticalGradient(listOf(background, brandColor(0xFF29745F), brandColor(0xFF3EB191))))
             .border(1.dp, Color.White.copy(alpha=.35f), RoundedCornerShape(20.dp))) {
             Text("09:41", Modifier.align(Alignment.TopCenter).padding(top=24.dp),
                 fontSize=26.sp,color=Color.White, fontWeight=FontWeight.Light)
@@ -111,7 +111,7 @@ private fun LockPreview(dark: Boolean, chosen: Boolean, onChoose: () -> Unit) {
         Text(label, fontSize=16.sp, color=MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(7.dp))
         Box(Modifier.size(23.dp).clip(CircleShape)
-            .background(if (chosen) Color(0xFF007AFF) else Color.Transparent)
+            .background(if (chosen) brandColor(0xFF328E74) else Color.Transparent)
             .border(if(chosen) 0.dp else 1.5.dp, Color(0xFF8E8E93), CircleShape),
             contentAlignment=Alignment.Center) {
             if(chosen) Text("✓", color=Color.White, fontSize=15.sp, fontWeight=FontWeight.Bold)
@@ -140,6 +140,8 @@ fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> 
             Text("外觀", fontSize=20.sp,color=primary,fontWeight=FontWeight.SemiBold)
         }
         Spacer(Modifier.height(19.dp))
+        ThemeColorPicker()
+        Spacer(Modifier.height(24.dp))
         Text("外觀", color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=15.sp,
             modifier=Modifier.padding(start=12.dp,bottom=10.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(surface)) {

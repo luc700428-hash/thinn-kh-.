@@ -124,13 +124,13 @@ fun GlassOutlinedTextField(value:String,onValueChange:(String)->Unit,
     placeholder:(@Composable ()->Unit)?=null,
     colors:TextFieldColors?=null) {
     val dark=LocalOpticalFormDark.current || MaterialTheme.colorScheme.background.red<.5f
-    val fieldInk=if(dark)Color.White else Color(0xFF1C1C1E)
+    val fieldInk=if(dark)Color.White else brandColor(0xFF1B1D1C)
     var focused by remember{mutableStateOf(false)}
     Row(modifier.fillMaxWidth().heightIn(min=if(singleLine)54.dp else 96.dp).clip(RoundedCornerShape(18.dp))
-        .background(if(dark){if(focused)Color(0xFF333337) else Color(0xFF252528)} else Color(0xFFE9E9EE)).thinnSpecularEdge(18.dp).padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
+        .background(if(dark){if(focused)brandColor(0xFF303433) else brandColor(0xFF232625)} else Color(0xFFE9E9EE)).thinnSpecularEdge(18.dp).padding(horizontal=16.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
         leadingIcon?.let{it();Spacer(Modifier.width(10.dp))}
         BasicTextField(value=value,onValueChange=onValueChange,singleLine=singleLine,keyboardOptions=keyboardOptions,keyboardActions=keyboardActions,
-            textStyle=TextStyle(color=fieldInk,fontSize=17.sp,fontFamily=io.atmos.weather.presentation.home.LocalAppearance.current.family,fontWeight=androidx.compose.ui.text.font.FontWeight(io.atmos.weather.presentation.home.LocalAppearance.current.fontWeight.toInt().coerceIn(100,900))),cursorBrush=SolidColor(Color(0xFF0A84FF)),modifier=Modifier.weight(1f).onFocusChanged{focused=it.isFocused},
+            textStyle=TextStyle(color=fieldInk,fontSize=17.sp,fontFamily=io.atmos.weather.presentation.home.LocalAppearance.current.family,fontWeight=androidx.compose.ui.text.font.FontWeight(io.atmos.weather.presentation.home.LocalAppearance.current.fontWeight.toInt().coerceIn(100,900))),cursorBrush=SolidColor(brandColor(0xFF35957A)),modifier=Modifier.weight(1f).onFocusChanged{focused=it.isFocused},
             decorationBox={inner->Box{if(value.isEmpty())(placeholder?:label)?.invoke();inner()}})
     }
 

@@ -1,4 +1,6 @@
 package io.atmos.weather.earthquake
+
+import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 import io.atmos.weather.ui.appleBouncingScroll
 
@@ -259,7 +261,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                         Spacer(Modifier.height(10.dp))
                         Row(verticalAlignment=Alignment.CenterVertically) {
                             Box(Modifier.size(62.dp).clip(RoundedCornerShape(18.dp))
-                                .background(Brush.verticalGradient(listOf(Color(0xFF286A8A),Color(0xFF194059)))),contentAlignment=Alignment.Center) {
+                                .background(Brush.verticalGradient(listOf(brandColor(0xFF276F5B),brandColor(0xFF184438)))),contentAlignment=Alignment.Center) {
                                 Text(String.format(java.util.Locale.US,"%.1f",report.magnitude),color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold)
                             }
                             Spacer(Modifier.width(12.dp))

@@ -1,5 +1,7 @@
 package io.atmos.weather.presentation.home
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
@@ -50,7 +52,7 @@ internal fun WeatherSurfaceOverlay(kind: WeatherSurface.Kind, windKmh: Float, mo
         if(w <= 0f || h <= 0f) return@Canvas
         val wind=windKmh.coerceIn(0f,120f)/120f
         if(rain > .01f) {
-            val lineColor=Color(0xFFCAF5FF).copy(alpha=.22f*rain)
+            val lineColor=brandColor(0xFFDCF3EC).copy(alpha=.22f*rain)
             // Droplets accelerate under gravity and bend under wind.
             for(i in 0 until 54) {
                 val speed=(.27f+WeatherSurface.hash(i+83)*.45f)
@@ -60,13 +62,13 @@ internal fun WeatherSurfaceOverlay(kind: WeatherSurface.Kind, windKmh: Float, mo
                 if (y >= 0f && y <= h) drawLine(lineColor, Offset(x,y),Offset(x-wind*10f,y+9f+speed*17f),strokeWidth=1.6f)
             }
             // Glass-top beading/meniscus, no fake puddle on an upright screen.
-            drawRoundRect(Brush.verticalGradient(listOf(Color(0xFFC6F2FF).copy(alpha=.36f*rain), Color.Transparent),0f,h*.036f),
+            drawRoundRect(Brush.verticalGradient(listOf(brandColor(0xFFD6F0E9).copy(alpha=.36f*rain), Color.Transparent),0f,h*.036f),
                 topLeft=Offset(0f,0f),size=androidx.compose.ui.geometry.Size(w,h*.036f),
                 cornerRadius=androidx.compose.ui.geometry.CornerRadius(w*.01f))
             for(i in 0..25) {
                 val x=(i+.5f)/26f*w
                 val radius=(1.1f+WeatherSurface.hash(i+701)*2.8f)*rain
-                drawCircle(Color(0xFFD9F8FF).copy(alpha=.43f*rain),radius,Offset(x,3f+radius))
+                drawCircle(brandColor(0xFFE6F6F1).copy(alpha=.43f*rain),radius,Offset(x,3f+radius))
             }
         }
         if(snow > .01f) {
@@ -75,7 +77,7 @@ internal fun WeatherSurfaceOverlay(kind: WeatherSurface.Kind, windKmh: Float, mo
             for(i in 0..(w/9f).toInt()) {
                 val x=i*9f
                 val radius=(mound*(.5f+WeatherSurface.hash(i+320)*.7f)).coerceAtLeast(.1f)
-                drawCircle(Color(0xFFF3F9FF).copy(alpha=.87f*snow),radius,Offset(x,0f))
+                drawCircle(brandColor(0xFFF1FAF8).copy(alpha=.87f*snow),radius,Offset(x,0f))
             }
             for(i in 0 until 36) {
                 val t=clock*(.045f+WeatherSurface.hash(i+81)*.12f)+WeatherSurface.hash(i+30)

@@ -58,7 +58,7 @@ fun RadarThreeHourCard(weather:WeatherSnapshot) {
     onRetry:()->Unit,onHistory:()->Unit,now:Instant=Instant.now()) {
     val cards=LocalWeatherCardPalette.current
     val ink=cards?.ink?:MaterialTheme.colorScheme.onSurface
-    val muted=cards?.secondary?:if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF4B5563) else Color(0xFFC7D4E0)
+    val muted=cards?.secondary?:if(MaterialTheme.colorScheme.background.red>.5f)brandColor(0xFF435953) else brandColor(0xFFBAD9D0)
     val blue=cards?.accent?:MaterialTheme.colorScheme.primary
     val warning=if(cards!=null)Color(0xFFFFD6A8) else if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF8A4300) else Color(0xFFFFD6A8)
     val lat=weather.city.coordinate.latitude
@@ -81,16 +81,16 @@ fun RadarThreeHourCard(weather:WeatherSnapshot) {
                 Image(observation.bitmap.asImageBitmap(),contentDescription="中央氣象署雷達回波圖；顯示觀測，不是三小時預測",
                     modifier=Modifier.fillMaxSize(),contentScale=ContentScale.FillBounds)
                 Box(Modifier.align(androidx.compose.ui.Alignment.TopStart).padding(9.dp)
-                    .background(Color(0xD40B2944),RoundedCornerShape(12.dp))
+                    .background(brandColor(0xD4102C24),RoundedCornerShape(12.dp))
                     .padding(horizontal=11.dp,vertical=6.dp)) {
                     Text("☁  雷達回波 · 觀測",fontSize=14.sp,color=Color.White)
                 }
                 Canvas(Modifier.fillMaxSize()) {
                     val (x,y)=CwaRadarObservation.mapPoint(lat,lon)
                     val point=Offset(x*size.width,y*size.height)
-                    drawCircle(Color(0xFF19354D),radius=11.dp.toPx(),center=point)
+                    drawCircle(brandColor(0xFF14392F),radius=11.dp.toPx(),center=point)
                     drawCircle(Color(0xFFFFFFFF),radius=7.dp.toPx(),center=point,style=Stroke(3.dp.toPx()))
-                    drawCircle(Color(0xFF63DFFD),radius=3.dp.toPx(),center=point)
+                    drawCircle(brandColor(0xFF9CDCCA),radius=3.dp.toPx(),center=point)
                 }
             }
             Spacer(Modifier.height(8.dp))

@@ -11,14 +11,14 @@ import androidx.compose.ui.graphics.SolidColor
 data class WeatherCardPalette(val fill:Color) {
     val brush=SolidColor(fill)
     val ink=Color.White
-    val secondary=Color(0xFFDBEAF5)
-    val accent=Color(0xFF9ADFFF)
+    val secondary get() =brandColor(0xFFD0EEE6)
+    val accent get() =brandColor(0xFFA9E1D1)
     val edge=Color.White.copy(alpha=.24f)
 }
 
 object WeatherCardPalettes {
-    val day=WeatherCardPalette(Color(0xED245575))
-    val night=WeatherCardPalette(Color(0xF0162E49))
+    val day get() =WeatherCardPalette(brandColor(0xED205A4A))
+    val night get() =WeatherCardPalette(brandColor(0xF0123229))
     val alert=WeatherCardPalette(Color(0xFF92343E))
 }
 

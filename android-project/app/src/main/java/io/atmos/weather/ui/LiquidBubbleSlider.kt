@@ -64,7 +64,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
     val lift by animateFloatAsState(if(dragging&&!reduce)1f else 0f,if(reduce)tween(0) else spring(.62f,240f),label="bubble rebound")
     val dark=MaterialTheme.colorScheme.background.red<.5f
     val active=colors?.activeTrackColor?:MaterialTheme.colorScheme.primary
-    val inactive=colors?.inactiveTrackColor?:if(dark)Color(0xFF5A5A60) else Color(0xFFC7C7CC)
+    val inactive=colors?.inactiveTrackColor?:if(dark)brandColor(0xFF565C5A) else Color(0xFFC7C7CC)
     val solid=MaterialTheme.colorScheme.surface
     fun quantized(v:Float)=BubbleSliderGeometry.quantize(v,low,high,steps)
     Box(modifier.fillMaxWidth().heightIn(min=48.dp)

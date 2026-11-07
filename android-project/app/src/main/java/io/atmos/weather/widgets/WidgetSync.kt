@@ -35,6 +35,7 @@ object WidgetSync {
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL,30,TimeUnit.SECONDS).build())
     }
     suspend fun refreshAll(context:Context) {
+        io.atmos.weather.ui.AppThemeColors.initialize(context)
         val widgets=listOf(
             AtmosWidget00(), AtmosWidget01(), AtmosWidget02(), AtmosWidget03(), AtmosWidget04(),
             AtmosWidget05(), AtmosWidget06(), AtmosWidget07(), AtmosWidget08(), AtmosWidget09(),

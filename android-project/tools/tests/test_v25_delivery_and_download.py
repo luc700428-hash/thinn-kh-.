@@ -97,6 +97,26 @@ class NativeDownloadContracts(unittest.TestCase):
 if __name__=='__main__':unittest.main()
 
 class BinaryPayloadTests(unittest.TestCase):
+    def test_mixed_text_patch_deletes_a_binary_icon_once_and_can_repeat(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);remote=root/'remote.git';git(root,'init','--bare',str(remote))
+            work=root/'work';work.mkdir();git(work,'init');git(work,'config','user.name','Test');git(work,'config','user.email','test@example.invalid')
+            (work/'app.txt').write_bytes(b'old\n');(work/'icon.png').write_bytes(b'\0old raster icon')
+            git(work,'add','.');git(work,'commit','-m','base');base=git(work,'rev-parse','HEAD')
+            (work/'app.txt').write_bytes(b'new\n');(work/'icon.png').unlink()
+            package=root/'package';package.mkdir()
+            (package/'UPDATE.patch').write_text(git(work,'diff','--binary','--full-index','HEAD')+'\n')
+            manifest={'schema':1,'base_commit':base,'binary_changes':['icon.png'],'changes':[
+                {'path':'app.txt','before_sha256':digest(b'old\n'),'after_sha256':digest(b'new\n')},
+                {'path':'icon.png','before_sha256':digest(b'\0old raster icon'),'after_sha256':None}]}
+            (package/'PACKAGE_MANIFEST.json').write_text(json.dumps(manifest))
+            git(work,'reset','--hard','HEAD');git(work,'remote','add','origin',str(remote));git(work,'push','origin','HEAD:main')
+            checkout=root/'checkout';git(root,'clone','--branch','main',str(remote),str(checkout))
+            apply.apply(package,checkout);apply.apply(package,checkout)
+            self.assertEqual((checkout/'app.txt').read_bytes(),b'new\n')
+            self.assertFalse((checkout/'icon.png').exists())
+            self.assertEqual(set(git(checkout,'diff','--cached','--name-only').splitlines()),{'app.txt','icon.png'})
+            self.assertEqual(git(remote,'rev-parse','main'),base)
     def fixture(self,root,current=b'old',payload=b'new'):
         package=root/'package';checkout=root/'checkout';package.mkdir();checkout.mkdir()
         (checkout/'tone.wav').write_bytes(current);(package/'source').mkdir();(package/'source/tone.wav').write_bytes(payload)

@@ -1,5 +1,7 @@
 package io.atmos.weather.radar
 
+import io.atmos.weather.ui.brandColor
+
 import android.app.ActivityManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -187,8 +189,8 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
                 val world=camera.world(density)
                 val dx=((RadarProjection.x(longitude)-RadarProjection.x(camera.longitude)+1.5)%1-.5)*world
                 val point=Offset((size.width/2+dx).toFloat(),(size.height/2+(RadarProjection.y(latitude)-RadarProjection.y(camera.latitude))*world).toFloat())
-                drawCircle(Color(0x552788FF),13.dp.toPx(),point);drawCircle(Color.White,7.dp.toPx(),point)
-                drawCircle(Color(0xFF147BE2),5.dp.toPx(),point)
+                drawCircle(brandColor(0x55369A7E),13.dp.toPx(),point);drawCircle(Color.White,7.dp.toPx(),point)
+                drawCircle(brandColor(0xFF308970),5.dp.toPx(),point)
             }
             Column(Modifier.align(Alignment.TopEnd).padding(9.dp)) {
                 GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom+.5).coerceAtMost(if(cwa)9.0 else RadarTilePolicy.CAMERA_MAX_ZOOM))}){androidx.compose.material3.Icon(Icons.Rounded.Add,"放大")}
@@ -197,11 +199,11 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
                 Spacer(Modifier.height(7.dp))
                 GlassIconButton(onClick={camera=if(cwa&&!CwaHighDefinitionRadar.covers(latitude,longitude))RadarCamera() else RadarCamera(latitude,longitude,6.5).normalized()}){androidx.compose.material3.Icon(Icons.Rounded.MyLocation,"回到選擇地點")}
             }
-            if(!animationReady&&radarFetching)Text(if(motionPending>0&&readyCount==frames.size)"準備連續動畫…" else "預載回放 $readyCount/${frames.size}",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(Color(0xD017334B)),fontSize=14.sp)
-            else if(baseFetching)Text("載入底圖…",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(Color(0xC017334B)),fontSize=14.sp)
-            if(cwa&&!CwaHighDefinitionRadar.covers(camera.latitude,camera.longitude))Text("超出臺灣高解析圖資範圍，可切換全球雷達",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=44.dp).background(Color(0xE017334B)).padding(8.dp))
-            if(tileFailure&&!fetching)Text("部分圖資未完整，可查看已載入時段或重新讀取",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.TopStart).padding(10.dp).background(Color(0xE017334B)))
-            Text("底圖 © OpenStreetMap contributors",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xD017334B)).clickable{uri.openUri("https://www.openstreetmap.org/copyright")}.padding(7.dp))
+            if(!animationReady&&radarFetching)Text(if(motionPending>0&&readyCount==frames.size)"準備連續動畫…" else "預載回放 $readyCount/${frames.size}",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(brandColor(0xD013372D)),fontSize=14.sp)
+            else if(baseFetching)Text("載入底圖…",color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(12.dp).background(brandColor(0xC013372D)),fontSize=14.sp)
+            if(cwa&&!CwaHighDefinitionRadar.covers(camera.latitude,camera.longitude))Text("超出臺灣高解析圖資範圍，可切換全球雷達",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=44.dp).background(brandColor(0xE013372D)).padding(8.dp))
+            if(tileFailure&&!fetching)Text("部分圖資未完整，可查看已載入時段或重新讀取",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.TopStart).padding(10.dp).background(brandColor(0xE013372D)))
+            Text("底圖 © OpenStreetMap contributors",color=Color.White,fontSize=14.sp,modifier=Modifier.align(Alignment.BottomStart).background(brandColor(0xD013372D)).clickable{uri.openUri("https://www.openstreetmap.org/copyright")}.padding(7.dp))
         }
         },controls={
         GlassChoiceGroup(listOf("臺灣高解析","全球雷達"),if(cwa)0 else 1,{index->

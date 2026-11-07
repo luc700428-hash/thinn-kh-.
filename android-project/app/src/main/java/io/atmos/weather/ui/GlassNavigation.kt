@@ -153,17 +153,17 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
     data class Entry(val title:String,val subtitle:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,val action:()->Unit)
     data class EntryGroup(val title:String,val tint:Color,val entries:List<Entry>)
     val groups=listOf(
-        EntryGroup("日常生活",Color(0xFFFF9500),listOf(Entry("天氣鬧鐘","重複星期、鈴聲與稍後提醒",SettingsSymbols.alarm,onWeatherAlarms),
+        EntryGroup("日常生活",BrandPalette.selection,listOf(Entry("天氣鬧鐘","重複星期、鈴聲與稍後提醒",SettingsSymbols.alarm,onWeatherAlarms),
             Entry("我的事項","待辦清單與個人提醒",Icons.Rounded.Checklist,onTasks),
             Entry("天氣定時通知","週間與指定時間的天氣摘要",SettingsSymbols.notification,onBriefings))),
-        EntryGroup("天氣與防災",Color(0xFF007AFF),listOf(Entry("中央氣象署警特報","App 內閱讀完整公告與警戒地區",Icons.Rounded.WarningAmber,onAlerts),
+        EntryGroup("天氣與防災",BrandPalette.selection,listOf(Entry("中央氣象署警特報","App 內閱讀完整公告與警戒地區",Icons.Rounded.WarningAmber,onAlerts),
             Entry("氣象詳解與外出時段","風、濕度、空品及未來 24 小時比較",Icons.Rounded.Air,onInsights),
             Entry("颱風動向","官方警報、路徑與預報時間軸",SettingsSymbols.cyclone,onTyphoons),
             Entry("地震監測","測站、震後報告與演練",Icons.Rounded.Waves,onSeismic),
             Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,onRadar))),
-        EntryGroup("海洋與天文",Color(0xFF007A78),listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,onMarine),
+        EntryGroup("海洋與天文",BrandPalette.selection,listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,onMarine),
             Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.Nightlight,onSky))),
-        EntryGroup("時間與換算",Color(0xFF5856D6),listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{onUtilityOpen();utility="碼錶"}),
+        EntryGroup("時間與換算",BrandPalette.selection,listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{onUtilityOpen();utility="碼錶"}),
             Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,{onUtilityOpen();utility="世界時鐘"}),
             Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,{onUtilityOpen();utility="氣象單位換算"})))
     )
@@ -302,21 +302,21 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             Spacer(Modifier.height(20.dp))
             val categories=listOf(
                 "外觀與操作" to listOfNotNull(
-                    if(showDockPosition)SettingsEntry("平板 Dock 位置",SettingsSymbols.controls,Color(0xFF007AFF),{lastDetail="dock";dockOpen=true}) else null,
-                    SettingsEntry("外觀與亮度",SettingsSymbols.display,Color(0xFF007AFF),{lastDetail="appearance";appearanceOpen=true}),
-                    SettingsEntry("字體與閱讀",SettingsSymbols.general,Color(0xFF8E8E93),{onAdvancedCategory("外觀")}),
-                    SettingsEntry("聲音與觸覺",SettingsSymbols.wallpaper,Color(0xFF32ADE6),{onAdvancedCategory("聲音")}),
-                    SettingsEntry("輔助使用",SettingsSymbols.accessibility,Color(0xFF007AFF),{lastDetail="accessibility";accessibilityOpen=true})),
+                    if(showDockPosition)SettingsEntry("平板 Dock 位置",SettingsSymbols.controls,BrandPalette.selection,{lastDetail="dock";dockOpen=true}) else null,
+                    SettingsEntry("外觀與主題顏色",SettingsSymbols.display,BrandPalette.selection,{lastDetail="appearance";appearanceOpen=true}),
+                    SettingsEntry("字體與閱讀",SettingsSymbols.general,BrandPalette.selection,{onAdvancedCategory("外觀")}),
+                    SettingsEntry("聲音與觸覺",SettingsSymbols.wallpaper,BrandPalette.selection,{onAdvancedCategory("聲音")}),
+                    SettingsEntry("輔助使用",SettingsSymbols.accessibility,BrandPalette.selection,{lastDetail="accessibility";accessibilityOpen=true})),
                 "桌面與即時資訊" to listOf(
-                    SettingsEntry("小工具與動態島",SettingsSymbols.controls,Color(0xFF5856D6),{lastDetail="surfaces";surfacesOpen=true})),
+                    SettingsEntry("小工具與動態島",SettingsSymbols.controls,BrandPalette.selection,{lastDetail="surfaces";surfacesOpen=true})),
                 "提醒與生活" to listOf(
-                    SettingsEntry("地震警報與通知",SettingsSymbols.notification,Color(0xFFFF3B30),onPushSettings),
-                    SettingsEntry("通知音效與背景提醒",SettingsSymbols.notification,Color(0xFFFF9500),{onAdvancedCategory("通知")}),
-                    SettingsEntry("穿搭與生活偏好",SettingsSymbols.lifestyle,Color(0xFF5856D6),onLifestyle)),
+                    SettingsEntry("地震警報與通知",SettingsSymbols.notification,BrandPalette.selection,onPushSettings),
+                    SettingsEntry("通知音效與背景提醒",SettingsSymbols.notification,BrandPalette.selection,{onAdvancedCategory("通知")}),
+                    SettingsEntry("穿搭與生活偏好",SettingsSymbols.lifestyle,BrandPalette.selection,onLifestyle)),
                 "系統與資料" to listOf(
-                    SettingsEntry("資料更新頻率",SettingsSymbols.weather,Color(0xFF007AFF),{onAdvancedCategory("資料")}),
-                    SettingsEntry("軟體更新",SettingsSymbols.update,Color(0xFF8E8E93),onUpdateCenter),
-                    SettingsEntry("權限與系統健康",SettingsSymbols.controls,Color(0xFF34C759),onDiagnostics))
+                    SettingsEntry("資料更新頻率",SettingsSymbols.weather,BrandPalette.selection,{onAdvancedCategory("資料")}),
+                    SettingsEntry("軟體更新",SettingsSymbols.update,BrandPalette.selection,onUpdateCenter),
+                    SettingsEntry("權限與系統健康",SettingsSymbols.controls,BrandPalette.selection,onDiagnostics))
             )
             val filtered=categories.map{(title,rows)->title to rows.filter{match(it.title)}}.filter{it.second.isNotEmpty()}
             val resultCount=filtered.sumOf{it.second.size}

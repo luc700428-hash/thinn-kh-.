@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ThinnAtmospherePanel(
     modifier: Modifier = Modifier,
-    accent: Color = Color(0xFF8CD6F5),
+    accent: Color = brandColor(0xFF94D9C6),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val ctx = LocalContext.current

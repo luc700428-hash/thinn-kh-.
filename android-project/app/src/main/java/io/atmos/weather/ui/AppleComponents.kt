@@ -82,8 +82,8 @@ fun AppleGlassCard(
             LocalWeatherCardPalette.current?.brush ?: if (!darkSurface) Brush.linearGradient(listOf(
                 if(opaque) Color.White else Color.White.copy(alpha=.68f),
                 if(opaque) Color.White else Color.White.copy(alpha=.68f)))
-            else if (opaque) Brush.linearGradient(listOf(Color(0xFF1C1C1E), Color(0xFF1C1C1E)))
-            else Brush.linearGradient(listOf(Color(0x823B3B41), Color(0x991C1C1E)))
+            else if (opaque) Brush.linearGradient(listOf(brandColor(0xFF1B1D1C), brandColor(0xFF1B1D1C)))
+            else Brush.linearGradient(listOf(brandColor(0x82373D3B), brandColor(0x991B1D1C)))
         ))
         Column(Modifier.fillMaxWidth().border(BorderStroke(.75.dp, rim), shape)
             .padding(contentPadding), content = content)
@@ -161,8 +161,8 @@ fun AppleIntelligenceGlow(
             val c = Offset(size.width / 2f, size.height / 2f)
             val vector = Offset(size.width * unit.x / 2f, size.height * unit.y / 2f)
             val brush = Brush.linearGradient(
-                colors = listOf(Color(0xFFFF84D8), Color(0xFF83C9FF),
-                    Color(0xFFC39BFF), Color.White, Color(0xFFFF84D8)),
+                colors = listOf(Color(0xFFFF84D8), brandColor(0xFF7ED2BA),
+                    brandColor(0xFF4EC1A1), Color.White, Color(0xFFFF84D8)),
                 start = c - vector, end = c + vector
             )
             val rimWidth = 1.25.dp.toPx()

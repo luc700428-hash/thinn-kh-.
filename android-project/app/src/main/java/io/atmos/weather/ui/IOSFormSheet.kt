@@ -26,7 +26,7 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 internal val LocalOpticalFormDark=compositionLocalOf {false}
-@Composable fun IOSFormSheet(title:String,onDismiss:()->Unit,onDone:(()->Unit)?=null,validate:()->Boolean={true},accent:Color=Color(0xFF0A84FF),content:@Composable ColumnScope.()->Unit){
+@Composable fun IOSFormSheet(title:String,onDismiss:()->Unit,onDone:(()->Unit)?=null,validate:()->Boolean={true},accent:Color=brandColor(0xFF35957A),content:@Composable ColumnScope.()->Unit){
  val reduced=rememberAppleReduceMotion();val scope=rememberCoroutineScope();val screen=LocalConfiguration.current.screenHeightDp.dp;val hidden=with(LocalDensity.current){(screen+64.dp).toPx()}
  var shown by remember{mutableStateOf(false)};var closing by remember{mutableStateOf(false)};var dragging by remember{mutableStateOf(false)};var drag by remember{mutableFloatStateOf(0f)}
  LaunchedEffect(Unit){shown=true}

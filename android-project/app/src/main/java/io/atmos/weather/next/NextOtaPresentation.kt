@@ -1,5 +1,7 @@
 package io.atmos.weather.next
 
+import io.atmos.weather.ui.brandColor
+
 import android.text.format.Formatter
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -53,7 +55,7 @@ sealed interface NextOtaState {
 private fun UpdateVersionArtwork(version:String) {
     Box(Modifier.size(60.dp).clip(RoundedCornerShape(14.dp))
         .background(Brush.linearGradient(listOf(Color(0xFF40382F),Color(0xFFB6A18A),
-            Color(0xFF38333D),Color(0xFF7E8797)))).thinnSpecularEdge(14.dp),
+            brandColor(0xFF2E3734),brandColor(0xFF718C85)))).thinnSpecularEdge(14.dp),
         contentAlignment=Alignment.Center) {
         Canvas(Modifier.matchParentSize()) {
             val w=size.width;val h=size.height
@@ -86,7 +88,7 @@ private fun TransferProgress(state:NextOtaState.Downloading) {
             drawRoundRect(Color(0x338E8E93),cornerRadius=CornerRadius(size.height/2))
             val start=if(state.indeterminate)phase*size.width else 0f
             val length=if(state.indeterminate)size.width*.3f else size.width*p
-            drawRoundRect(Color(0xFF007AFF),Offset(start,0f),Size(length,size.height),CornerRadius(size.height/2))
+            drawRoundRect(brandColor(0xFF328E74),Offset(start,0f),Size(length,size.height),CornerRadius(size.height/2))
         }
     }
 }

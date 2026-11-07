@@ -1,4 +1,6 @@
 package io.atmos.weather.update
+
+import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.appleBouncingScroll
 
 import io.atmos.weather.ui.GlassDivider as HorizontalDivider
@@ -52,8 +54,8 @@ import kotlin.math.roundToInt
 
 private val UpdateText:Color @Composable get() = MaterialTheme.colorScheme.onSurface
 private val UpdateSoft:Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
-private val UpdateBlue = Color(0xFF007AFF)
-private val UpdateCardFill = Color(0xFF88A7C5).copy(alpha = .22f)
+private val UpdateBlue get() = brandColor(0xFF328E74)
+private val UpdateCardFill get() = brandColor(0xFF62B29C).copy(alpha = .22f)
 private val UpdateCardBorder = Color.White.copy(alpha = .28f)
 
 @Composable

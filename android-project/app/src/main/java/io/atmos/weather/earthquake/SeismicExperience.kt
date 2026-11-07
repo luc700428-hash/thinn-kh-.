@@ -1,4 +1,6 @@
 package io.atmos.weather.earthquake
+
+import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
 import io.atmos.weather.ui.GlassSurfaceBox as Surface
@@ -45,8 +47,8 @@ import kotlinx.coroutines.delay
 import kotlin.math.sqrt
 import java.util.Locale
 
-private val navy = Color(0xFF071C34)
-private val ice = Color(0xFF8AE9FF)
+private val navy get() = brandColor(0xFF0B1F19)
+private val ice get() = brandColor(0xFFB5E5D8)
 private val amber = Color(0xFFFFC577)
 
 /** Original app-owned sounds. Never used as an unverified earthquake warning. */
@@ -137,7 +139,7 @@ fun LocalMotionTrace(modifier: Modifier = Modifier) {
             Switch(checked=enabled,onCheckedChange={enabled=it; if (!it) amplitudes.clear()})
         }
         Spacer(Modifier.height(9.dp))
-        Box(Modifier.fillMaxWidth().height(112.dp).background(Color(0xFF05243B),RoundedCornerShape(19.dp))
+        Box(Modifier.fillMaxWidth().height(112.dp).background(brandColor(0xFF0E271F),RoundedCornerShape(19.dp))
             .border(1.dp,ice.copy(alpha=.22f),RoundedCornerShape(19.dp))) {
             Canvas(Modifier.fillMaxSize().padding(10.dp)) {
                 for (i in 1..3) drawLine(ice.copy(alpha=.12f),Offset(0f,size.height*i/4),Offset(size.width,size.height*i/4),1.dp.toPx())
@@ -208,7 +210,7 @@ fun EarthquakeSafetyDrill(onClose: () -> Unit) {
         if(voiceEnabled) tts?.speak(active.name,TextToSpeech.QUEUE_FLUSH,null,"seismic-step-$phase")
     }
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(navy,Color(0xFF18415E),navy)))) {
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(navy,brandColor(0xFF184539),navy)))) {
             Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                 Spacer(Modifier.height(24.dp))
                 Surface(color=amber.copy(alpha=.18f),shape=RoundedCornerShape(50)) {

@@ -1,5 +1,7 @@
 package io.atmos.weather.maps
 
+import io.atmos.weather.ui.brandArgb
+
 import android.content.Context
 import android.graphics.Paint
 import androidx.compose.runtime.*
@@ -17,12 +19,12 @@ class TaiwanVectorAtlas private constructor(private val levels:List<Level>) {
     private data class Level(val tolerance:Float,val path:android.graphics.Path,val sourcePaths:Int)
     internal val contourDrawCalls get()=2
     internal val sourceDrawCalls get()=levels.last().sourcePaths*2
-    private val land=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=0xff284c52.toInt();style=Paint.Style.FILL }
-    private val edge=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=0xff80b5b5.toInt();style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}
+    private val land=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=brandArgb(0xFF264E43);style=Paint.Style.FILL }
+    private val edge=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=brandArgb(0xFF82B6A7);style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}
 
     fun draw(scope:DrawScope,dark:Boolean=true,project:(Double,Double)->Offset) {
-        land.color=if(dark)0xff284c52.toInt() else 0xffb4d8d1.toInt()
-        edge.color=if(dark)0xff80b5b5.toInt() else 0xff476e70.toInt()
+        land.color=if(dark)brandArgb(0xFF264E43) else 0xffb4d8d1.toInt()
+        edge.color=if(dark)brandArgb(0xFF82B6A7) else brandArgb(0xFF476F64)
         val origin=project(118.0,30.0)
         val unit=project(119.0,29.0)
         val sx=unit.x-origin.x;val sy=unit.y-origin.y
@@ -73,9 +75,9 @@ class TaiwanVectorAtlas private constructor(private val levels:List<Level>) {
 fun DrawScope.drawTaiwanPlaceLabels(project:(Double,Double)->Offset) {
     val canvas=drawContext.canvas.nativeCanvas
     val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color=0xffe6f3f5.toInt();textSize=12*density
+        color=brandArgb(0xFFE4F4F0);textSize=12*density
         typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
-        setShadowLayer(3*density,0f,density,0xff06151c.toInt())
+        setShadowLayer(3*density,0f,density,brandArgb(0xFF081612))
     }
     val occupied=mutableListOf<android.graphics.RectF>()
     listOf(Triple("臺灣",121.0,23.65),Triple("澎湖",119.57,23.57),
@@ -92,7 +94,7 @@ fun DrawScope.drawTaiwanPlaceLabels(project:(Double,Double)->Offset) {
 }
 
 fun DrawScope.drawTaiwanAtlasCredit() {
-    val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=0xffbad2d7.toInt();textSize=9*density
-        setShadowLayer(2*density,0f,0f,0xff07151b.toInt())}
+    val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=brandArgb(0xFFB5D4CC);textSize=9*density
+        setShadowLayer(2*density,0f,0f,brandArgb(0xFF081612))}
     drawContext.canvas.nativeCanvas.drawText("向量底圖 © 國土測繪中心 · 開放資料",9*density,size.height-8*density,paint)
 }

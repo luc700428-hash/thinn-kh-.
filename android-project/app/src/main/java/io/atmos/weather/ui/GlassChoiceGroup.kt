@@ -48,12 +48,12 @@ fun GlassChoiceGroup(labels:List<String>,selected:Int,onSelect:(Int)->Unit,modif
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                     row.forEach { index ->
                         val chosen=index==selected
-                        val fill by animateColorAsState(if(chosen) Color(0xFF0866CC) else scheme.surfaceVariant,
+                        val fill by animateColorAsState(if(chosen) BrandPalette.selection else scheme.surfaceVariant,
                             tween(if(reduce)0 else 150),label="choice-fill")
                         val ink=if(chosen) Color.White else scheme.onSurface
                         Row(Modifier.weight(1f).heightIn(min=48.dp).iosJellyPress()
                             .clip(shape).background(fill)
-                            .border(if(chosen)1.5.dp else 1.dp,if(chosen)Color(0xFF79CBFF) else scheme.outline.copy(alpha=.35f),shape)
+                            .border(if(chosen)1.5.dp else 1.dp,if(chosen) BrandPalette.selection else scheme.outline.copy(alpha=.35f),shape)
                             .thinnSpecularEdge(22.dp)
                             .semantics {stateDescription=if(chosen)"已選取" else "未選取"}
                             .selectable(selected=chosen,role=Role.RadioButton,onClick={
@@ -80,8 +80,8 @@ fun GlassChoiceGroup(labels:List<String>,selected:Int,onSelect:(Int)->Unit,modif
     val p=MaterialTheme.colorScheme
     val ink=if(selected)Color.White else p.onSurface
     Row(modifier.heightIn(min=48.dp).widthIn(min=48.dp).iosJellyPress()
-        .clip(RoundedCornerShape(18.dp)).background(if(selected)Color(0xFF0866CC) else p.surfaceVariant)
-        .border(if(selected)1.5.dp else 1.dp,if(selected)Color(0xFF79CBFF) else p.outline,RoundedCornerShape(18.dp))
+        .clip(RoundedCornerShape(18.dp)).background(if(selected)BrandPalette.selection else p.surfaceVariant)
+        .border(if(selected)1.5.dp else 1.dp,if(selected)BrandPalette.selection else p.outline,RoundedCornerShape(18.dp))
         .thinnSpecularEdge(18.dp).semantics{stateDescription=if(selected)"已選取" else "未選取"}
         .toggleable(selected,role=Role.Checkbox,onValueChange={onToggle()})
         .padding(horizontal=8.dp,vertical=9.dp),verticalAlignment=Alignment.CenterVertically,

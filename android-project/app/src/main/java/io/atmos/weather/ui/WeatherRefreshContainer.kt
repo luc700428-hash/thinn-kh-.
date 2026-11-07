@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.dp
         indicator={
             if(pull>.01f||refreshing)Canvas(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top=12.dp).size(42.dp)
                 .graphicsLayer{alpha=if(refreshing)1f else pull.coerceIn(0f,1f)}) {
-                drawCircle(Color(0xDD183A5C),size.minDimension/2)
+                drawCircle(brandColor(0xDD163F34),size.minDimension/2)
                 drawCircle(Color.White.copy(alpha=.18f),size.minDimension/2-1.dp.toPx(),style=Stroke(1.dp.toPx()))
-                drawArc(Color(0xFF9AE4FF),phase,if(refreshing)265f else 320f*pull.coerceIn(0f,1f),false,
+                drawArc(brandColor(0xFFB1E4D6),phase,if(refreshing)265f else 320f*pull.coerceIn(0f,1f),false,
                     Offset(10.dp.toPx(),10.dp.toPx()),androidx.compose.ui.geometry.Size(22.dp.toPx(),22.dp.toPx()),style=Stroke(2.dp.toPx(),cap=StrokeCap.Round))
             }
         }) {

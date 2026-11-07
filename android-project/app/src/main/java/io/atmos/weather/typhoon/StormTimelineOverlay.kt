@@ -1,5 +1,7 @@
 package io.atmos.weather.typhoon
 
+import io.atmos.weather.ui.brandColor
+
 import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -52,10 +54,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.*
 
-private val ink=Color(0xFF061527)
-private val cyan=Color(0xFF76DEFC)
-private val cream=Color(0xFFE8F7FF)
-private val muted=Color(0xFFC1D6E2)
+private val ink get() =brandColor(0xFF081713)
+private val cyan get() =brandColor(0xFF9EDDCB)
+private val cream get() =brandColor(0xFFEAF8F4)
+private val muted get() =brandColor(0xFFB3DBD0)
 private val taipei=ZoneId.of("Asia/Taipei")
 private val timeFormatter=DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(taipei)
 
@@ -81,7 +83,7 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     val context=LocalContext.current
     val palette=MaterialTheme.colorScheme
     val dark=palette.background.red<.5f
-    val cyan=if(dark)Color(0xFF76DEFC) else Color(0xFF0059B9)
+    val cyan=if(dark)brandColor(0xFF9EDDCB) else brandColor(0xFF246754)
     val cream=palette.onSurface
     val muted=palette.onSurfaceVariant
     val reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion()
@@ -127,7 +129,7 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                     }
                 }
                 Box(Modifier.fillMaxWidth().height(315.dp).clip(RoundedCornerShape(26.dp))
-                    .background(if(dark)Color(0xFF081E31) else Color(0xFFE4F0F7))) {
+                    .background(if(dark)brandColor(0xFF0B201A) else brandColor(0xFFDDF3ED))) {
                     Canvas(Modifier.fillMaxSize().onSizeChanged { terrainCanvasSize=it }.pointerInput(Unit) {
                         detectTransformGestures {centroid,move,magnification,_ ->
                             if(!magnification.isFinite()||magnification<=0||!move.x.isFinite()||!move.y.isFinite())return@detectTransformGestures

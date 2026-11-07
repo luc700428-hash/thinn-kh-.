@@ -58,13 +58,7 @@ fun ThinnRow(title:String,subtitle:String="",icon:ImageVector?=null,destructive:
     val pressedFill by animateColorAsState(if(pressed) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
         animationSpec=tween(if(pressed)80 else 250), label="ios27-cell-press")
     val textColor=if(destructive) ThinnDesignTokens.critical else MaterialTheme.colorScheme.onSurface
-    val iconColor=when {
-        title.contains("鬧鐘") -> Color(0xFFFF9F0A)
-        title.contains("更新") -> Color(0xFF007AFF)
-        title.contains("語音") -> Color(0xFF34C759)
-        title.contains("警報") || title.contains("地震") -> Color(0xFF8E8E93)
-        else -> Color(0xFF5AC8FA)
-    }
+    val iconColor=BrandPalette.selection
     Row(Modifier.fillMaxWidth().heightIn(min=48.dp)
         .then(if(onClick!=null)Modifier.iosJellyPress() else Modifier)
         .background(pressedFill)

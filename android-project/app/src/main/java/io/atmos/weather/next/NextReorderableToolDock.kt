@@ -1,5 +1,7 @@
 package io.atmos.weather.next
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -110,8 +112,8 @@ fun NextReorderableToolDock(
     LaunchedEffect(selectedId) {displayId=selectedId}
     val density = LocalDensity.current
     val lightTheme=!(darkBackdrop ?: (MaterialTheme.colorScheme.background.red < .5f))
-    val activeInk=if(lightTheme) Color(0xFF0059B9) else Color(0xFF7DCEFF)
-    val inactiveInk=if(lightTheme) Color(0xFF2C2C2E) else Color(0xFFEBEBF0)
+    val activeInk=if(lightTheme) brandColor(0xFF246754) else brandColor(0xFF85D4BE)
+    val inactiveInk=if(lightTheme) brandColor(0xFF2B2D2C) else Color(0xFFEBEBF0)
     val dockInsetPx = with(density) { (if(vertical)5.dp else 6.dp).toPx() }
     val currentIndex = visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)
     val geometry=DockScrubGeometry(dockWidthPx.toFloat(),dockInsetPx,visible.size.coerceAtLeast(1))
@@ -247,7 +249,7 @@ fun NextReorderableToolDock(
                                                     latestOnOrderChanged(updated)
                                                     showOverflow = false
                                                 }.padding(9.dp),
-                                                colorFilter = ColorFilter.tint(Color(0xFFD8ECF9)))
+                                                colorFilter = ColorFilter.tint(brandColor(0xFFD2EFE7)))
                                         }
                                     }
                                 }

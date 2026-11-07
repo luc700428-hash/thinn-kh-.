@@ -1,5 +1,7 @@
 package io.atmos.weather.radar
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -11,8 +13,8 @@ import kotlin.math.*
 
 /** Theme transform applies to the geographical base only, preserving radar colour semantics. */
 internal object RadarMapStyle {
-    val darkBackground=Color(0xFF070C14)
-    val lightBackground=Color(0xFFE6EEF3)
+    val darkBackground=brandColor(0xFF050E0B)
+    val lightBackground=brandColor(0xFFE0F0EC)
     private val night=ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
         -.20f,-.55f,-.05f,0f,204f,
         -.20f,-.55f,-.05f,0f,211f,

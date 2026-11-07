@@ -167,7 +167,7 @@ internal val LocalWorkspaceBottomClearance=staticCompositionLocalOf{0.dp}
 @Composable private fun TabletWeatherOverview(city:WeatherCity,overview:String,onSearch:()->Unit,dark:Boolean) {
     val p=MaterialTheme.colorScheme
     val ink=if(dark)Color.White else p.onSurface
-    val accent=if(dark)Color(0xFF9ADFFF) else p.primary
+    val accent=if(dark)brandColor(0xFFA9E1D1) else p.primary
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.Center) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Icon(Icons.Rounded.CloudQueue,null,Modifier.size(30.dp),tint=accent)

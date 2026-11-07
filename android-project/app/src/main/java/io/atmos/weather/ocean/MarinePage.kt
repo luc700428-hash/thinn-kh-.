@@ -1,5 +1,7 @@
 package io.atmos.weather.ocean
 
+import io.atmos.weather.ui.brandColor
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -39,10 +41,10 @@ import kotlin.math.*
     val base=MaterialTheme.colorScheme
     val dark=base.background.luminance()<.5f
     val colors=base.copy(
-        primary=if(dark)Color(0xFF90D7FF) else Color(0xFF0066CC),
-        onSurfaceVariant=if(dark)Color(0xFFC7C7CC) else Color(0xFF5C5C64),
-        primaryContainer=if(dark)Color(0xFF163C56) else Color(0xFFE2F0FF),
-        onPrimaryContainer=if(dark)Color(0xFFD5EDFF) else Color(0xFF073F7C))
+        primary=if(dark)brandColor(0xFF99DBC9) else brandColor(0xFF29745F),
+        onSurfaceVariant=if(dark)Color(0xFFC7C7CC) else brandColor(0xFF575E5C),
+        primaryContainer=if(dark)brandColor(0xFF164034) else brandColor(0xFFDDF3ED),
+        onPrimaryContainer=if(dark)brandColor(0xFFD4F0E8) else brandColor(0xFF19473A))
     MaterialTheme(colorScheme=colors) {
         CompositionLocalProvider(LocalWeatherCardPalette provides null) {
             MarineContent(city,onClose,loadForecast)
@@ -165,7 +167,7 @@ private fun Double?.unit(unit:String)=this?.takeIf{it.isFinite()}?.let{"%.1f".fo
     val reduce=rememberAppleReduceMotion()
     val phase=if(reduce)null else rememberInfiniteTransition(label="ocean highlight")
         .animateFloat(0f,1f,infiniteRepeatable(tween(8000,easing=LinearEasing)),label="ocean swell")
-    Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(Color(0xFF084878),Color(0xFF117A9C))))) {
+    Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(brandColor(0xFF1B4E40),brandColor(0xFF2C7E67))))) {
         Canvas(Modifier.matchParentSize()) {
             val t=phase?.value?:0f
             repeat(3){layer->
@@ -175,11 +177,11 @@ private fun Double?.unit(unit:String)=this?.takeIf{it.isFinite()}?.let{"%.1f".fo
                     val y=baseline+wave*(8+((record?.waveHeight?:0.0)*2).coerceAtMost(12.0)).toFloat()*density
                     path.lineTo(px,y)
                 };path.lineTo(size.width,size.height);path.close()
-                drawPath(path,listOf(Color(0x445CCFE6),Color(0x6677E1E8),Color(0x8876D9E7))[layer])
+                drawPath(path,listOf(brandColor(0x4479D0B8),brandColor(0x669FDDCC),brandColor(0x8891D8C4))[layer])
             }
         }
         // Keep the labels readable as bright wave crests pass behind them.
-        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0x66032640),Color(0x99032640)))))
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(brandColor(0x660E2921),brandColor(0x990E2921)))))
         Column(Modifier.padding(22.dp)) {
             Text("有效波高",color=Color.White.copy(alpha=.9f),fontSize=16.sp)
             Text(record?.waveHeight.unit("m"),color=Color.White,fontSize=44.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
