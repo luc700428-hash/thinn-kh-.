@@ -29,7 +29,16 @@ class SeismicTabletDashboardRenderingTest:TabletDockFixture() {
                 val plus=nodes(view).single{it.config.contains(SemanticsProperties.ContentDescription)&&"放大" in it.config[SemanticsProperties.ContentDescription]&&it.config.contains(SemanticsActions.OnClick)}
                 assertTrue(plus.config[SemanticsActions.OnClick].action!!.invoke());pump(view).recycle()
                 for((w,h) in listOf(1280 to 900,900 to 1280,600 to 960,450 to 960,1280 to 900)) {
-                    resize(view,w,h);assertDockOutsideContent(view)
+                    resize(view,w,h)
+                    if(w>=600)assertDockOutsideContent(view)
+                    else {
+                        val body=tagged(view,"tablet-main-content")
+                        visible(body.boundsInRoot)
+                        assertEquals("Narrow windows keep the full content width",w,body.size.width)
+                        assertTrue("Narrow windows must not reserve a tablet Dock",nodes(view).none {
+                            it.config.contains(SemanticsProperties.TestTag)&&it.config[SemanticsProperties.TestTag]=="tablet-navigation-dock"
+                        })
+                    }
                     val map=tagged(view,"seismic-monitor-map")
                     assertEquals("縮放 1.5×",map.config[SemanticsProperties.StateDescription])
                     assertTrue(nodes(view).single{text(it,"測站")&&it.config.contains(SemanticsProperties.Selected)}.config[SemanticsProperties.Selected])
@@ -37,8 +46,11 @@ class SeismicTabletDashboardRenderingTest:TabletDockFixture() {
                     val summary=tagged(view,"seismic-observation-summary")
                     if(w==1280)assertTrue(summary.positionInRoot.x>map.positionInRoot.x+map.size.width)
                     else if(w<=600)assertTrue(summary.positionInRoot.y+summary.size.height<=map.positionInRoot.y)
-                    for(label in listOf("有效測站","最大震度","最大 PGA"))assertFalse(layout(nodes(view).single{text(it,label)}).hasVisualOverflow)
                     save(view,"seismic-dashboard-${w}x$h-$dark-$scale")
+                    for(label in listOf("有效測站","最大震度","最大 PGA")) {
+                        val result=layout(nodes(view).single{text(it,label)})
+                        assertFalse("Summary label clipped at ${w}x$h, dark=$dark, scale=$scale: $label, size=${result.size}, constraints=${result.layoutInput.constraints}, width=${result.didOverflowWidth}, height=${result.didOverflowHeight}",result.hasVisualOverflow)
+                    }
                 }
             }
         }
@@ -91,10 +103,18 @@ class SeismicTabletWarningRenderingTest:TabletDockFixture() {
                 val dialog=ShadowDialog.getLatestDialog();val sheet=dialog.window!!.decorView
                 for((w,h) in listOf(1280 to 900,600 to 960,1280 to 900)) {
                     resize(sheet,w,h);val map=tagged(sheet,"seismic-warning-map")
-                    assertTrue(map.size.width>=300);assertTrue(map.size.height>=180)
-                    if(w==1280){assertTrue(map.size.height>310);assertTrue(map.positionInRoot.x>500)}
-                    for(label in listOf("3 級","M 6.2","18 km"))assertFalse(layout(nodes(sheet).first{text(it,label)}).hasVisualOverflow)
                     save(sheet,"seismic-warning-${w}x$h-$dark-$scale")
+                    assertTrue("Warning map too narrow at ${w}x$h: ${map.size}",map.size.width>=300)
+                    assertTrue("Warning map too short at ${w}x$h: ${map.size}",map.size.height>=180)
+                    if(w==1280) {
+                        val critical=tagged(sheet,"seismic-leading-pane")
+                        val detail=tagged(sheet,"seismic-inspector-pane")
+                        assertTrue("Tablet map must be taller than the compact map: ${map.size}",map.size.height>310)
+                        assertTrue("Map must be beside the critical values",map.positionInRoot.x>=critical.positionInRoot.x+critical.size.width+19f)
+                        assertEquals("Map must start in the detail pane",detail.positionInRoot.x,map.positionInRoot.x,1f)
+                        assertTrue("Map must have more width than the critical values",map.size.width>critical.size.width)
+                    }
+                    for(label in listOf("3 級","M 6.2","18 km"))assertFalse(layout(nodes(sheet).first{text(it,label)}).hasVisualOverflow)
                 }
                 dialog.dismiss()
             }

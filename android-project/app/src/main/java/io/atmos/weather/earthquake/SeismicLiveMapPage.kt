@@ -247,9 +247,12 @@ fun SeismicLiveMapPage(
         fresh -> "最新觀測"
         else -> "上次觀測，非即時"
     }
-    val pulse by rememberInfiniteTransition(label="seismic marker").animateFloat(
-        initialValue=0.18f,targetValue=1f,
-        animationSpec=infiniteRepeatable(tween(1900,easing=LinearEasing)),label="pulse")
+    val pulse=if(reduceMotion).55f else {
+        val animatedPulse by rememberInfiniteTransition(label="seismic marker").animateFloat(
+            initialValue=0.18f,targetValue=1f,
+            animationSpec=infiniteRepeatable(tween(1900,easing=LinearEasing)),label="pulse")
+        animatedPulse
+    }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding()) {

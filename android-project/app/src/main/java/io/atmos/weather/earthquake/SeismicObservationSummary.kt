@@ -28,9 +28,9 @@ internal val seismicCautionInk:Color @Composable get()=if(MaterialTheme.colorSch
         if(maxWidth.value>=360f*scale) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 entries.forEach{(title,value,unit)->Column(Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(p.surface).padding(14.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                    Text(title,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp)
-                    Text(value+(if(unit.isEmpty())"" else " $unit"),color=p.onSurface,fontSize=25.sp,lineHeight=34.sp,fontWeight=FontWeight.SemiBold)
-                    Text(status,color=if(status=="最新觀測")seismicHealthyInk else p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp)
+                    Text(title,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+                    Text(value+(if(unit.isEmpty())"" else " $unit"),color=p.onSurface,fontSize=25.sp,lineHeight=34.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.fillMaxWidth())
+                    Text(status,color=if(status=="最新觀測")seismicHealthyInk else p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                 }}
             }
         } else {
