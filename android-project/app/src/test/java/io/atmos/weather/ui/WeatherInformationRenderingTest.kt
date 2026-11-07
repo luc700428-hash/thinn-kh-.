@@ -50,6 +50,7 @@ import java.time.Instant
 abstract class WeatherInformationRenderingFixture {
     protected open val windowWidth:Int=400
     protected open val windowHeight:Int=1100
+    protected open val reduceTransparency:Boolean=true
     protected val now=Instant.parse("2026-10-28T11:33:30Z")
     protected fun resource(name:String)=javaClass.getResourceAsStream("/weather-info/$name")!!.use{it.readBytes()}
     protected fun weather()=WeatherSnapshot(SampleCities.all.first(),now,now,"test",24.0,22.0,83,35.0,1012.0,WeatherCondition.RAIN,false,null,null,
@@ -90,7 +91,7 @@ abstract class WeatherInformationRenderingFixture {
     }
     protected fun render(dark:Boolean,scale:Float,name:String,content:@Composable ()->Unit,check:(View,ColorScheme)->Unit) {
         val c=RuntimeEnvironment.getApplication()
-        c.getSharedPreferences("thinn_settings",0).edit().clear().putBoolean("reduce_motion",true).putBoolean("reduce_transparency",true)
+        c.getSharedPreferences("thinn_settings",0).edit().clear().putBoolean("reduce_motion",true).putBoolean("reduce_transparency",reduceTransparency)
             .putBoolean("sound_enabled",false).putFloat("v4_fontscale",scale).putFloat("v4_fontweight",400f).commit()
         IOS27AppearanceMode.update(c,if(dark)"dark" else "light")
         val controller=Robolectric.buildActivity(ComponentActivity::class.java).setup();val a=controller.get();val view=ComposeView(a)

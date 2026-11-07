@@ -37,10 +37,15 @@ abstract class TabletDockFixture:IPadFixture() {
         val dock=tagged(view,"tablet-navigation-dock").boundsInRoot
         return nodes(view).filter{it.config.contains(SemanticsProperties.Role)&&it.config[SemanticsProperties.Role]==Role.Tab&&dock.contains(it.boundsInRoot.center)}
     }
-    protected fun assertDockOutsideContent(view:View) {
-        val dock=tagged(view,"tablet-navigation-dock").boundsInRoot
+    protected fun assertDockLayout(view:View) {
+        val dockNode=tagged(view,"tablet-navigation-dock")
+        val dock=dockNode.boundsInRoot
         val body=tagged(view,"tablet-main-content").boundsInRoot
-        visible(dock);visible(body);assertFalse("Dock must not obscure readable content",dock.overlaps(body))
+        visible(dock);visible(body)
+        val bottom=dockNode.config[SemanticsProperties.ContentDescription].any{it=="主導覽 Dock · ${TabletDockPosition.BOTTOM.title}"}
+        if(bottom) {
+            assertTrue("Bottom Dock floats above a full-height page",body.bottom>=dock.bottom)
+        }else assertFalse("Side/top Dock must keep a separate readable lane",dock.overlaps(body))
         assertEquals(4,tabs(view).size)
         assertEquals(1,tabs(view).count{it.config[SemanticsProperties.Selected]})
         tabs(view).forEach {val result=layout(it);assertFalse("Clipped navigation label ${result.layoutInput.text}, size=${result.size}, constraints=${result.layoutInput.constraints}, style=${result.layoutInput.style}",result.hasVisualOverflow)}
@@ -73,7 +78,7 @@ class TabletDockPositionsRenderingTest:TabletDockFixture() {
                     resize(view,w,h)
                     for(position in TabletDockPosition.entries) {
                         TabletDockPreference.save(context,position);pump(view).recycle()
-                        assertDockOutsideContent(view)
+                        assertDockLayout(view)
                         val dock=tagged(view,"tablet-navigation-dock").boundsInRoot
                         val major=if(position.vertical)dock.height else dock.width
                         assertTrue("Dock must fit its four buttons",major<=TabletDockGeometry.contentLength(4,scale,position.vertical)+2)
@@ -95,7 +100,7 @@ class TabletDockPositionsRenderingTest:TabletDockFixture() {
                         .setInsets(androidx.core.view.WindowInsetsCompat.Type.ime(),androidx.core.graphics.Insets.of(0,0,0,inset))
                         .setVisible(androidx.core.view.WindowInsetsCompat.Type.ime(),inset>0).build()
                     androidx.core.view.ViewCompat.dispatchApplyWindowInsets(composeOwner(view)!!,keyboard);pump(view).recycle()
-                    assertDockOutsideContent(view)
+                    assertDockLayout(view)
                     assertTrue("Keyboard hides Dock",tagged(view,"tablet-navigation-dock").boundsInRoot.bottom<=800-inset+1)
                     assertEquals("阿里山",tagged(view,"dock-query").config[SemanticsProperties.EditableText].text)
                 }
@@ -120,7 +125,7 @@ class TabletDockSettingsRenderingTest:TabletDockFixture() {
                 val choice=nodes(view).single{it.config.contains(SemanticsProperties.Role)&&it.config[SemanticsProperties.Role]==Role.RadioButton&&
                     it.config.contains(SemanticsProperties.Text)&&it.config[SemanticsProperties.Text].any{t->t.text.startsWith(position.title)}}
                 assertTrue(choice.config[SemanticsActions.OnClick].action!!.invoke());pump(view).recycle()
-                assertEquals(position,TabletDockPreference.read(context));assertDockOutsideContent(view)
+                assertEquals(position,TabletDockPreference.read(context));assertDockLayout(view)
                 val choices=nodes(view).filter{it.config.contains(SemanticsProperties.Role)&&it.config[SemanticsProperties.Role]==Role.RadioButton}
                 assertEquals(4,choices.size);assertEquals(1,choices.count{it.config[SemanticsProperties.Selected]})
                 assertTrue(choices.single{it.config[SemanticsProperties.Selected]}.config[SemanticsProperties.Text].any{it.text.startsWith(position.title)})
@@ -186,7 +191,7 @@ class TabletDockGestureRenderingTest:TabletDockFixture() {
                 assertTrue("Position must move continuously, not jump: $trace",captured)
                 save(view,"tablet-dock-linear-travel")
                 settle(view){tagged(view,"tablet-navigation-dock").boundsInRoot.left<13f}
-                assertDockOutsideContent(view)
+                assertDockLayout(view)
             } finally {
                 org.robolectric.shadows.ShadowChoreographer.setFrameDelay(frameDelay)
                 org.robolectric.shadows.ShadowChoreographer.setPaused(wasPaused)

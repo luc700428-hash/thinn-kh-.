@@ -178,6 +178,53 @@ class RenderingRegressionTest {
         assertNull(CrashDiagnostics.graphics(context))
     }
 
+    @Test(timeout=120_000) fun dockKeepsLiveTransparencyRectangularSelectionAndScrubbing() {
+        checkpoint("dock: transparent scene and rounded rectangular selection")
+        val scene=mutableStateOf(Color(0xFF123C78));val selected=mutableIntStateOf(1)
+        compose.setContent {
+            ThinnAppTheme {
+                val source=rememberThinnBackdrop()
+                CompositionLocalProvider(LocalThinnBackdrop provides source) {
+                    Box(Modifier.width(360.dp).height(110.dp).testTag("dock-scene")) {
+                        ThinnBackdropCapture(source,Modifier.matchParentSize()) {
+                            Box(Modifier.matchParentSize().background(scene.value))
+                        }
+                        AppGlassNavigation(selected.intValue,{selected.intValue=it},
+                            Modifier.align(Alignment.Center).size(296.dp,78.dp).testTag("transparent-dock"),
+                            edgeSized=true,darkBackdrop=true)
+                    }
+                }
+            }
+        }
+        frame()
+        val dock=compose.onNodeWithTag("transparent-dock")
+        val bounds=dock.fetchSemanticsNode().boundsInRoot
+        val cell=compose.onNodeWithContentDescription("地震").assertIsSelected().fetchSemanticsNode().boundsInRoot
+        val inactive=compose.onNodeWithContentDescription("工具").fetchSemanticsNode().boundsInRoot
+        val first=dock.captureToImage().toPixelMap()
+        val scale=first.height/78f
+        val cornerX=(cell.left-bounds.left+8f*scale).toInt()
+        val nextX=(inactive.left-bounds.left+8f*scale).toInt()
+        val cornerY=(cell.top-bounds.top+7f*scale).toInt()
+        assertTrue("Selected lens became a circular icon bubble",first[cornerX,cornerY].green-first[nextX,cornerY].green>.015f)
+        val probeX=(inactive.center.x-bounds.left).toInt();val probeY=(8f*scale).toInt()
+        val before=first[probeX,probeY].green
+        compose.runOnIdle {scene.value=Color(0xFF237242)};frame()
+        val image=dock.captureToImage()
+        val after=image.toPixelMap()[probeX,probeY].green
+        assertTrue("Dock covered the live scene with a thick tint",after-before>=48f/255f)
+        dock.performTouchInput {
+            down(Offset(width*.37f,centerY))
+            moveTo(Offset(width*.88f,centerY),delayMillis=300)
+            up()
+        }
+        frame();assertEquals(3,selected.intValue)
+        val directory=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
+        File(directory,"dock-transparent-live-scene.png").outputStream().use {image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
+        assertNull(CrashDiagnostics.graphics(context))
+        checkpoint("dock: live scene, rectangular lens and scrubbing passed")
+    }
+
     @Test(timeout=120_000) fun deferredChildRecordingCannotSampleItsOwnAncestor() {
         checkpoint("ancestor: set content")
         val page=mutableIntStateOf(0)

@@ -139,7 +139,8 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         allowReorder=false,vertical=vertical,fillAvailableHeight=edgeSized,darkBackdrop=darkBackdrop,
         reduceMotion=rememberAppleReduceMotion(),
         reduceTransparency=rememberAppleReduceTransparency(),
-        modifier=if(edgeSized)modifier else modifier.widthIn(max=560.dp).fillMaxWidth().padding(horizontal=24.dp).height(maxOf(68f,44f+24f*androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
+        modifier=if(edgeSized)modifier else modifier.widthIn(max=(FloatingDockContent.length(4,androidx.compose.ui.platform.LocalDensity.current.fontScale)+32f).dp)
+            .fillMaxWidth().padding(horizontal=16.dp).height(maxOf(68f,54f+24f*androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
     )
 }
 
@@ -169,7 +170,7 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
     Box(Modifier.fillMaxSize()) {
     AdaptivePageFrame(Modifier.background(palette.background).imePadding(),maxContentWidth=1280.dp) {
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()
-        .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=18.dp,bottom=120.dp),
+        .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=16.dp).padding(top=18.dp,bottom=workspaceBottomPadding(120.dp)),
         verticalArrangement=Arrangement.spacedBy(18.dp)) {
         Column {
             Text("工具",color=palette.onSurface,fontSize=34.sp,fontWeight=FontWeight.Bold,letterSpacing=(-1).sp)
@@ -336,7 +337,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             Spacer(Modifier.height(22.dp))
             Text("thinn-khì",color=palette.onSurfaceVariant,fontSize=12.sp,
                 modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
-            Spacer(Modifier.height(if(LocalWorkspaceLayout.current.tablet)24.dp else 120.dp))
+            Spacer(Modifier.height(workspaceBottomPadding(if(LocalWorkspaceLayout.current.tablet)24.dp else 120.dp)))
         }
     }},detail={AdaptivePageFrame(maxContentWidth=760.dp){when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};"dock"->TabletDockSettingsPage{dockOpen=false};else->accessibilityContent()}}})
     }

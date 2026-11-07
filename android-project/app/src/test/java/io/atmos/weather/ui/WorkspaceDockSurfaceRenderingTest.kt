@@ -49,7 +49,7 @@ class WorkspaceDockSurfaceRenderingTest:TabletDockFixture() {
                 for((w,h,fold) in cases) {
                     posture=DevicePosture(if(fold==null)DeviceKind.TABLET else DeviceKind.FOLDABLE,fold);resize(view,w,h)
                     for(position in TabletDockPosition.entries) {
-                        TabletDockPreference.save(context,position);pump(view).recycle();assertDockOutsideContent(view)
+                        TabletDockPreference.save(context,position);pump(view).recycle();assertDockLayout(view)
                         val bounds=tagged(view,"tablet-navigation-dock").boundsInRoot
                         val vertical=bounds.height>bounds.width
                         for(index in 0..3) {

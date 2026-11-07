@@ -59,11 +59,14 @@ internal data class WorkspaceLayout(val width:Float,val height:Float,val fontSca
 internal val LocalWorkspaceLayout=staticCompositionLocalOf{WorkspaceLayout(0f,0f,1f,device=DeviceKind.PHONE)}
 internal val LocalWorkspaceDetailInset=staticCompositionLocalOf{0.dp}
 internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
+internal val LocalWorkspaceBottomClearance=staticCompositionLocalOf{0.dp}
+@Composable internal fun workspaceBottomPadding(requested:androidx.compose.ui.unit.Dp)=maxOf(requested,LocalWorkspaceBottomClearance.current)
 
 /** One permanent content root, plus the same liquid dock on all four tablet edges. */
 @Composable internal fun TabletWorkspaceShell(selected:Int,onSelect:(Int)->Unit,onSearch:()->Unit,
     cities:List<WeatherCity>,selectedCity:WeatherCity,onCity:(WeatherCity)->Unit,
-    overview:String,background:Brush?=null,darkBackdrop:Boolean?=null,content:@Composable ()->Unit) {
+    overview:String,background:Brush?=null,darkBackdrop:Boolean?=null,
+    backgroundContent:@Composable BoxScope.()->Unit={},content:@Composable ()->Unit) {
     val posture=LocalDevicePosture.current?:DevicePosture(DeviceKind.PHONE)
     val preferred=rememberTabletDockPosition();val reduce=rememberAppleReduceMotion()
     val density=LocalDensity.current
@@ -80,8 +83,11 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
         val fold=rawFold?.takeIf {f->if(f.vertical)f.bounds.left>=0&&f.bounds.right<=width else f.bounds.top>=0&&f.bounds.bottom<=height}
         val layout=WorkspaceLayout(width,height,density.fontScale,fold,posture.kind,preferred)
         val target=layout.placement;val pane=layout.pane
+        val floatingBottom=layout.tablet&&target.position==TabletDockPosition.BOTTOM
+        val targetBody=if(floatingBottom)Rect(target.content.left,target.content.top,target.content.right,pane.bottom) else target.content
+        val bottomClearance=if(floatingBottom)(pane.bottom-target.content.bottom).dp else 0.dp
         val dockMotion=remember{Animatable(target.dock,Rect.VectorConverter)}
-        val contentMotion=remember{Animatable(target.content,Rect.VectorConverter)}
+        val contentMotion=remember{Animatable(targetBody,Rect.VectorConverter)}
         val opacity=remember{Animatable(1f)}
         var renderedVertical by remember{mutableStateOf(target.position.vertical)}
         var previousPane by remember{mutableStateOf(pane)}
@@ -89,7 +95,7 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
         LaunchedEffect(pane,target,reduce,layout.tablet) {
             if(reduce||previousPane!=pane||!layout.tablet) {
                 previousPane=pane;renderedVertical=target.position.vertical
-                dockMotion.snapTo(target.dock);contentMotion.snapTo(target.content);opacity.snapTo(1f)
+                dockMotion.snapTo(target.dock);contentMotion.snapTo(targetBody);opacity.snapTo(1f)
             } else {
                 if(renderedVertical!=target.position.vertical) {
                     opacity.animateTo(0f,tween(90))
@@ -100,18 +106,19 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
                 }
                 coroutineScope {
                     launch{dockMotion.animateTo(target.dock,tween(400,easing=LinearEasing))}
-                    launch{contentMotion.animateTo(target.content,tween(400,easing=AppleMotion.fluid))}
+                    launch{contentMotion.animateTo(targetBody,tween(400,easing=AppleMotion.fluid))}
                     launch{opacity.animateTo(1f,tween(220))}
                 }
             }
         }
-        val body=TabletDockGeometry.fit(if(paneChanged)target.content else contentMotion.value,pane)
+        val body=TabletDockGeometry.fit(if(paneChanged)targetBody else contentMotion.value,pane)
         val dock=TabletDockGeometry.fit(if(paneChanged)target.dock else dockMotion.value,pane)
         val palette=MaterialTheme.colorScheme
         val shellBrush=background?:SolidColor(palette.background)
         val shellBackdrop=rememberThinnBackdrop()
-        Box(Modifier.fillMaxSize().then(if(layout.tablet)Modifier.background(shellBrush)
-            .windowInsetsPadding(insets).imePadding() else Modifier)
+        val pageBackdrop=rememberThinnBackdrop()
+        val inheritedBackdrop=LocalThinnBackdrop.current
+        Box(Modifier.fillMaxSize().then(if(layout.tablet)Modifier.background(shellBrush) else Modifier)
             .onPreviewKeyEvent {event->
                 if(!layout.tablet||event.type!=KeyEventType.KeyDown)false
                 else if(event.isCtrlPressed||event.isMetaPressed){when(event.key){
@@ -119,27 +126,38 @@ internal val LocalWorkspaceDetailTitle=staticCompositionLocalOf<String?>{null}
                     Key.F->{onSearch();true};else->false
                 }}else false
             }.focusable()) {
-            if(layout.tablet)ThinnBackdropCapture(shellBackdrop,Modifier.matchParentSize()) {
-                Box(Modifier.matchParentSize().background(shellBrush))
-            }
-            CompositionLocalProvider(LocalWorkspaceLayout provides layout) {
-                Box(Modifier.fillMaxSize().padding(start=body.left.dp,top=body.top.dp,
-                    end=(width-body.right).coerceAtLeast(0f).dp,bottom=(height-body.bottom).coerceAtLeast(0f).dp)
-                    .testTag("tablet-main-content")) {AdaptiveWindowProvider{content()}}
+            // Scene -> page -> Dock is acyclic: page cards sample only the sky,
+            // while Dock samples the completed page outside its capture.
+            val page:@Composable BoxScope.()->Unit={
+                if(layout.tablet)ThinnBackdropCapture(shellBackdrop,Modifier.matchParentSize()) {
+                    Box(Modifier.matchParentSize().background(shellBrush));backgroundContent()
+                }
+                Box(Modifier.fillMaxSize().then(if(layout.tablet)Modifier.windowInsetsPadding(insets).imePadding() else Modifier)) {
+                CompositionLocalProvider(LocalWorkspaceLayout provides layout,
+                    LocalWorkspaceBottomClearance provides bottomClearance,
+                    LocalThinnBackdrop provides if(layout.tablet)shellBackdrop else inheritedBackdrop) {
+                    Box(Modifier.fillMaxSize().padding(start=body.left.dp,top=body.top.dp,
+                        end=(width-body.right).coerceAtLeast(0f).dp,bottom=(height-body.bottom).coerceAtLeast(0f).dp)
+                        .testTag("tablet-main-content")) {AdaptiveWindowProvider{content()}}
                 if(layout.tablet) {
                     layout.overview?.let {area->
                         Box(Modifier.offset(area.left.dp,area.top.dp).size(area.width.dp,area.height.dp)
                             .background(if(darkBackdrop==true)Color.White.copy(alpha=.025f) else palette.surfaceContainerLow)) {
                             TabletWeatherOverview(selectedCity,overview,onSearch,darkBackdrop==true)}
                     }
-                    CompositionLocalProvider(LocalThinnBackdrop provides shellBackdrop) {
+                }
+                }
+                }
+            }
+            ThinnBackdropCapture(pageBackdrop,Modifier.matchParentSize(),enabled=layout.tablet,content=page)
+            if(layout.tablet)Box(Modifier.fillMaxSize().windowInsetsPadding(insets).imePadding()) {
+                    CompositionLocalProvider(LocalThinnBackdrop provides pageBackdrop) {
                     AppGlassNavigation(selected,onSelect,
                         Modifier.offset(dock.left.dp,dock.top.dp).size(dock.width.dp,dock.height.dp)
                             .graphicsLayer{alpha=if(paneChanged)1f else opacity.value}
                             .semantics{contentDescription="主導覽 Dock · ${target.position.title}"}.testTag("tablet-navigation-dock"),
                         vertical=if(paneChanged)target.position.vertical else renderedVertical,edgeSized=true,darkBackdrop=darkBackdrop)
                     }
-                }
             }
         }
     }

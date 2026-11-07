@@ -575,7 +575,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     io.atmos.weather.ui.GlassAppTheme {
         val themedPage=mainPager.currentPage!=0||settingsOpen||settingsDetailOpen||lifestyleSettingsOpen||
             pushSettingsOpen||diagnosticsOpen||briefingOpen||tasksOpen||updatePageOpen||
-            earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen
+            earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen||nativeRadarOpen
         io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f || !themedPage)
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
@@ -592,27 +592,37 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             onSearch={locationOpen=true},cities=state.savedCities,selectedCity=state.city,
             onCity={clearWorkspaceDetails();viewModel.onIntent(WeatherIntent.SelectCity(it));showMainTab(0)},
             overview=snapshot?.let{"${it.temperatureC.toInt()}° · ${io.atmos.weather.domain.model.WeatherDescriptions.label(it.condition,it.weatherCode,it.visibilityM,it.isDay)}"}?:"正在更新天氣",
-            background=if(themedPage)SolidColor(MaterialTheme.colorScheme.background) else Brush.verticalGradient(listOf(
-                Color(0x9807192C).compositeOver(blendTop),Color(0x4207192C).compositeOver(blendMid),Color(0x9B07192C).compositeOver(blendLow))),
-            darkBackdrop=if(themedPage)null else true) {
+            background=if(themedPage)SolidColor(MaterialTheme.colorScheme.background) else Brush.verticalGradient(listOf(blendTop,blendMid,blendLow)),
+            darkBackdrop=if(themedPage)null else true,
+            backgroundContent={
+                if(!themedPage) {
+                    SkyEffects(demoCondition ?: snapshot?.condition,isNight,
+                        heavyRain || demoCondition==WeatherCondition.THUNDERSTORM,
+                        hazy,appearance.liquidMotion,motionState,if(reducedMotion)0f else lightningAlpha,
+                        lightningBolt,snapshot?.windKmh ?: 0.0,snapshot?.weatherCode,snapshot?.visibilityM)
+                    Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
+                        Color(0x9807192C),Color(0x4207192C),Color(0x9B07192C)))))
+                }
+            }) {
         val workspace=LocalWorkspaceLayout.current
+        val workspaceSceneBackdrop=io.atmos.weather.ui.LocalThinnBackdrop.current
         val detailInset=if(workspace.listDetail&&mainPager.currentPage in 2..3&&workspaceDetailTitle!=null)
             (if(appDensity.fontScale>1.25f)366.dp else 316.dp) else 0.dp
         CompositionLocalProvider(LocalWorkspaceDetailInset provides detailInset,LocalWorkspaceDetailTitle provides workspaceDetailTitle) {
         val workspaceBrush=if(workspace.tablet&&mainPager.currentPage!=0)
             Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background,MaterialTheme.colorScheme.background))
             else Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))
-        Box(Modifier.fillMaxSize().background(workspaceBrush)) {
+        Box(Modifier.fillMaxSize().then(if(workspace.tablet)Modifier else Modifier.background(workspaceBrush))) {
             // Independent scene -> page capture -> dock. No control samples a
             // layer which contains itself, including during deferred RenderNode draws.
-            io.atmos.weather.ui.ThinnBackdropCapture(sceneBackdrop,Modifier.matchParentSize()) {
+            if(!workspace.tablet)io.atmos.weather.ui.ThinnBackdropCapture(sceneBackdrop,Modifier.matchParentSize()) {
                 Box(Modifier.matchParentSize().background(workspaceBrush))
             }
-            io.atmos.weather.ui.ThinnBackdropCapture(backdrop,Modifier.fillMaxSize()) {
+            io.atmos.weather.ui.ThinnBackdropCapture(backdrop,Modifier.fillMaxSize(),enabled=!workspace.tablet) {
             HorizontalPager(
                 state = mainPager,
                 modifier = (if(detailInset>0.dp)Modifier.width(detailInset-16.dp).fillMaxHeight() else Modifier.fillMaxSize())
-                    .background(workspaceBrush),
+                    .then(if(workspace.tablet)Modifier else Modifier.background(workspaceBrush)),
                 beyondViewportPageCount = 0,
                 userScrollEnabled = !workspace.tablet && !locationOpen && !settingsOpen && !settingsDetailOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen && !typhoonPageOpen && !earthquakePageOpen && !weatherAlarmOpen && !pushSettingsOpen && !lifestyleSettingsOpen && !nativeRadarOpen && !marineOpen && !skyOpen
             ) { page ->
@@ -636,11 +646,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     else->0f
                 }
                 val weatherCards=rememberWeatherCardPalette()
-                CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides weatherBackdrop,
+                CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides if(workspace.tablet)workspaceSceneBackdrop else weatherBackdrop,
                     LocalWeatherCardPalette provides weatherCards) {
                 io.atmos.weather.ui.RainCollisionScene(rainIntensity,((snapshot?.windKmh ?: 0.0)*
                     -kotlin.math.sin(Math.toRadians((snapshot?.windDirectionDeg ?: 270).toDouble()))).toFloat(),Modifier.fillMaxSize()) {
-                    io.atmos.weather.ui.ThinnBackdropCapture(weatherBackdrop,Modifier.matchParentSize()) {
+                    if(!workspace.tablet)io.atmos.weather.ui.ThinnBackdropCapture(weatherBackdrop,Modifier.matchParentSize()) {
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))))
                     // Full-screen background layer. It never captures gestures.
                     SkyEffects(demoCondition ?: snapshot?.condition, isNight,

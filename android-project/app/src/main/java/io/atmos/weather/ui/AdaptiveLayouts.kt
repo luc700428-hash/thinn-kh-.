@@ -72,8 +72,8 @@ internal val LocalAppWindowLayout=staticCompositionLocalOf<AppWindowLayout?>{nul
     val window=currentAppWindowLayout();val scale=LocalDensity.current.fontScale
     val firstScroll=rememberScrollState()
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val wide=AppWindowLayout(maxWidth.value,window.height,scale).twoPanes
-        val bottom=if(LocalWorkspaceLayout.current.tablet)minOf(bottomPadding,32.dp) else bottomPadding
+        val wide=AppWindowLayout(maxWidth.value,(window.height-LocalWorkspaceBottomClearance.current.value).coerceAtLeast(1f),scale).twoPanes
+        val bottom=workspaceBottomPadding(if(LocalWorkspaceLayout.current.tablet)minOf(bottomPadding,32.dp) else bottomPadding)
         val bars=if(applyStatusBars)Modifier.statusBarsPadding() else Modifier
         Layout(modifier=Modifier.align(Alignment.TopCenter).widthIn(max=if(wide)1280.dp else 760.dp)
             .fillMaxSize().then(bars).then(if(!wide)Modifier.verticalScroll(scrollState,overscrollEffect=null) else Modifier)

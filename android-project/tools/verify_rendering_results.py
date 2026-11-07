@@ -11,6 +11,7 @@ EXPECTED = {
     'preferenceChoicesExposeOneSelectionInBothAppearances',
     'bubbleSliderIsTransparentAndKeepsDragAndAccessibilityValues',
     'glassSamplingCannotPaintOverItsForegroundSiblings',
+    'dockKeepsLiveTransparencyRectangularSelectionAndScrubbing',
     'deferredChildRecordingCannotSampleItsOwnAncestor',
     'weatherScrollAndRepeatedSettingsNavigationKeepVisibleText',
     'allToolsGroupsAndFilteredLastGroupRenderInBothAppearances',

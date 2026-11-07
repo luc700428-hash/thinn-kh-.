@@ -144,7 +144,7 @@ fun NextReorderableToolDock(
     NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
         cornerRadiusDp = 9999f, useBackdrop = true, touchX = if(vertical).5f else lightX, touchY=if(vertical)lightX else .08f,calm = true,
-        pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency,darkBackdrop=darkBackdrop) {
+        pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency,darkBackdrop=darkBackdrop,clearGlass=true) {
         Box((if(fillAvailableHeight)Modifier.fillMaxSize() else Modifier.fillMaxWidth())
             .onSizeChanged { dockWidthPx=if(vertical)it.height else it.width;dockHeightPx=it.height }
             .pointerInput(visible.map { it.id }, dockWidthPx,vertical) {

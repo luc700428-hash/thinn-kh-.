@@ -42,7 +42,12 @@ fun MainDetailLayer(visible:Boolean,onBack:()->Unit,inset:Dp=LocalWorkspaceDetai
             Box(Modifier.fillMaxSize().graphicsLayer {
                 translationX=gesture.value*width;alpha=1f-.12f*gesture.value
             }.background(MaterialTheme.colorScheme.background)){
-                AdaptivePageFrame{content()}
+                // Fixed detail controls retain a readable area above a floating Dock.
+                // The outer background still fills the page behind its clear glass.
+                val bottom=LocalWorkspaceBottomClearance.current
+                CompositionLocalProvider(LocalWorkspaceBottomClearance provides 0.dp) {
+                    AdaptivePageFrame(Modifier.padding(bottom=bottom)){content()}
+                }
             }
         }
     }

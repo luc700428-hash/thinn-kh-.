@@ -46,7 +46,7 @@ fun BoxScope.AppleLiquidDockPaint(
         val w=shape.width;val h=shape.height;val y=shape.centerY
         val x=shape.headX;val tx=shape.tailX
         fun body(center:Float)=Path().apply {
-            addRoundRect(RoundRect(Rect(center-w/2,y-h/2,center+w/2,y+h/2),CornerRadius(minOf(w,h)/2)))
+            addRoundRect(RoundRect(Rect(center-w/2,y-h/2,center+w/2,y+h/2),CornerRadius(shape.cornerRadius)))
         }
         var liquid=body(x)
         if(!reduceMotion && abs(tx-x)>1.dp.toPx()) {
@@ -67,13 +67,13 @@ fun BoxScope.AppleLiquidDockPaint(
         }
         withTransform({if(vertical){translate(left=size.width,top=0f);rotate(90f,pivot=Offset.Zero)}}) {
         clipRect(right=logicalWidth,bottom=logicalHeight) {
-            drawPath(liquid,if(light)Color.White.copy(alpha=.19f) else Color.White.copy(alpha=.10f))
-            drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=if(light).45f else .17f),
-                Color.Transparent,Color.White.copy(alpha=.07f)),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)))
-            val rainbow=Brush.sweepGradient(listOf(Color(0x887BDFFF),Color(0x667F91FF),Color(0x77EBA9DB),Color(0x66FFE1A8),Color(0x887BDFFF)),Offset((x+tx)/2,y))
-            drawPath(liquid,rainbow,style=Stroke(.85.dp.toPx()))
-            drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=.65f),
-                Color.White.copy(alpha=.15f),Color.Transparent),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)),style=Stroke(.65.dp.toPx()))
+            drawPath(liquid,Color.White.copy(alpha=if(light).045f else .035f))
+            drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=if(light).08f else .06f),
+                Color.Transparent,Color.White.copy(alpha=.015f)),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)))
+            val rainbow=Brush.sweepGradient(listOf(Color(0x447BDFFF),Color(0x337F91FF),Color(0x44EBA9DB),Color(0x33FFE1A8),Color(0x447BDFFF)),Offset((x+tx)/2,y))
+            drawPath(liquid,rainbow,style=Stroke(.7.dp.toPx()))
+            drawPath(liquid,Brush.linearGradient(listOf(Color.White.copy(alpha=.32f),
+                Color.White.copy(alpha=.08f),Color.Transparent),Offset(x-w/2,y-h/2),Offset(x+w/2,y+h/2)),style=Stroke(.55.dp.toPx()))
         }
         }
     }

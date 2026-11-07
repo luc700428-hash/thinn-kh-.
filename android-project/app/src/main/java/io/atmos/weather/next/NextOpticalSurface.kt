@@ -22,9 +22,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
 /**
- * Native Compose optical approximation for tool/navigation surfaces.
- * Edge glints, touch-directed internal light and accessible opaque-material mode.
- * No private Apple assets; no claim of GPU backdrop refraction.
+ * Tool/navigation materials share edge glints and touch-directed light.
+ * Backdrop-enabled surfaces sample an independent scene through thinnBackdrop;
+ * clearGlass keeps the tint and frost light, with an explicit opaque-accessibility mode.
  */
 @Composable
 fun NextOpticalSurface(
@@ -37,6 +37,7 @@ fun NextOpticalSurface(
     calm: Boolean = false,
     touchY:Float=.08f,
     darkBackdrop:Boolean?=null,
+    clearGlass:Boolean=false,
     content: @Composable () -> Unit
 ) {
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
@@ -53,7 +54,8 @@ fun NextOpticalSurface(
         t
     }
     val x = NextMotionTokens.clampedTouchX(touchX)
-    val glassTint=if(calm)(if(lightTheme).22f else .38f)-.12f*appearance.glassOpacity.coerceIn(0f,1f)
+    val glassTint=if(clearGlass).06f-.04f*appearance.glassOpacity.coerceIn(0f,1f)
+        else if(calm)(if(lightTheme).22f else .38f)-.12f*appearance.glassOpacity.coerceIn(0f,1f)
         else (.62f-.30f*appearance.glassOpacity.coerceIn(0f,1f))
     val background = if (reduceTransparency) {
         if(lightTheme) Brush.verticalGradient(listOf(Color.White,Color(0xFFF2F2F7))) else Brush.verticalGradient(listOf(Color(0xFF1C1C1E),Color(0xFF1C1C1E)))
@@ -63,19 +65,19 @@ fun NextOpticalSurface(
     } else {
         Brush.verticalGradient(listOf(Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint), Color(0xFF1C1C1E).copy(alpha=glassTint)))
     }
-    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x).background(background)
+    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x,frostScale=if(clearGlass).35f else 1f).background(background)
         .then(if(calm)Modifier else Modifier.thinnSpecularEdge(cornerRadiusDp.dp)).drawWithContent {
         val w = size.width
         val h = size.height
         // A small, localized lens flare on touch; never blanket-flood content.
-        if (!reduceTransparency && !calm) {
+        if (!reduceTransparency && (!calm || clearGlass)) {
             val light = Offset(w * x,h*touchY.coerceIn(0f,1f))
             val radius = w.coerceAtLeast(h) * .82f
             drawRoundRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = if (pressed) .39f else .13f + opticalPhase*.08f),
-                        Color(0xFF9FDFF7).copy(alpha = if (pressed) .11f else .03f),
+                        Color.White.copy(alpha = if(clearGlass) {if(pressed).055f else .018f} else if (pressed) .39f else .13f + opticalPhase*.08f),
+                        Color(0xFF9FDFF7).copy(alpha = if(clearGlass).015f else if (pressed) .11f else .03f),
                         Color.Transparent
                     ), center = light, radius = radius
                 ),
@@ -86,7 +88,7 @@ fun NextOpticalSurface(
         drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = if(calm) {if(pressed).22f else .12f} else if (pressed) .72f else .42f),
+                    Color.White.copy(alpha = if(clearGlass) {if(pressed).32f else .22f} else if(calm) {if(pressed).22f else .12f} else if (pressed) .72f else .42f),
                     Color.White.copy(alpha = if(calm).03f else .13f),
                     Color.White.copy(alpha = if(calm) 0f else if(lightTheme) .56f else .24f)
                 ), start = Offset(0f, 0f), end = Offset(w, h)

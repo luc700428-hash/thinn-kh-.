@@ -54,4 +54,13 @@ class DockLiquidGeometryTest {
             }
         }
     }
+    @Test fun theFullCellLensKeepsRectangularCornersInsteadOfBecomingACircle() {
+        for(density in listOf(1f,2.75f))for(vertical in listOf(false,true)) {
+            val g=DockLiquidGeometry.shape(296f*density,78f*density,density,4,1f,1f,vertical)!!
+            assertTrue(g.cornerRadius>0f)
+            assertTrue(g.cornerRadius<minOf(g.width,g.height)*.35f)
+            val moving=DockLiquidGeometry.shape(296f*density,78f*density,density,4,1.8f,1f,vertical)!!
+            assertEquals(g.cornerRadius,moving.cornerRadius,0f)
+        }
+    }
 }

@@ -30,7 +30,7 @@ class SeismicTabletDashboardRenderingTest:TabletDockFixture() {
                 assertTrue(plus.config[SemanticsActions.OnClick].action!!.invoke());pump(view).recycle()
                 for((w,h) in listOf(1280 to 900,900 to 1280,600 to 960,450 to 960,1280 to 900)) {
                     resize(view,w,h)
-                    if(w>=600)assertDockOutsideContent(view)
+                    if(w>=600)assertDockLayout(view)
                     else {
                         val body=tagged(view,"tablet-main-content")
                         visible(body.boundsInRoot)

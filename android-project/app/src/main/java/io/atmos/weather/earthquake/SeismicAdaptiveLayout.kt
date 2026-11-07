@@ -41,15 +41,16 @@ internal val LocalSeismicSettingsCellWidth=staticCompositionLocalOf{Dp.Unspecifi
     val first=remember{movableContentOf<Dp>{height->Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(14.dp)){currentLeading.value(this,height)}}}
     val second=remember{movableContentOf<Dp>{height->Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(16.dp)){currentTrailing.value(this,height)}}}
     val compactScroll=rememberScrollState();val firstScroll=rememberScrollState();val secondScroll=rememberScrollState()
-    val bottom=if(criticalFirst||LocalWorkspaceLayout.current.tablet)16.dp else 114.dp
+    val clearance=if(criticalFirst)0.dp else io.atmos.weather.ui.LocalWorkspaceBottomClearance.current
+    val bottom=if(criticalFirst)16.dp else io.atmos.weather.ui.workspaceBottomPadding(if(LocalWorkspaceLayout.current.tablet)16.dp else 114.dp)
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val plan=SeismicPaneGeometry.plan(maxWidth.value,maxHeight.value,scale,criticalFirst)
+        val plan=SeismicPaneGeometry.plan(maxWidth.value,(maxHeight-clearance).value,scale,criticalFirst)
         if(plan.sideBySide) {
-            Row(Modifier.fillMaxSize().padding(horizontal=16.dp).padding(bottom=bottom),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
+            Row(Modifier.fillMaxSize().padding(horizontal=16.dp).padding(bottom=if(clearance>0.dp)0.dp else bottom),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
                 val firstModifier=if(criticalFirst)Modifier.width(plan.inspectorWidth.dp) else Modifier.weight(1f)
-                Column(firstModifier.fillMaxHeight().verticalScroll(firstScroll).testTag("seismic-leading-pane")){first(plan.mapHeight.dp)}
+                Column(firstModifier.fillMaxHeight().verticalScroll(firstScroll).padding(bottom=if(clearance>0.dp)bottom else 0.dp).testTag("seismic-leading-pane")){first(plan.mapHeight.dp)}
                 val secondModifier=if(criticalFirst)Modifier.weight(1f) else Modifier.width(plan.inspectorWidth.dp)
-                Column(secondModifier.fillMaxHeight().verticalScroll(secondScroll).testTag("seismic-inspector-pane"),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Column(secondModifier.fillMaxHeight().verticalScroll(secondScroll).padding(bottom=if(clearance>0.dp)bottom else 0.dp).testTag("seismic-inspector-pane"),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                     summary();second(plan.mapHeight.dp)
                 }
             }

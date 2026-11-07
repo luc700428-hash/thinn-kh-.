@@ -4,7 +4,9 @@ from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 
-EXPECTED = {'io.atmos.weather.earthquake.SeismicCriticalAudioPolicyTest': {'alarmsOnlyModePermitsCriticalAlarmAudio',
+EXPECTED = {'io.atmos.weather.ui.TransparentDockTransmissionRenderingTest': {'liveBackgroundRemainsVisibleThroughEveryDockEdgeInBothThemes'},
+ 'io.atmos.weather.ui.RealWeatherDockContinuityRenderingTest': {'realWeatherHasNoBackgroundSeamAlongAnyReservedDockLane'},
+ 'io.atmos.weather.earthquake.SeismicCriticalAudioPolicyTest': {'alarmsOnlyModePermitsCriticalAlarmAudio',
                                                                 'criticalModeCannotRaiseAZeroAlarmVolume',
                                                                 'criticalModeUsesAlarmsWhenRingerIsSilent',
                                                                 'ordinaryModeRespectsSilentAndDnd',

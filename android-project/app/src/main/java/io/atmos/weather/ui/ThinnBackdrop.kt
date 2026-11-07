@@ -53,10 +53,11 @@ private val LocalBackdropAncestors=staticCompositionLocalOf<Set<ThinnBackdrop>> 
 
 /** Descendants can sample independent scenes, but never their own capture. */
 @Composable fun ThinnBackdropCapture(source:ThinnBackdrop,modifier:Modifier=Modifier,
-    content:@Composable BoxScope.()->Unit) {
+    enabled:Boolean=true,content:@Composable BoxScope.()->Unit) {
     val ancestors=LocalBackdropAncestors.current
-    CompositionLocalProvider(LocalBackdropAncestors provides remember(ancestors,source) {ancestors+source}) {
-        Box(modifier.thinnBackdropSource(source),content=content)
+    val protectedAncestors=remember(ancestors,source,enabled){if(enabled)ancestors+source else ancestors}
+    CompositionLocalProvider(LocalBackdropAncestors provides protectedAncestors) {
+        Box(if(enabled)modifier.thinnBackdropSource(source) else modifier,content=content)
     }
 }
 
@@ -85,7 +86,7 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
 
 /** Crop before filtering AND when painting; sampled pixels cannot cover siblings. */
 @Composable
-fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f):Modifier {
+fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f,frostScale:Float=1f):Modifier {
     val source=LocalThinnBackdrop.current
     if(reduceTransparency || source==null || source in LocalBackdropAncestors.current) return this
     val view=LocalView.current.rootView
@@ -95,7 +96,7 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     var visible by remember {mutableStateOf(Rect.Zero)}
     var failed by remember(source) {mutableStateOf(false)}
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
-    val radius=with(LocalDensity.current) {(4f+26f*appearance.glassFrost.coerceIn(0f,1f)).dp.toPx()}
+    val radius=with(LocalDensity.current) {((4f+26f*appearance.glassFrost.coerceIn(0f,1f))*frostScale.coerceIn(.1f,1f)).dp.toPx()}
     val corner=with(LocalDensity.current) {cornerRadius.toPx()}
     val optics=remember {if(Build.VERSION.SDK_INT>=33)try {LiquidOpticsEngine()} catch(_:RuntimeException) {null} else null}
     val effect=remember(radius) {
