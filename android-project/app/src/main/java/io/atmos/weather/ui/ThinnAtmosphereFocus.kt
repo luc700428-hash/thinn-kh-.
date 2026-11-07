@@ -78,7 +78,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
                     radius=w*.42f,center=secondaryCenter)
                 for (i in 0..3) {
                     val radius = w*(.21f+i*.11f)
-                    drawCircle(color=Color.White.copy(alpha=.09f-i*.014f),
+                    drawCircle(color=WeatherCardPalettes.current.ink.copy(alpha=.09f-i*.014f),
                         radius=radius,center=Offset(w*.74f,h*.93f),style=Stroke(width=1.dp.toPx()))
                 }
                 drawLine(brush=Brush.linearGradient(
@@ -87,7 +87,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
             }
             Column(Modifier.align(Alignment.CenterStart).padding(horizontal=21.dp, vertical=22.dp),
                 verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                Text("現在的天氣光景",color=brandColor(0xFFE4F6F1),fontSize=14.sp,fontWeight=FontWeight.Medium)
+                Text("現在的天氣光景",color=WeatherCardPalettes.current.secondary,fontSize=14.sp,fontWeight=FontWeight.Medium)
                 Text(when(snapshot.condition) {
                     WeatherCondition.CLEAR -> if(snapshot.isDay) "天空晴朗" else "夜色清朗"
                     WeatherCondition.PARTLY_CLOUDY -> "晴時多雲"
@@ -99,8 +99,8 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
                     WeatherCondition.HAIL -> "留意冰雹"
                     WeatherCondition.HAZE, WeatherCondition.DUST, WeatherCondition.DUST_STORM -> "天空較為混濁"
                     else -> "觀察現在的天空"
-                },fontSize=27.sp,lineHeight=36.sp,fontWeight=FontWeight.SemiBold,color=Color.White)
-                Text("依目前天氣狀態呈現的光影效果",fontSize=14.sp,color=brandColor(0xFFD4EEE7))
+                },fontSize=27.sp,lineHeight=36.sp,fontWeight=FontWeight.SemiBold,color=WeatherCardPalettes.current.ink)
+                Text("依目前天氣狀態呈現的光影效果",fontSize=14.sp,color=WeatherCardPalettes.current.secondary)
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp, vertical=15.dp),
@@ -118,7 +118,7 @@ fun ThinnAtmosphereFocus(snapshot: WeatherSnapshot, location: String, reducedMot
 @Composable
 private fun FocusMetric(label:String,value:String,modifier:Modifier=Modifier) {
     Column(modifier,horizontalAlignment=Alignment.Start,verticalArrangement=Arrangement.spacedBy(3.dp)) {
-        Text(label,fontSize=14.sp,color=brandColor(0xFFB2E2D5))
-        Text(value,fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=Color.White,maxLines=1)
+        Text(label,fontSize=14.sp,color=WeatherCardPalettes.current.secondary)
+        Text(value,fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=WeatherCardPalettes.current.ink,maxLines=1)
     }
 }

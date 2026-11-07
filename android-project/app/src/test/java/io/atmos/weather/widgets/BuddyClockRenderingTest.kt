@@ -31,6 +31,11 @@ class BuddyClockRenderingTest {
                 val clock=children.single{it.id==R.id.buddy_clock_time} as TextClock
                 assertEquals("HH:mm",clock.format24Hour.toString());assertEquals("h:mm a",clock.format12Hour.toString())
                 assertTrue(clock.width>0&&clock.height>0)
+                val date=children.single{it.id==R.id.buddy_clock_date} as TextClock
+                assertEquals(View.VISIBLE,date.visibility)
+                assertEquals("M月d日",date.format12Hour.toString());assertEquals("M月d日",date.format24Hour.toString())
+                assertTrue(date.text.toString().matches(Regex("[0-9]{1,2}月[0-9]{1,2}日")))
+                assertEquals("$name cut off its month/day date",0,date.layout.getEllipsisCount(0))
                 val temp=children.single{it.id==R.id.buddy_clock_temp} as TextView
                 assertTrue(temp.text.startsWith("24°"))
                 assertTrue("Temperature digits must remain readable",temp.layout.getEllipsisCount(0)==0||temp.layout.getEllipsisStart(0)>=3)

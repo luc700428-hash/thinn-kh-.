@@ -63,7 +63,8 @@ class ToolsPageRenderingTest {
                 shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(80))
                 val bitmap=Bitmap.createBitmap(400,1600,Bitmap.Config.ARGB_8888)
                 parent.draw(Canvas(bitmap))
-                // Each visible category must draw its own icons in the unified forest identity.
+                // Every category uses the selected brand seed, including updated forest shades.
+                val expectedIcon=AppThemeColor.FOREST.primaryArgb.toInt()
                 val headings=listOf("日常生活","天氣與防災","海洋與天文","時間與換算").map{title->
                     nodes(parent).single{it.config.contains(SemanticsProperties.Text)&&
                         it.config[SemanticsProperties.Text].any{t->t.text==title}}.boundsInRoot
@@ -72,8 +73,8 @@ class ToolsPageRenderingTest {
                     val top=heading.bottom.toInt();val bottom=headings.getOrNull(index+1)?.top?.toInt()?:bitmap.height
                     assertTrue("Category was outside the visible catalogue",top>=0&&bottom<=bitmap.height&&bottom>top)
                     var pixels=0
-                    for(y in top until bottom)for(x in 0 until 100)if(bitmap.getPixel(x,y)==0xff2f6858.toInt())pixels++
-                    assertTrue("Missing green category icon $index in ${if(dark)"dark" else "light"} catalogue",pixels>100)
+                    for(y in top until bottom)for(x in 0 until 100)if(bitmap.getPixel(x,y)==expectedIcon)pixels++
+                    assertTrue("Missing theme-colored category icon $index in ${if(dark)"dark" else "light"} catalogue",pixels>100)
                 }
                 val output=File("build/tools-renders").apply{mkdirs()}
                 File(output,"tools_${if(dark)"dark" else "light"}.png").outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}

@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
         // Lock-screen activation is governed by OS notification policy. Do not
         // enable wake from an exported Activity intent extra that another app can forge.
         window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         io.atmos.weather.ui.HighRefreshWindow.apply(window,window.decorView)
         ThinnNotificationChannels.ensure(this)
         // Start a foreground seismic stream only after the user has explicitly opted in.

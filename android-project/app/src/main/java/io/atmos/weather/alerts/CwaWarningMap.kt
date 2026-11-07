@@ -1,6 +1,6 @@
 package io.atmos.weather.alerts
 
-import io.atmos.weather.ui.brandArgb
+import io.atmos.weather.ui.animatedBrandArgb
 
 import android.graphics.Paint
 import android.graphics.RectF
@@ -34,8 +34,8 @@ import kotlin.math.*
 internal data class WarningMapColours(val background:Int,val land:Int,val edge:Int,val warning:Int,val warningLand:Int,val text:Int,val selected:Int,
     val upcoming:Int,val upcomingLand:Int) {
     companion object {
-        fun forTheme(dark:Boolean,selected:Int)=if(dark)WarningMapColours(brandArgb(0xFF0C221C),brandArgb(0xFF24483E),brandArgb(0xFF72AC9C),0xFFFFB4AB.toInt(),0xFF5F3036.toInt(),brandArgb(0xFFEDF9F5),selected,0xFFFFD88C.toInt(),0xFF57452B.toInt())
-            else WarningMapColours(0xFFF1F6F9.toInt(),brandArgb(0xFFD5E7E2),brandArgb(0xFF4E7A6E),0xFF9F231C.toInt(),0xFFFFDAD6.toInt(),brandArgb(0xFF0E2922),selected,0xFF815100.toInt(),0xFFFFE5AD.toInt())
+        fun forTheme(dark:Boolean,selected:Int)=if(dark)WarningMapColours(animatedBrandArgb(0xFF0C221C),animatedBrandArgb(0xFF24483E),animatedBrandArgb(0xFF72AC9C),0xFFFFB4AB.toInt(),0xFF5F3036.toInt(),animatedBrandArgb(0xFFEDF9F5),selected,0xFFFFD88C.toInt(),0xFF57452B.toInt())
+            else WarningMapColours(0xFFF1F6F9.toInt(),animatedBrandArgb(0xFFD5E7E2),animatedBrandArgb(0xFF4E7A6E),0xFF9F231C.toInt(),0xFFFFDAD6.toInt(),animatedBrandArgb(0xFF0E2922),selected,0xFF815100.toInt(),0xFFFFE5AD.toInt())
     }
 }
 

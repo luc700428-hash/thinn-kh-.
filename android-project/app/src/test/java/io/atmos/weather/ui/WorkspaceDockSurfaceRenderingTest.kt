@@ -63,7 +63,11 @@ class WorkspaceDockSurfaceRenderingTest:TabletDockFixture() {
                                 bounds.left+shape.headX+shape.width/2,bounds.top+shape.centerY+shape.height/2)
                             assertEquals(cell.center.x,lens.center.x,1.1f);assertEquals(cell.center.y,lens.center.y,1.1f)
                             assertTrue(lens.width<=cell.width+1f&&lens.height<=cell.height+1f)
-                            assertTrue("Tablet lens no longer fits its content cell",if(vertical)lens.width>=cell.width*.94f else lens.height>=cell.height*.94f)
+                            val minor=if(vertical)lens.width else lens.height
+                            val major=if(vertical)lens.height else lens.width
+                            assertTrue("Tablet lens must be a shallow capsule",major/minor>=1.37f)
+                            assertTrue("Tablet lens became too small to follow",minor>=32f)
+                            assertEquals(minor/2,shape.cornerRadius,.001f)
                             assertTrue(if(vertical)lens.height>=cell.height*.90f else lens.width>=cell.width*.90f)
                         }
                         val bitmap=pump(view)

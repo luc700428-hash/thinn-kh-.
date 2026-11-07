@@ -178,7 +178,8 @@ class WeatherInformationControlsRenderingTest:WeatherInformationRenderingFixture
                 assertEquals(7,days.size);assertTrue(days.all{it.boundsInRoot.left>=0 && it.boundsInRoot.right<=400})
                 val check=days.single{text(it,"一")}
                 assertEquals(ToggleableState.Off,check.config[SemanticsProperties.ToggleableState])
-                val buttonText=nodes(view).single{text(it,"選擇時間")};contrast(buttonText,p.primary)
+                // Filled controls keep a dark brand seed with white copy in both appearances.
+                val buttonText=nodes(view).single{text(it,"選擇時間")};contrast(buttonText,BrandPalette.selection)
                 click(view,"選擇時間")
                 settle(view){ShadowDialog.getLatestDialog()?.isShowing==true}
                 val dialog=ShadowDialog.getLatestDialog();assertTrue(dialog.isShowing)

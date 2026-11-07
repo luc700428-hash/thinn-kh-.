@@ -21,7 +21,7 @@ object AppUpdateDelta {
         val start=notes.indexOf(MARKER)
         if(start<0) return null
         val block=notes.substring(start+MARKER.length)
-            .substringBefore("<!-- END_THINN_INCREMENTAL_CHANGES -->")
+            .substringBefore("<!-- END_THINN_INCREMENTAL_CHANGES -->").substringBefore("\n---").substringBefore("<!-- PREVIOUS_")
         return block.lineSequence().map { it.trim() }
             .filter { it.startsWith("- ") }.map { it.removePrefix("- ").replace("**", "") }
             .filter(String::isNotBlank).toList()
@@ -30,7 +30,7 @@ object AppUpdateDelta {
     internal fun displayNotes(notes:String):String {
         val start=notes.indexOf(MARKER)
         val selected=if(start>=0) notes.substring(start+MARKER.length)
-            .substringBefore("<!-- END_THINN_INCREMENTAL_CHANGES -->") else notes
+            .substringBefore("<!-- END_THINN_INCREMENTAL_CHANGES -->").substringBefore("\n---").substringBefore("<!-- PREVIOUS_") else notes
         return selected.replace(Regex("<!--[^>]*-->",RegexOption.DOT_MATCHES_ALL),"").trim()
     }
 

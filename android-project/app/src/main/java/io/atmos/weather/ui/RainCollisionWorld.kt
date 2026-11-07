@@ -11,6 +11,9 @@ internal class RainCollisionWorld(seed:Int=7349) {
         val width get()=right-left
         val height get()=bottom-top
         val r get()=radius.coerceIn(0f,min(width,height)/2)
+        var contour:CollisionContour?=null
+        var active=true;var clipBottom=Float.POSITIVE_INFINITY
+        var shiftX=0f;var shiftY=0f
         var wet=0f
         val beads=ArrayList<Bead>(28)
     }
@@ -23,6 +26,8 @@ internal class RainCollisionWorld(seed:Int=7349) {
     val air=ArrayList<Air>(144)
     val sparks=ArrayList<Spark>(144)
     var width=0f;var height=0f
+    var speedScale=1f;var radiusScale=1f;var gusts=false
+    private var elapsed=0f
     var impacts=0;private set
     var emittedDrips=0;private set
     private var budget=0f;private var remainder=0f
@@ -32,21 +37,40 @@ internal class RainCollisionWorld(seed:Int=7349) {
         if(!listOf(left,top,right,bottom,radius).all {it.isFinite()} || right<=left || bottom<=top)return
         val old=surfaces[id]
         if(old==null)surfaces[id]=Surface(id,left,top,right,bottom,radius)
-        else {old.left=left;old.top=top;old.right=right;old.bottom=bottom;old.radius=radius}
+        else {old.shiftX+=left-old.left;old.shiftY+=top-old.top;old.left=left;old.top=top;old.right=right;old.bottom=bottom;old.radius=radius}
     }
     fun remove(id:Int){surfaces.remove(id)}
     fun clearAir(){air.clear();sparks.clear()}
-    private fun visible(s:Surface)=s.bottom>0 && s.top<height && s.right>0 && s.left<width
+    private fun visible(s:Surface)=s.active&&s.top<s.clipBottom&&s.bottom>0 && s.top<height && s.right>0 && s.left<width
     fun step(seconds:Float,intensity:Float,windDpPerSecond:Float) {
         if(!seconds.isFinite() || seconds<=0 || width<=0 || height<=0)return
         val rain=if(intensity.isFinite())intensity.coerceIn(0f,1f) else 0f
-        val wind=if(windDpPerSecond.isFinite())windDpPerSecond.coerceIn(-140f,140f) else 0f
-        remainder+=seconds.coerceAtMost(.05f)
+        val wind=if(windDpPerSecond.isFinite())windDpPerSecond.coerceIn(-620f,620f) else 0f
+        val frameDt=seconds.coerceAtMost(.05f)
+        surfaces.values.forEach {s->
+            val dx=s.shiftX;val dy=s.shiftY;s.shiftX=0f;s.shiftY=0f
+            val speed=hypot(dx,dy)/frameDt
+            if(speed>130f&&s.beads.isNotEmpty()) {
+                val count=ceil(s.beads.size*((speed-60)/600).coerceIn(.15f,1f)).toInt()
+                repeat(count.coerceAtMost(s.beads.size)) {
+                    val bead=s.beads.removeAt(s.beads.lastIndex);val at=beadPoint(s,bead)
+                    if(air.size<138) {
+                        val mass=bead.mass/2;val r=sqrt(mass)*1.55f
+                        for(sign in listOf(-1,1))air+=Air(at.x-dx*.3f+sign*r,at.y-(if(dy>0)dy else 0f)-r*1.8f,
+                            (dx/frameDt*.4f+sign*35).coerceIn(-650f,650f),(dy/frameDt*.35f-90).coerceIn(-850f,650f),r,true,mass)
+                        emittedDrips+=2
+                    }
+                }
+            }
+        }
+        remainder+=frameDt
         val dt=1f/240f
         var guard=0
         while(remainder+1e-7f>=dt && guard++<13) {integrate(dt,rain,wind);remainder-=dt}
     }
-    private fun integrate(dt:Float,intensity:Float,wind:Float) {
+    private fun integrate(dt:Float,intensity:Float,baseWind:Float) {
+        elapsed+=dt
+        val wind=if(gusts)WeatherPhysicsStyle.windPixels(baseWind/3.2f,true,elapsed) else baseWind
         if(intensity>0) {
             budget+=dt*(10f+intensity*58f)*(width/400f).coerceIn(.5f,2f)
             while(budget>=1f) {
@@ -54,30 +78,26 @@ internal class RainCollisionWorld(seed:Int=7349) {
                 if(air.size<128) {
                     val x=random.nextFloat()*(width+100f)-50f
                     air+=Air(x,-25f-random.nextFloat()*20f,wind*(.8f+random.nextFloat()*.4f),
-                        410f+intensity*390f+random.nextFloat()*110f,.65f+random.nextFloat()*.85f)
+                        (410f+intensity*390f+random.nextFloat()*110f)*speedScale,(.65f+random.nextFloat()*.85f)*radiusScale)
                 }
             }
         }
         for(i in air.lastIndex downTo 0) {
             val drop=air[i];val ox=drop.x;val oy=drop.y
-            drop.vy=(drop.vy+820f*dt).coerceAtMost(if(drop.drip)1000f else 1150f)
+            drop.vx+=(wind*(if(drop.drip).25f else 1f)-drop.vx)*dt*2.3f
+            drop.vy=(drop.vy+820f*dt).coerceAtMost((if(drop.drip)1000f else 1150f)*speedScale)
             drop.x+=drop.vx*dt;drop.y+=drop.vy*dt
-            var hit:Surface?=null;var fraction=2f;var hitX=0f;var hitY=0f
+            var hit:Surface?=null;var fraction=2f;var hitX=0f;var hitY=0f;var normalX=0f;var normalY= -1f
             surfaces.values.forEach {s ->
-                if(!visible(s) || oy>s.top+s.r || drop.y<s.top || drop.vy<=0)return@forEach
-                // Swept top-edge crossing: no tunnelling at high rain speed or low frame rate.
-                val t=((s.top-oy)/(drop.y-oy).coerceAtLeast(.0001f)).coerceIn(0f,1f)
-                val x=ox+(drop.x-ox)*t
-                if(x<s.left+s.r*.35f || x>s.right-s.r*.35f)return@forEach
-                val roof=roofY(s,x)
-                if(oy<=roof && drop.y>=roof) {
-                    val ft=(roof-oy)/(drop.y-oy).coerceAtLeast(.0001f)
-                    if(ft<fraction) {hit=s;fraction=ft;hitX=ox+(drop.x-ox)*ft;hitY=roof}
+                if(!visible(s))return@forEach
+                val contact=WeatherSurfacePhysics.sweep(s,ox,oy,drop.x,drop.y)
+                if(contact!=null&&contact.fraction<fraction) {
+                    hit=s;fraction=contact.fraction;hitX=contact.x;hitY=contact.y;normalX=contact.nx;normalY=contact.ny
                 }
             }
             if(hit!=null) {
-                impact(hit!!,hitX,hitY,drop);air.removeAt(i)
-            } else if(surfaces.values.any {s ->visible(s) && drop.x in s.left..s.right && drop.y>roofY(s,drop.x) && drop.y<s.bottom}) {
+                impact(hit!!,hitX,hitY,drop,normalX,normalY);air.removeAt(i)
+            } else if(surfaces.values.any {s ->visible(s) && drop.x in s.left..s.right && (s.contour?.contains(drop.x-s.left,drop.y-s.top) ?: (drop.y>roofY(s,drop.x) && drop.y<s.bottom))}) {
                 // A scrolling card may move under an existing airborne drop; don't draw through its face.
                 air.removeAt(i)
             } else if(drop.y>height+60 || drop.x< -180 || drop.x>width+180)air.removeAt(i)
@@ -97,6 +117,22 @@ internal class RainCollisionWorld(seed:Int=7349) {
             val bottom=PI.toFloat()*s.r+(s.height-2*s.r).coerceAtLeast(0f)
             for(i in s.beads.lastIndex downTo 0) {
                 val bead=s.beads[i]
+                val outline=s.contour
+                if(outline!=null) {
+                    val p=outline.point(bead.s);val sign=if(bead.rightEdge)1 else -1
+                    val next=outline.point(bead.s+sign*1.2f)
+                    if(next.y<p.y && p.y>outline.height*.60f) {
+                        bead.neckAge+=dt
+                        if(bead.neckAge>.27f) {
+                            if(air.size<140)air+=Air(s.left+p.x,s.top+p.y+radius(bead)*1.8f,wind*.16f,65f,radius(bead),true,bead.mass)
+                            emittedDrips++;s.beads.removeAt(i)
+                        }
+                    }else{
+                        bead.speed=(bead.speed+dt*(18f+120f*abs(next.y-p.y))).coerceAtMost(155f)
+                        bead.s+=sign*bead.speed*dt
+                    }
+                    continue
+                }
                 // Impact starts a thin surface film; gravity accelerates it down the curved rim.
                 val onSide=bead.s>=s.r*PI.toFloat()/2
                 bead.speed=(bead.speed+dt*(if(onSide)100f+bead.mass*14f else 13f+bead.mass*13f)).coerceAtMost(220f)
@@ -125,34 +161,45 @@ internal class RainCollisionWorld(seed:Int=7349) {
             }
         }
     }
-    private fun impact(s:Surface,x:Float,y:Float,drop:Air) {
+    private fun impact(s:Surface,x:Float,y:Float,drop:Air,nx:Float,ny:Float) {
         impacts++;s.wet=(s.wet+.13f).coerceAtMost(1f)
         val mass=drop.mass
-        addBead(s,x,mass*.68f,18f+abs(drop.vx)*.3f)
+        addBead(s,x,mass*.68f,18f+abs(drop.vx)*.3f,y)
         val count=if(drop.drip)5 else 3
         repeat(count) {n ->
             if(sparks.size<128) {
                 val sign=if(n%2==0)1 else -1
-                sparks+=Spark(x,y-.5f,sign*(28f+random.nextFloat()*90f)+drop.vx*.18f,
-                    -(75f+random.nextFloat()*115f+if(drop.drip)30f else 0f),.6f,s.id,mass*.32f/count)
+                val tangent=sign*(28f+random.nextFloat()*90f)
+                val rebound=75f+random.nextFloat()*115f+if(drop.drip)30f else 0f
+                sparks+=Spark(x+nx*.5f,y+ny*.5f,nx*rebound-ny*tangent+drop.vx*.18f,
+                    ny*rebound+nx*tangent,.6f,s.id,mass*.32f/count)
             }
         }
     }
-    private fun addBead(s:Surface,x:Float,mass:Float,speed:Float) {
+    private fun addBead(s:Surface,x:Float,mass:Float,speed:Float,hitY:Float=roofY(s,x)) {
+        s.contour?.let {shape->
+            val at=shape.nearest(x-s.left,hitY-s.top)
+            val forward=shape.point(at+1f);val backward=shape.point(at-1f)
+            if(s.beads.size<24)s.beads+=Bead(forward.y>backward.y,at,mass.coerceAtLeast(.2f),speed)
+            return
+        }
         val right=x>(s.left+s.right)/2
         val roofDistance=if(right)s.right-s.r-x else x-(s.left+s.r)
-        val point=if(roofDistance>=0) -roofDistance else asin((-roofDistance/s.r.coerceAtLeast(.1f)).coerceIn(0f,1f))*s.r
+        val point=if(hitY>s.top+s.r)PI.toFloat()*s.r/2+(hitY-s.top-s.r).coerceAtMost((s.height-2*s.r).coerceAtLeast(0f))
+            else if(roofDistance>=0) -roofDistance else asin((-roofDistance/s.r.coerceAtLeast(.1f)).coerceIn(0f,1f))*s.r
         val nearby=s.beads.firstOrNull {it.rightEdge==right && abs(it.s-point)<5f}
         if(nearby!=null)nearby.mass=(nearby.mass+mass).coerceAtMost(28f)
         else if(s.beads.size<24)s.beads+=Bead(right,point,mass.coerceAtLeast(.2f),speed)
     }
     fun roofY(s:Surface,x:Float):Float {
+        s.contour?.let{return s.top+it.roof(x-s.left)}
         val r=s.r
         val dx=when {x<s.left+r->x-(s.left+r);x>s.right-r->x-(s.right-r);else->0f}
         return if(dx==0f || r<=0f)s.top else s.top+r-sqrt((r*r-dx*dx).coerceAtLeast(0f))
     }
     fun radius(b:Bead)=sqrt(b.mass)*1.55f
     fun beadPoint(s:Surface,b:Bead):Point {
+        s.contour?.let{val p=it.point(b.s);return Point(s.left+p.x,s.top+p.y)}
         val r=s.r.coerceAtLeast(.1f);val sign=if(b.rightEdge)1f else -1f
         val anchor=if(b.rightEdge)s.right-r else s.left+r
         val q=(PI/2).toFloat()*r;val side=(s.height-2*r).coerceAtLeast(0f)

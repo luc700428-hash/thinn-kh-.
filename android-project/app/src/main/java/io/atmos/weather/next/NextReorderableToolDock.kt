@@ -7,6 +7,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -106,6 +109,7 @@ fun NextReorderableToolDock(
     var showOverflow by remember { mutableStateOf(false) }
     var dockWidthPx by remember { mutableIntStateOf(0) }
     var dockHeightPx by remember {mutableIntStateOf(0)}
+    var touching by remember{mutableStateOf(false)}
     var scrubbing by remember { mutableStateOf(false) }
     var scrubX by remember { mutableFloatStateOf(0f) }
     var displayId by remember {mutableStateOf(selectedId)}
@@ -146,9 +150,13 @@ fun NextReorderableToolDock(
     NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
         cornerRadiusDp = 9999f, useBackdrop = true, touchX = if(vertical).5f else lightX, touchY=if(vertical)lightX else .08f,calm = true,
-        pressed = scrubbing || draggingId != null, reduceTransparency = reduceTransparency,darkBackdrop=darkBackdrop,clearGlass=true) {
+        pressed = touching || scrubbing || draggingId != null, reduceTransparency = reduceTransparency,darkBackdrop=darkBackdrop,clearGlass=true) {
         Box((if(fillAvailableHeight)Modifier.fillMaxSize() else Modifier.fillMaxWidth())
             .onSizeChanged { dockWidthPx=if(vertical)it.height else it.width;dockHeightPx=it.height }
+            .pointerInput(Unit){awaitEachGesture{
+                awaitFirstDown(requireUnconsumed=false);touching=true
+                try{do{val event=awaitPointerEvent(PointerEventPass.Final)}while(event.changes.any{it.pressed})}finally{touching=false}
+            }}
             .pointerInput(visible.map { it.id }, dockWidthPx,vertical) {
                 val start:(androidx.compose.ui.geometry.Offset)->Unit={point->
                     scrubbing=true;scrubX=geometry.clamp(if(vertical)point.y else point.x)
@@ -168,7 +176,7 @@ fun NextReorderableToolDock(
             AppleLiquidDockPaint(selectedIndex=lightIndex,tabCount=visible.size.coerceAtLeast(1),
                 dragging=scrubbing || draggingId != null,
                 dragOffsetPx=if(scrubbing) scrubX - (dockInsetPx+(lightIndex+.5f)*slotPx) else dockDragOffsetPx,
-                reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop)
+                reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop,engaged=touching||scrubbing||draggingId!=null,reduceTransparency=reduceTransparency)
         DockAxisLayout(vertical,fillAvailableHeight) {
             visible.forEach { action ->
                 key(action.id) {

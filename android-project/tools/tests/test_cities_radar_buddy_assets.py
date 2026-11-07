@@ -32,9 +32,10 @@ class CitiesRadarBuddy(unittest.TestCase):
   self.assertNotIn('BugReport',header);self.assertNotIn('Refresh',header)
   self.assertIn('WeatherRefreshContainer(state.loading',h)
   self.assertIn('NextReorderableToolDock(',(SRC/'earthquake/SeismicLiveMapPage.kt').read_text())
- def test_slider_has_no_mutable_backdrop_capture_lifecycle(self):
+ def test_slider_uses_an_independent_track_capture_and_safe_geometry(self):
   s=(SRC/'ui/LiquidBubbleSlider.kt').read_text()
-  for token in ('ThinnBackdropCapture','rememberThinnBackdrop','RuntimeShader('):self.assertNotIn(token,s)
+  self.assertIn('ThinnBackdropCapture(source',s);self.assertIn('LocalThinnBackdrop provides source',s)
+  self.assertNotIn('RuntimeShader(',s);self.assertNotIn('Path.combine(',s)
   self.assertIn('setProgress {',s);self.assertIn('onValueChangeFinished',s)
  def test_native_radar_bounds_attribution_and_cache(self):
   s=(SRC/'radar/RadarRepository.kt').read_text();ui=(SRC/'radar/NativeRadarViewer.kt').read_text()
@@ -44,9 +45,9 @@ class CitiesRadarBuddy(unittest.TestCase):
  def test_embedded_update_notes_match_release_notes(self):
   self.assertEqual((ROOT/'tools/stable_maintenance_notes.md').read_bytes(),(ASSETS/'current_release_notes.md').read_bytes())
   text=(ASSETS/'current_release_notes.md').read_text().split('<!-- THINN_INCREMENTAL_CHANGES -->',1)[1].split('<!-- END_THINN_INCREMENTAL_CHANGES -->',1)[0]
-  for feature in ('Q 版','Dock','海象','日月','20 秒','144Hz'):self.assertIn(feature,text)
+  for feature in ('12','Dock','碰撞','積雪','日期'):self.assertIn(feature,text)
   history=(ASSETS/'current_release_notes.md').read_text()
-  self.assertIn('512',history);self.assertIn('黑色模式',history)
+  self.assertNotIn('PREVIOUS_',history);self.assertEqual(1,history.count('<!-- THINN_INCREMENTAL_CHANGES -->'))
  def test_q_buddy_registered_and_obeys_power_and_motion_settings(self):
   manifest=(ROOT/'app/src/main/AndroidManifest.xml').read_text();s=(SRC/'widgets/AtmosWidgets.kt').read_text()
   self.assertIn('WeatherBuddyWidgetReceiver',manifest)

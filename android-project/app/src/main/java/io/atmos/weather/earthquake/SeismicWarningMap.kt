@@ -1,7 +1,7 @@
 package io.atmos.weather.earthquake
 
 import io.atmos.weather.ui.brandColor
-import io.atmos.weather.ui.brandArgb
+import io.atmos.weather.ui.animatedBrandArgb
 
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -79,7 +79,7 @@ internal object SeismicIntensityColors {
                 val loaded=atlas?:return@Canvas;val canvas=drawContext.canvas.nativeCanvas
                 WarningMapLayout.viewports(size.width,size.height,density,zoom,pan).forEach{view->
                     canvas.save();canvas.clipRect(view.rectangle.left,view.rectangle.top,view.rectangle.right,view.rectangle.bottom);canvas.concat(view.matrix())
-                    edge.color=if(dark)brandArgb(0xFF14392F) else brandArgb(0xFF487165);edge.strokeWidth=(.75f*density/view.scale).toFloat()
+                    edge.color=if(dark)animatedBrandArgb(0xFF14392F) else animatedBrandArgb(0xFF487165);edge.strokeWidth=(.75f*density/view.scale).toFloat()
                     loaded.counties.filter{view.county==null||view.county==it.name}.forEach{shape->
                         val color=SeismicIntensityColors.color(values[shape.name]?:values[shape.name.replace('臺','台')])
                         fill.color=android.graphics.Color.rgb((color.red*255).toInt(),(color.green*255).toInt(),(color.blue*255).toInt())
@@ -87,12 +87,12 @@ internal object SeismicIntensityColors {
                     };canvas.restore()
                     val occupied=mutableListOf<android.graphics.RectF>()
                     labels.textSize=12*density*readingScale
-                    labels.setShadowLayer(2*density,0f,0f,if(dark)brandArgb(0xFF091A16) else brandArgb(0xFFF1FAF8))
+                    labels.setShadowLayer(2*density,0f,0f,if(dark)animatedBrandArgb(0xFF091A16) else animatedBrandArgb(0xFFF1FAF8))
                     loaded.counties.filter{if(view.county==null)it.name !in setOf("澎湖縣","金門縣","連江縣") else it.name==view.county}.forEach{shape->
                         val ground=SeismicIntensityColors.color(values[shape.name]?:values[shape.name.replace('臺','台')])
                         val lightInk=if(view.county!=null)dark else ground.luminance()<.18f
                         labels.color=if(lightInk)android.graphics.Color.WHITE else android.graphics.Color.BLACK
-                        labels.setShadowLayer(1.5f*density,0f,0f,if(lightInk)brandArgb(0xFF091A15) else brandArgb(0xFFF7FCFB))
+                        labels.setShadowLayer(1.5f*density,0f,0f,if(lightInk)animatedBrandArgb(0xFF091A15) else animatedBrandArgb(0xFFF7FCFB))
                         val at=view.project(shape.label.first,shape.label.second);val w=labels.measureText(shape.name)
                         val box=android.graphics.RectF(at.x-w/2,at.y-labels.textSize-2*density,at.x+w/2,at.y+2*density)
                         if(view.rectangle.contains(at)&&occupied.none{android.graphics.RectF.intersects(it,box)}){canvas.drawText(shape.name,box.left,at.y,labels);occupied+=box}

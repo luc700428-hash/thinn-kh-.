@@ -1,6 +1,12 @@
 package io.atmos.weather.presentation.home
 
 import io.atmos.weather.ui.brandColor
+import io.atmos.weather.ui.BrandPalette
+import io.atmos.weather.ui.WeatherSkyPalette
+import io.atmos.weather.ui.WeatherDayPhase
+import io.atmos.weather.ui.WeatherPhysicsStyle
+import io.atmos.weather.ui.LocalWeatherSceneInk
+import io.atmos.weather.ui.weatherCollisionViewport
 import io.atmos.weather.ui.IOSActivityIndicator as CircularProgressIndicator
 import io.atmos.weather.ui.IOSLinearProgressIndicator as LinearProgressIndicator
 
@@ -120,8 +126,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.cos
 
-private val White = Color.White
-private val TextSoft get() = brandColor(0xFFE1F4EF)
+private val White get()=WeatherCardPalettes.current.ink
+private val TextSoft get()=WeatherCardPalettes.current.secondary
 private val GlassShape = RoundedCornerShape(30.dp)
 
 /** Center the temperature DIGITS; position the degree glyph on their right. */
@@ -157,25 +163,18 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     val isNight = snapshot?.isDay == false
-    val stormy = snapshot?.condition == WeatherCondition.THUNDERSTORM
+    val stormy = WeatherScenes.classify(snapshot?.condition,snapshot?.weatherCode,snapshot?.visibilityM) in setOf(io.atmos.weather.next.WeatherScene.THUNDERSTORM,io.atmos.weather.next.WeatherScene.SEVERE_THUNDERSTORM)
     val rainy = snapshot?.condition in setOf(WeatherCondition.RAIN,WeatherCondition.THUNDERSTORM,WeatherCondition.FREEZING_RAIN,WeatherCondition.HAIL)
     val heavyRain = snapshot?.weatherCode in setOf(65,67,82,95,96,99)
     val snow = (snapshot?.temperatureC ?: 100.0) <= 5.0 && snapshot?.condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)
     val hazy = (snapshot?.aerosolOpticalDepth ?: 0.0) >= .45 || snapshot?.condition in setOf(WeatherCondition.HAZE, WeatherCondition.DUST, WeatherCondition.DUST_STORM)
-    val colors = when {
-        snapshot?.condition == WeatherCondition.DUST_STORM -> listOf(brandColor(0xFF294C42), brandColor(0xFF4A9680), brandColor(0xFF76CFB6))
-        snapshot?.condition == WeatherCondition.DUST -> listOf(brandColor(0xFF497065),brandColor(0xFF60AE98),brandColor(0xFFB0E3D5))
-        stormy -> listOf(brandColor(0xFF0A1D17), brandColor(0xFF1D4339), brandColor(0xFF477367))
-        isNight -> listOf(brandColor(0xFF081612), brandColor(0xFF153B30), brandColor(0xFF385E53))
-        snapshot?.condition == WeatherCondition.FOG -> listOf(brandColor(0xFF5E8278), brandColor(0xFF92AEA6), brandColor(0xFFC1CFCB))
-        rainy -> listOf(brandColor(0xFF123229), brandColor(0xFF2F6D5C), brandColor(0xFF71AC9B))
-        hazy -> listOf(brandColor(0xFF66897F), brandColor(0xFF96A5A1), brandColor(0xFFB2D1C8))
-        snow -> listOf(brandColor(0xFF3C7968), brandColor(0xFF66B8A1), brandColor(0xFFBCE7DB))
-        else -> listOf(brandColor(0xFF276F5B), brandColor(0xFF48BF9D), brandColor(0xFFA7E0D0))
-    }
-    val blendTop by animateColorAsState(colors[0], animationSpec=tween(1600), label="sky top")
-    val blendMid by animateColorAsState(colors[1], animationSpec=tween(1600), label="sky middle")
-    val blendLow by animateColorAsState(colors[2], animationSpec=tween(1600), label="sky lower")
+    val cityHour=runCatching{java.time.ZonedDateTime.now(ZoneId.of(snapshot?.timeZoneId?:"Asia/Taipei")).hour}.getOrDefault(12)
+    val dayPhase=WeatherDayPhase.resolve(!isNight,cityHour)
+    val nightBlend by animateFloatAsState(if(isNight)1f else 0f,
+        animationSpec=if(io.atmos.weather.ui.rememberAppleReduceMotion())tween(0) else tween(1400),label="weather-day-night")
+    val weatherSky=WeatherSkyPalette.create(dayPhase,nightBlend,if(stormy)1f else if(rainy).65f else if(hazy).4f else 0f)
+    val blendTop=weatherSky.top;val blendMid=weatherSky.middle;val blendLow=weatherSky.bottom
+    val darkAppearance=MaterialTheme.colorScheme.background.red<.5f
     val context = LocalContext.current
     val reduceCityMotion = remember(context) {
         context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE)
@@ -408,11 +407,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 while (isActive) {
                     delay(kotlin.random.Random.nextLong(9_000L, 24_000L))
                     lightningBolt++
-                    lightningAlpha = .28f
+                    lightningAlpha = .14f
                     delay(60L)
                     lightningAlpha = .035f
                     delay(90L)
-                    lightningAlpha = .38f
+                    lightningAlpha = .20f
                     delay(75L)
                     lightningAlpha = 0f
                     // Lightning is seen before thunder; vary simulated distance.
@@ -462,7 +461,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                 demoCondition = WeatherCondition.THUNDERSTORM
                                 if(second == 4 || second == 2) {
                                     lightningBolt += 1
-                                    lightningAlpha = .52f
+                                    lightningAlpha = .24f
                                     demoThunderCue += 1
                                     hapticEngine.play(HapticEngine.Event.THUNDER, preview=true, variation=.85f)
                                 } else {
@@ -578,7 +577,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val themedPage=mainPager.currentPage!=0||settingsOpen||settingsDetailOpen||lifestyleSettingsOpen||
             pushSettingsOpen||diagnosticsOpen||briefingOpen||tasksOpen||updatePageOpen||
             earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen||nativeRadarOpen
-        io.atmos.weather.ui.AppSystemBars(MaterialTheme.colorScheme.background.red<.5f || !themedPage)
+        io.atmos.weather.ui.AppSystemBars(if(themedPage)darkAppearance else weatherSky.dark)
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
@@ -595,15 +594,13 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             onCity={clearWorkspaceDetails();viewModel.onIntent(WeatherIntent.SelectCity(it));showMainTab(0)},
             overview=snapshot?.let{"${it.temperatureC.toInt()}° · ${io.atmos.weather.domain.model.WeatherDescriptions.label(it.condition,it.weatherCode,it.visibilityM,it.isDay)}"}?:"正在更新天氣",
             background=if(themedPage)SolidColor(MaterialTheme.colorScheme.background) else Brush.verticalGradient(listOf(blendTop,blendMid,blendLow)),
-            darkBackdrop=if(themedPage)null else true,
+            darkBackdrop=if(themedPage)null else weatherSky.dark,
             backgroundContent={
                 if(!themedPage) {
                     SkyEffects(demoCondition ?: snapshot?.condition,isNight,
                         heavyRain || demoCondition==WeatherCondition.THUNDERSTORM,
                         hazy,appearance.liquidMotion,motionState,if(reducedMotion)0f else lightningAlpha,
                         lightningBolt,snapshot?.windKmh ?: 0.0,snapshot?.weatherCode,snapshot?.visibilityM)
-                    Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
-                        brandColor(0x980A1B16),brandColor(0x420A1B16),brandColor(0x9B0A1B16)))))
                 }
             }) {
         val workspace=LocalWorkspaceLayout.current
@@ -638,20 +635,22 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 val weatherBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
                 val visualScene=WeatherScenes.classify(demoCondition ?: snapshot?.condition,
                     if(demoCondition!=null)null else snapshot?.weatherCode,snapshot?.visibilityM)
-                val rainIntensity=when(visualScene) {
-                    io.atmos.weather.next.WeatherScene.DRIZZLE->.12f
-                    io.atmos.weather.next.WeatherScene.LIGHT_RAIN->.28f
-                    io.atmos.weather.next.WeatherScene.MODERATE_RAIN->.50f
-                    io.atmos.weather.next.WeatherScene.HEAVY_RAIN->.80f
-                    io.atmos.weather.next.WeatherScene.THUNDERSTORM->.85f
-                    io.atmos.weather.next.WeatherScene.SEVERE_THUNDERSTORM->1f
-                    else->0f
-                }
+                val physicsStyle=WeatherPhysicsStyle.forScene(visualScene)
+                val rainIntensity=physicsStyle.rain
+                val county=io.atmos.weather.typhoon.TyphoonWarningStore.county(state.city.name)
+                val windWarning=state.officialHazards.any {hazard->
+                    hazard.phenomenon.contains("強風")&&(county==null||hazard.county==county)&&
+                    !java.time.Instant.now().isBefore(hazard.startsAt)&&java.time.Instant.now().isBefore(hazard.expiresAt)}
+                val strongWind=windWarning||(snapshot?.windKmh?:0.0)>=39.0||(snapshot?.windGustKmh?:0.0)>=50.0
+                val windSpeed=maxOf((snapshot?.windKmh?:0.0),(snapshot?.windGustKmh?:0.0)*.72,
+                    if(windWarning)45.0 else 0.0).takeIf{it.isFinite()}?.toFloat()?:0f
+                val signedWind=windSpeed*(-kotlin.math.sin(Math.toRadians((snapshot?.windDirectionDeg?:270).toDouble()))).toFloat().let{
+                    if(kotlin.math.abs(it)<.22f)1f else it}
                 val weatherCards=rememberWeatherCardPalette()
                 CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides if(workspace.tablet)workspaceSceneBackdrop else weatherBackdrop,
-                    LocalWeatherCardPalette provides weatherCards) {
-                io.atmos.weather.ui.RainCollisionScene(rainIntensity,((snapshot?.windKmh ?: 0.0)*
-                    -kotlin.math.sin(Math.toRadians((snapshot?.windDirectionDeg ?: 270).toDouble()))).toFloat(),Modifier.fillMaxSize()) {
+                    LocalWeatherCardPalette provides weatherCards,LocalWeatherSceneInk provides weatherSky.ink) {
+                io.atmos.weather.ui.RainCollisionScene(rainIntensity,signedWind,Modifier.fillMaxSize(),
+                    style=physicsStyle,strongWind=strongWind,lightningEvent=lightningBolt,lightBackdrop=!weatherSky.dark) {
                     if(!workspace.tablet)io.atmos.weather.ui.ThinnBackdropCapture(weatherBackdrop,Modifier.matchParentSize()) {
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))))
                     // Full-screen background layer. It never captures gestures.
@@ -659,9 +658,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         heavyRain || demoCondition == WeatherCondition.THUNDERSTORM,
                         hazy, appearance.liquidMotion, motionState, if(reducedMotion)0f else lightningAlpha,
                         lightningBolt, snapshot?.windKmh ?: 0.0, snapshot?.weatherCode, snapshot?.visibilityM)
-                    // A fixed dark scrim prevents white copy washing out against bright daylight skies.
-                    Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
-                        brandColor(0x980A1B16),brandColor(0x420A1B16),brandColor(0x9B0A1B16)))))
                     }
                     // Keep location, temperature, cards, loading and errors above
                     // the background, independently of whether weather data loads.
@@ -669,24 +665,24 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         refreshRequested=true;refreshText="正在取得最新天氣…"
                         hapticEngine.play(HapticEngine.Event.RELEASE)
                         viewModel.onIntent(WeatherIntent.Refresh)
-                    },Modifier.fillMaxSize().zIndex(1f)) {
+                    },Modifier.fillMaxSize().padding(bottom=io.atmos.weather.ui.floatingDockContentClearance()).weatherCollisionViewport().zIndex(1f)) {
                     io.atmos.weather.ui.AdaptiveScrollingPanes(
                         modifier=Modifier.fillMaxSize().zIndex(1f),scrollState=weatherScrollState,
                         horizontalPadding=20.dp,topPadding=18.dp,bottomPadding=176.dp,
                         leading={
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Row(Modifier.weight(1f).heightIn(min=54.dp).clip(RoundedCornerShape(999.dp))
-                        .background(White.copy(alpha=.12f)).border(1.dp,White.copy(alpha=.32f),RoundedCornerShape(999.dp))
+                        .background(weatherSky.ink.copy(alpha=.12f)).border(1.dp,weatherSky.ink.copy(alpha=.32f),RoundedCornerShape(999.dp))
                         .clickable {locationOpen=true}.padding(horizontal=18.dp,vertical=13.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Search,"搜尋城市",tint=White,modifier=Modifier.size(22.dp))
+                        Icon(Icons.Rounded.Search,"搜尋城市",tint=weatherSky.ink,modifier=Modifier.size(22.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text("搜尋城市、鄉鎮或地點",color=White.copy(alpha=.95f),fontSize=15.sp,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text("搜尋城市、鄉鎮或地點",color=weatherSky.ink.copy(alpha=.95f),fontSize=15.sp,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(horizontalAlignment=Alignment.CenterHorizontally) {
-                        Image(painterResource(R.drawable.brand_symbol),"thinn-khì 標誌",Modifier.size(34.dp))
+                        Image(painterResource(R.drawable.brand_mark),"thinn-khì 標誌",Modifier.size(34.dp))
                         Spacer(Modifier.height(3.dp))
-                        Text("thinn-khì",color=White,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+                        Text("thinn-khì",color=weatherSky.ink,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                     }
                 }
                 androidx.compose.animation.AnimatedVisibility(
@@ -695,7 +691,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     exit = androidx.compose.animation.fadeOut(tween(200)) + androidx.compose.animation.shrinkVertically()
                 ) {
                     Column(Modifier.fillMaxWidth().padding(top=12.dp)
-                        .clip(RoundedCornerShape(19.dp))
+                        .weatherCollisionSurface(19.dp).clip(RoundedCornerShape(19.dp))
                         .background(weatherCards.brush)
                         .border(1.dp,White.copy(alpha=.36f),RoundedCornerShape(19.dp))
                         .padding(13.dp)) {
@@ -705,7 +701,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             Text(demoDescription,color=TextSoft,fontSize=14.sp)
                             Spacer(Modifier.height(8.dp))
                             LinearProgressIndicator(progress={ (10-demoRemaining)/10f },
-                                modifier=Modifier.fillMaxWidth(),color=brandColor(0xFFA9E1D1),trackColor=White.copy(alpha=.22f))
+                                modifier=Modifier.fillMaxWidth(),color=TextSoft,trackColor=White.copy(alpha=.22f))
                         }
                     }
                 }
@@ -727,12 +723,12 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // Weather, real place name and landmark form ONE immersive hero.
                 Row(Modifier.fillMaxWidth().clickable { locationOpen=true },
                     horizontalArrangement=Arrangement.Center, verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Place,null,tint=White.copy(alpha=.87f),modifier=Modifier.size(17.dp))
+                    Icon(Icons.Rounded.Place,null,tint=weatherSky.ink.copy(alpha=.87f),modifier=Modifier.size(17.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(io.atmos.weather.location.LocationLabels.display(state.city.name),maxLines=2,
-                        overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis,color=White,fontSize=(23f).coerceIn(21f,32f).sp,fontFamily=appearance.family,fontWeight=FontWeight.Normal,textAlign=TextAlign.Center)
+                        overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis,color=weatherSky.ink,fontSize=(23f).coerceIn(21f,32f).sp,fontFamily=appearance.family,fontWeight=FontWeight.Normal,textAlign=TextAlign.Center)
                     Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Rounded.KeyboardArrowDown,null,tint=White,modifier=Modifier.size(18.dp))
+                    Icon(Icons.Rounded.KeyboardArrowDown,null,tint=weatherSky.ink,modifier=Modifier.size(18.dp))
                 }
                 Spacer(Modifier.height(6.dp))
                 if (snapshot != null) {
@@ -748,7 +744,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     )
                     val sourceTime=snapshot.observedAt.atZone(runCatching{ZoneId.of(snapshot.timeZoneId?:"Asia/Taipei")}.getOrDefault(ZoneId.systemDefault())).format(DateTimeFormatter.ofPattern("HH:mm"))
                     if(snapshot.observationStation!=null) Text("${snapshot.observationStation}站實測 · 距離 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} km · $sourceTime  ⓘ",
-                        color=White.copy(alpha=.95f),fontSize=14.sp,textAlign=TextAlign.Center,
+                        color=weatherSky.secondary,fontSize=14.sp,textAlign=TextAlign.Center,
                         modifier=Modifier.fillMaxWidth().clickable {
                             details="天氣資料依據" to buildString {
                                 append("目前氣溫：${snapshot.temperatureC}°C\n")
@@ -759,9 +755,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             }
                         }.padding(vertical=9.dp))
                 } else if(state.loading) {
-                    Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=White,modifier=Modifier.align(Alignment.CenterHorizontally))
+                    Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=weatherSky.ink,modifier=Modifier.align(Alignment.CenterHorizontally))
                 } else {
-                    Text("尚無天氣資料，請檢查網路連線",color=White,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
+                    Text("尚無天氣資料，請檢查網路連線",color=weatherSky.ink,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
                 }
                 // Show official sea/land warnings on the red banner, and only Taiwan-bound
                 // forecast tracks on the separate tile. Never make the tile permanent.
@@ -769,24 +765,24 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // Keep real warning visibly separated from the weather hero.
                     Spacer(Modifier.height(18.dp))
                     Column(Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
+                        .weatherCollisionSurface(24.dp).clip(RoundedCornerShape(24.dp))
                         .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFF9E9C).copy(alpha=.65f),RoundedCornerShape(24.dp))
                         .clickable { typhoonPageOpen=true }
                         .padding(17.dp)) {
                         val land=official.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND
                         Text(if(land) "中央氣象署 · 陸上颱風警報" else "中央氣象署 · 海上颱風警報",
-                            fontSize=20.sp,fontWeight=FontWeight.Bold,color=White)
+                            fontSize=20.sp,fontWeight=FontWeight.Bold,color=Color.White)
                         Spacer(Modifier.height(5.dp))
                         Text("官方發布：${official.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei"))}",
-                            fontSize=14.sp,color=White.copy(alpha=.83f))
+                            fontSize=14.sp,color=Color.White.copy(alpha=.83f))
                         Spacer(Modifier.height(9.dp))
                         val regions=if(land)official.landCounties else official.seaAreas
-                        Text(if(land)"陸上警戒縣市" else "海上警戒海域",fontSize=15.sp,color=White)
+                        Text(if(land)"陸上警戒縣市" else "海上警戒海域",fontSize=15.sp,color=Color.White)
                         Spacer(Modifier.height(6.dp))
                         if(regions.isEmpty()) {
                             Text("官方公告未提供可核對的警戒區域清單；請開啟官方警報地圖。",
-                                color=White.copy(alpha=.9f),fontSize=14.sp)
+                                color=Color.White.copy(alpha=.9f),fontSize=14.sp)
                         } else {
                             // Red verified-region BLOCKS, not fabricated county polygons.
                             regions.chunked(3).forEach { group ->
@@ -795,7 +791,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                         Box(Modifier.padding(vertical=3.dp)
                                             .background(Color(0xFFC0393E),RoundedCornerShape(10.dp))
                                             .padding(horizontal=8.dp,vertical=7.dp)) {
-                                            Text(area,color=White,fontSize=14.sp)
+                                            Text(area,color=Color.White,fontSize=14.sp)
                                         }
                                     }
                                 }
@@ -811,7 +807,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 }
                 if (officialStormActive || verifiedTyphoonWarning!=null) {
                     Spacer(Modifier.height(20.dp))
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                    Row(Modifier.fillMaxWidth().weatherCollisionSurface(22.dp).clip(RoundedCornerShape(22.dp))
                         .background(weatherCards.brush)
                         .border(1.dp, brandColor(0xFF97DAC7).copy(alpha=.56f), RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
@@ -831,10 +827,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                     color=TextSoft,fontSize=14.sp,maxLines=2)
                             }
                             if (verifiedTyphoonWarning!=null)
-                                Text("已發布正式颱風警報 · 點選查看",color=Color(0xFFFFD8B9),fontSize=14.sp)
-                            else Text("尚非正式海上／陸上颱風警報",color=brandColor(0xFFBBE7DB),fontSize=14.sp)
+                                Text("已發布正式颱風警報 · 點選查看",color=MaterialTheme.colorScheme.error,fontSize=14.sp)
+                            else Text("尚非正式海上／陸上颱風警報",color=TextSoft,fontSize=14.sp)
                             Text("七級風暴風圈通過機率 · ${io.atmos.weather.location.LocationLabels.microcity(state.city.name)}：${homeWindProbability ?: "暫無官方機率"}",
-                                color=Color(0xFFFFDEA7),fontSize=14.sp,maxLines=2)
+                                color=MaterialTheme.colorScheme.primary,fontSize=14.sp,maxLines=2)
 
                         }
                         Icon(Icons.Rounded.ChevronRight,contentDescription="查看颱風動向",tint=TextSoft)
@@ -843,13 +839,13 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 } else {
                     // NEXT_INTEGRATED_TYPOON_NEUTRAL_ENTRY: ordinary navigation, not an emergency alert.
                     Spacer(Modifier.height(12.dp))
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                    Row(Modifier.fillMaxWidth().weatherCollisionSurface(22.dp).clip(RoundedCornerShape(22.dp))
                         .background(weatherCards.brush)
                         .border(1.dp,brandColor(0xFFB5E5D8).copy(alpha=.35f),RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
                         .padding(horizontal=17.dp,vertical=15.dp),
                         verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Cyclone,null,tint=brandColor(0xFF9CDCCA),modifier=Modifier.size(24.dp))
+                        Icon(Icons.Rounded.Cyclone,null,tint=WeatherCardPalettes.current.accent,modifier=Modifier.size(24.dp))
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                             Text("颱風資訊",fontSize=18.sp,fontWeight=FontWeight.SemiBold,color=White)
@@ -863,7 +859,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // A recent verified POST-event report is a time-limited, source-labelled
                 // red home card. Never describe third-party data as CWA-issued.
                 recentEarthquake?.let { report ->
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(21.dp))
+                    Column(Modifier.fillMaxWidth().weatherCollisionSurface(21.dp).clip(RoundedCornerShape(21.dp))
                         .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFB6B2).copy(alpha=.7f),RoundedCornerShape(21.dp))
                         .padding(15.dp)) {
@@ -872,22 +868,22 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                             Spacer(Modifier.width(9.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(if(report.sourceOfficial) "中央氣象署 · 最新地震報告" else "最新地震報告 · 第三方彙整",
-                                    fontSize=17.sp,fontWeight=FontWeight.Bold,color=White)
-                                Text("震後資料，並非提前地震預警",fontSize=14.sp,color=White.copy(alpha=.9f))
+                                    fontSize=17.sp,fontWeight=FontWeight.Bold,color=Color.White)
+                                Text("震後資料，並非提前地震預警",fontSize=14.sp,color=Color.White.copy(alpha=.9f))
                             }
                             TextButton(onClick={
                                 RecentEarthquakeNoticeStore.dismiss(context,report.id)
                                 recentEarthquake=null
-                            }) { Text("關閉",fontSize=14.sp,color=White) }
+                            }) { Text("關閉",fontSize=14.sp,color=Color.White) }
                         }
                         Spacer(Modifier.height(8.dp))
                         Text("${report.location} · 規模 ${"%.1f".format(java.util.Locale.US,report.magnitude)}",
-                            color=White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                            color=Color.White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
                         Text("收到後顯示 30 分鐘；有新的已驗證報告會自動更新。",
-                            color=White.copy(alpha=.85f),fontSize=14.sp)
+                            color=Color.White.copy(alpha=.85f),fontSize=14.sp)
                         if(report.sourceOfficial && report.officialUrl.startsWith("https://")) {
                             TextButton(onClick={alertTitle="中央氣象署地震報告";alertUrl=report.officialUrl;alertsOpen=true}) {
-                                Text("查看官方報告",color=White,fontSize=15.sp)
+                                Text("查看官方報告",color=Color.White,fontSize=15.sp)
                             }
                         }
                     }
@@ -900,21 +896,21 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 // Active CWA county hazards are independent of the Taiwan-bound typhoon tile.
                 state.officialHazards.forEach { hazard ->
                     Column(Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .weatherCollisionSurface(20.dp).clip(RoundedCornerShape(20.dp))
                         .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFBCAC).copy(alpha=.72f),RoundedCornerShape(20.dp))
                         .clickable {alertTitle=hazard.title;alertUrl=null;alertsOpen=true}
                         .padding(16.dp)) {
-                        Text("中央氣象署 · ${hazard.title}",color=White,
+                        Text("中央氣象署 · ${hazard.title}",color=Color.White,
                             fontSize=18.sp,fontWeight=FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         val end = hazard.expiresAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
                         val starts = hazard.startsAt.atZone(java.time.ZoneId.of("Asia/Taipei"))
                         if(java.time.Instant.now().isBefore(hazard.startsAt))Text(
                             "預告 · ${starts.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} 起生效",
-                            color=White,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+                            color=Color.White,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
                         Text("${hazard.county} · 有效至 ${end.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))}",
-                            color=White.copy(alpha=.9f),fontSize=14.sp)
+                            color=Color.White.copy(alpha=.9f),fontSize=14.sp)
                         Text("在 App 內查看警戒區域與防護建議 ›",
                             color=Color(0xFFFFD5D0),fontSize=14.sp)
                     }
@@ -929,15 +925,15 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         listOf("解除","取消","測試","演練","颱風").none { notice.title.contains(it) }
                 }.take(2)
                 recentCwaNotices.forEach { notice ->
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                    Column(Modifier.fillMaxWidth().weatherCollisionSurface(22.dp).clip(RoundedCornerShape(22.dp))
                         .background(WeatherCardPalettes.alert.brush)
                         .border(1.dp,Color(0xFFFFB4AE).copy(alpha=.64f),RoundedCornerShape(22.dp))
                         .clickable {alertTitle=notice.title;alertUrl=notice.link;alertsOpen=true}.padding(17.dp)) {
-                        Text("中央氣象署 · ${notice.title}",color=White,
+                        Text("中央氣象署 · ${notice.title}",color=Color.White,
                             fontSize=18.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
                         Spacer(Modifier.height(7.dp))
                         Text(notice.summary.ifBlank { "查看公告內容與受影響地區" }.take(98),
-                            color=White.copy(alpha=.94f),fontSize=14.sp,maxLines=3)
+                            color=Color.White.copy(alpha=.94f),fontSize=14.sp,maxLines=3)
                         Spacer(Modifier.height(7.dp))
                         Text("${notice.issuedAt.atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} 發布 · 在 App 內查看詳情 ›",
                             color=Color(0xFFFFDBD7),fontSize=14.sp)
@@ -1013,10 +1009,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         color=Color(0xFFFFE4C6),fontSize=15.sp,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                 }
                 Spacer(Modifier.height(22.dp))
-                Text(if(snapshot?.observationStation!=null)"觀測：中央氣象署 · 預報：Open-Meteo" else "預報：Open-Meteo.com · 依其授權條款使用",color=TextSoft,fontSize=14.sp,
+                Text(if(snapshot?.observationStation!=null)"觀測：中央氣象署 · 預報：Open-Meteo" else "預報：Open-Meteo.com · 依其授權條款使用",color=weatherSky.secondary,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
-                Text("天氣是預測資訊，請以當地官方警報為準。",color=TextSoft,fontSize=14.sp,
+                Text("天氣是預測資訊，請以當地官方警報為準。",color=weatherSky.secondary,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                     }) // forecast panes: one shared state, responsive single/dual columns
                     } // elastic pull-to-refresh
@@ -1137,7 +1133,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                     hapticEngine.play(HapticEngine.Event.TAP)
                                     ThinnNotificationChannels.playPreview(context,tone.id)
                                 },contentAlignment=Alignment.Center) {
-                                Text("▶",color=brandColor(0xFFA6E0CF),fontSize=18.sp)
+                                Text("▶",color=MaterialTheme.colorScheme.primary,fontSize=18.sp)
                             }
                         }
                     }
@@ -1337,7 +1333,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) { AppGlassNavigation(
             selected = dockRequestedTab ?: mainPager.targetPage,
             onSelect = ::navigateWorkspace,
-            darkBackdrop=if(themedPage)null else true,
+            darkBackdrop=if(themedPage)null else weatherSky.dark,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp)) }
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
@@ -1499,7 +1495,7 @@ private fun LocationFeedbackBanner(status: LocationFeedback, onRetry: () -> Unit
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (busy) {
-            CircularProgressIndicator(modifier=Modifier.size(20.dp),color=brandColor(0xFFB2E4D6),strokeWidth=2.dp)
+            CircularProgressIndicator(modifier=Modifier.size(20.dp),color=TextSoft,strokeWidth=2.dp)
         } else {
             val image = when (status.phase) {
                 LocationPhase.SUCCESS -> Icons.Rounded.CheckCircle
@@ -1572,21 +1568,12 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
     if(weatherSurface==WeatherSurface.Kind.SAND) WeatherSurfaceOverlay(weatherSurface, windKmh.toFloat(), Modifier.fillMaxSize())
     // NEXT secondary layer. Existing sky, brand, forecast layout and pager remain unchanged.
     NextWeatherBackdrop(WeatherScenes.classify(condition,weatherCode,visibilityM),phase,night,precipitation=false)
-    if(condition in setOf(WeatherCondition.SNOW,WeatherCondition.SLEET)) ContinuousSnow(Modifier.fillMaxSize())
     if (condition == WeatherCondition.THUNDERSTORM && lightningAlpha > 0f) {
         Canvas(Modifier.fillMaxSize()) {
             val w=size.width; val h=size.height
             val x=w*(.22f + (boltSeed % 5)*.13f)
-            drawRect(brandColor(0xFFCFEEE5).copy(alpha=lightningAlpha))
-            val p=Path().apply {
-                moveTo(x,h*.045f)
-                lineTo(x+w*.035f,h*.18f)
-                lineTo(x-w*.021f,h*.32f)
-                lineTo(x+w*.042f,h*.37f)
-                lineTo(x-w*.031f,h*.56f)
-            }
-            drawPath(p,brandColor(0xFFE6F6F1).copy(alpha=(lightningAlpha*2.1f).coerceAtMost(.83f)),
-                style=Stroke(width=2.8.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round))
+            drawRect(Color(0xFFE3EEFF).copy(alpha=lightningAlpha))
+
         }
     }
 }
@@ -1771,7 +1758,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
             localWarning!=null -> "已發布海上颱風警報。避免海邊、港口與海上活動，持續關注氣象署是否升級陸警。"
             stale -> "目前顯示舊資料，請重新整理後再確認外出安排。"
             else -> critical?.detail ?: plan.reminder
-        },color=brandColor(0xFFEBF8F4),fontSize=16.sp,lineHeight=24.sp,maxLines=7)
+        },color=TextSoft,fontSize=16.sp,lineHeight=24.sp,maxLines=7)
         if(localWarning!=null) {
             Spacer(Modifier.height(6.dp))
             Text("依中央氣象署已核對公告產生的規則式安全提醒；非 AI 推測警戒範圍。",
@@ -1781,7 +1768,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
         Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha=.14f)))
         Spacer(Modifier.height(17.dp))
         // These are not optional fine print: clothing and rain decisions are always visible.
-        Text(if(stale) "資料較舊，請先更新再決定穿搭" else plan.temperatureSummary,color=brandColor(0xFFE3F5F0),fontSize=15.sp,lineHeight=22.sp)
+        Text(if(stale) "資料較舊，請先更新再決定穿搭" else plan.temperatureSummary,color=TextSoft,fontSize=15.sp,lineHeight=22.sp)
         Spacer(Modifier.height(12.dp))
         io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
             {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
@@ -1799,7 +1786,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
         }
         Spacer(Modifier.height(9.dp))
         TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
-            Text("完整穿搭清單與個人偏好",color=brandColor(0xFFCCEDE4),fontSize=15.sp,fontWeight=FontWeight.Medium)
+            Text("完整穿搭清單與個人偏好",color=TextSoft,fontSize=15.sp,fontWeight=FontWeight.Medium)
         }
         }
     }
@@ -1808,7 +1795,7 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
 @Composable
 private fun HomeAdviceRow(label:String,value:String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.Top) {
-        Text(label,color=brandColor(0xFFAFE3D4),fontSize=16.sp,fontWeight=FontWeight.SemiBold,
+        Text(label,color=TextSoft,fontSize=16.sp,fontWeight=FontWeight.SemiBold,
             modifier=Modifier.width((84*LocalDensity.current.fontScale).dp))
         Text(value,color=White,fontSize=16.sp,lineHeight=24.sp,modifier=Modifier.weight(1f))
     }
@@ -1824,7 +1811,7 @@ private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
             verticalAlignment = Alignment.CenterVertically) {
             Text("現在最重要的天氣", color = White, fontSize = 21.sp,
                 lineHeight = 29.sp, fontWeight = FontWeight.SemiBold)
-            Text("未來 6 小時", color = brandColor(0xFFC5EBE0), fontSize = 14.sp)
+            Text("未來 6 小時", color=TextSoft, fontSize = 14.sp)
         }
         if (stale) {
             Text("目前使用離線快取，資訊可能過時", color = Color(0xFFFFDB9F),
@@ -1838,14 +1825,14 @@ private fun HomeKeyWeatherCard(weather: WeatherSnapshot, stale: Boolean) {
                 facts.forEach { fact ->
                     Column(Modifier.weight(1f)
                         .padding(horizontal = 16.dp, vertical = 15.dp)) {
-                        Text(fact.label, color = brandColor(0xFFCEEEE5), fontSize = 15.sp,
+                        Text(fact.label, color=TextSoft, fontSize = 15.sp,
                             fontWeight = FontWeight.Medium, lineHeight = 22.sp)
                         Spacer(Modifier.height(5.dp))
                         Text(fact.value, color = White, fontSize = 26.sp,
                             fontWeight = FontWeight.SemiBold, lineHeight = 35.sp,
                             maxLines = 2)
                         Spacer(Modifier.height(3.dp))
-                        Text(fact.note, color = brandColor(0xFFD0EEE6), fontSize = 14.sp,
+                        Text(fact.note, color=TextSoft, fontSize = 14.sp,
                             lineHeight = 20.sp, maxLines = 2)
                     }
                 }

@@ -1,6 +1,6 @@
 package io.atmos.weather.maps
 
-import io.atmos.weather.ui.brandArgb
+import io.atmos.weather.ui.animatedBrandArgb
 
 import android.content.Context
 import android.graphics.Paint
@@ -64,8 +64,8 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
         val pixelsPerDegree=(111.2*view.pxPerKm).toFloat()
         if(!pixelsPerDegree.isFinite()||pixelsPerDegree<=0f)return
         val batch=if(preparedOnly)synchronized(batches){batches[cameraKey(view)]}?:overview else batch(view).second
-        fill.color=if(dark)brandArgb(0xFF284E44) else 0xffd3e3d1.toInt()
-        edge.color=if(dark)brandArgb(0xFF85B9AB) else brandArgb(0xFF5F8C80)
+        fill.color=if(dark)animatedBrandArgb(0xFF284E44) else 0xffd3e3d1.toInt()
+        edge.color=if(dark)animatedBrandArgb(0xFF85B9AB) else animatedBrandArgb(0xFF5F8C80)
         edge.strokeWidth=(.75f*scope.density/pixelsPerDegree).coerceAtLeast(.000001f)
         val origin=view.project(100.0,0.0);val canvas=scope.drawContext.canvas.nativeCanvas
         canvas.save();canvas.clipRect(0f,0f,scope.size.width,scope.size.height)
@@ -148,7 +148,7 @@ fun DrawScope.drawRegionalPlaceLabels(view:TyphoonViewport,dark:Boolean) {
     val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
         textSize=12*density
-        if(dark)setShadowLayer(2*density,0f,density,brandArgb(0xFF081612))
+        if(dark)setShadowLayer(2*density,0f,density,animatedBrandArgb(0xFF081612))
     }
     regionalLabels.forEach {label->
         if(view.pxPerKm<label.minScale)return@forEach
@@ -157,7 +157,7 @@ fun DrawScope.drawRegionalPlaceLabels(view:TyphoonViewport,dark:Boolean) {
         val box=RectF((x+5*density).coerceAtMost(size.width-w-5*density),y-17*density,(x+5*density).coerceAtMost(size.width-w-5*density)+w,y+2*density)
         if(box.left<3*density||box.top<4*density||box.bottom>size.height-26*density||occupied.any {RectF.intersects(it,box)})return@forEach
         occupied+=box
-        paint.color=if(dark)if(label.sea)brandArgb(0xFF98D2C2) else brandArgb(0xFFECF8F5) else if(label.sea)brandArgb(0xFF2E5E50) else brandArgb(0xFF203F36)
+        paint.color=if(dark)if(label.sea)animatedBrandArgb(0xFF98D2C2) else animatedBrandArgb(0xFFECF8F5) else if(label.sea)animatedBrandArgb(0xFF2E5E50) else animatedBrandArgb(0xFF203F36)
         canvas.drawText(label.text,box.left,box.bottom-2*density,paint)
     }
 }

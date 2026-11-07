@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -27,23 +28,21 @@ import io.atmos.weather.haptics.LocalHapticEngine
 import kotlin.math.abs
 
 private fun lensPath(g:BubbleSliderGeometry.Lens):Path {
-    fun body(x:Float)=Path().apply {addRoundRect(RoundRect(x-g.width/2,g.y-g.height/2,
-        x+g.width/2,g.y+g.height/2,CornerRadius(g.height/2)))}
-    val front=body(g.head)
-    if(g.distance<.25f)return front
-    val left=minOf(g.head,g.tail);val right=maxOf(g.head,g.tail);val middle=(left+right)/2
-    val shoulder=g.height*.38f;val neck=g.neck
-    val bridge=Path().apply {
-        moveTo(left,g.y-shoulder)
-        cubicTo(middle,g.y-shoulder,middle,g.y-neck,right,g.y-shoulder)
-        lineTo(right,g.y+shoulder)
-        cubicTo(middle,g.y+neck,middle,g.y+shoulder,left,g.y+shoulder)
-        close()
-    }
-    return Path.combine(PathOperation.Union,Path.combine(PathOperation.Union,front,body(g.tail)),bridge)
+ val r=g.height/2;val left=minOf(g.head,g.tail)-g.width/2;val right=maxOf(g.head,g.tail)+g.width/2
+ val mid=(g.head+g.tail)/2;val neck=g.neck.coerceIn(r*.62f,r)
+ return Path().apply{
+  moveTo(left+r,g.y-r);cubicTo(left+g.width*.8f,g.y-r,mid,g.y-neck,mid,g.y-neck)
+  cubicTo(mid,g.y-neck,right-g.width*.8f,g.y-r,right-r,g.y-r)
+  cubicTo(right-r*.45f,g.y-r,right,g.y-r*.55f,right,g.y)
+  cubicTo(right,g.y+r*.55f,right-r*.45f,g.y+r,right-r,g.y+r)
+  cubicTo(right-g.width*.8f,g.y+r,mid,g.y+neck,mid,g.y+neck)
+  cubicTo(mid,g.y+neck,left+g.width*.8f,g.y+r,left+r,g.y+r)
+  cubicTo(left+r*.45f,g.y+r,left,g.y+r*.55f,left,g.y)
+  cubicTo(left,g.y-r*.55f,left+r*.45f,g.y-r,left+r,g.y-r);close()
+ }
 }
 
-/** Single-canvas clear lens; drag rendering does not allocate or sample GPU layers. */
+/** A fixed independent track capture feeds only the water lens; foreground never captures itself. */
 @Composable
 internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier,
     valueRange:ClosedFloatingPointRange<Float>,steps:Int,onValueChangeFinished:(()->Unit)?,colors:SliderColors?,enabled:Boolean) {
@@ -66,6 +65,11 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
     val active=colors?.activeTrackColor?:MaterialTheme.colorScheme.primary
     val inactive=colors?.inactiveTrackColor?:if(dark)brandColor(0xFF565C5A) else Color(0xFFC7C7CC)
     val solid=MaterialTheme.colorScheme.surface
+    val material=MaterialTheme.colorScheme
+    val opticalTail=tail.coerceIn(head-.12f,head+.12f)
+    val mask=remember(head,opticalTail,lift,reduce,density.density){GenericShape{size,_->
+        BubbleSliderGeometry.lens(size.width,size.height,density.density,head,opticalTail,lift,reduce)?.let{addPath(lensPath(it))}
+    }}
     fun quantized(v:Float)=BubbleSliderGeometry.quantize(v,low,high,steps)
     Box(modifier.fillMaxWidth().heightIn(min=48.dp)
         .graphicsLayer {alpha=if(enabled)1f else .42f}
@@ -91,15 +95,21 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
             progressBarRangeInfo=ProgressBarRangeInfo(low+(high-low)*fraction,low..high,steps.coerceIn(0,10_000))
             if(enabled)setProgress {proposed->change(quantized(proposed));finish?.invoke();true} else disabled()
         },contentAlignment=Alignment.Center) {
-        Canvas(Modifier.matchParentSize()) {
-                    val g=BubbleSliderGeometry.lens(size.width,size.height,density.density,head,tail,lift,reduce)?:return@Canvas
+        val source=rememberThinnBackdrop()
+        ThinnBackdropCapture(source,Modifier.matchParentSize()) {
+            Canvas(Modifier.matchParentSize()) {
+                val inset=30.dp.toPx().coerceAtMost(size.width/2);val end=size.width-inset
+                drawLine(inactive.copy(alpha=.60f),Offset(inset,size.height/2),Offset(end,size.height/2),4.dp.toPx(),StrokeCap.Round)
+                drawLine(active,Offset(inset,size.height/2),Offset(inset+(end-inset)*head.coerceIn(0f,1f),size.height/2),4.dp.toPx(),StrokeCap.Round)
+            }
+        }
+        CompositionLocalProvider(LocalThinnBackdrop provides source) {
+        Canvas(Modifier.matchParentSize().clip(mask).thinnBackdrop(opaque,18.dp,head,frostScale=.22f)) {
+                    val g=BubbleSliderGeometry.lens(size.width,size.height,density.density,head,opticalTail,lift,reduce)?:return@Canvas
                     val inset=30.dp.toPx().coerceAtMost(size.width/2)
                     val end=size.width-inset
-                    drawLine(inactive.copy(alpha=.60f),Offset(inset,g.y),Offset(end,g.y),4.dp.toPx(),StrokeCap.Round)
-                    drawLine(active,Offset(inset,g.y),Offset(inset+(end-inset)*head.coerceIn(0f,1f),g.y),4.dp.toPx(),StrokeCap.Round)
                     val path=try {lensPath(g)} catch(_:RuntimeException) {Path().apply {addRoundRect(RoundRect(g.head-g.width/2,g.y-g.height/2,g.head+g.width/2,g.y+g.height/2,CornerRadius(g.height/2)))}}
-                    // Refraction of the track is redrawn locally. No captured RenderNode,
-                    // mutable RuntimeShader or changing clip layer survives a drag frame.
+                    // Sampling is acyclic: track -> lens. Labels remain in the sharp foreground.
                     clipPath(path) {
                         drawLine(active.copy(alpha=.30f),Offset(inset,g.y+1.5.dp.toPx()),Offset(inset+(end-inset)*head.coerceIn(0f,1f),g.y+1.5.dp.toPx()),6.dp.toPx(),StrokeCap.Round)
                     }
@@ -108,7 +118,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
                     val safeLift=BubbleSliderGeometry.unit(lift)
                     val phase=BubbleSliderGeometry.rimPhase(head,lift)
                     val center=Offset((g.head+g.tail)/2,g.y)
-                    val rainbow=(0..6).map {i->Color.hsv((phase+i*60f)%360f,.38f,.98f,if(i%2==0).82f else .48f)}
+                    val rainbow=listOf(Color.White.copy(alpha=.82f),material.primary.copy(alpha=.26f),material.secondary.copy(alpha=.20f),Color.White.copy(alpha=.65f),Color.White.copy(alpha=.15f),material.primary.copy(alpha=.24f),Color.White.copy(alpha=.82f))
                     val rim=Brush.sweepGradient(rainbow,center)
                     drawPath(path,Brush.sweepGradient(rainbow.map{it.copy(alpha=.10f+safeLift*.045f)},center),style=Stroke(5.dp.toPx()))
                     drawPath(path,rim,style=Stroke(1.25.dp.toPx()))
@@ -117,6 +127,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
                     // Thin specular arc; no opaque blue fill or painted blue thumb.
                     drawArc(Color.White.copy(alpha=.50f),205f,85f,false,
                         Offset(g.head-g.width*.43f,g.y-g.height*.41f),Size(g.width*.86f,g.height*.82f),style=Stroke(.85.dp.toPx(),cap=StrokeCap.Round))
+        }
         }
     }
 }

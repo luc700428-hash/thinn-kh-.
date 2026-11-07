@@ -7,12 +7,14 @@ import xml.etree.ElementTree as ET
 CLASS = 'io.atmos.weather.ui.RenderingRegressionTest'
 EXPECTED = {
     'themeColorChoicesUpdateVisibleMaterialsAndPersist',
+    'themeMotionHasIntermediateFramesAndHonorsReducedMotion',
+    'nativeTemperatureOutlinesReceiveRainAndKeepTheForegroundVisible',
     'rapidAlternatingSliderDragsSurviveRecomposition',
     'textSizeAndWeightApplyOnceAcrossNestedThemes',
     'preferenceChoicesExposeOneSelectionInBothAppearances',
     'bubbleSliderIsTransparentAndKeepsDragAndAccessibilityValues',
     'glassSamplingCannotPaintOverItsForegroundSiblings',
-    'dockKeepsLiveTransparencyRectangularSelectionAndScrubbing',
+    'dockKeepsLiveTransparencyCapsuleSelectionAndScrubbing',
     'deferredChildRecordingCannotSampleItsOwnAncestor',
     'weatherScrollAndRepeatedSettingsNavigationKeepVisibleText',
     'allToolsGroupsAndFilteredLastGroupRenderInBothAppearances',

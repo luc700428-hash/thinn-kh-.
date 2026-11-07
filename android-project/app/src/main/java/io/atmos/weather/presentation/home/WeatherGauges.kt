@@ -1,6 +1,7 @@
 package io.atmos.weather.presentation.home
 
 import io.atmos.weather.ui.brandColor
+import io.atmos.weather.ui.WeatherCardPalettes
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -40,8 +41,8 @@ import io.atmos.weather.domain.model.WeatherSnapshot
 import io.atmos.weather.ui.LocalWeatherCardPalette
 import kotlin.math.roundToInt
 
-private val white=Color.White
-private val dim=Color.White.copy(alpha=.70f)
+private val white get()=WeatherCardPalettes.current.ink
+private val dim get()=WeatherCardPalettes.current.secondary
 
 @Composable
 fun WeatherDial(title:String, value:String, description:String, fraction:Float, tint:Color, modifier:Modifier=Modifier) {
@@ -71,7 +72,7 @@ fun WeatherDial(title:String, value:String, description:String, fraction:Float, 
             Box(Modifier.size(65.dp),contentAlignment=Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     val sw=5.dp.toPx()
-                    drawArc(Color.White.copy(alpha=.14f),startAngle=135f,sweepAngle=270f,useCenter=false,
+                    drawArc(WeatherCardPalettes.current.ink.copy(alpha=.14f),startAngle=135f,sweepAngle=270f,useCenter=false,
                         style=Stroke(width=sw,cap=StrokeCap.Round))
                     drawArc(Brush.sweepGradient(listOf(tint.copy(alpha=.72f),tint)),startAngle=135f,
                         sweepAngle=270f*fraction.coerceIn(0f,1f),useCenter=false,
@@ -179,15 +180,15 @@ private fun MetricTile(id:Int,position:Int,weather:WeatherSnapshot,modifier:Modi
             if((weather.currentUv ?: 0.0)>=8) "過量" else "目前紫外線",
             ((weather.currentUv ?: 0.0)/11.0).toFloat(),Color(0xFFFFBD71),applied)
         1 -> WeatherDial("濕度",weather.humidityPct?.let { "$it%" } ?: "—","相對濕度",
-            (weather.humidityPct ?: 0)/100f,brandColor(0xFF67CAAE),applied)
+            (weather.humidityPct ?: 0)/100f,WeatherCardPalettes.current.accent,applied)
         2 -> WeatherDial("體感",weather.feelsLikeC?.let { "${it.roundToInt()}°" } ?: "—","體感溫度",
-            (((weather.feelsLikeC ?: 15.0)+10)/50).toFloat(),brandColor(0xFF85D4BE),applied)
+            (((weather.feelsLikeC ?: 15.0)+10)/50).toFloat(),WeatherCardPalettes.current.accent,applied)
         3 -> WeatherDial("風向 · ${windDirectionLabel(weather.windDirectionDeg)}",
             weather.windKmh?.let { "${it.roundToInt()}" } ?: "—","km/h",
             ((weather.windKmh ?: 0.0)/60).toFloat(),Color(0xFF78D6B4),applied)
         4 -> WeatherDial("氣壓",weather.pressureHpa?.let { "${it.roundToInt()}" } ?: "—",
             "hPa · 地表氣壓",((weather.pressureHpa ?: 980.0)-950.0).toFloat()/100f,
-            brandColor(0xFF7BD1B8),applied)
+            WeatherCardPalettes.current.accent,applied)
         else -> {
             val zone=remember(weather.timeZoneId) {
                 runCatching { ZoneId.of(weather.timeZoneId ?: "Asia/Taipei") }.getOrDefault(ZoneId.of("Asia/Taipei"))

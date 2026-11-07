@@ -1,33 +1,20 @@
 package io.atmos.weather.ui
-
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-
-/** One readable sky-glass material for all ordinary Home tiles; alerts stay red. */
-data class WeatherCardPalette(val fill:Color) {
-    val brush=SolidColor(fill)
-    val ink=Color.White
-    val secondary get() =brandColor(0xFFD0EEE6)
-    val accent get() =brandColor(0xFFA9E1D1)
-    val edge=Color.White.copy(alpha=.24f)
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.*
+data class WeatherCardPalette(val fill:Color,val ink:Color=Color.White,val secondary:Color=Color(0xFFFFE8E5),val accent:Color=Color(0xFFFFD3A3)) {
+ val brush=SolidColor(fill);val edge=ink.copy(alpha=.12f)
 }
-
 object WeatherCardPalettes {
-    val day get() =WeatherCardPalette(brandColor(0xED205A4A))
-    val night get() =WeatherCardPalette(brandColor(0xF0123229))
-    val alert=WeatherCardPalette(Color(0xFF92343E))
+ internal fun fromScheme(p:androidx.compose.material3.ColorScheme)=WeatherCardPalette(lerp(p.surface,p.primaryContainer,.22f).copy(alpha=.97f),p.onSurface,p.onSurfaceVariant,p.primary)
+ val day get()=fromScheme(BrandPalette.light)
+ val night get()=fromScheme(BrandPalette.dark)
+ val current get()=fromScheme(BrandPalette.current)
+ val alert=WeatherCardPalette(Color(0xFF92343E))
 }
-
-// Null outside the weather page: forms, maps and system settings retain their own theme.
-val LocalWeatherCardPalette=staticCompositionLocalOf<WeatherCardPalette?> {null}
-
-@Composable
-fun rememberWeatherCardPalette():WeatherCardPalette {
-    val base=if(MaterialTheme.colorScheme.background.red<.5f)WeatherCardPalettes.night else WeatherCardPalettes.day
-    val opaque=rememberAppleReduceTransparency()
-    return remember(base,opaque){if(opaque)WeatherCardPalette(base.fill.copy(alpha=1f)) else base}
+val LocalWeatherCardPalette=staticCompositionLocalOf<WeatherCardPalette?>{null}
+val LocalWeatherSceneInk=staticCompositionLocalOf{Color(0xFF23312F)}
+@Composable fun rememberWeatherCardPalette():WeatherCardPalette {
+ val base=WeatherCardPalettes.fromScheme(MaterialTheme.colorScheme);val opaque=rememberAppleReduceTransparency()
+ return remember(base,opaque){if(opaque)base.copy(fill=base.fill.copy(alpha=1f)) else base}
 }

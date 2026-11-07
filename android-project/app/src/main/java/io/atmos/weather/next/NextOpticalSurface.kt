@@ -67,7 +67,7 @@ fun NextOpticalSurface(
     } else {
         Brush.verticalGradient(listOf(brandColor(0xFF1B1D1C).copy(alpha=glassTint), brandColor(0xFF1B1D1C).copy(alpha=glassTint), brandColor(0xFF1B1D1C).copy(alpha=glassTint)))
     }
-    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x,frostScale=if(clearGlass).35f else 1f).background(background)
+    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x,frostScale=if(clearGlass).55f else 1f).background(background)
         .then(if(calm)Modifier else Modifier.thinnSpecularEdge(cornerRadiusDp.dp)).drawWithContent {
         val w = size.width
         val h = size.height

@@ -46,6 +46,7 @@ val TkCardWeatherClock=compositionLocalOf<State<Float>> {stillClock}
 }
 
 @Composable fun TkPrecipitationCardLens(mood:TkPrecipitationMood,modifier:Modifier=Modifier) {
+    if(LocalRainLayout.current!=null)return // The shared physical world owns accumulation and runoff.
     val context=LocalContext.current
     val reduceMotion=context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE).getBoolean("reduce_motion",false)
     val strength=TkCardWeatherStrength.current.coerceIn(0f,1f)

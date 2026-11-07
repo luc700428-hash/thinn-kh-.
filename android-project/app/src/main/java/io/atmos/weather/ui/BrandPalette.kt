@@ -1,113 +1,111 @@
 package io.atmos.weather.ui
 
 import androidx.compose.material3.ColorScheme
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 
-/** thinn-khì identity: ink green, muted sage and warm white. */
+/** Pastel surfaces, neutral ink and independently contrasted accents. */
 object BrandPalette {
-    val forest = Color(0xFF2F6858)
-    val deepForest = Color(0xFF143B2D)
-    val sage = Color(0xFF78A18F)
-    val mint = Color(0xFFA8D8BF)
-    val paleMint = Color(0xFFDDEDE3)
-    val lightBackground = Color(0xFFF7FAF7)
-    val darkBackground = Color(0xFF0B1712)
-    val lightInk = Color(0xFF173B31)
-    val darkInk = Color(0xFFEEF6EF)
-    // A consistent filled selection with white text in either appearance.
-    val selection get() = brandColor(0xFF2F6858)
-    val primary get() = selection
-
-    private val baseLight = lightColorScheme(
-        primary=forest, onPrimary=Color.White,
-        primaryContainer=paleMint, onPrimaryContainer=Color(0xFF143E30),
-        inversePrimary=mint,
-        secondary=Color(0xFF476D5B), onSecondary=Color.White,
-        secondaryContainer=Color(0xFFE6EEE7), onSecondaryContainer=Color(0xFF284B3D),
-        tertiary=Color(0xFF52705C), onTertiary=Color.White,
-        tertiaryContainer=Color(0xFFE2ECD9), onTertiaryContainer=Color(0xFF30472D),
-        background=lightBackground, onBackground=lightInk,
-        surface=Color.White, onSurface=lightInk,
-        surfaceVariant=Color(0xFFE7EFE9), onSurfaceVariant=Color(0xFF52685E),
-        surfaceTint=forest,
-        inverseSurface=Color(0xFF203D2F), inverseOnSurface=darkInk,
-        outline=Color(0xFF7C9586), outlineVariant=Color(0xFFC3D3C7),
-        surfaceBright=Color(0xFFFDFFFC), surfaceDim=Color(0xFFDCE6DD),
-        surfaceContainerLowest=Color.White, surfaceContainerLow=Color(0xFFF0F5EF),
-        surfaceContainer=Color(0xFFEBF2EB), surfaceContainerHigh=Color(0xFFE5EDE5),
-        surfaceContainerHighest=Color(0xFFDEE8DF),
-        error=Color(0xFFB42318), onError=Color.White,
-        errorContainer=Color(0xFFFFDAD6), onErrorContainer=Color(0xFF410002),
-        scrim=Color.Black
-    )
-
-    private val baseDark = darkColorScheme(
-        primary=mint, onPrimary=Color(0xFF113A2A),
-        primaryContainer=Color(0xFF254D3B), onPrimaryContainer=Color(0xFFDCF0E1),
-        inversePrimary=forest,
-        secondary=Color(0xFFBFD8C7), onSecondary=Color(0xFF1E3B2D),
-        secondaryContainer=Color(0xFF314D3C), onSecondaryContainer=Color(0xFFDEECE1),
-        tertiary=Color(0xFFC4D8B7), onTertiary=Color(0xFF2B3D25),
-        tertiaryContainer=Color(0xFF405438), onTertiaryContainer=Color(0xFFE0ECCD),
-        background=darkBackground, onBackground=darkInk,
-        surface=Color(0xFF15291F), onSurface=darkInk,
-        surfaceVariant=Color(0xFF243B2F), onSurfaceVariant=Color(0xFFBACDBF),
-        surfaceTint=mint,
-        inverseSurface=Color(0xFFEAF3EA), inverseOnSurface=lightInk,
-        outline=Color(0xFF829C8A), outlineVariant=Color(0xFF3E5547),
-        surfaceBright=Color(0xFF304A3A), surfaceDim=Color(0xFF0B1712),
-        surfaceContainerLowest=Color(0xFF07120D), surfaceContainerLow=Color(0xFF11231A),
-        surfaceContainer=Color(0xFF192E22), surfaceContainerHigh=Color(0xFF213A2B),
-        surfaceContainerHighest=Color(0xFF2A4433),
-        error=Color(0xFFFF5A52), onError=Color(0xFF4C0002),
-        errorContainer=Color(0xFF93000A), onErrorContainer=Color(0xFFFFDAD6),
-        scrim=Color.Black
-    )
-
-    private fun ColorScheme.withTheme(theme:AppThemeColor):ColorScheme {
-        fun tint(color:Color)=Color(ThemeColorTint.argb(color.toArgb(),theme))
-        return copy(
-            primary=tint(primary),
-            onPrimary=tint(onPrimary),
-            primaryContainer=tint(primaryContainer),
-            onPrimaryContainer=tint(onPrimaryContainer),
-            inversePrimary=tint(inversePrimary),
-            secondary=tint(secondary),
-            onSecondary=tint(onSecondary),
-            secondaryContainer=tint(secondaryContainer),
-            onSecondaryContainer=tint(onSecondaryContainer),
-            tertiary=tint(tertiary),
-            onTertiary=tint(onTertiary),
-            tertiaryContainer=tint(tertiaryContainer),
-            onTertiaryContainer=tint(onTertiaryContainer),
-            background=tint(background),
-            onBackground=tint(onBackground),
-            surface=tint(surface),
-            onSurface=tint(onSurface),
-            surfaceVariant=tint(surfaceVariant),
-            onSurfaceVariant=tint(onSurfaceVariant),
-            surfaceTint=tint(surfaceTint),
-            inverseSurface=tint(inverseSurface),
-            inverseOnSurface=tint(inverseOnSurface),
-            outline=tint(outline),
-            outlineVariant=tint(outlineVariant),
-            surfaceBright=tint(surfaceBright),
-            surfaceDim=tint(surfaceDim),
-            surfaceContainerLowest=tint(surfaceContainerLowest),
-            surfaceContainerLow=tint(surfaceContainerLow),
-            surfaceContainer=tint(surfaceContainer),
-            surfaceContainerHigh=tint(surfaceContainerHigh),
-            surfaceContainerHighest=tint(surfaceContainerHighest)
+    val forest=Color(0xFF28674F)
+    val deepForest=Color(0xFF203B31)
+    val sage=Color(0xFF88B69E)
+    val mint=Color(0xFFB8DFCA)
+    val paleMint=Color(0xFFEBF6EF)
+    val lightBackground=Color(0xFFF5F8F6)
+    val darkBackground=Color(0xFF161C1A)
+    val lightInk=Color(0xFF20352D)
+    val darkInk=Color(0xFFF2F6F3)
+    val selection get()=ThemeMotion.current.accent
+    val primary get()=selection
+    private fun build(theme:AppThemeColor,dark:Boolean):ColorScheme {
+        val accent=Color(theme.primaryArgb);val pastel=Color(theme.swatchArgb)
+        fun pale(amount:Float)=lerp(Color.White,pastel,amount)
+        fun shade(amount:Float)=lerp(Color(0xFF171B1D),pastel,amount)
+        val ink=Color(0xFF23312F);val soft=Color(0xFF50635D)
+        return if(!dark)lightColorScheme(
+            primary=accent,onPrimary=Color.White,primaryContainer=pale(.64f),onPrimaryContainer=ink,inversePrimary=pastel,
+            secondary=accent,onSecondary=Color.White,secondaryContainer=pale(.40f),onSecondaryContainer=ink,
+            tertiary=accent,onTertiary=Color.White,tertiaryContainer=pale(.50f),onTertiaryContainer=ink,
+            background=pale(.12f),onBackground=ink,surface=Color.White,onSurface=ink,
+            surfaceVariant=pale(.30f),onSurfaceVariant=soft,surfaceTint=accent,
+            inverseSurface=shade(.08f),inverseOnSurface=darkInk,outline=Color(0xFF788A82),outlineVariant=pale(.75f),
+            surfaceBright=Color.White,surfaceDim=pale(.52f),surfaceContainerLowest=Color.White,
+            surfaceContainerLow=pale(.12f),surfaceContainer=pale(.22f),surfaceContainerHigh=pale(.34f),surfaceContainerHighest=pale(.46f),
+            error=Color(0xFFB42318),onError=Color.White,errorContainer=Color(0xFFFFDAD6),onErrorContainer=Color(0xFF410002),scrim=Color.Black
+        ) else darkColorScheme(
+            primary=pastel,onPrimary=ink,primaryContainer=shade(.20f),onPrimaryContainer=darkInk,inversePrimary=accent,
+            secondary=lerp(pastel,Color.White,.18f),onSecondary=ink,secondaryContainer=shade(.16f),onSecondaryContainer=darkInk,
+            tertiary=lerp(pastel,Color.White,.25f),onTertiary=ink,tertiaryContainer=shade(.22f),onTertiaryContainer=darkInk,
+            background=shade(.015f),onBackground=darkInk,surface=shade(.065f),onSurface=darkInk,
+            surfaceVariant=shade(.14f),onSurfaceVariant=Color(0xFFCAD6D0),surfaceTint=pastel,
+            inverseSurface=pale(.22f),inverseOnSurface=ink,outline=Color(0xFF9EAEA5),outlineVariant=shade(.28f),
+            surfaceBright=shade(.20f),surfaceDim=shade(.015f),surfaceContainerLowest=Color(0xFF121617),
+            surfaceContainerLow=shade(.045f),surfaceContainer=shade(.08f),surfaceContainerHigh=shade(.13f),surfaceContainerHighest=shade(.18f),
+            error=Color(0xFFFF5A52),onError=Color(0xFF4C0002),errorContainer=Color(0xFF93000A),onErrorContainer=Color(0xFFFFDAD6),scrim=Color.Black
         )
     }
-    private val lightThemes=AppThemeColor.entries.associateWith{baseLight.withTheme(it)}
-    private val darkThemes=AppThemeColor.entries.associateWith{baseDark.withTheme(it)}
-    internal fun scheme(theme:AppThemeColor,dark:Boolean)=
-        (if(dark)darkThemes else lightThemes).getValue(theme)
-    val light get()=scheme(AppThemeColors.value,false)
-    val dark get()=scheme(AppThemeColors.value,true)
-
+    private val lightThemes=AppThemeColor.entries.associateWith{build(it,false)}
+    private val darkThemes=AppThemeColor.entries.associateWith{build(it,true)}
+    internal fun scheme(theme:AppThemeColor,dark:Boolean)=(if(dark)darkThemes else lightThemes).getValue(theme)
+    val light get()=ThemeMotion.current.scheme(false)
+    val dark get()=ThemeMotion.current.scheme(true)
+    internal val current get()=ThemeMotion.current.scheme()
 }
+internal fun colorContrast(a:Color,b:Color):Float {
+    val x=a.luminance();val y=b.luminance();return (maxOf(x,y)+.05f)/(minOf(x,y)+.05f)
+}
+internal fun ColorScheme.readable():ColorScheme {
+    fun ink(foreground:Color,background:Color):Color {
+        if(colorContrast(foreground,background)>=4.5f)return foreground
+        val dark=Color(0xFF17231F);val light=Color(0xFFFAFCFB)
+        val preferred=if(colorContrast(dark,background)>=colorContrast(light,background))dark else light
+        if(colorContrast(preferred,background)>=4.5f)return preferred
+        return if(colorContrast(Color.Black,background)>=colorContrast(Color.White,background))Color.Black else Color.White
+    }
+    return copy(onPrimary=ink(onPrimary,primary),onPrimaryContainer=ink(onPrimaryContainer,primaryContainer),
+        onSecondary=ink(onSecondary,secondary),onSecondaryContainer=ink(onSecondaryContainer,secondaryContainer),
+        onTertiary=ink(onTertiary,tertiary),onTertiaryContainer=ink(onTertiaryContainer,tertiaryContainer),
+        onSurface=ink(onSurface,surface),onSurfaceVariant=ink(onSurfaceVariant,surfaceVariant),onBackground=ink(onBackground,background),
+        inverseOnSurface=ink(inverseOnSurface,inverseSurface),onError=ink(onError,error),onErrorContainer=ink(onErrorContainer,errorContainer))
+}
+internal fun mixSchemes(from:ColorScheme,to:ColorScheme,fraction:Float)=from.copy(
+    primary=lerp(from.primary,to.primary,fraction),
+    onPrimary=lerp(from.onPrimary,to.onPrimary,fraction),
+    primaryContainer=lerp(from.primaryContainer,to.primaryContainer,fraction),
+    onPrimaryContainer=lerp(from.onPrimaryContainer,to.onPrimaryContainer,fraction),
+    inversePrimary=lerp(from.inversePrimary,to.inversePrimary,fraction),
+    secondary=lerp(from.secondary,to.secondary,fraction),
+    onSecondary=lerp(from.onSecondary,to.onSecondary,fraction),
+    secondaryContainer=lerp(from.secondaryContainer,to.secondaryContainer,fraction),
+    onSecondaryContainer=lerp(from.onSecondaryContainer,to.onSecondaryContainer,fraction),
+    tertiary=lerp(from.tertiary,to.tertiary,fraction),
+    onTertiary=lerp(from.onTertiary,to.onTertiary,fraction),
+    tertiaryContainer=lerp(from.tertiaryContainer,to.tertiaryContainer,fraction),
+    onTertiaryContainer=lerp(from.onTertiaryContainer,to.onTertiaryContainer,fraction),
+    background=lerp(from.background,to.background,fraction),
+    onBackground=lerp(from.onBackground,to.onBackground,fraction),
+    surface=lerp(from.surface,to.surface,fraction),
+    onSurface=lerp(from.onSurface,to.onSurface,fraction),
+    surfaceVariant=lerp(from.surfaceVariant,to.surfaceVariant,fraction),
+    onSurfaceVariant=lerp(from.onSurfaceVariant,to.onSurfaceVariant,fraction),
+    surfaceTint=lerp(from.surfaceTint,to.surfaceTint,fraction),
+    inverseSurface=lerp(from.inverseSurface,to.inverseSurface,fraction),
+    inverseOnSurface=lerp(from.inverseOnSurface,to.inverseOnSurface,fraction),
+    outline=lerp(from.outline,to.outline,fraction),
+    outlineVariant=lerp(from.outlineVariant,to.outlineVariant,fraction),
+    surfaceBright=lerp(from.surfaceBright,to.surfaceBright,fraction),
+    surfaceDim=lerp(from.surfaceDim,to.surfaceDim,fraction),
+    surfaceContainerLowest=lerp(from.surfaceContainerLowest,to.surfaceContainerLowest,fraction),
+    surfaceContainerLow=lerp(from.surfaceContainerLow,to.surfaceContainerLow,fraction),
+    surfaceContainer=lerp(from.surfaceContainer,to.surfaceContainer,fraction),
+    surfaceContainerHigh=lerp(from.surfaceContainerHigh,to.surfaceContainerHigh,fraction),
+    surfaceContainerHighest=lerp(from.surfaceContainerHighest,to.surfaceContainerHighest,fraction),
+    error=lerp(from.error,to.error,fraction),
+    onError=lerp(from.onError,to.onError,fraction),
+    errorContainer=lerp(from.errorContainer,to.errorContainer,fraction),
+    onErrorContainer=lerp(from.onErrorContainer,to.onErrorContainer,fraction),
+    scrim=lerp(from.scrim,to.scrim,fraction)
+).readable()

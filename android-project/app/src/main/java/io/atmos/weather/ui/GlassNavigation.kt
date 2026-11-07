@@ -327,7 +327,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     IOSV25SettingsGroup {
                         shown.forEachIndexed {index,row ->IOSV25SettingsCell(row.title,"",row.icon,row.color,
                             trailing=if(row.title=="平板 Dock 位置")dockPosition.title else "",last=index==shown.lastIndex,selected=LocalWorkspaceDetailTitle.current==row.title||
-                                (detailsVisible&&row.title==when(lastDetail){"appearance"->"外觀與亮度";"surfaces"->"小工具與動態島";"dock"->"平板 Dock 位置";else->"輔助使用"}),
+                                (detailsVisible&&row.title==when(lastDetail){"appearance"->"外觀與主題顏色";"surfaces"->"小工具與動態島";"dock"->"平板 Dock 位置";else->"輔助使用"}),
                             onClick={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false;row.action()})}
                     }
                     Spacer(Modifier.height(20.dp))

@@ -44,9 +44,9 @@ fun FirstRunGuide(onContinue:()->Unit) {
     var visible by remember {mutableStateOf(false)}
     LaunchedEffect(Unit){visible=true}
     ThinnAppTheme {
-        AdaptivePageFrame(Modifier.background(Brush.verticalGradient(listOf(brandColor(0xFF0A1D17),brandColor(0xFF19483B),brandColor(0xFF256956)))),maxContentWidth=760.dp) {
+        AdaptivePageFrame(Modifier.background(ThinnOpticalMaterial.page),maxContentWidth=760.dp) {
         Column(Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(brandColor(0xFF0A1D17),brandColor(0xFF19483B),brandColor(0xFF256956))))
+            .background(ThinnOpticalMaterial.page)
             .appleBouncingScroll().verticalScroll(rememberScrollState()).padding(horizontal=25.dp,vertical=36.dp),
             horizontalAlignment=Alignment.CenterHorizontally) {
             Spacer(Modifier.height(35.dp))
@@ -54,11 +54,11 @@ fun FirstRunGuide(onContinue:()->Unit) {
             Box(Modifier.size(156.dp).background(Brush.radialGradient(listOf(
                 ThinnDesignTokens.accent.copy(alpha=.16f),Color.Transparent))),
                 contentAlignment=Alignment.Center) {
-                Image(painterResource(R.drawable.brand_symbol),"thinn-khì 品牌標誌",Modifier.size(123.dp))
+                Image(painterResource(R.drawable.brand_mark),"thinn-khì 品牌標誌",Modifier.size(123.dp))
             }
             Spacer(Modifier.height(16.dp))
-            Text("thinn-khì",color=Color.White,fontSize=34.sp,fontWeight=FontWeight.Bold)
-            Text("好天氣，從你所在的地方開始",fontSize=15.sp,color=ThinnDesignTokens.secondaryInkDark)
+            Text("thinn-khì",color=androidx.compose.material3.MaterialTheme.colorScheme.onSurface,fontSize=34.sp,fontWeight=FontWeight.Bold)
+            Text("好天氣，從你所在的地方開始",fontSize=15.sp,color=androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(33.dp))
             AnimatedVisibility(visible,enter=fadeIn(tween(if(reduce)0 else 350))+
                 slideInVertically(animationSpec=tween(if(reduce)0 else 350)){it/14}) {
@@ -74,7 +74,7 @@ fun FirstRunGuide(onContinue:()->Unit) {
             }
             Spacer(Modifier.height(15.dp))
             Text("不必註冊帳號 · 不會要求 GitHub 登入",fontSize=14.sp,
-                color=ThinnDesignTokens.secondaryInkDark,textAlign=TextAlign.Center)
+                color=androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)
         }
         }
     }
@@ -88,8 +88,8 @@ private fun IntroItem(icon:ImageVector,title:String,detail:String) {
         Icon(icon,null,Modifier.size(24.dp),tint=ThinnDesignTokens.accent)
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(title,color=Color.White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-            Text(detail,color=ThinnDesignTokens.secondaryInkDark,fontSize=14.sp,lineHeight=18.sp)
+            Text(title,color=androidx.compose.material3.MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+            Text(detail,color=androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=18.sp)
         }
     }
 }

@@ -60,7 +60,7 @@ fun RadarThreeHourCard(weather:WeatherSnapshot) {
     val ink=cards?.ink?:MaterialTheme.colorScheme.onSurface
     val muted=cards?.secondary?:if(MaterialTheme.colorScheme.background.red>.5f)brandColor(0xFF435953) else brandColor(0xFFBAD9D0)
     val blue=cards?.accent?:MaterialTheme.colorScheme.primary
-    val warning=if(cards!=null)Color(0xFFFFD6A8) else if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF8A4300) else Color(0xFFFFD6A8)
+    val warning=if(MaterialTheme.colorScheme.background.red>.5f)Color(0xFF8A4300) else Color(0xFFFFD6A8)
     val lat=weather.city.coordinate.latitude
     val lon=weather.city.coordinate.longitude
     val supported=CwaRadarObservation.coverage(lat,lon)

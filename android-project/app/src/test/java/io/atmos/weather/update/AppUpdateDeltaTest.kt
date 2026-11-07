@@ -15,6 +15,11 @@ class AppUpdateDeltaTest {
         assertEquals(entries,AppUpdateDelta.displayNotes(notes))
         assertEquals(30,AppUpdateDelta.changes(notes)!!.size)
     }
+    @Test fun anUnclosedTargetBlockStopsBeforePreviousReleaseHistory() {
+        val notes=AppUpdateDelta.MARKER+"\n- 本次換色動畫\n\n---\n- 舊版雷達改版"
+        assertEquals("- 本次換色動畫",AppUpdateDelta.displayNotes(notes))
+        assertEquals(listOf("本次換色動畫"),AppUpdateDelta.changes(notes))
+    }
     @Test fun emptyNotesDoNotInventChanges()=runTest {
         val shown=AppUpdateDelta.describe("25.0.299",ReleaseInfo("25.0.300","","https://example.com/app.apk","a".repeat(64)))
         assertTrue(shown.contains("尚未提供更新說明"));assertFalse(shown.contains("iOS"))

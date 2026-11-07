@@ -1,4 +1,5 @@
 package io.atmos.weather.presentation.home
+import io.atmos.weather.ui.WeatherCardPalettes
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -78,7 +79,7 @@ fun InteractiveForecast(
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,
             verticalAlignment=Alignment.CenterVertically) {
-            Text("24 小時預報",fontSize=21.sp,color=Color.White,fontWeight=FontWeight.SemiBold)
+            Text("24 小時預報",fontSize=21.sp,color=WeatherCardPalettes.current.ink,fontWeight=FontWeight.SemiBold)
             Text("${local.format(clock)}  ${hour.temperatureC?.roundToInt()?.let { "$it°" } ?: "—"}",
                 color=Color(0xFFFFD68A),fontSize=16.sp,style=TextStyle(fontFeatureSettings="tnum"))
         }
@@ -86,11 +87,11 @@ fun InteractiveForecast(
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Icon(weatherVector(hour.weatherCode,local.hour),null,tint=Color(0xFFFFDB92),modifier=Modifier.size(22.dp))
             Spacer(Modifier.width(7.dp))
-            Text(hourlyWeatherName(hour.weatherCode,local.hour),color=Color.White,fontSize=16.sp,
+            Text(hourlyWeatherName(hour.weatherCode,local.hour),color=WeatherCardPalettes.current.ink,fontSize=16.sp,
                 fontWeight=FontWeight.Medium)
             Spacer(Modifier.weight(1f))
             Text("降雨 ${hour.precipitationProbabilityPct?.let { "$it%" } ?: "—"}",
-                color=Color.White.copy(alpha=.95f),fontSize=16.sp)
+                color=WeatherCardPalettes.current.ink.copy(alpha=.95f),fontSize=16.sp)
         }
         Spacer(Modifier.height(4.dp))
         // One scrollable content surface keeps all four rows perfectly aligned.
@@ -103,7 +104,7 @@ fun InteractiveForecast(
                             Offset(pointHalf + index*widthPx, yDp(temp).dp.toPx())
                         }
                         listOf(54f,84f,114f).forEach { dy ->
-                            drawLine(Color.White.copy(alpha=.09f),Offset(0f,dy.dp.toPx()),
+                            drawLine(WeatherCardPalettes.current.ink.copy(alpha=.09f),Offset(0f,dy.dp.toPx()),
                                 Offset(size.width,dy.dp.toPx()),1.dp.toPx())
                         }
                         val path=Path().apply {
@@ -117,9 +118,9 @@ fun InteractiveForecast(
                         drawPath(path,Brush.horizontalGradient(listOf(Color(0xFFFFD38C),Color(0xFFFFAD53))),
                             style=Stroke(width=3.dp.toPx(),cap=StrokeCap.Round))
                         val at=coords[selected]
-                        drawLine(Color.White.copy(alpha=.60f),Offset(at.x,0f),Offset(at.x,size.height),1.1.dp.toPx())
+                        drawLine(WeatherCardPalettes.current.ink.copy(alpha=.60f),Offset(at.x,0f),Offset(at.x,size.height),1.1.dp.toPx())
                         drawCircle(Color(0xFFFFCF85),5.8.dp.toPx(),at)
-                        drawCircle(Color.White,2.8.dp.toPx(),at)
+                        drawCircle(WeatherCardPalettes.current.ink,2.8.dp.toPx(),at)
                     }
                     Row(Modifier.fillMaxWidth()) {
                         readings.forEach { reading ->
@@ -128,7 +129,7 @@ fun InteractiveForecast(
                                 Text("${value.roundToInt()}°",modifier=Modifier
                                     .align(Alignment.TopCenter)
                                     .offset(y=(yDp(value)-34f).coerceAtLeast(0f).dp),
-                                    color=Color.White,fontSize=16.sp,fontWeight=FontWeight.Medium,
+                                    color=WeatherCardPalettes.current.ink,fontSize=16.sp,fontWeight=FontWeight.Medium,
                                     style=TextStyle(fontFeatureSettings="tnum"))
                             }
                         }
@@ -153,10 +154,10 @@ fun InteractiveForecast(
                                 modifier=Modifier.size(25.dp))
                             Spacer(Modifier.height(8.dp))
                             Text(reading.windKmh?.let { "%.1f m/s".format(java.util.Locale.US,it / 3.6) } ?: "—",
-                                color=Color.White.copy(alpha=.82f),fontSize=14.sp,
+                                color=WeatherCardPalettes.current.ink.copy(alpha=.82f),fontSize=14.sp,
                                 style=TextStyle(fontFeatureSettings="tnum"),maxLines=1)
                             Spacer(Modifier.height(9.dp))
-                            Text(if(index==0) "現在" else t.format(clock),color=Color.White,
+                            Text(if(index==0) "現在" else t.format(clock),color=WeatherCardPalettes.current.ink,
                                 fontSize=14.sp,style=TextStyle(fontFeatureSettings="tnum"),maxLines=1)
                         }
                     }
@@ -165,7 +166,7 @@ fun InteractiveForecast(
         }
         Spacer(Modifier.height(9.dp))
         Text("左右滑動預報，曲線游標與上方資訊同步移動 · ${local.format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))} · ${hourlyWeatherName(hour.weatherCode,local.hour)}",
-            color=Color.White.copy(alpha=.73f),fontSize=14.sp)
+            color=WeatherCardPalettes.current.ink.copy(alpha=.73f),fontSize=14.sp)
     }
 }
 

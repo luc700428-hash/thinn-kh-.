@@ -57,7 +57,7 @@ class ThemeColorPickerRenderingTest:TabletDockFixture() {
                     assertEquals("嘉義",tagged(view,"theme-query").config[SemanticsProperties.EditableText].text)
                     val options=nodes(view).filter{it.config.contains(SemanticsProperties.ContentDescription)&&
                         it.config[SemanticsProperties.ContentDescription].any{s->s.startsWith("主題顏色：")}}
-                    assertEquals(5,options.size);assertEquals(1,options.count{it.config[SemanticsProperties.Selected]})
+                    assertEquals(AppThemeColor.entries.size,options.size);assertEquals(1,options.count{it.config[SemanticsProperties.Selected]})
                     options.forEach{visible(it.boundsInRoot)}
                     val widget=io.atmos.weather.widgets.WidgetGlassRenderer.palette(0)
                     val actualHue=FloatArray(3);val expectedHue=FloatArray(3)
@@ -68,7 +68,7 @@ class ThemeColorPickerRenderingTest:TabletDockFixture() {
                     save(view,"theme-picker-${theme.id}-$dark")
                 }
                 // Re-reading preferences is the same route used after process or worker startup.
-                AppThemeColors.initialize(context);assertEquals(AppThemeColor.AMBER,AppThemeColors.value)
+                AppThemeColors.initialize(context);assertEquals(AppThemeColor.entries.last(),AppThemeColors.value)
             }
         }
     }

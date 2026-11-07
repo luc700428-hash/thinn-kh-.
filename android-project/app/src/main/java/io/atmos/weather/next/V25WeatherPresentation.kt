@@ -1,6 +1,6 @@
 package io.atmos.weather.next
 
-import io.atmos.weather.ui.brandArgb
+import io.atmos.weather.ui.animatedBrandArgb
 
 /** Shared status vocabulary for homepage, widgets, alarms and weather alerts.
  * This is presentation only. Unknown/missing input NEVER becomes an official warning.
@@ -19,7 +19,7 @@ object V25WeatherPresentation {
         val risk = rainProbability?.takeIf { it in 0..100 }
         fun scene(name: String, headline: String, advice: String, color: Long, emblem: String,
                   precipitation: Boolean=false, attention: Boolean=false) =
-            Scene(name,headline,advice,brandArgb(color).toLong() and 0xFFFFFFFFL,emblem,precipitation,attention)
+            Scene(name,headline,advice,animatedBrandArgb(color).toLong() and 0xFFFFFFFFL,emblem,precipitation,attention)
         return when(condition?.uppercase()) {
             "CLEAR", "SUNNY" -> if(night)
                 scene("晴朗夜空","今晚，天空很安靜","晚間出門留意氣溫變化",0xFF67CAAEL,"☾")

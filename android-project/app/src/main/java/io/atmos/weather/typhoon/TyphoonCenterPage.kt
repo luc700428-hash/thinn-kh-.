@@ -1,7 +1,7 @@
 package io.atmos.weather.typhoon
 
 import io.atmos.weather.ui.brandColor
-import io.atmos.weather.ui.brandArgb
+import io.atmos.weather.ui.animatedBrandArgb
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
@@ -191,10 +191,10 @@ import androidx.compose.ui.graphics.graphicsLayer
     val predicted=if(dark)brandColor(0xFF81D3BC) else brandColor(0xFF246754)
     val observed=if(dark)Color(0xFFFFD389) else Color(0xFF8F4B00)
     val labelDensity=LocalDensity.current.density
-    val timePaint=remember(dark,labelDensity,io.atmos.weather.ui.AppThemeColors.value){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
-        color=if(dark)brandArgb(0xFFECF8F5) else brandArgb(0xFF174236);textSize=12*labelDensity
+    val timePaint=remember(dark,labelDensity,io.atmos.weather.ui.ThemeMotion.current){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
+        color=if(dark)animatedBrandArgb(0xFFECF8F5) else animatedBrandArgb(0xFF174236);textSize=12*labelDensity
         typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
-        setShadowLayer(2*labelDensity,0f,labelDensity,if(dark)brandArgb(0xFF081612) else 0xfff7fcff.toInt())
+        setShadowLayer(2*labelDensity,0f,labelDensity,if(dark)animatedBrandArgb(0xFF081612) else 0xfff7fcff.toInt())
     }}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Box(Modifier.fillMaxWidth().height(io.atmos.weather.ui.adaptiveMapHeight(440.dp)).clip(RoundedCornerShape(25.dp))

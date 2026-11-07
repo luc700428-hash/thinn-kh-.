@@ -313,22 +313,37 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
         if(p.height>=410f) {Spacer(GlanceModifier.height(12.dp));HourlyRow(context,d,s)}
     } else {
         WText(d.city,s,s.ink,p.city,true);Spacer(GlanceModifier.height(5.dp))
-        Box(GlanceModifier.fillMaxWidth(),contentAlignment=Alignment.Center) {AnalogFace(context,p.dial.coerceAtMost(220f))}
+        Box(GlanceModifier.fillMaxWidth(),contentAlignment=Alignment.Center) {AnalogFace(context,(p.dial-s.plan.caption*1.5f).coerceIn(24f,220f))}
+        LiveDate(context,s)
         Spacer(GlanceModifier.height(5.dp));WText("${d.temperature}  ${d.description()}",s,s.ink,p.body)
     }
 }
 @Composable private fun LiveClock(context:Context,s:WidgetStyle,size:Float,date:Boolean,availableWidth:Float=s.plan.innerWidth) {
     val p=s.plan
     val fitted=minOf(size,availableWidth/(if(DateFormat.is24HourFormat(context))3.05f else 5.4f))
+    // Keep the existing space budget, fitting two native clock rows into compact hosts too.
+    val height=fitted*1.55f+(if(date)p.caption*1.5f else 0f)
+    val dateSize=minOf(p.caption,maxOf(8f,height*.24f))
+    val timeSize=minOf(fitted,((height-dateSize*1.45f)/1.55f).coerceAtLeast(8f))
     val remote=RemoteViews(context.packageName,R.layout.widget_live_clock).apply {
         setTextColor(R.id.widget_clock,s.colors.ink)
-        setTextViewTextSize(R.id.widget_clock,android.util.TypedValue.COMPLEX_UNIT_SP,p.sp(fitted))
+        setTextViewTextSize(R.id.widget_clock,android.util.TypedValue.COMPLEX_UNIT_SP,p.sp(timeSize))
         setTextColor(R.id.widget_clock_date,s.colors.secondary)
-        setTextViewTextSize(R.id.widget_clock_date,android.util.TypedValue.COMPLEX_UNIT_SP,p.sp(p.caption))
-        setViewVisibility(R.id.widget_clock_date,if(date)View.VISIBLE else View.GONE)
+        setTextViewTextSize(R.id.widget_clock_date,android.util.TypedValue.COMPLEX_UNIT_SP,p.sp(dateSize))
+        setViewVisibility(R.id.widget_clock_date,View.VISIBLE)
         setCharSequence(R.id.widget_clock,"setFormat12Hour","h:mm a");setCharSequence(R.id.widget_clock,"setFormat24Hour","HH:mm")
+        setCharSequence(R.id.widget_clock_date,"setFormat12Hour","M月d日");setCharSequence(R.id.widget_clock_date,"setFormat24Hour","M月d日")
     }
-    AndroidRemoteViews(remote,GlanceModifier.fillMaxWidth().height((fitted*1.55f+if(date)p.caption*1.5f else 0f).dp))
+    AndroidRemoteViews(remote,GlanceModifier.fillMaxWidth().height(height.dp))
+}
+@Composable private fun LiveDate(context:Context,s:WidgetStyle) {
+    val remote=RemoteViews(context.packageName,R.layout.widget_live_clock).apply {
+        setViewVisibility(R.id.widget_clock,View.GONE);setViewVisibility(R.id.widget_clock_date,View.VISIBLE)
+        setTextColor(R.id.widget_clock_date,s.colors.secondary)
+        setTextViewTextSize(R.id.widget_clock_date,android.util.TypedValue.COMPLEX_UNIT_SP,s.plan.sp(s.plan.caption))
+        setCharSequence(R.id.widget_clock_date,"setFormat12Hour","M月d日");setCharSequence(R.id.widget_clock_date,"setFormat24Hour","M月d日")
+    }
+    AndroidRemoteViews(remote,GlanceModifier.fillMaxWidth().height((s.plan.caption*1.5f).dp))
 }
 @Composable private fun AnalogFace(context:Context,size:Float) {
     AndroidRemoteViews(RemoteViews(context.packageName,R.layout.widget_analog_clock),GlanceModifier.width(size.dp).height(size.dp))

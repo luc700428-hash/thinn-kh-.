@@ -12,9 +12,9 @@
   <path android:pathData="M182,407C239,383 310,386 394,405C401,407 405,412 404,417C403,422 398,425 392,424C310,406 246,405 187,428C179,431 172,427 172,421C172,415 175,410 182,407Z">
     <aapt:attr name="android:fillColor">
       <gradient android:type="linear" android:startX="170" android:startY="405" android:endX="405" android:endY="425">
-        <item android:offset="0.0" android:color="#A8D8BF" />
-        <item android:offset="0.5" android:color="#78A18F" />
-        <item android:offset="1.0" android:color="#4C8A6E" />
+        <item android:offset="0.0" android:color="#B9E2CE" />
+        <item android:offset="0.5" android:color="#91BEA6" />
+        <item android:offset="1.0" android:color="#6EAA8B" />
       </gradient>
     </aapt:attr>
   </path>

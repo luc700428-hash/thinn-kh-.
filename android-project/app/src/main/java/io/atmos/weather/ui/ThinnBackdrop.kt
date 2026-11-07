@@ -101,7 +101,7 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     val optics=remember {if(Build.VERSION.SDK_INT>=33)try {LiquidOpticsEngine()} catch(_:RuntimeException) {null} else null}
     val effect=remember(radius) {
         val blur=RenderEffect.createBlurEffect(radius,radius,Shader.TileMode.CLAMP)
-        val saturation=ColorMatrixColorFilter(ColorMatrix().apply {setSaturation(1.8f)})
+        val saturation=ColorMatrixColorFilter(ColorMatrix().apply {setSaturation(1.08f)})
         RenderEffect.createColorFilterEffect(saturation,blur)
     }
     return onGloballyPositioned {

@@ -96,8 +96,22 @@ class WidgetRenderingTest {
         assertEquals("h:mm a",text.format12Hour.toString());assertEquals("HH:mm",text.format24Hour.toString())
         val analog=RemoteViews(context.packageName,R.layout.widget_analog_clock).apply(context,FrameLayout(context))
         assertTrue(analog is AnalogClock)
-        Settings.System.putString(context.contentResolver,Settings.System.TIME_12_24,"12")
-        render(10,160,160,1.5f,"clock_12h");render(26,320,180,1.5f,"analog_12h")
+        fun dates(view:View):List<TextClock> =
+            (if(view is TextClock&&view.id==R.id.widget_clock_date)listOf(view) else emptyList())+
+                if(view is ViewGroup)(0 until view.childCount).flatMap{dates(view.getChildAt(it))} else emptyList()
+        for(hourFormat in listOf("12","24")) {
+            Settings.System.putString(context.contentResolver,Settings.System.TIME_12_24,hourFormat)
+            for(variant in listOf(10,11,12,13,14,26)) {
+                render(variant,160,160,1.5f,"clock_date_${variant}_${hourFormat}h"){view->
+                    val date=dates(view).single()
+                    assertEquals(View.VISIBLE,date.visibility)
+                    assertEquals("M月d日",date.format12Hour.toString())
+                    assertEquals("M月d日",date.format24Hour.toString())
+                    assertTrue(date.text.toString().matches(Regex("[0-9]{1,2}月[0-9]{1,2}日")))
+                    assertEquals("Date must remain complete in a small host",0,date.layout.getEllipsisCount(0))
+                }
+            }
+        }
     }
     @Test fun systemLargeTextAndRecentAlertKeepContentWithinTheCard() {
         RuntimeEnvironment.setFontScale(1.5f)

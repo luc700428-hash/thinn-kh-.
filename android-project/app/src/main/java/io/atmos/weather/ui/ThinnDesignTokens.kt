@@ -91,19 +91,14 @@ fun ThinnAppTheme(content:@Composable ()->Unit) {
         "auto" -> isSystemInDarkTheme()
         else -> true
     }
-    val target=if(dark) thinnScheme else thinnLightScheme
-    val bg by animateColorAsState(target.background,tween(300),label="theme-background")
-    val surface by animateColorAsState(target.surface,tween(300),label="theme-surface")
-    val secondary by animateColorAsState(target.surfaceVariant,tween(300),label="theme-secondary")
-    val ink by animateColorAsState(target.onSurface,tween(300),label="theme-ink")
-    val accent by animateColorAsState(target.primary,tween(300),label="theme-accent")
-    val colors=target.copy(background=bg,surface=surface,surfaceVariant=secondary,
-        onSurface=ink,primary=accent)
+    if(!LocalThemeMotionHost.current)ThemeMotionHost(AppThemeColors.value,dark,rememberAppleReduceMotion())
+    val colors=BrandPalette.current
     MaterialTheme(colorScheme=colors,
         typography=thinnTypography, shapes=thinnShapes) {
         // Compose Foundation >=1.8: remove Android stretch/glow globally.
         // Add our own rubber-band effect ONLY to appropriate scroll surfaces.
         CompositionLocalProvider(
+            LocalThemeMotionHost provides true,
             LocalReadingBaseDensity provides baseDensity,
             io.atmos.weather.presentation.home.LocalAppearance provides reading,
             androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density,baseDensity.fontScale*reading.fontScale),

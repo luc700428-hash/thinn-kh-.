@@ -12,16 +12,20 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-enum class AppThemeColor(val id:String,val title:String,val primaryArgb:Long) {
-    FOREST("forest","墨綠",0xFF2F6858),
-    OCEAN("ocean","海藍",0xFF366F95),
-    LAVENDER("lavender","霧紫",0xFF76588F),
-    ROSE("rose","玫瑰",0xFF96576B),
-    AMBER("amber","琥珀",0xFF856238);
-
-    companion object {
-        fun fromId(value:String?)=entries.firstOrNull{it.id==value}?:FOREST
-    }
+enum class AppThemeColor(val id:String,val title:String,val primaryArgb:Long,val swatchArgb:Long) {
+    FOREST("forest","薄荷綠",0xFF28674F,0xFFB8DFCA),
+    OCEAN("ocean","海藍",0xFF286589,0xFFB9DDF2),
+    LAVENDER("lavender","薰衣紫",0xFF6C5092,0xFFD8C9EF),
+    ROSE("rose","玫瑰粉",0xFF914965,0xFFF0C5D4),
+    AMBER("amber","奶油杏",0xFF795817,0xFFF4D8A6),
+    JADE("jade","青玉",0xFF21695F,0xFFB4E2D8),
+    SKY("sky","晴空",0xFF276680,0xFFC2E6F3),
+    LILAC("lilac","丁香",0xFF7A4D84,0xFFE4CCEA),
+    PEACH("peach","蜜桃",0xFF8B5033,0xFFF3D0BA),
+    LEMON("lemon","檸檬",0xFF69601C,0xFFEEE7AE),
+    CORAL("coral","珊瑚",0xFF944C42,0xFFF2C3B8),
+    STONE("stone","霧灰",0xFF4F6465,0xFFD4DFDF);
+    companion object {fun fromId(value:String?)=entries.firstOrNull{it.id==value}?:FOREST}
 }
 
 /** One persisted setting for Compose, drawing canvases and headless widget workers. */
@@ -50,14 +54,14 @@ object AppThemeColors {
 }
 
 /** Only explicitly branded colors pass here; warning/observation colors never do. */
-fun brandColor(greenArgb:Long)=Color(brandArgb(greenArgb))
+fun brandColor(greenArgb:Long)=ThemeMotion.current.brand(greenArgb.toInt())
 fun brandArgb(greenArgb:Long)=ThemeColorTint.argb(greenArgb.toInt(),AppThemeColors.value)
 
 /** Preserve each material's luminance and alpha, including very pale glass highlights. */
 internal object ThemeColorTint {
     private val cache=AppThemeColor.entries.associateWith{ConcurrentHashMap<Int,Int>()}
     fun argb(base:Int,theme:AppThemeColor):Int {
-        if(theme==AppThemeColor.FOREST)return base
+        if(base==0xFF2F6858.toInt())return theme.primaryArgb.toInt()
         return cache.getValue(theme).getOrPut(base){convert(base,theme)}
     }
     private fun hue(r:Double,g:Double,b:Double):Double {

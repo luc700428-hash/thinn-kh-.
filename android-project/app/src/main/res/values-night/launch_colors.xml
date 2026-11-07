@@ -1,0 +1,5 @@
+<resources>
+    <color name="thinn_launch_background">#161C1A</color>
+    <color name="thinn_launch_accent">#B8DFCA</color>
+    <bool name="thinn_launch_light_bars">false</bool>
+</resources>

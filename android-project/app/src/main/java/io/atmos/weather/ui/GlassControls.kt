@@ -74,15 +74,15 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     } else if(outlined) {
         val neutral=weatherCards?.fill?:palette.surfaceVariant
         listOf(neutral,neutral)
-    } else listOf(palette.primary,palette.primary)
+    } else listOf(BrandPalette.selection,BrandPalette.selection)
     val labelColor=colors?.let {if(enabled) it.contentColor else it.disabledContentColor}
         ?: if(outlined) weatherCards?.accent?:palette.primary
-        else palette.onPrimary
+        else Color.White
     Row(modifier.defaultMinSize(minHeight=48.dp)
-        .graphicsLayer { scaleX=pressScale*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear*(if(pressed && !reduce) AppleMotion.pressedAlpha else 1f) else appear*.45f }
+        .graphicsLayer { scaleX=(2f-pressScale)*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear else appear*.45f }
         .clip(corner)
         .thinnBackdrop(opaque,ThinnDesignTokens.radiusControl)
-        .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque)1f else if(pressed).80f else .93f))}))
+        .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque||(!outlined&&colors==null))1f else if(pressed).80f else .93f))}))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
         .thinnSpecularEdge(ThinnDesignTokens.radiusControl)
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=androidx.compose.ui.semantics.Role.Button,onClick={

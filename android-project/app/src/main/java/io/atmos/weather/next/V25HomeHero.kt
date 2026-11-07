@@ -1,6 +1,10 @@
 package io.atmos.weather.next
 
 import io.atmos.weather.ui.brandColor
+import io.atmos.weather.ui.WeatherCardPalettes
+import io.atmos.weather.ui.LocalWeatherSceneInk
+import io.atmos.weather.ui.WeatherTemperature
+import io.atmos.weather.ui.weatherCollisionSurface
 
 import android.content.Context
 import androidx.compose.animation.core.RepeatMode
@@ -55,11 +59,8 @@ fun V25HomeHero(
     }
     val glow=Color(scene.glowArgb.toInt())
     val radius=RoundedCornerShape(38.dp)
-    Column(modifier.fillMaxWidth().clip(radius)
-        .background(Brush.verticalGradient(if(reduceTransparency)
-            listOf(brandColor(0xFF112E26),brandColor(0xFF0F2A23))
-            else listOf(brandColor(0xC8376659),brandColor(0x9D1B4237),brandColor(0xC6132E26))))
-        .border(1.dp,Color.White.copy(alpha=if(reduceTransparency) .15f else .4f),radius),
+    val heroInk=LocalWeatherSceneInk.current
+    Column(modifier.fillMaxWidth(),
         horizontalAlignment=Alignment.CenterHorizontally) {
         Box(Modifier.fillMaxWidth().heightIn(min=226.dp).padding(vertical=12.dp),contentAlignment=Alignment.Center) {
             Canvas(Modifier.matchParentSize()) {
@@ -75,14 +76,10 @@ fun V25HomeHero(
             }
             Column(horizontalAlignment=Alignment.CenterHorizontally) {
                 Text("${scene.emblem}   現在的天氣",fontSize=15.sp,
-                    color=brandColor(0xFFE7F7F2),fontWeight=FontWeight.Medium)
-                Row(verticalAlignment=Alignment.Top) {
-                    Text("$temperature",fontSize=94.sp,lineHeight=111.sp,
-                        fontWeight=FontWeight.Light,color=Color.White)
-                    Text("°",fontSize=47.sp,lineHeight=61.sp,fontWeight=FontWeight.Light,color=Color.White)
-                }
+                    color=heroInk.copy(alpha=.85f),fontWeight=FontWeight.Medium)
+                WeatherTemperature(temperature,heroInk)
                 Text(conditionLabel.ifBlank {scene.name},fontSize=22.sp,
-                    fontWeight=FontWeight.SemiBold,color=Color.White)
+                    fontWeight=FontWeight.SemiBold,color=heroInk)
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),
@@ -91,7 +88,7 @@ fun V25HomeHero(
             V25HeroStat("最低",low?.let {"$it°"}?:"—",Modifier.weight(1f))
             V25HeroStat("體感估算",feelsLike?.let {"$it°"}?:"—",Modifier.weight(1f))
         }
-        Text(scene.advice,color=brandColor(0xFFDAF2EB),fontSize=14.sp,
+        Text(scene.advice,color=heroInk.copy(alpha=.85f),fontSize=14.sp,
             textAlign=TextAlign.Center,
             modifier=Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=18.dp))
     }
@@ -99,10 +96,10 @@ fun V25HomeHero(
 
 @Composable
 private fun V25HeroStat(title:String,value:String,modifier:Modifier=Modifier) {
-    Column(modifier.clip(RoundedCornerShape(18.dp))
-        .background(Color.White.copy(alpha=.085f))
+    Column(modifier.weatherCollisionSurface(18.dp).clip(RoundedCornerShape(18.dp))
+        .background(WeatherCardPalettes.current.brush)
         .padding(vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-        Text(title,color=brandColor(0xFFD8F1EA),fontSize=14.sp)
-        Text(value,color=Color.White,fontSize=20.sp,fontWeight=FontWeight.Medium)
+        Text(title,color=WeatherCardPalettes.current.secondary,fontSize=14.sp)
+        Text(value,color=WeatherCardPalettes.current.ink,fontSize=20.sp,fontWeight=FontWeight.Medium)
     }
 }

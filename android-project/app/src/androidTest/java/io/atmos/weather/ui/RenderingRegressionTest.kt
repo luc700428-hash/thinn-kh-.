@@ -95,11 +95,51 @@ class RenderingRegressionTest {
                 assertEquals(theme.id,context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).getString(AppThemeColors.KEY,null)?:AppThemeColor.FOREST.id)
             }
             assertNull(CrashDiagnostics.graphics(context))
-            checkpoint("theme: all five colors visibly applied and persisted")
+            checkpoint("theme: all twelve square colors visibly applied and persisted")
         } finally {
             AppThemeColors.update(context,AppThemeColor.FOREST)
             IOS27AppearanceMode.update(context,originalMode)
         }
+    }
+
+    @Test(timeout=120_000) fun themeMotionHasIntermediateFramesAndHonorsReducedMotion() {
+        IOS27AppearanceMode.update(context,"light")
+        compose.setContent {ThinnAppTheme {Box(Modifier.size(64.dp).background(MaterialTheme.colorScheme.primaryContainer).testTag("animated-material"))}}
+        frame()
+        fun color()=compose.onNodeWithTag("animated-material").captureToImage().toPixelMap().let{it[it.width/2,it.height/2]}
+        val start=color()
+        compose.runOnIdle{AppThemeColors.update(context,AppThemeColor.ROSE)}
+        compose.mainClock.advanceTimeBy(180);compose.waitForIdle()
+        val mid=color();assertNotEquals(start,mid)
+        frame();assertNotEquals(mid,color())
+        compose.runOnIdle {
+            context.getSharedPreferences("thinn_settings",0).edit().putBoolean("reduce_motion",true).commit()
+            AppThemeColors.update(context,AppThemeColor.LEMON)
+        }
+        compose.mainClock.advanceTimeBy(32);compose.waitForIdle()
+        val expected=BrandPalette.scheme(AppThemeColor.LEMON,false).primaryContainer;val actual=color()
+        assertEquals(expected.red,actual.red,.02f);assertEquals(expected.green,actual.green,.02f);assertEquals(expected.blue,actual.blue,.02f)
+    }
+
+    @Test(timeout=120_000) fun nativeTemperatureOutlinesReceiveRainAndKeepTheForegroundVisible() {
+        var layout:RainLayout?=null
+        compose.setContent {ThinnAppTheme {
+            RainCollisionScene(0f,0f,Modifier.size(340.dp,400.dp).background(Color(0xFFE9F5EF)),lightBackdrop=true){
+                val observed=LocalRainLayout.current
+                SideEffect{layout=observed}
+                WeatherTemperature(28,Color(0xFF23312F))
+            }
+        }}
+        frame()
+        compose.runOnIdle {
+            val host=layout!!;assertEquals(2,host.world.surfaces.values.count{it.contour!=null})
+            repeat(600){host.refreshAll();host.world.step(1f/120,.8f,0f)}
+            assertTrue(host.world.impacts>0)
+            assertTrue(host.world.surfaces.values.any{it.beads.isNotEmpty()}||host.world.emittedDrips>0)
+            host.frame.longValue++
+        }
+        frame();compose.onNodeWithContentDescription("28 攝氏度").assertIsDisplayed()
+        assertNull(CrashDiagnostics.graphics(context))
     }
 
     @Test(timeout=120_000) fun preferenceChoicesExposeOneSelectionInBothAppearances() {
@@ -208,8 +248,8 @@ class RenderingRegressionTest {
         assertNull(CrashDiagnostics.graphics(context))
     }
 
-    @Test(timeout=120_000) fun dockKeepsLiveTransparencyRectangularSelectionAndScrubbing() {
-        checkpoint("dock: transparent scene and rounded rectangular selection")
+    @Test(timeout=120_000) fun dockKeepsLiveTransparencyCapsuleSelectionAndScrubbing() {
+        checkpoint("dock: transparent scene and shallow capsule selection")
         val scene=mutableStateOf(Color(0xFF123C78));val selected=mutableIntStateOf(1)
         compose.setContent {
             ThinnAppTheme {
@@ -236,7 +276,10 @@ class RenderingRegressionTest {
         val cornerX=(cell.left-bounds.left+8f*scale).toInt()
         val nextX=(inactive.left-bounds.left+8f*scale).toInt()
         val cornerY=(cell.top-bounds.top+7f*scale).toInt()
-        assertTrue("Selected lens became a circular icon bubble",first[cornerX,cornerY].green-first[nextX,cornerY].green>.015f)
+        assertTrue("Selected lens retained square corners",abs(first[cornerX,cornerY].green-first[nextX,cornerY].green)<.025f)
+        val geometry=io.atmos.weather.next.DockLiquidGeometry.shape(296f,78f,1f,4,1f,1f)!!
+        assertTrue(geometry.width/geometry.height>=1.37f)
+        assertEquals(geometry.height/2,geometry.cornerRadius,.001f)
         val probeX=(inactive.center.x-bounds.left).toInt();val probeY=(8f*scale).toInt()
         val before=first[probeX,probeY].green
         compose.runOnIdle {scene.value=Color(0xFF237242)};frame()
@@ -252,7 +295,7 @@ class RenderingRegressionTest {
         val directory=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
         File(directory,"dock-transparent-live-scene.png").outputStream().use {image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
         assertNull(CrashDiagnostics.graphics(context))
-        checkpoint("dock: live scene, rectangular lens and scrubbing passed")
+        checkpoint("dock: live scene, capsule lens and scrubbing passed")
     }
 
     @Test(timeout=120_000) fun deferredChildRecordingCannotSampleItsOwnAncestor() {
