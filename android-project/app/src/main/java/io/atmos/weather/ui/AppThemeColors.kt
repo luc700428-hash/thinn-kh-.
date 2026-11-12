@@ -31,11 +31,19 @@ enum class AppThemeColor(val id:String,val title:String,val primaryArgb:Long,val
 /** One persisted setting for Compose, drawing canvases and headless widget workers. */
 object AppThemeColors {
     const val KEY="app_theme_color_v1"
-    var value by mutableStateOf(AppThemeColor.FOREST)
-        private set
+    private var committed by mutableStateOf(AppThemeColor.FOREST)
+    private data class Preview(val owner:Any,val color:AppThemeColor)
+    private val previews=androidx.compose.runtime.mutableStateListOf<Preview>()
+    val value get()=previews.lastOrNull()?.color?:committed
+    val saved get()=committed
+    internal fun preview(owner:Any,color:AppThemeColor){
+        val index=previews.indexOfFirst{it.owner===owner}
+        if(index<0)previews+=Preview(owner,color) else previews[index]=Preview(owner,color)
+    }
+    internal fun endPreview(owner:Any){previews.removeAll{it.owner===owner}}
     private var bound:SharedPreferences?=null
     private val listener=SharedPreferences.OnSharedPreferenceChangeListener {prefs,key->
-        if(key==KEY||key==null)value=AppThemeColor.fromId(prefs.getString(KEY,null))
+        if(key==KEY||key==null)committed=AppThemeColor.fromId(prefs.getString(KEY,null))
     }
     fun initialize(context:Context) {
         val prefs=context.applicationContext.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
@@ -44,18 +52,18 @@ object AppThemeColors {
             bound=prefs
             prefs.registerOnSharedPreferenceChangeListener(listener)
         }
-        value=AppThemeColor.fromId(prefs.getString(KEY,null))
+        committed=AppThemeColor.fromId(prefs.getString(KEY,null))
     }
     fun update(context:Context,selection:AppThemeColor) {
         initialize(context)
-        value=selection
+        committed=selection
         bound!!.edit().putString(KEY,selection.id).apply()
     }
 }
 
 /** Only explicitly branded colors pass here; warning/observation colors never do. */
 fun brandColor(greenArgb:Long)=ThemeMotion.current.brand(greenArgb.toInt())
-fun brandArgb(greenArgb:Long)=ThemeColorTint.argb(greenArgb.toInt(),AppThemeColors.value)
+fun brandArgb(greenArgb:Long)=ThemeColorTint.argb(greenArgb.toInt(),AppThemeColors.saved)
 
 /** Preserve each material's luminance and alpha, including very pale glass highlights. */
 internal object ThemeColorTint {

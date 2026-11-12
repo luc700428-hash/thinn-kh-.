@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[31,35],application=Application::class)
 class HighRefreshWindowTest {
-    @Test fun appliesAvailableWindowModeAnd144HintToExistingChildren() {
+    @Test fun appliesAvailableWindowModeAnd166HintToExistingChildren() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         try {
             val activity=controller.get();val root=FrameLayout(activity);val nested=FrameLayout(activity);val child=TextView(activity)
@@ -26,11 +26,14 @@ class HighRefreshWindowTest {
             assertEquals(original.physicalWidth,activity.window.decorView.display!!.mode.physicalWidth)
             assertEquals(original.physicalHeight,activity.window.decorView.display!!.mode.physicalHeight)
             if(Build.VERSION.SDK_INT>=35) {
-                assertEquals(144f,root.requestedFrameRate,0f);assertEquals(144f,nested.requestedFrameRate,0f);assertEquals(144f,child.requestedFrameRate,0f)
+                assertEquals(166f,root.requestedFrameRate,0f);assertEquals(166f,nested.requestedFrameRate,0f);assertEquals(166f,child.requestedFrameRate,0f)
             }
             val rate=activity.window.attributes.preferredRefreshRate;val id=activity.window.attributes.preferredDisplayModeId
             HighRefreshWindow.apply(activity.window,root)
             assertEquals(rate,activity.window.attributes.preferredRefreshRate,0f);assertEquals(id,activity.window.attributes.preferredDisplayModeId)
+            val later=TextView(activity);nested.addView(later)
+            HighRefreshWindow.apply(activity.window,root)
+            if(Build.VERSION.SDK_INT>=35)assertEquals(166f,later.requestedFrameRate,0f)
         } finally{controller.pause().stop().destroy()}
     }
 }

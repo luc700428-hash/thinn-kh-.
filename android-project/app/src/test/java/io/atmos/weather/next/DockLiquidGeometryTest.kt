@@ -2,10 +2,12 @@ package io.atmos.weather.next
 import org.junit.Assert.*
 import org.junit.Test
 class DockLiquidGeometryTest {
- @Test fun restingLensesAreShallowCapsulesAcrossDensitiesAndAxes() {
+ @Test fun restingLensesMatchTheInnerDockHeightAcrossDensitiesAndAxes() {
   for(d in listOf(1f,2.75f))for(vertical in listOf(false,true))for(size in listOf(296f to 78f,360f to 110f,560f to 90f)) {
    val g=DockLiquidGeometry.shape(size.first*d,size.second*d,d,4,1f,1f,vertical)!!
-   assertTrue(g.width/g.height>=1.37f);assertEquals(g.height/2,g.cornerRadius,.001f)
+   assertEquals((size.second-(if(vertical)12f else 10f))*d,g.height,.001f)
+   assertEquals(minOf(g.width,g.height)/2,g.cornerRadius,.001f)
+   assertTrue(g.width<((size.first-(if(vertical)10f else 12f))*d)/4)
   }
  }
  @Test fun touchLiftsAndPullingDeformsTheMaterialWithoutMovingTheHitCell() {
@@ -13,7 +15,7 @@ class DockLiquidGeometryTest {
   val b=DockLiquidGeometry.shape(360f,78f,1f,4,1f,1f,engagement=1f)!!
   val c=DockLiquidGeometry.shape(360f,78f,1f,4,1.8f,1f,engagement=1f)!!
   assertTrue(b.height>a.height);assertTrue(c.width>b.width&&c.height<b.height)
-  assertEquals(a.headX,b.headX,0f);assertEquals(a.tailX,c.tailX,.001f)
+  assertEquals(a.headX,b.headX,0f);assertTrue(c.tailX>a.tailX)
  }
  @Test fun overshootAndFastJumpsStayInsideTheDockAndNeverHighlightEveryTab() {
   val g=DockLiquidGeometry.shape(360f,78f,1f,4,-4f,8f)!!

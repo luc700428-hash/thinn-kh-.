@@ -30,7 +30,7 @@ internal object BubbleSliderGeometry {
         val h=inset+travel*head.coerceIn(0f,1f)
         val expansion=if(reduceMotion)0f else lift.coerceIn(0f,1f)
         val body=(56f+3f*expansion)*density
-        val t=if(reduceMotion)h else h+(inset+travel*tail.coerceIn(0f,1f)-h).coerceIn(-body*1.4f,body*1.4f)
+        val t=if(reduceMotion)h else h+(inset+travel*tail.coerceIn(0f,1f)-h).coerceIn(-body*.55f,body*.55f)
         return Lens(h,t,height/2,body.coerceAtMost(width),(34f+3f*expansion).times(density).coerceAtMost(height-2f))
     }
 }

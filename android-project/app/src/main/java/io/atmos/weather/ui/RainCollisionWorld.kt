@@ -30,7 +30,7 @@ internal class RainCollisionWorld(seed:Int=7349) {
     private var elapsed=0f
     var impacts=0;private set
     var emittedDrips=0;private set
-    private var budget=0f;private var remainder=0f
+    private var budget=0f;private var remainder=0.0
     private val random=Random(seed)
     val hasMotion get()=air.isNotEmpty() || sparks.isNotEmpty() || surfaces.values.any {it.beads.isNotEmpty() || it.wet>.005f}
     fun surface(id:Int,left:Float,top:Float,right:Float,bottom:Float,radius:Float) {
@@ -63,10 +63,10 @@ internal class RainCollisionWorld(seed:Int=7349) {
                 }
             }
         }
-        remainder+=frameDt
-        val dt=1f/240f
+        remainder+=frameDt.toDouble()
+        val dt=1.0/240.0
         var guard=0
-        while(remainder+1e-7f>=dt && guard++<13) {integrate(dt,rain,wind);remainder-=dt}
+        while(remainder+1e-6>=dt && guard++<13) {integrate(dt.toFloat(),rain,wind);remainder-=dt}
     }
     private fun integrate(dt:Float,intensity:Float,baseWind:Float) {
         elapsed+=dt

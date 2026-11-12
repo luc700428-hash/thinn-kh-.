@@ -33,13 +33,16 @@ internal object HighRefreshWindow {
         if(params.preferredRefreshRate==hz&&params.preferredDisplayModeId==mode)return false
         params.preferredRefreshRate=hz;params.preferredDisplayModeId=mode;return true
     }
+    private val viewVotes=java.util.WeakHashMap<View,Float>()
     private fun requestViews(view:View) {
-        if(Build.VERSION.SDK_INT>=36&&view is ViewGroup) {
-            view.propagateRequestedFrameRate(RefreshRatePolicy.TARGET_HZ,true)
-        } else if(Build.VERSION.SDK_INT>=35) {
+        if(Build.VERSION.SDK_INT<35)return
+        if(viewVotes[view]!=RefreshRatePolicy.TARGET_HZ) {
+            viewVotes[view]=RefreshRatePolicy.TARGET_HZ
             view.setRequestedFrameRate(RefreshRatePolicy.TARGET_HZ)
-            if(view is ViewGroup)for(i in 0 until view.childCount)requestViews(view.getChildAt(i))
         }
+        // Layout may add a SurfaceView or dialog child after the first vote.
+        // Visit new children without resending the vote to every existing view.
+        if(view is ViewGroup)for(i in 0 until view.childCount)requestViews(view.getChildAt(i))
     }
     fun apply(window:Window?,view:View) {
         val display=view.display

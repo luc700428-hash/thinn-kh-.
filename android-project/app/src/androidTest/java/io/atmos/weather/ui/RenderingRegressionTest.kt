@@ -79,14 +79,15 @@ class RenderingRegressionTest {
         try {
             compose.setContent {
                 ThinnAppTheme {
-                    Column(Modifier.width(340.dp)) {
-                        ThemeColorPicker()
+                    Column(Modifier.width(340.dp).fillMaxHeight()) {
                         Box(Modifier.size(64.dp).background(MaterialTheme.colorScheme.primary).testTag("theme-swatch"))
+                        ThemeColorPicker(Modifier.weight(1f))
                     }
                 }
             }
             frame()
             for(theme in AppThemeColor.entries) {
+                compose.onNodeWithTag("theme-color-gallery").performScrollToIndex(theme.ordinal);frame()
                 compose.onNodeWithContentDescription("主題顏色：${theme.title}").performClick();frame()
                 compose.onNodeWithContentDescription("主題顏色：${theme.title}").assertIsSelected()
                 val pixels=compose.onNodeWithTag("theme-swatch").captureToImage().toPixelMap()
@@ -249,7 +250,7 @@ class RenderingRegressionTest {
     }
 
     @Test(timeout=120_000) fun dockKeepsLiveTransparencyCapsuleSelectionAndScrubbing() {
-        checkpoint("dock: transparent scene and shallow capsule selection")
+        checkpoint("dock: frosted scene and full-height capsule selection")
         val scene=mutableStateOf(Color(0xFF123C78));val selected=mutableIntStateOf(1)
         compose.setContent {
             ThinnAppTheme {
@@ -273,19 +274,22 @@ class RenderingRegressionTest {
         val inactive=compose.onNodeWithContentDescription("工具").fetchSemanticsNode().boundsInRoot
         val first=dock.captureToImage().toPixelMap()
         val scale=first.height/78f
+        val selectedBackground=first[(cell.left-bounds.left+12f*scale).toInt(),(cell.center.y-bounds.top).toInt()]
+        assertTrue("Selected Dock label lost contrast on the GPU material",colorContrast(BrandPalette.dark.primary,selectedBackground)>=4.5f)
         val cornerX=(cell.left-bounds.left+8f*scale).toInt()
         val nextX=(inactive.left-bounds.left+8f*scale).toInt()
         val cornerY=(cell.top-bounds.top+7f*scale).toInt()
         assertTrue("Selected lens retained square corners",abs(first[cornerX,cornerY].green-first[nextX,cornerY].green)<.025f)
         val geometry=io.atmos.weather.next.DockLiquidGeometry.shape(296f,78f,1f,4,1f,1f)!!
-        assertTrue(geometry.width/geometry.height>=1.37f)
-        assertEquals(geometry.height/2,geometry.cornerRadius,.001f)
+        assertEquals(68f,geometry.height,.001f)
+        assertEquals(minOf(geometry.width,geometry.height)/2,geometry.cornerRadius,.001f)
         val probeX=(inactive.center.x-bounds.left).toInt();val probeY=(8f*scale).toInt()
         val before=first[probeX,probeY].green
         compose.runOnIdle {scene.value=Color(0xFF237242)};frame()
         val image=dock.captureToImage()
         val after=image.toPixelMap()[probeX,probeY].green
-        assertTrue("Dock covered the live scene with a thick tint",after-before>=48f/255f)
+        assertTrue("Dock stopped transmitting the live scene",after-before>=12f/255f)
+        assertTrue("Dock text lost contrast on its sampled scene",colorContrast(BrandPalette.dark.onSurface,image.toPixelMap()[probeX,probeY])>=4.5f)
         dock.performTouchInput {
             down(Offset(width*.37f,centerY))
             moveTo(Offset(width*.88f,centerY),delayMillis=300)
@@ -390,7 +394,7 @@ class RenderingRegressionTest {
             compose.onNodeWithContentDescription("設定").performClick()
             frame()
             checkpoint("weather: round $iteration appearance")
-            compose.onNodeWithText("外觀與主題顏色").performClick()
+            compose.onNodeWithText("外觀").performClick()
             frame();compose.onNodeWithText("深色").assertIsDisplayed()
             checkpoint("weather: round $iteration return")
             // Switching the root Dock must also dismiss an open settings detail.

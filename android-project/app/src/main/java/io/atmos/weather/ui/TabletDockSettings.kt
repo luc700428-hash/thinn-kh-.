@@ -55,7 +55,7 @@ internal object TabletDockGeometry {
         val scale=fontScale.takeIf{it.isFinite()}?.coerceIn(1f,3f)?:1f
         val width=pane.width.coerceAtLeast(1f);val height=pane.height.coerceAtLeast(1f)
         val horizontalHeight=maxOf(68f,54f+24f*scale)
-        val verticalWidth=maxOf(76f,48f+22f*scale)
+        val verticalWidth=horizontalHeight
         val minVerticalHeight=4*maxOf(58f,41f+24f*scale)+10f+24f
         val position=if(preferred.vertical&&(width-verticalWidth-24f<300f||height<minVerticalHeight))TabletDockPosition.BOTTOM else preferred
         val margin=12f.coerceAtMost(minOf(width,height)*.04f)

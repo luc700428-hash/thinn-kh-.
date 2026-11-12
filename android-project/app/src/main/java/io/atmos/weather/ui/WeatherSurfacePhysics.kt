@@ -8,9 +8,11 @@ internal class WeatherSurfacePhysics(seed:Int=97123) {
  enum class Kind { SNOW,LEAF }
  data class Body(val kind:Kind,var x:Float,var y:Float,var vx:Float,var vy:Float,val radius:Float,
   var angle:Float,var spin:Float,val mass:Float=1f,var age:Float=0f,var owner:Int?=null,
-  var u:Float=0f,var v:Float=0f,var hold:Float=0f)
+  var u:Float=0f,var v:Float=0f,var hold:Float=0f,
+  val noiseSeed:Int=angle.toBits() xor x.toBits() xor y.toBits(),var restAngle:Float=angle,var flex:Float=0f)
  data class Hit(val id:Int,val x:Float,val y:Float,val nx:Float,val ny:Float,val fraction:Float)
- data class Damage(val owner:Int,val right:Boolean,val seed:Int,var age:Float=0f)
+ data class Damage(val owner:Int,val right:Boolean,val seed:Int,var age:Float=0f,
+  val profile:LightningProfile=LightningProfile.fromSeed(seed),var geometry:LightningGeometry?=null)
  val bodies=ArrayList<Body>(180)
  val caps=LinkedHashMap<Int,FloatArray>()
  val damage=ArrayList<Damage>(4)
@@ -21,16 +23,17 @@ internal class WeatherSurfacePhysics(seed:Int=97123) {
  var leafContacts=0;private set
  var leafReleases=0;private set
  private val random=Random(seed)
- private var snowBudget=0f;private var leafBudget=0f;private var remaining=0f
+ private var snowBudget=0f;private var leafBudget=0f;private var remaining=0.0
  private val positions=HashMap<Int,Pair<Float,Float>>()
  val hasMotion get()=bodies.isNotEmpty()||damage.isNotEmpty()||caps.values.any{a->a.any{it>.005f}}
  fun clearAir(){bodies.removeAll{it.owner==null};damage.clear();bolt=null}
  fun remove(id:Int){caps.remove(id);positions.remove(id);bodies.removeAll{it.owner==id};damage.removeAll{it.owner==id}}
- fun strike(surfaces:Collection<RainCollisionWorld.Surface>,width:Float,height:Float):Damage? {
+ fun strike(surfaces:Collection<RainCollisionWorld.Surface>,width:Float,height:Float,eventSeed:Int?=null):Damage? {
   val targets=surfaces.filter{it.active&&it.top+it.r*.3f<it.clipBottom&&it.contour==null&&it.top>=12f&&it.top<height-40f&&it.bottom>0&&it.right>0&&it.left<width}
   if(targets.isEmpty())return null
   val s=targets[random.nextInt(targets.size)]
-  val event=Damage(s.id,random.nextBoolean(),random.nextInt())
+  val event=Damage(s.id,random.nextBoolean(),eventSeed?:random.nextInt())
+  val at=strikePoint(event,s);event.geometry=LightningGeometry.create(event.seed,width,height,at.x,at.y)
   damage.removeAll{it.owner==s.id};if(damage.size>=4)damage.removeAt(0)
   damage+=event;bolt=event;return event
  }
@@ -63,8 +66,10 @@ internal class WeatherSurfacePhysics(seed:Int=97123) {
     }
    }
   }
-  remaining+=dt
-  while(remaining+1e-7f>=1f/240f){integrate(1f/240f,style,windKmh,strongWind,width,height,visible);remaining-=1f/240f}
+  remaining+=dt.toDouble()
+  // Float display deltas (notably 1/166 s) must not lose a physics step through rounding.
+  val fixedStep=1.0/240.0
+  while(remaining+1e-6>=fixedStep){integrate(fixedStep.toFloat(),style,windKmh,strongWind,width,height,visible);remaining-=fixedStep}
  }
  private fun integrate(dt:Float,style:WeatherPhysicsStyle,windKmh:Float,strong:Boolean,w:Float,h:Float,
                        surfaces:List<RainCollisionWorld.Surface>) {
@@ -83,18 +88,29 @@ internal class WeatherSurfacePhysics(seed:Int=97123) {
      3f+random.nextFloat()*2.5f,random.nextFloat()*360,120f+random.nextFloat()*200f)
    }
   }
-  for(i in bodies.lastIndex downTo 0){val p=bodies[i];p.age+=dt;p.angle+=p.spin*dt
+  for(i in bodies.lastIndex downTo 0){val p=bodies[i];p.age+=dt
    if(p.owner!=null){
     val s=surfaces.firstOrNull{it.id==p.owner}
     if(s==null){bodies.removeAt(i);continue}
     p.x=s.left+p.u*s.width;p.y=s.top+p.v*s.height
+    val strength=(abs(wind)/190f).coerceIn(.15f,1.6f)
+    val target=p.restAngle+strength*(MotionNoise.value(time,p.noiseSeed,.75f)*17f+MotionNoise.value(time,p.noiseSeed xor 347,6.5f)*10f)
+    p.spin+=((target-p.angle)*70f-p.spin*12f)*dt
+    p.angle+=p.spin*dt
+    p.flex+=(MotionNoise.value(time,p.noiseSeed xor 911,4.1f)*strength*.32f-p.flex)*dt*14f
     if(p.age>=p.hold)releaseLeaf(p,wind,-25f,s)
     continue
    }
+   if(p.kind==Kind.LEAF){
+    val spinTarget=MotionNoise.value(time,p.noiseSeed,.65f)*240f+wind*.32f
+    p.spin+=(spinTarget-p.spin)*dt*2.6f
+    p.flex=MotionNoise.value(time,p.noiseSeed xor 733,2.7f)*.22f
+   }
+   p.angle+=p.spin*dt
    val x=p.x;val y=p.y
    val drag=if(p.kind==Kind.LEAF)2.3f else .85f
    p.vx+=(wind-p.vx)*drag*dt
-   if(p.kind==Kind.LEAF){p.vy+=(35f+sin(time*8f+p.angle*.017f)*65f-p.vy)*dt*1.3f}
+   if(p.kind==Kind.LEAF){p.vy+=(42f+MotionNoise.value(time,p.noiseSeed,1.9f)*48f-p.vy)*dt*1.3f}
    else p.vy=(p.vy+150f*dt).coerceAtMost(if(p.mass>.7f)440f else 100f+style.snow*55f)
    p.x+=(p.vx+if(p.kind==Kind.SNOW)sin(time*2.1f+p.angle)*12f else 0f)*dt;p.y+=p.vy*dt
    var hit:Hit?=null
@@ -111,7 +127,8 @@ internal class WeatherSurfacePhysics(seed:Int=97123) {
      }
     }else if(p.kind==Kind.LEAF){
      p.owner=s.id;p.u=((hit.x-s.left)/s.width).coerceIn(0f,1f);p.v=((hit.y-s.top)/s.height).coerceIn(0f,1f)
-     p.x=hit.x;p.y=hit.y;p.vx=0f;p.vy=0f;p.age=0f;p.hold=120f+random.nextFloat()*120f;leafContacts++
+     p.x=hit.x;p.y=hit.y;p.vx=0f;p.vy=0f;p.age=0f;p.hold=120f+random.nextFloat()*120f;val desired=(if(wind>=0)0f else 180f)+random.nextFloat()*24f-12f
+     p.restAngle=p.angle+(((desired-p.angle+180f)%360f+360f)%360f-180f);p.spin*=.3f;leafContacts++
     }else{
      val dot=p.vx*hit.nx+p.vy*hit.ny
      p.vx-=1.18f*dot*hit.nx;p.vy-=1.18f*dot*hit.ny
@@ -122,7 +139,7 @@ internal class WeatherSurfacePhysics(seed:Int=97123) {
   }
   caps.forEach{(_,pile)->for(i in pile.indices)pile[i]=(pile[i]-dt*(if(style.snow>0).004f else .055f)).coerceAtLeast(0f)}
   damage.forEach{it.age+=dt};damage.removeAll{it.age>10f}
-  if(bolt?.age?.let{it>.4f}==true)bolt=null
+  if(bolt?.let{it.age>it.profile.duration}==true)bolt=null
  }
  private fun releaseLeaf(p:Body,wind:Float,vertical:Float,s:RainCollisionWorld.Surface){
   p.x=if(wind>=0)s.right+p.radius+2 else s.left-p.radius-2;p.y=minOf(p.y,s.top-3f)

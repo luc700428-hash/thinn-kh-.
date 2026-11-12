@@ -96,13 +96,13 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     val p=s.plan
     val location=io.atmos.weather.location.LocationLabels.microcity(d.city).ifBlank{d.city}
     val shortRange=d.highLow.replace("最高 ","高").replace("最低 ","低")
-    val visualScale=minOf(p.innerWidth/300f,p.innerHeight/230f).coerceIn(1f,1.6f)
+    val visualScale=p.typeGrowth
     val glyphs=location.sumOf {if(it.code>=0x2e80)1.0 else .58}.toFloat().coerceAtLeast(1f)
     val citySize=minOf(14f*visualScale,maxOf(p.city,14f*visualScale),p.innerWidth/glyphs).coerceAtLeast(10f)
     val cityLines=if(glyphs*citySize>p.innerWidth)2 else 1
-    val headerHeight=citySize*1.5f*cityLines
-    val descSize=minOf(14f,p.body)*visualScale;val captionSize=minOf(11f,p.caption)*visualScale
-    val footer=if(p.showFooter)27f else 0f
+    val headerHeight=citySize*1.65f*cityLines
+    val descSize=p.body;val captionSize=p.caption
+    val footer=if(p.showFooter)p.caption*1.65f+8f else 0f
     if(p.innerHeight<94f) {
         Row(GlanceModifier.fillMaxSize(),verticalAlignment=Alignment.Vertical.CenterVertically) {
             BuddyScene(context,d,minOf(p.innerHeight,p.innerWidth*.36f),motion)
@@ -119,7 +119,10 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     Spacer(GlanceModifier.height(4.dp))
     if(p.innerWidth/p.innerHeight>=1.35f) {
         val scene=minOf(p.innerHeight-headerHeight-footer-10f,p.innerWidth*.44f).coerceAtLeast(35f)
-        val temperatureSize=minOf(72f*visualScale,p.hero*1.25f*visualScale,(p.innerWidth-scene-8f)/(d.temperature.length*.60f))
+        val rowBudget=p.innerHeight-headerHeight-footer-4f
+        val supportingText=descSize*1.65f+(if(p.innerHeight>=130f)4f+captionSize*1.65f else 0f)+(if(p.innerHeight>=230f)51f else 0f)
+        val temperatureSize=minOf(72f*visualScale,p.hero*1.25f,(p.innerWidth-scene-8f)/(d.temperature.length*.60f),
+            ((rowBudget-supportingText)/1.65f).coerceAtLeast(12f))
         Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
             BuddyScene(context,d,scene,motion);Spacer(GlanceModifier.width(8.dp))
             Column(GlanceModifier.defaultWeight()) {
@@ -129,17 +132,36 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
                 if(p.innerHeight>=230f){Spacer(GlanceModifier.height(7.dp));LiveClock(context,s,28f,false,p.innerWidth*.48f)}
             }
         }
-        val textHeight=temperatureSize*1.5f+descSize*1.5f+(if(p.innerHeight>=130f)4f+captionSize*1.5f else 0f)+(if(p.innerHeight>=230f)51f else 0f)
+        val textHeight=temperatureSize*1.65f+descSize*1.65f+(if(p.innerHeight>=130f)4f+captionSize*1.65f else 0f)+(if(p.innerHeight>=230f)51f else 0f)
         val remaining=p.innerHeight-headerHeight-4f-maxOf(scene,textHeight)-footer
         if(remaining>=105f&&d.hours.isNotEmpty()){Spacer(GlanceModifier.height(10.dp));HourlyRow(context,d,s,remaining-10f)}
-        else if(remaining>=60f){Spacer(GlanceModifier.height(10.dp));StatRow(listOf("降雨" to d.rain,"風速" to d.wind),s)}
+        else if(remaining>=10f+p.caption*1.65f+3f+p.body*1.25f*1.65f){Spacer(GlanceModifier.height(10.dp));StatRow(listOf("降雨" to d.rain,"風速" to d.wind),s)}
+    } else if(p.innerWidth>=230f&&p.innerHeight>=230f&&p.innerWidth/p.innerHeight>=.78f) {
+        // A large square uses both columns; type grows instead of leaving a blank right half.
+        val weatherHeight=minOf(p.innerWidth*.50f,p.innerHeight*.42f)
+        val scene=weatherHeight
+        val textWidth=p.innerWidth-scene-8f
+        val valueSize=minOf(84f*visualScale,textWidth/(d.temperature.length*.60f),
+            ((weatherHeight-descSize*1.65f)/1.5f).coerceAtLeast(20f))
+        Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+            Column(GlanceModifier.defaultWeight(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+                WText(d.temperature,s,s.ink,valueSize,true)
+                WText(d.description(),s,s.soft,descSize,lines=1)
+            }
+            Spacer(GlanceModifier.width(8.dp));BuddyScene(context,d,scene,motion)
+        }
+        Spacer(GlanceModifier.height(6.dp));WText(shortRange,s,s.soft,captionSize,lines=1)
+        val clockRoom=p.innerHeight-headerHeight-4f-weatherHeight-12f-captionSize*1.65f-footer
+        val clockSize=minOf(64f*visualScale,(clockRoom/1.55f).coerceAtLeast(12f))
+        Spacer(GlanceModifier.height(6.dp));LiveClock(context,s,clockSize,true,inlineDate=true)
     } else if(p.innerHeight>=230f) {
         val clock=p.innerHeight>=280f
         val stats=p.innerHeight>=375f
         val hourly=p.innerHeight>=500f
-        val valueSize=minOf(52f,p.innerWidth*.27f)
-        val rowHeight=maxOf(valueSize*1.5f,descSize*1.5f+captionSize*1.6f)
-        val reserve=headerHeight+rowHeight+(if(clock)54f else 0f)+(if(stats)55f else 0f)+(if(hourly)100f else 0f)+footer+23f
+        val valueSize=minOf(52f*visualScale,p.innerWidth*.27f)
+        val rowHeight=maxOf(valueSize*1.65f,descSize*1.65f+captionSize*1.6f)
+        val clockSize=minOf(30f*visualScale,p.innerWidth/4.1f)
+        val reserve=headerHeight+rowHeight+(if(clock)6f+clockSize*1.55f else 0f)+(if(stats)55f else 0f)+(if(hourly)100f else 0f)+footer+23f
         val scene=minOf(p.innerWidth*.90f,p.innerHeight-reserve,280f).coerceAtLeast(40f)
         Box(GlanceModifier.fillMaxWidth(),contentAlignment=Alignment.Center){BuddyScene(context,d,scene,motion)}
         Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
@@ -148,12 +170,12 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
                 WText(d.description(),s,s.soft,descSize,lines=2);WText(shortRange,s,s.soft,captionSize,lines=2)
             }
         }
-        if(clock){Spacer(GlanceModifier.height(6.dp));LiveClock(context,s,minOf(30f,p.innerWidth/4.1f),false)}
+        if(clock){Spacer(GlanceModifier.height(6.dp));LiveClock(context,s,clockSize,false)}
         if(stats){Spacer(GlanceModifier.height(10.dp));StatRow(listOf("降雨" to d.rain,"風速" to d.wind),s)}
         if(hourly){Spacer(GlanceModifier.height(10.dp));HourlyRow(context,d,s)}
     } else {
         val clock=p.innerHeight>=180f
-        val reserve=headerHeight+descSize*1.5f+captionSize*1.6f+footer+16f+(if(clock)46f else 0f)
+        val reserve=headerHeight+descSize*1.65f+captionSize*1.6f+footer+16f+(if(clock)46f else 0f)
         val scene=minOf(p.innerWidth*.60f,p.innerHeight-reserve).coerceAtLeast(28f)
         Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
             BuddyScene(context,d,scene,motion)
@@ -201,7 +223,7 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
 }
 @Composable private fun Hero(context:Context,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean,compact:Boolean=false) {
     val p=s.plan
-    val compactLimit=if(p.height<185f)34f else 40f
+    val compactLimit=(if(p.detailHeight<185f)34f else 40f)*p.typeGrowth
     val glyph=minOf(if(compact)compactLimit+6f else p.icon,p.innerWidth*.42f)
     val temperatureSize=minOf(if(compact)minOf(compactLimit,p.hero) else p.hero,(p.innerWidth-glyph)/(d.temperature.length*.60f))
     Row(GlanceModifier.fillMaxWidth(),verticalAlignment=Alignment.Vertical.CenterVertically) {
@@ -216,25 +238,34 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     val p=s.plan
     Header(d,s);Spacer(GlanceModifier.height(5.dp));Hero(context,d,s,motion)
     if(p.showHighLow) {Spacer(GlanceModifier.height(5.dp));WText(d.highLow,s,s.soft,p.caption)}
-    if(p.height>=340f&&d.hours.isNotEmpty()) {Spacer(GlanceModifier.height(12.dp));HourlyRow(context,d,s)}
-    else if(p.height>=235f) {Spacer(GlanceModifier.height(10.dp));StatRow(listOf("降雨" to d.rain,"濕度" to d.humidity),s)}
+    // Keep the main reading large; add secondary rows only when their text and footer fit.
+    val heroHeight=maxOf(minOf(p.icon,p.innerWidth*.42f),p.hero*1.30f+p.body*1.70f)
+    val remaining=p.innerHeight-p.city*1.70f-5f-heroHeight-
+        (if(p.showHighLow)5f+p.caption*1.70f else 0f)-(if(p.showFooter)p.caption*1.70f+8f else 0f)
+    val hourlyMinimum=p.caption*1.70f+minOf(20f*p.typeGrowth,p.body*1.4f)*1.30f+20f
+    val statsMinimum=p.caption*1.70f+3f+p.body*1.25f*1.70f
+    if(p.detailHeight>=340f&&d.hours.isNotEmpty()&&remaining>=12f+hourlyMinimum) {
+        Spacer(GlanceModifier.height(12.dp));HourlyRow(context,d,s,remaining-12f)
+    } else if(p.detailHeight>=235f&&remaining>=10f+statsMinimum) {
+        Spacer(GlanceModifier.height(10.dp));StatRow(listOf("降雨" to d.rain,"濕度" to d.humidity),s)
+    }
 }
 @Composable private fun ForecastWidget(context:Context,d:OpticalWidgetData,s:WidgetStyle) {
     val p=s.plan
     Header(d,s,"逐時天氣");Spacer(GlanceModifier.height(5.dp))
     WText("${d.temperature}  ${d.description()}",s,s.soft,p.body)
-    val gap=if(p.height>=210f)14f else 7f
-    val later=(if(p.height>=310f)14f+p.caption*1.5f+3f+p.body*1.25f*1.5f else 0f)+(if(p.showFooter)p.caption*1.5f+9f else 0f)
+    val gap=if(p.detailHeight>=210f)14f else 7f
+    val later=(if(p.detailHeight>=310f)14f+p.caption*1.5f+3f+p.body*1.25f*1.5f else 0f)+(if(p.showFooter)p.caption*1.5f+9f else 0f)
     val hourlyBudget=p.innerHeight-p.city*1.5f-5f-p.body*1.5f-gap-later
     Spacer(GlanceModifier.height(gap.dp));HourlyRow(context,d,s,hourlyBudget)
-    if(p.height>=310f) {Spacer(GlanceModifier.height(14.dp));StatRow(listOf("降雨" to d.rain,"風速" to d.wind),s)}
+    if(p.detailHeight>=310f) {Spacer(GlanceModifier.height(14.dp));StatRow(listOf("降雨" to d.rain,"風速" to d.wind),s)}
 }
 @Composable private fun HourlyRow(context:Context,d:OpticalWidgetData,s:WidgetStyle,availableHeight:Float=Float.MAX_VALUE) {
     val p=s.plan
-    val temperatureSize=minOf(20f,p.body*1.4f)
+    val temperatureSize=minOf(20f*p.typeGrowth,p.body*1.4f)
     val textHeight=p.caption*1.5f+temperatureSize*1.5f+8f
-    val idealGlyph=if(p.height>=210f)32f else 25f
-    val rain=p.height>=172f&&textHeight+idealGlyph+3f+p.caption*1.5f<=availableHeight
+    val idealGlyph=(if(p.detailHeight>=210f)32f else 25f)*p.typeGrowth
+    val rain=p.detailHeight>=172f&&textHeight+idealGlyph+3f+p.caption*1.5f<=availableHeight
     val glyph=minOf(idealGlyph,(availableHeight-textHeight-(if(rain)3f+p.caption*1.5f else 0f)).coerceAtLeast(12f))
     if(d.hours.isEmpty()) {WText("開啟 App 同步逐時預報",s,s.soft,p.body);return}
     Row(GlanceModifier.fillMaxWidth()) {
@@ -250,8 +281,8 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
 }
 @Composable private fun DigitalClockWidget(context:Context,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean) {
     val p=s.plan
-    val date=p.height>=164f
-    val alarm=p.height>=280f
+    val date=p.detailHeight>=164f
+    val alarm=p.detailHeight>=280f
     val reserve=p.city*1.5f+6f+7f+maxOf(28f,p.body*1.5f)+(if(alarm)12f+p.caption*1.5f+p.body*1.5f else 0f)+
         (if(p.showFooter)p.caption*1.5f+9f else 0f)+(if(p.showAgenda)24f+8f+p.caption*1.5f else 0f)
     val clockSize=minOf(p.clock,((p.innerHeight-reserve-(if(date)p.caption*1.5f else 0f))/1.55f).coerceAtLeast(12f))
@@ -277,8 +308,8 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     val p=s.plan
     Header(d,s,"氣象概況");Spacer(GlanceModifier.height(5.dp));Hero(context,d,s,motion,true)
     Spacer(GlanceModifier.height(6.dp));StatRow(listOf("濕度" to d.humidity,"風速" to d.wind),s)
-    if(p.height>=255f) {Spacer(GlanceModifier.height(12.dp));StatRow(listOf("空氣 AQI" to d.air,"紫外線" to d.uv),s)}
-    if(p.height>=430f) {Spacer(GlanceModifier.height(14.dp));HourlyRow(context,d,s)}
+    if(p.detailHeight>=255f) {Spacer(GlanceModifier.height(12.dp));StatRow(listOf("空氣 AQI" to d.air,"紫外線" to d.uv),s)}
+    if(p.detailHeight>=430f) {Spacer(GlanceModifier.height(14.dp));HourlyRow(context,d,s)}
 }
 @Composable private fun StatRow(values:List<Pair<String,String>>,s:WidgetStyle) {
     Row(GlanceModifier.fillMaxWidth()) {
@@ -293,9 +324,9 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
     val p=s.plan
     WText(if(d.alertRecent)"最新地震報告" else "天氣與安心",s,s.ink,p.city,true)
     Spacer(GlanceModifier.height(6.dp));Hero(context,d,s,motion,true);Spacer(GlanceModifier.height(8.dp))
-    WText(d.alert,s,s.ink,p.body,true,lines=if(p.height>=220f)2 else 1)
-    if(p.height>=250f) {Spacer(GlanceModifier.height(6.dp));WText(d.alertDetail,s,s.soft,p.caption,lines=2)}
-    if(p.height>=350f) {Spacer(GlanceModifier.height(12.dp));WText(d.highLow,s,s.soft,p.body)}
+    WText(d.alert,s,s.ink,p.body,true,lines=if(p.detailHeight>=220f)2 else 1)
+    if(p.detailHeight>=250f) {Spacer(GlanceModifier.height(6.dp));WText(d.alertDetail,s,s.soft,p.caption,lines=2)}
+    if(p.detailHeight>=350f) {Spacer(GlanceModifier.height(12.dp));WText(d.highLow,s,s.soft,p.body)}
 }
 @Composable private fun PrecisionClockWidget(context:Context,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean) {
     val p=s.plan
@@ -305,12 +336,12 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
             Spacer(GlanceModifier.width(12.dp))
             Column(GlanceModifier.defaultWeight()) {
                 WText(d.city,s,s.ink,p.city,true)
-                LiveClock(context,s,minOf(if(p.height<220f)32f else 42f,p.innerWidth*.14f),p.height>=220f)
-                Spacer(GlanceModifier.height(8.dp));WeatherGlyph(context,d.condition,d.day,if(p.height<220f)24f else 32f,motion)
+                LiveClock(context,s,minOf((if(p.detailHeight<220f)32f else 42f)*p.typeGrowth,p.innerWidth*.14f),p.detailHeight>=220f)
+                Spacer(GlanceModifier.height(8.dp));WeatherGlyph(context,d.condition,d.day,if(p.detailHeight<220f)24f else 32f,motion)
                 WText("${d.temperature}  ${d.description()}",s,s.ink,p.body)
             }
         }
-        if(p.height>=410f) {Spacer(GlanceModifier.height(12.dp));HourlyRow(context,d,s)}
+        if(p.detailHeight>=410f) {Spacer(GlanceModifier.height(12.dp));HourlyRow(context,d,s)}
     } else {
         WText(d.city,s,s.ink,p.city,true);Spacer(GlanceModifier.height(5.dp))
         Box(GlanceModifier.fillMaxWidth(),contentAlignment=Alignment.Center) {AnalogFace(context,(p.dial-s.plan.caption*1.5f).coerceIn(24f,220f))}
@@ -318,14 +349,16 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
         Spacer(GlanceModifier.height(5.dp));WText("${d.temperature}  ${d.description()}",s,s.ink,p.body)
     }
 }
-@Composable private fun LiveClock(context:Context,s:WidgetStyle,size:Float,date:Boolean,availableWidth:Float=s.plan.innerWidth) {
+@Composable private fun LiveClock(context:Context,s:WidgetStyle,size:Float,date:Boolean,availableWidth:Float=s.plan.innerWidth,inlineDate:Boolean=false) {
     val p=s.plan
-    val fitted=minOf(size,availableWidth/(if(DateFormat.is24HourFormat(context))3.05f else 5.4f))
+    val dateWidth=if(inlineDate)minOf(availableWidth*.40f,p.caption*4.5f+8f) else 0f
+    val fitted=minOf(size,(availableWidth-dateWidth)/(if(DateFormat.is24HourFormat(context))3.05f else 5.4f))
     // Keep the existing space budget, fitting two native clock rows into compact hosts too.
-    val height=fitted*1.55f+(if(date)p.caption*1.5f else 0f)
+    val height=fitted*1.55f+(if(date&&!inlineDate)p.caption*1.5f else 0f)
     val dateSize=minOf(p.caption,maxOf(8f,height*.24f))
-    val timeSize=minOf(fitted,((height-dateSize*1.45f)/1.55f).coerceAtLeast(8f))
-    val remote=RemoteViews(context.packageName,R.layout.widget_live_clock).apply {
+    val timeSize=if(inlineDate)fitted else minOf(fitted,((height-dateSize*1.45f)/1.55f).coerceAtLeast(8f))
+    val remote=RemoteViews(context.packageName,if(inlineDate)R.layout.widget_live_clock_inline else R.layout.widget_live_clock).apply {
+        if(inlineDate)setViewLayoutWidth(R.id.widget_clock_date,dateWidth,android.util.TypedValue.COMPLEX_UNIT_DIP)
         setTextColor(R.id.widget_clock,s.colors.ink)
         setTextViewTextSize(R.id.widget_clock,android.util.TypedValue.COMPLEX_UNIT_SP,p.sp(timeSize))
         setTextColor(R.id.widget_clock_date,s.colors.secondary)

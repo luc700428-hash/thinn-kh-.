@@ -120,7 +120,7 @@ class IPadRealAppNavigationRenderingTest:IPadFixture() {
                 tapVisible(view,"日月與月相");save(view,"ipad-full-sky")
                 assertFalse("Selecting the next detail must close the previous page",nodes(view).any{text(it,"海象與浪況")&&it.boundsInRoot.left>600&&it.boundsInRoot.top<100})
                 tapVisible(view,"我的事項");assertTrue(nodes(view).any{text(it,"我的事項")});save(view,"ipad-full-tasks")
-                tapVisible(view,"設定");tapVisible(view,"外觀與主題顏色");assertTrue(nodes(view).any{text(it,"外觀")});save(view,"ipad-full-appearance")
+                tapVisible(view,"設定");tapVisible(view,"外觀");assertTrue(nodes(view).any{text(it,"外觀")});save(view,"ipad-full-appearance")
                 tapVisible(view,"字體與閱讀");assertTrue(nodes(view).any{text(it,"字體大小")});save(view,"ipad-full-fonts")
                 for((w,h) in listOf(768 to 1024,480 to 800,1280 to 800)) {
                     resize(view,w,h);assertTrue(nodes(view).any{text(it,"字體大小")});save(view,"ipad-full-resize-${w}x$h")

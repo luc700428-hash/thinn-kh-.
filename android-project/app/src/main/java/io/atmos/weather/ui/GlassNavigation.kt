@@ -214,6 +214,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion",false)) }
     var reduceTransparency by remember { mutableStateOf(prefs.getBoolean("reduce_transparency",false)) }
     var appearanceOpen by rememberSaveable { mutableStateOf(false) }
+    var themeOpen by rememberSaveable {mutableStateOf(false)}
     var accessibilityOpen by rememberSaveable {mutableStateOf(false)}
     var surfacesOpen by rememberSaveable {mutableStateOf(false)}
     var dockOpen by rememberSaveable {mutableStateOf(false)}
@@ -224,10 +225,10 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     val dockPosition=rememberTabletDockPosition()
     var lastDetail by rememberSaveable {mutableStateOf("appearance")}
     val settingsScroll=rememberScrollState()
-    val detailsVisible=appearanceOpen || accessibilityOpen || surfacesOpen || (dockOpen&&showDockPosition)
+    val detailsVisible=themeOpen || appearanceOpen || accessibilityOpen || surfacesOpen || (dockOpen&&showDockPosition)
     SideEffect {onDetailVisibility(detailsVisible)}
     DisposableEffect(Unit) {onDispose {onDetailVisibility(false)}}
-    androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false}
+    androidx.activity.compose.BackHandler(enabled=detailsVisible) {appearanceOpen=false;themeOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false}
     val appearanceContent:@Composable ()->Unit = {
         IOS27AppearancePage(onBack={appearanceOpen=false},advancedSettings={
             ThinnSection("進階外觀與動態") {
@@ -271,7 +272,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
         }
     }
     AdaptivePageFrame(Modifier.background(palette.background).imePadding(),maxContentWidth=1280.dp) {
-    WorkspaceSettingsStack(nested=detailsVisible,onBack={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false},
+    WorkspaceSettingsStack(nested=detailsVisible,onBack={appearanceOpen=false;themeOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false},
         modifier=Modifier.fillMaxSize(),root={
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal=16.dp),contentAlignment=Alignment.Center) {
@@ -303,7 +304,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
             val categories=listOf(
                 "外觀與操作" to listOfNotNull(
                     if(showDockPosition)SettingsEntry("平板 Dock 位置",SettingsSymbols.controls,BrandPalette.selection,{lastDetail="dock";dockOpen=true}) else null,
-                    SettingsEntry("外觀與主題顏色",SettingsSymbols.display,BrandPalette.selection,{lastDetail="appearance";appearanceOpen=true}),
+                    SettingsEntry("外觀",SettingsSymbols.display,BrandPalette.selection,{lastDetail="appearance";appearanceOpen=true}),
+                    SettingsEntry("主題顏色",SettingsSymbols.wallpaper,BrandPalette.selection,{lastDetail="theme";themeOpen=true}),
                     SettingsEntry("字體與閱讀",SettingsSymbols.general,BrandPalette.selection,{onAdvancedCategory("外觀")}),
                     SettingsEntry("聲音與觸覺",SettingsSymbols.wallpaper,BrandPalette.selection,{onAdvancedCategory("聲音")}),
                     SettingsEntry("輔助使用",SettingsSymbols.accessibility,BrandPalette.selection,{lastDetail="accessibility";accessibilityOpen=true})),
@@ -327,8 +329,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     IOSV25SettingsGroup {
                         shown.forEachIndexed {index,row ->IOSV25SettingsCell(row.title,"",row.icon,row.color,
                             trailing=if(row.title=="平板 Dock 位置")dockPosition.title else "",last=index==shown.lastIndex,selected=LocalWorkspaceDetailTitle.current==row.title||
-                                (detailsVisible&&row.title==when(lastDetail){"appearance"->"外觀與主題顏色";"surfaces"->"小工具與動態島";"dock"->"平板 Dock 位置";else->"輔助使用"}),
-                            onClick={appearanceOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false;row.action()})}
+                                (detailsVisible&&row.title==when(lastDetail){"appearance"->"外觀";"theme"->"主題顏色";"surfaces"->"小工具與動態島";"dock"->"平板 Dock 位置";else->"輔助使用"}),
+                            onClick={appearanceOpen=false;themeOpen=false;accessibilityOpen=false;surfacesOpen=false;dockOpen=false;row.action()})}
                     }
                     Spacer(Modifier.height(20.dp))
                 }
@@ -339,7 +341,7 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                 modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
             Spacer(Modifier.height(workspaceBottomPadding(if(LocalWorkspaceLayout.current.tablet)24.dp else 120.dp)))
         }
-    }},detail={AdaptivePageFrame(maxContentWidth=760.dp){when(lastDetail){"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};"dock"->TabletDockSettingsPage{dockOpen=false};else->accessibilityContent()}}})
+    }},detail={AdaptivePageFrame(maxContentWidth=760.dp){when(lastDetail){"theme"->ThemeColorPage{themeOpen=false};"appearance"->appearanceContent();"surfaces"->IOSDeviceSurfacesSettings{surfacesOpen=false};"dock"->TabletDockSettingsPage{dockOpen=false};else->accessibilityContent()}}})
     }
 }
 private data class SettingsEntry(val title:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,

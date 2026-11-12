@@ -1,0 +1,4 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal">
+    <TextClock android:id="@+id/widget_clock" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:format12Hour="h:mm a" android:format24Hour="HH:mm" android:fontFamily="sans-serif-light" android:gravity="start|center_vertical" android:includeFontPadding="false" android:singleLine="true"/>
+    <TextClock android:id="@+id/widget_clock_date" android:layout_width="88dp" android:layout_height="match_parent" android:format12Hour="M月d日" android:format24Hour="M月d日" android:fontFamily="sans-serif" android:gravity="start|center_vertical" android:includeFontPadding="false" android:singleLine="true" android:ellipsize="end"/>
+</LinearLayout>

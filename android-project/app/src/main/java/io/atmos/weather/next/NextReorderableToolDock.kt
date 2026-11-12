@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import io.atmos.weather.ui.AppText as Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -116,13 +117,16 @@ fun NextReorderableToolDock(
     LaunchedEffect(selectedId) {displayId=selectedId}
     val density = LocalDensity.current
     val lightTheme=!(darkBackdrop ?: (MaterialTheme.colorScheme.background.red < .5f))
-    val activeInk=if(lightTheme) brandColor(0xFF246754) else brandColor(0xFF85D4BE)
-    val inactiveInk=if(lightTheme) brandColor(0xFF2B2D2C) else Color(0xFFEBEBF0)
+    val palette=if(lightTheme)io.atmos.weather.ui.BrandPalette.light else io.atmos.weather.ui.BrandPalette.dark
+    val activeInk=palette.primary
+    val inactiveInk=palette.onSurface
     val dockInsetPx = with(density) { (if(vertical)5.dp else 6.dp).toPx() }
-    val currentIndex = visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)
-    val geometry=DockScrubGeometry(dockWidthPx.toFloat(),dockInsetPx,visible.size.coerceAtLeast(1))
+    val selectedHidden=hidden.firstOrNull{it.id==displayId}
+    val slotCount=(visible.size+if(hidden.isNotEmpty())1 else 0).coerceAtLeast(1)
+    val currentIndex = if(selectedHidden!=null)visible.size else visible.indexOfFirst { it.id == displayId }.coerceAtLeast(0)
+    val geometry=DockScrubGeometry(dockWidthPx.toFloat(),dockInsetPx,slotCount)
     val slotPx=geometry.slot
-    val cellHeight=if(vertical)((dockWidthPx/density.density-10f)/visible.size.coerceAtLeast(1)).takeIf{it>0}?:64f
+    val cellHeight=if(vertical)((dockWidthPx/density.density-10f)/slotCount).takeIf{it>0}?:64f
         else (dockHeightPx/density.density-10f).takeIf{it>0}?:58f
     val captionHeight=24f*density.fontScale+4f
     val cellPadding=((cellHeight-captionHeight-27f)/2f).coerceIn(2f,6f)
@@ -145,8 +149,10 @@ fun NextReorderableToolDock(
 
     val lightIndex=visible.indexOfFirst {it.id == draggingId}.takeIf {it >= 0}
         ?: currentIndex
-    val activeDisplayIndex=if(scrubbing && visible.isNotEmpty()) previewIndex() else lightIndex
-    val lightX=if(scrubbing) (scrubX/dockWidthPx.coerceAtLeast(1)).coerceIn(0f,1f) else if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/visible.size
+    val activeDisplayIndex by remember(scrubbing,lightIndex,geometry){derivedStateOf{
+        if(scrubbing&&visible.isNotEmpty())geometry.nearest(scrubX) else lightIndex
+    }}
+    val lightX=if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/slotCount
     NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
         cornerRadiusDp = 9999f, useBackdrop = true, touchX = if(vertical).5f else lightX, touchY=if(vertical)lightX else .08f,calm = true,
@@ -165,7 +171,8 @@ fun NextReorderableToolDock(
                     scrubX=geometry.clamp(if(vertical)change.position.y else change.position.x);change.consume()
                 }
                 val finish:()->Unit={
-                    val destination=visible.getOrNull(previewIndex());scrubbing=false
+                    val preview=previewIndex();val destination=visible.getOrNull(preview);scrubbing=false
+                    if(destination==null&&hidden.isNotEmpty()&&preview==visible.size)showOverflow=true
                     if(destination!=null){displayId=destination.id;haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove);latestOnSelected(destination.id)}
                 }
                 if(visible.isNotEmpty()) {
@@ -173,9 +180,10 @@ fun NextReorderableToolDock(
                     else detectHorizontalDragGestures(onDragStart=start,onDragEnd=finish,onDragCancel={scrubbing=false},onHorizontalDrag=drag)
                 }
             }) {
-            AppleLiquidDockPaint(selectedIndex=lightIndex,tabCount=visible.size.coerceAtLeast(1),
+            AppleLiquidDockPaint(selectedIndex=lightIndex,tabCount=slotCount,
                 dragging=scrubbing || draggingId != null,
-                dragOffsetPx=if(scrubbing) scrubX - (dockInsetPx+(lightIndex+.5f)*slotPx) else dockDragOffsetPx,
+                dragOffsetPx=0f,
+                dragOffset={if(scrubbing)scrubX-(dockInsetPx+(lightIndex+.5f)*slotPx) else dockDragOffsetPx},
                 reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop,engaged=touching||scrubbing||draggingId!=null,reduceTransparency=reduceTransparency)
         DockAxisLayout(vertical,fillAvailableHeight) {
             visible.forEach { action ->
@@ -218,22 +226,26 @@ fun NextReorderableToolDock(
                         Image(action.icon, null, modifier = Modifier.size(iconSize.dp),
                             colorFilter = ColorFilter.tint(if (selected) activeInk else inactiveInk))
                         Text(action.label, fontSize = 14.sp,lineHeight=24.sp,
-                            fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Medium,
+                            fontWeight=if(selected)FontWeight.Bold else FontWeight.Normal,
                             color = if (selected) activeInk else inactiveInk, maxLines = 1, modifier=Modifier.fillMaxWidth().height(captionHeight.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }
             if (hidden.isNotEmpty()) {
-                Box {
+                val moreSelected=if(scrubbing)activeDisplayIndex==visible.size else selectedHidden!=null
+                val moreLabel=selectedHidden?.label?:"更多"
+                Box(Modifier.fillMaxSize()) {
                     Column(
-                        Modifier.width(65.dp).height(58.dp).clickable { showOverflow = !showOverflow }
-                            .padding(vertical = 7.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        Modifier.fillMaxSize().semantics{contentDescription=moreLabel;selected=moreSelected}
+                            .clickable(role=Role.Tab){showOverflow=!showOverflow}.padding(vertical=cellPadding.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(2.dp,Alignment.CenterVertically)
                     ) {
-                        Image(Icons.Rounded.MoreHoriz, null, Modifier.size(22.dp),
-                            colorFilter = ColorFilter.tint(Color.White))
-                        Text("更多", fontSize = 14.sp, color = Color.White)
+                        Image(Icons.Rounded.MoreHoriz,null,Modifier.size(iconSize.dp),
+                            colorFilter=ColorFilter.tint(if(moreSelected)activeInk else inactiveInk))
+                        Text(moreLabel,fontSize=14.sp,lineHeight=24.sp,color=if(moreSelected)activeInk else inactiveInk,
+                            fontWeight=if(moreSelected)FontWeight.Bold else FontWeight.Normal,maxLines=1,
+                            modifier=Modifier.fillMaxWidth().height(captionHeight.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                     }
                     if (showOverflow) {
                         Popup(onDismissRequest = { showOverflow = false },
@@ -246,9 +258,9 @@ fun NextReorderableToolDock(
                                             Text(action.label, Modifier.weight(1f)
                                                 .clickable { showOverflow = false; latestOnSelected(action.id) }
                                                 .padding(horizontal = 14.dp, vertical = 13.dp),
-                                                color = Color.White, fontSize = 14.sp)
+                                                color = inactiveInk, fontSize = 14.sp)
                                             // Accessible alternative to dragging a hidden action.
-                                            Image(Icons.Rounded.KeyboardArrowUp, "移到工具列前方",
+                                            if(allowReorder)Image(Icons.Rounded.KeyboardArrowUp, "移到工具列前方",
                                                 Modifier.size(40.dp).clickable {
                                                     val updated = order.toMutableList()
                                                     updated.remove(action.id)

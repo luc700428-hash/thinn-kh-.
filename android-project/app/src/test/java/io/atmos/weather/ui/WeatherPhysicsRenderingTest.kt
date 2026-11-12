@@ -53,7 +53,9 @@ class WeatherPhysicsRenderingTest:TabletRenderingFixture() {
     world.clearAir();world.surfaces.values.forEach{it.beads.clear();it.wet=0f};physics.clearAir();physics.caps.clear()
     repeat(if(style.snow>0)900 else 180){host.refreshAll();world.step(1f/60,style.rain,45f);physics.step(1f/60,style,14f,false,world.width,world.height,world.surfaces.values)}
     if(style.snow>0){assertTrue(physics.snowDeposits>0);assertTrue(physics.caps.values.any{a->a.any{it>.05f}})}
-    if(style.thunder)assertNotNull(physics.strike(world.surfaces.values,world.width,world.height))
+    if(style.thunder){val strike=physics.strike(world.surfaces.values,world.width,world.height)!!
+     strike.age=strike.profile.pulses.first().start+.014f
+    }
     host.frame.longValue++;save(view,"physics-native-${scene.name.lowercase()}")
    }
    val s=world.surfaces.values.first{it.contour==null&&it.top>100}

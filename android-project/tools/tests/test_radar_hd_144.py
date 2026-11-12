@@ -16,10 +16,10 @@ class RadarHd144(unittest.TestCase):
   self.assertIn('paint(base,1f,RadarMapStyle.baseFilter(dark)',paint)
   self.assertIn('paint(echoes,opacity.coerceIn(0f,1f),null',paint)
   self.assertIn('回波細節已達資料來源上限',ui)
- def test_144_request_reaches_all_app_window_types(self):
-  self.assertIn('TARGET_HZ=144f',(SRC/'ui/RefreshRatePolicy.kt').read_text())
+ def test_166_request_reaches_all_app_window_types(self):
+  self.assertIn('TARGET_HZ=166f',(SRC/'ui/RefreshRatePolicy.kt').read_text())
   host=(SRC/'ui/HighRefreshWindow.kt').read_text()
-  self.assertIn('propagateRequestedFrameRate',host);self.assertIn('requestViews(view.getChildAt(i))',host)
+  self.assertIn('view.setRequestedFrameRate(RefreshRatePolicy.TARGET_HZ)',host);self.assertIn('requestViews(view.getChildAt(i))',host)
   self.assertIn('updateViewLayout(root,popupParams)',host);self.assertIn('surface.setFrameRate(RefreshRatePolicy.TARGET_HZ',host)
   for path in ('ui/AppleNavigationLayers.kt','ui/GlassSheets.kt','next/NextReorderableToolDock.kt'):
    self.assertIn('ThinnPopup',(SRC/path).read_text())
@@ -27,6 +27,6 @@ class RadarHd144(unittest.TestCase):
   self.assertIn('HighRefreshWindow.apply(activity.window',(SRC/'ThinnApplication.kt').read_text())
  def test_diagnostics_shows_system_rate_separately_from_the_target(self):
   s=(SRC/'presentation/home/SettingsDiagnosticsPage.kt').read_text()
-  self.assertIn('動畫目標 144 Hz',s);self.assertIn('rememberDisplayRefreshRate()',s)
+  self.assertIn('動畫目標 166 Hz',s);self.assertIn('rememberDisplayRefreshRate()',s)
   self.assertIn('不等於實際繪製 FPS',s)
 if __name__=='__main__':unittest.main()

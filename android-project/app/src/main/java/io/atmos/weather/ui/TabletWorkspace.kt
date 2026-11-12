@@ -65,13 +65,13 @@ internal val LocalWorkspaceBottomClearance=staticCompositionLocalOf{0.dp}
 /** One permanent content root, plus the same liquid dock on all four tablet edges. */
 @Composable internal fun TabletWorkspaceShell(selected:Int,onSelect:(Int)->Unit,onSearch:()->Unit,
     cities:List<WeatherCity>,selectedCity:WeatherCity,onCity:(WeatherCity)->Unit,
-    overview:String,background:Brush?=null,darkBackdrop:Boolean?=null,
+    overview:String,background:Brush?=null,darkBackdrop:Boolean?=null,modifier:Modifier=Modifier,
     backgroundContent:@Composable BoxScope.()->Unit={},content:@Composable ()->Unit) {
     val posture=LocalDevicePosture.current?:DevicePosture(DeviceKind.PHONE)
     val preferred=rememberTabletDockPosition();val reduce=rememberAppleReduceMotion()
     val density=LocalDensity.current
     val insets=WindowInsets.systemBars.union(WindowInsets.displayCutout)
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
         val left=with(density){insets.getLeft(this,androidx.compose.ui.unit.LayoutDirection.Ltr).toDp().value}
         val top=with(density){insets.getTop(this).toDp().value}
         val width=(maxWidth.value-with(density){(insets.getLeft(this,androidx.compose.ui.unit.LayoutDirection.Ltr)+insets.getRight(this,androidx.compose.ui.unit.LayoutDirection.Ltr)).toDp().value}).coerceAtLeast(1f)

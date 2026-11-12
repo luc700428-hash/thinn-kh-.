@@ -82,7 +82,7 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
         .graphicsLayer { scaleX=(2f-pressScale)*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear else appear*.45f }
         .clip(corner)
         .thinnBackdrop(opaque,ThinnDesignTokens.radiusControl)
-        .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque||(!outlined&&colors==null))1f else if(pressed).80f else .93f))}))
+        .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque)1f else if(!outlined&&colors==null).92f else if(pressed).80f else .93f))}))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
         .thinnSpecularEdge(ThinnDesignTokens.radiusControl)
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=androidx.compose.ui.semantics.Role.Button,onClick={
@@ -133,12 +133,15 @@ fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
         .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else if(pressed && !reduce) AppleMotion.pressedAlpha else 1f }
         .clip(CircleShape)
         .thinnBackdrop(opaque,24.dp)
-        .background(ThinnOpticalMaterial.subtlePill)
+        .background(if(opaque)ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.subtlePill)
         .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)
         .thinnSpecularEdge(24.dp)
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
-        }),contentAlignment=Alignment.Center){ content() }
+        }),contentAlignment=Alignment.Center){
+        CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides
+            (LocalWeatherCardPalette.current?.ink?:androidx.compose.material3.MaterialTheme.colorScheme.onSurface)){content()}
+    }
 }
 
 /** Own Compose switch visual. TalkBack receives a proper switch role and checked state. */
@@ -186,19 +189,23 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
         }else Modifier)
         .graphicsLayer { alpha=if(active) 1f else .48f },
         contentAlignment=Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(31.dp)
-            .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(tint,tint.copy(alpha=.78f))))
-            .border(1.dp,Color.White.copy(alpha=if(checked).24f else .15f),CircleShape)) {
-            if(checked) Canvas(Modifier.matchParentSize()) {
-                drawLine(Color.White,Offset(12.dp.toPx(),11.dp.toPx()),Offset(12.dp.toPx(),20.dp.toPx()),1.dp.toPx())
+        val track=rememberThinnBackdrop()
+        Box(Modifier.fillMaxWidth().height(31.dp).clip(CircleShape)) {
+            ThinnBackdropCapture(track,Modifier.matchParentSize()) {
+                Box(Modifier.matchParentSize().background(Brush.linearGradient(listOf(tint,tint.copy(alpha=.78f))))
+                    .border(1.dp,Color.White.copy(alpha=if(checked).24f else .15f),CircleShape)) {
+                    if(checked)Canvas(Modifier.matchParentSize()) {
+                        drawLine(Color.White,Offset(12.dp.toPx(),11.dp.toPx()),Offset(12.dp.toPx(),20.dp.toPx()),1.dp.toPx())
+                    }
+                }
             }
-            Box(Modifier.padding(2.dp).offset(x=movement).size(27.dp)
-                .graphicsLayer{scaleX=thumbStretch;scaleY=if(pressed&&!reduce).97f else 1f}
-                .clip(CircleShape).thinnBackdrop(opaque,15.dp)
-                .background(Color.White.copy(alpha=if(opaque)1f else .88f),CircleShape)
-                .border(1.dp,Color.White.copy(alpha=.68f),CircleShape)
-                .thinnSpecularEdge(15.dp))
+            CompositionLocalProvider(LocalThinnBackdrop provides track) {
+                Box(Modifier.padding(2.dp).offset(x=movement).size(27.dp)
+                    .graphicsLayer{scaleX=thumbStretch;scaleY=if(pressed&&!reduce).97f else 1f}
+                    .clip(CircleShape).thinnBackdrop(opaque,15.dp,frostScale=.65f)
+                    .background(Color.White.copy(alpha=if(opaque)1f else if(pressed||dragging).28f else .88f),CircleShape)
+                    .border(1.dp,Color.White.copy(alpha=.68f),CircleShape).thinnSpecularEdge(15.dp))
+            }
         }
     }
 }

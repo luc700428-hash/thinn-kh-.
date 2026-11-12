@@ -30,16 +30,16 @@ internal class RainLayout(val world:RainCollisionWorld) {
     val particles=WeatherSurfacePhysics()
     val glyphs=HashMap<Int,Pair<LayoutCoordinates,CollisionContour>>()
     fun refreshGlyph(id:Int,coords:LayoutCoordinates,shape:CollisionContour) {
-        glyphs[id]=coords to shape
+        if(glyphs[id]?.first!==coords||glyphs[id]?.second!==shape)glyphs[id]=coords to shape
         if(!coords.isAttached)return
         val at=(coords.positionInWindow()-origin)/density
         world.surface(id,at.x+shape.offsetX,at.y+shape.offsetY,at.x+shape.offsetX+shape.width,at.y+shape.offsetY+shape.height,0f)
         world.surfaces[id]?.let{it.contour=shape;it.active=!coords.boundsInWindow().isEmpty;it.clipBottom=collisionBottom}
     }
-    fun refreshAll(){cards.toMap().forEach{(id,p)->refresh(id,p.first,p.second)};glyphs.toMap().forEach{(id,p)->refreshGlyph(id,p.first,p.second)}}
+    fun refreshAll(){cards.forEach{(id,p)->refresh(id,p.first,p.second)};glyphs.forEach{(id,p)->refreshGlyph(id,p.first,p.second)}}
     val cards=HashMap<Int,Pair<LayoutCoordinates,Float>>()
     fun refresh(id:Int,coords:LayoutCoordinates,radius:Float) {
-        cards[id]=coords to radius
+        if(cards[id]?.first!==coords||cards[id]?.second!=radius)cards[id]=coords to radius
         if(!coords.isAttached)return
         val at=(coords.positionInWindow()-origin)/density
         world.surface(id,at.x,at.y,at.x+coords.size.width/density,at.y+coords.size.height/density,radius)
@@ -78,7 +78,7 @@ private val surfaceIds=AtomicInteger(1)
         lifecycle.addObserver(observer);onDispose {lifecycle.removeObserver(observer)}
     }
     LaunchedEffect(lightningEvent,style.thunder,reduce){
-        if(lightningEvent>0&&style.thunder&&!reduce)particles.strike(world.surfaces.values,world.width,world.height)
+        if(lightningEvent>0&&style.thunder&&!reduce)particles.strike(world.surfaces.values,world.width,world.height,lightningEvent)
     }
     LaunchedEffect(style,windKmh,strongWind,started,reduce) {
         if(!started || reduce) {world.clearAir();particles.clearAir();frame.longValue++;return@LaunchedEffect}

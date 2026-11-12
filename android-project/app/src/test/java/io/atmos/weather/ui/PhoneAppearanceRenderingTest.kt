@@ -35,11 +35,19 @@ class PhoneAppearanceRenderingTest:IPadFixture() {
    val dock=nodes(view).single{it.config.contains(SemanticsProperties.Role)&&it.config[SemanticsProperties.Role]==Role.Tab&&text(it,"天氣")}.boundsInRoot
    nodes(view).filter{it.config.contains(SemanticsProperties.Text)&&it.boundsInRoot.height>0&&it.boundsInRoot.width>100}.forEach{assertTrue(it.boundsInRoot.bottom<=dock.top-4)}
    save(view,"phone-weather-pastel-$dark")
-   tapVisible(view,"設定");tapVisible(view,"外觀與主題顏色")
+   tapVisible(view,"設定");tapVisible(view,"主題顏色")
    val square=unmergedTag(view,"theme-swatch-forest").boundsInRoot
    assertEquals(square.width,square.height,.1f)
-   assertEquals(12,nodes(view).count{it.config.contains(SemanticsProperties.ContentDescription)&&it.config[SemanticsProperties.ContentDescription].any{s->s.startsWith("主題顏色：")}})
-   save(view,"phone-appearance-pastel-$dark")
+   assertEquals(12,AppThemeColor.entries.size)
+   val firstOptions=nodes(view).filter{it.config.contains(SemanticsProperties.ContentDescription)&&it.config[SemanticsProperties.ContentDescription].any{s->s.startsWith("主題顏色：")}}
+   assertTrue(firstOptions.isNotEmpty())
+   save(view,"phone-theme-gallery-$dark")
+   assertTrue(tagged(view,"theme-color-gallery").config[SemanticsActions.ScrollToIndex].action!!.invoke(11))
+   pump(view).recycle()
+   assertTrue(nodes(view).any{it.config.contains(SemanticsProperties.ContentDescription)&&"主題顏色：霧灰" in it.config[SemanticsProperties.ContentDescription]})
+   val back=nodes(view).single{it.config.contains(SemanticsProperties.ContentDescription)&&"返回" in it.config[SemanticsProperties.ContentDescription]&&it.config.contains(SemanticsActions.OnClick)}
+   assertTrue(back.config[SemanticsActions.OnClick].action!!.invoke());pump(view).recycle()
+   tapVisible(view,"外觀");save(view,"phone-appearance-pastel-$dark")
    tapVisible(view,"天氣")
   }}finally{store.clear()}
  }

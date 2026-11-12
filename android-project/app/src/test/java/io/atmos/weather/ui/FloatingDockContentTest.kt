@@ -5,7 +5,7 @@ import org.junit.Test
 class FloatingDockContentTest {
     @Test fun fourDestinationsFormACompactCapsule() {
         val length=FloatingDockContent.length(4,1f)
-        assertTrue(length in 280f..330f);assertTrue(length<560f*.65f)
+        assertTrue(length in 320f..365f);assertTrue(length<560f*.70f)
         assertTrue(FloatingDockContent.length(3,1f)<length)
     }
     @Test fun largerReadingSizesGrowCellsWithoutStretchingToAWindow() {

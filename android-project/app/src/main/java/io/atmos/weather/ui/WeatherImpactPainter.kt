@@ -49,13 +49,16 @@ internal fun DrawScope.drawWeatherSurfaceEffects(particles:WeatherSurfacePhysics
     drawLine(if(light)Color(0xDDA9BFC7) else Color(0xDDF1F9FC),center-delta,center+delta,.65f*density,StrokeCap.Round)
    }
   }else{
-   val angle=if(p.owner!=null)sin(particles.time*17f+p.u*31f)*24f+sin(particles.time*6f)*10f else p.angle
-   rotate(angle,center){
-    val leaf=Path().apply{moveTo(center.x-r,center.y)
-     cubicTo(center.x-r*.25f,center.y-r,center.x+r*.9f,center.y-r*.6f,center.x+r*1.15f,center.y-r*.1f)
-     cubicTo(center.x+r*.5f,center.y+r*.8f,center.x-r*.4f,center.y+r*.7f,center.x-r,center.y);close()}
-    drawPath(leaf,if(p.u>.5f)Color(0xFF9D7A42) else Color(0xFFAA9354))
-    drawLine(Color(0xFF665634),center-Offset(r*.85f,0f),center+Offset(r*.95f,-r*.05f),.45f*density,StrokeCap.Round)
+   val anchor=center
+   val c=if(p.owner!=null)center+Offset(r*.85f,0f) else center
+   rotate(p.angle,anchor){
+    val bend=p.flex*r
+    val leaf=Path().apply{moveTo(c.x-r,c.y)
+     cubicTo(c.x-r*.25f,c.y-r+bend*.4f,c.x+r*.9f,c.y-r*.6f+bend,c.x+r*1.15f,c.y-r*.1f+bend)
+     cubicTo(c.x+r*.5f,c.y+r*.8f+bend,c.x-r*.4f,c.y+r*.7f,c.x-r,c.y);close()}
+    val leafColor=when(p.noiseSeed ushr 3 and 3){0->Color(0xFF7C9162);1->Color(0xFF9D7A42);2->Color(0xFF938953);else->Color(0xFFAA9354)}
+    drawPath(leaf,leafColor)
+    drawLine(Color(0xFF665634),c-Offset(r*.85f,0f),c+Offset(r*.95f,-r*.05f+bend*.65f),.45f*density,StrokeCap.Round)
    }
   }
  }
@@ -80,17 +83,19 @@ internal fun DrawScope.drawWeatherSurfaceEffects(particles:WeatherSurfacePhysics
  }
  particles.bolt?.let{d->
   val s=rain.surfaces[d.owner]?:return@let
-  val target=particles.strikePoint(d,s);val rng=Random(d.seed)
-  val end=pos(target.x,target.y);val start=Offset((end.x+(rng.nextFloat()-.5f)*size.width*.5f).coerceIn(0f,size.width),0f)
-  val points=(0..15).map{i->val t=i/15f
-   Offset(start.x+(end.x-start.x)*t+(if(i in 1..14)(rng.nextFloat()-.5f)*28*density else 0f),start.y+(end.y-start.y)*t)}
-  val path=Path().apply{moveTo(points[0].x,points[0].y);points.drop(1).forEach{lineTo(it.x,it.y)}}
-  val pulse=when{d.age<.06f->1f;d.age<.14f->.12f;d.age<.23f->.85f;else->0f}
-  if(pulse>0){
-   drawPath(path,Color(0xFF98BEDE).copy(alpha=.25f*pulse),style=Stroke(6*density,cap=StrokeCap.Round,join=StrokeJoin.Round))
-   drawPath(path,Color(0xFFF4FBFF).copy(alpha=pulse),style=Stroke(1.4f*density,cap=StrokeCap.Round,join=StrokeJoin.Round))
-   for(index in listOf(6,10)){val p=points[index];val branch=Path().apply{moveTo(p.x,p.y);lineTo(p.x+18*density,p.y+9*density);lineTo(p.x+14*density,p.y+23*density);lineTo(p.x+28*density,p.y+34*density)}
-    drawPath(branch,Color(0xFFD5EDFF).copy(alpha=.65f*pulse),style=Stroke(.7f*density))}
+  val target=particles.strikePoint(d,s)
+  val geometry=d.geometry?:LightningGeometry.create(d.seed,size.width/density,size.height/density,target.x,target.y)
+  val pulse=d.profile.intensity(d.age).coerceIn(0f,1f)
+  if(pulse>0f){
+   fun stroke(points:List<RainCollisionWorld.Point>,branch:Boolean){
+    val path=Path().apply{moveTo(points.first().x*density,points.first().y*density)
+     for(i in 1 until points.size)lineTo(points[i].x*density,points[i].y*density)}
+    drawPath(path,Color(0xFF2F536D).copy(alpha=.38f*pulse),style=Stroke((if(branch)1.9f else 4.2f)*density,cap=StrokeCap.Round,join=StrokeJoin.Round))
+    drawPath(path,Color(0xFF9CCAF3).copy(alpha=.30f*pulse),style=Stroke((if(branch)3.2f else 10f)*density,cap=StrokeCap.Round,join=StrokeJoin.Round))
+    drawPath(path,Color(0xFFD6EAFF).copy(alpha=.72f*pulse),style=Stroke((if(branch)1.1f else 3f)*density,cap=StrokeCap.Round,join=StrokeJoin.Round))
+    drawPath(path,Color(0xFFFAFDFF).copy(alpha=pulse),style=Stroke((if(branch).55f else 1.4f)*density,cap=StrokeCap.Round,join=StrokeJoin.Round))
+   }
+   geometry.branches.forEach{stroke(it,true)};stroke(geometry.trunk,false)
   }
  }
 }

@@ -9,7 +9,7 @@ import android.graphics.*
 /** Original optical background. Launcher wallpaper cannot be sampled by an ordinary widget. */
 object WidgetGlassRenderer {
  data class Palette(val top:Int,val bottom:Int,val ink:Int,val secondary:Int,val accent:Int)
- fun palette(index:Int,alert:Boolean=false)=paletteFor(AppThemeColors.value,index,alert)
+ fun palette(index:Int,alert:Boolean=false)=paletteFor(AppThemeColors.saved,index,alert)
  internal fun paletteFor(theme:io.atmos.weather.ui.AppThemeColor,index:Int,alert:Boolean=false):Palette {
   if(alert)return Palette(0xFF96323D.toInt(),0xFF541E32.toInt(),Color.WHITE,0xFFFFE3E7.toInt(),0xFFFFD3A3.toInt())
   val p=BrandPalette.scheme(theme,false);val pastel=ComposeColor(theme.swatchArgb)

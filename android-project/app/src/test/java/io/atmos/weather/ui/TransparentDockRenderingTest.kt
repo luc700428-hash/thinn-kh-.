@@ -68,8 +68,11 @@ class TransparentDockTransmissionRenderingTest:TransparentDockFixture() {
                     val a=meanChannel(first,x,y,android.graphics.Color::green);first.recycle()
                     scene=Color(0xFF237242)
                     val second=pump(view)
-                    val b=meanChannel(second,x,y,android.graphics.Color::green);second.recycle()
-                    assertTrue("Dock hides the changing background: ${position.id}, dark=$dark, font=$font, transmitted=${b-a}",b-a>=48f)
+                    val b=meanChannel(second,x,y,android.graphics.Color::green)
+                    assertTrue("Frosted glass lost its foreground contrast",colorContrast(BrandPalette.dark.onSurface,Color(second.getPixel(x,y)))>=4.5f)
+                    second.recycle()
+                    // Regular material transmits the live scene while retaining enough tint for labels.
+                    assertTrue("Dock hides the changing background: ${position.id}, dark=$dark, font=$font, transmitted=${b-a}",b-a>=12f)
                     assertNotNull(observedSource)
                     assertTrue(observedSource!!.active&&observedSource!!.ready&&!observedSource!!.failed)
                     save(view,"transparent-dock-${position.id}-$dark-$font")

@@ -1,5 +1,7 @@
 package io.atmos.weather.presentation.home
 
+import io.atmos.weather.ui.lightningScreenEffect
+
 import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.BrandPalette
 import io.atmos.weather.ui.WeatherSkyPalette
@@ -196,10 +198,17 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     }
     var appearance by remember { mutableStateOf(WeatherAppearance.from(context)) }
     val appDensity = LocalDensity.current
-    LaunchedEffect(appearance) {
-        appearance.persist(context)
-        delay(800L) // avoid redrawing 27 widgets on every drag frame
-        WidgetSync.refreshAll(context)
+    val appearanceScope=rememberCoroutineScope()
+    val appearanceSaver=remember(context) {
+        AppearanceSaveController(appearance,appearanceScope,{it.persist(context)},{WidgetSync.refreshCached(context)})
+    }
+    val latestAppearance by rememberUpdatedState(appearance)
+    LaunchedEffect(appearance) {appearanceSaver.update(appearance)}
+    androidx.lifecycle.compose.LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        appearanceSaver.update(latestAppearance);appearanceSaver.flush()
+    }
+    DisposableEffect(appearanceSaver) {
+        onDispose {appearanceSaver.update(latestAppearance);appearanceSaver.flush()}
     }
     val uriHandler = LocalUriHandler.current
     val previewScope = rememberCoroutineScope()
@@ -396,7 +405,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             }
         }
     }
-    var lightningAlpha by remember { mutableFloatStateOf(0f) }
+    val lightningFlash=remember{io.atmos.weather.ui.LightningFlashState()}
+    val lightningAlpha=lightningFlash.alpha
+    DisposableEffect(lightningFlash){onDispose{lightningFlash.stop()}}
     var lightningBolt by remember { mutableIntStateOf(0) }
     var thunderCue by remember { mutableIntStateOf(0) }
     // Lightning is not periodic: a single lifecycle-aware clock also schedules
@@ -406,14 +417,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             if (stormy) {
                 while (isActive) {
                     delay(kotlin.random.Random.nextLong(9_000L, 24_000L))
-                    lightningBolt++
-                    lightningAlpha = .14f
-                    delay(60L)
-                    lightningAlpha = .035f
-                    delay(90L)
-                    lightningAlpha = .20f
-                    delay(75L)
-                    lightningAlpha = 0f
+                    lightningBolt=kotlin.random.Random.nextInt(1,Int.MAX_VALUE)
+                    lightningFlash.trigger(this,lightningBolt).join()
                     // Lightning is seen before thunder; vary simulated distance.
                     delay(kotlin.random.Random.nextLong(400L, 1_800L))
                     thunderCue++
@@ -422,7 +427,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     }
                 }
             } else {
-                lightningAlpha = 0f
+                lightningFlash.stop()
             }
         }
     }
@@ -460,19 +465,18 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                 demoDescription = "雷雨接近 · 閃電與雷聲"
                                 demoCondition = WeatherCondition.THUNDERSTORM
                                 if(second == 4 || second == 2) {
-                                    lightningBolt += 1
-                                    lightningAlpha = .24f
+                                    lightningBolt=kotlin.random.Random.nextInt(1,Int.MAX_VALUE)
+                                    lightningFlash.trigger(this,lightningBolt)
                                     demoThunderCue += 1
                                     hapticEngine.play(HapticEngine.Event.THUNDER, preview=true, variation=.85f)
                                 } else {
-                                    lightningAlpha = .10f
                                     hapticEngine.play(HapticEngine.Event.RAIN_DROP, preview=true, variation=.62f)
                                 }
                             }
                             else -> {
                                 demoDescription = "雨勢漸緩 · 天氣恢復"
                                 demoCondition = WeatherCondition.RAIN
-                                lightningAlpha = 0f
+                                lightningFlash.stop()
                                 hapticEngine.play(HapticEngine.Event.RELEASE, preview=true, variation=.48f)
                             }
                         }
@@ -483,7 +487,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     demoRemaining = 0
                     demoCondition = null
                     demoDescription = ""
-                    lightningAlpha = 0f
+                    lightningFlash.stop()
                 }
             }
         }
@@ -590,6 +594,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             }
         ) {
         TabletWorkspaceShell(selected=dockRequestedTab?:mainPager.targetPage,onSelect=::navigateWorkspace,
+            modifier=Modifier.lightningScreenEffect(lightningAlpha,!themedPage&&mainPager.currentPage==0&&!reducedMotion,isNight),
             onSearch={locationOpen=true},cities=state.savedCities,selectedCity=state.city,
             onCity={clearWorkspaceDetails();viewModel.onIntent(WeatherIntent.SelectCity(it));showMainTab(0)},
             overview=snapshot?.let{"${it.temperatureC.toInt()}° · ${io.atmos.weather.domain.model.WeatherDescriptions.label(it.condition,it.weatherCode,it.visibilityM,it.isDay)}"}?:"正在更新天氣",
@@ -599,7 +604,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 if(!themedPage) {
                     SkyEffects(demoCondition ?: snapshot?.condition,isNight,
                         heavyRain || demoCondition==WeatherCondition.THUNDERSTORM,
-                        hazy,appearance.liquidMotion,motionState,if(reducedMotion)0f else lightningAlpha,
+                        hazy,appearance.liquidMotion,motionState,0f,
                         lightningBolt,snapshot?.windKmh ?: 0.0,snapshot?.weatherCode,snapshot?.visibilityM)
                 }
             }) {
@@ -608,7 +613,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val detailInset=if(workspace.listDetail&&mainPager.currentPage in 2..3&&workspaceDetailTitle!=null)
             (if(appDensity.fontScale>1.25f)366.dp else 316.dp) else 0.dp
         CompositionLocalProvider(LocalWorkspaceDetailInset provides detailInset,LocalWorkspaceDetailTitle provides workspaceDetailTitle) {
-        val workspaceBrush=if(workspace.tablet&&mainPager.currentPage!=0)
+        val workspaceBrush=if(themedPage)
             Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background,MaterialTheme.colorScheme.background))
             else Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))
         Box(Modifier.fillMaxSize().then(if(workspace.tablet)Modifier else Modifier.background(workspaceBrush))) {
@@ -656,7 +661,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // Full-screen background layer. It never captures gestures.
                     SkyEffects(demoCondition ?: snapshot?.condition, isNight,
                         heavyRain || demoCondition == WeatherCondition.THUNDERSTORM,
-                        hazy, appearance.liquidMotion, motionState, if(reducedMotion)0f else lightningAlpha,
+                        hazy, appearance.liquidMotion, motionState, 0f,
                         lightningBolt, snapshot?.windKmh ?: 0.0, snapshot?.weatherCode, snapshot?.visibilityM)
                     }
                     // Keep location, temperature, cards, loading and errors above

@@ -37,7 +37,7 @@ object ThinnOpticalMaterial {
         brandColor(0xFFE0F4EF), brandColor(0xFF9DDDCB), brandColor(0xFF49BF9E)
     ))
     val subtlePill: Brush @Composable get() = Brush.linearGradient(listOf(
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.92f),MaterialTheme.colorScheme.surface.copy(alpha=.96f)))
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.72f),MaterialTheme.colorScheme.surface.copy(alpha=.76f)))
     val selectedLens: Brush get() = Brush.verticalGradient(listOf(
         Color.White.copy(alpha=.34f), brandColor(0xFFBFE8DD).copy(alpha=.21f),
         Color.White.copy(alpha=.09f)

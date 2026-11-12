@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -86,7 +87,7 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
 
 /** Crop before filtering AND when painting; sampled pixels cannot cover siblings. */
 @Composable
-fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f,frostScale:Float=1f):Modifier {
+fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f,frostScale:Float=1f,refract:Boolean=true,materialDark:Boolean?=null):Modifier {
     val source=LocalThinnBackdrop.current
     if(reduceTransparency || source==null || source in LocalBackdropAncestors.current) return this
     val view=LocalView.current.rootView
@@ -96,13 +97,15 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     var visible by remember {mutableStateOf(Rect.Zero)}
     var failed by remember(source) {mutableStateOf(false)}
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
-    val radius=with(LocalDensity.current) {((4f+26f*appearance.glassFrost.coerceIn(0f,1f))*frostScale.coerceIn(.1f,1f)).dp.toPx()}
+    val frost=appearance.glassFrost.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
+    val radius=with(LocalDensity.current) {((8f+22f*frost)*frostScale.coerceIn(.1f,1f)).dp.toPx()}
     val corner=with(LocalDensity.current) {cornerRadius.toPx()}
-    val optics=remember {if(Build.VERSION.SDK_INT>=33)try {LiquidOpticsEngine()} catch(_:RuntimeException) {null} else null}
-    val effect=remember(radius) {
+    val optics=remember(refract) {if(refract&&Build.VERSION.SDK_INT>=33)try {LiquidOpticsEngine()} catch(_:RuntimeException) {null} else null}
+    val effect=remember(radius,materialDark) {
         val blur=RenderEffect.createBlurEffect(radius,radius,Shader.TileMode.CLAMP)
         val saturation=ColorMatrixColorFilter(ColorMatrix().apply {setSaturation(1.08f)})
-        RenderEffect.createColorFilterEffect(saturation,blur)
+        val filtered=RenderEffect.createColorFilterEffect(saturation,blur)
+        if(materialDark==null)filtered else GlassToneEffect.apply(filtered,materialDark)
     }
     return onGloballyPositioned {
         val xy=IntArray(2);view.getLocationOnScreen(xy)
@@ -118,6 +121,10 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
         if(sample!=null) {
             try {
                 glass.clip=true
+                // RenderEffect is ignored by Android software Canvas (including bitmap snapshots).
+                // Apply the same material brightness bounds without recoloring foreground content.
+                glass.colorFilter=if(materialDark!=null&&!drawContext.canvas.nativeCanvas.isHardwareAccelerated)
+                    GlassToneEffect.softwareColorFilter(materialDark) else null
                 glass.renderEffect=if(Build.VERSION.SDK_INT>=33 && optics!=null)
                     optics.effect(sample.width.toFloat(),sample.height.toFloat(),corner,focusX,appearance.edgeLight,effect).asComposeRenderEffect()
                     else effect.asComposeRenderEffect()

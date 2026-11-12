@@ -141,8 +141,6 @@ fun IOS27AppearancePage(onBack: () -> Unit, advancedSettings: @Composable () -> 
             Text("外觀", fontSize=20.sp,color=primary,fontWeight=FontWeight.SemiBold)
         }
         Spacer(Modifier.height(19.dp))
-        ThemeColorPicker()
-        Spacer(Modifier.height(24.dp))
         Text("外觀", color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=15.sp,
             modifier=Modifier.padding(start=12.dp,bottom=10.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(surface)) {

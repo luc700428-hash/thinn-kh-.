@@ -15,24 +15,24 @@ class BuddyClockWidgetReceiver:SyncedWidgetReceiver(){override val glanceAppWidg
 /** Native TextClock ticks independently of weather workers; native vector art stays sharp on resize. */
 internal fun buddyClockRemote(context:Context,d:OpticalWidgetData,p:WidgetLayoutPlan,
     colors:WidgetGlassRenderer.Palette,motion:Boolean):RemoteViews {
-    val w=p.innerWidth;val h=p.innerHeight
+    val w=p.innerWidth;val h=p.innerHeight;val growth=p.typeGrowth
     val scale=context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).getFloat("v4_fontscale",1f)
         .coerceIn(1f,1.5f)*context.resources.configuration.fontScale.coerceIn(1f,1.5f)
     val tall=h>=240&&h>=w*.85f
     val refresh=h>=150||(h>=125&&w>=190)
-    val citySize=min(16f*scale,if(h<135)12f else 20f)
+    val citySize=min(16f*scale*growth,if(h<135)12f else 20f*growth)
     val cityH=citySize*(if(h<135)1.5f else 1.8f)+if(h<135)1f else 3f
-    val bodySize=if(h<135)11f else min(16f*scale,19f)
+    val bodySize=if(h<135)11f else min(16f*scale*growth,19f*growth)
     val weatherH=bodySize*1.8f+4
-    val tempSize=if(tall)minOf(44f*scale,w*.24f,h*.10f) else if(w>=500&&h>300)min(42f*scale,50f) else bodySize
+    val tempSize=if(tall)minOf(44f*scale*growth,w*.24f,h*.10f) else if(w>=500&&h>300)min(42f*scale*growth,50f*growth) else bodySize
     val tempH=if(tall||tempSize>bodySize)tempSize*1.8f+3 else weatherH
     val minimumArt=if(tall)min(w*.44f,h*.20f).coerceAtLeast(24f) else 0f
     val wideFooter=if(!tall&&h>=340)24f else 0f
     val hourDigits=if(android.text.format.DateFormat.is24HourFormat(context))3.2f else 4.8f
-    val dateLine=(if(h<135)10f else min(bodySize,14f))*1.65f
+    val dateLine=(if(h<135)10f else min(bodySize,14f*growth))*1.65f
     val timeBudget=(h-dateLine-cityH-3-tempH-(if(tall)weatherH else 0f)-minimumArt-wideFooter-10)/1.65f
-    val timeSize=if(tall)minOf(76f*scale,w/hourDigits,h*.14f,timeBudget).coerceAtLeast(12f)
-        else minOf((if(w>=500)96f else 54f)*scale,w*.61f/hourDigits,timeBudget).coerceAtLeast(12f)
+    val timeSize=if(tall)minOf(76f*scale*growth,w/hourDigits,h*.14f,timeBudget).coerceAtLeast(12f)
+        else minOf((if(w>=500)96f else 54f)*scale*growth,w*.61f/hourDigits,timeBudget).coerceAtLeast(12f)
     val timeH=timeSize*1.65f
     val timeY=cityH+3
     val dateY=timeY+timeH
@@ -72,7 +72,7 @@ internal fun buddyClockRemote(context:Context,d:OpticalWidgetData,p:WidgetLayout
     result.setContentDescription(R.id.buddy_clock_time,"目前時間，依手機時鐘自動更新")
     result.setViewVisibility(R.id.buddy_clock_date,if(dateH>0)View.VISIBLE else View.GONE)
     box(R.id.buddy_clock_date,0f,dateY,if(tall)w else (w-art-6),dateH)
-    result.setTextViewTextSize(R.id.buddy_clock_date,dip,if(h<135)10f else min(bodySize,14f))
+    result.setTextViewTextSize(R.id.buddy_clock_date,dip,if(h<135)10f else min(bodySize,14f*growth))
     result.setTextColor(R.id.buddy_clock_date,colors.secondary)
     result.setCharSequence(R.id.buddy_clock_date,"setFormat12Hour","M月d日")
     result.setCharSequence(R.id.buddy_clock_date,"setFormat24Hour","M月d日")

@@ -34,10 +34,13 @@ class RainCollisionWorldTest {
     }
     @Test fun sixtyAndOneTwentyHzProduceTheSamePhysics() {
         fun run(fps:Int):RainCollisionWorld=world().also {w->repeat(fps*5){w.step(1f/fps,.6f,20f)}}
-        val a=run(60);val b=run(120)
+        val a=run(60)
+        for(fps in listOf(120,166)) {
+        val b=run(fps)
         assertEquals(a.impacts,b.impacts);assertEquals(a.emittedDrips,b.emittedDrips)
         assertEquals(a.air.size,b.air.size)
         a.air.zip(b.air).forEach {(x,y)->assertEquals(x.x,y.x,.05f);assertEquals(x.y,y.y,.05f)}
+        }
     }
     @Test fun heavyRainRemainsBoundedAndFinite() {
         val w=world();repeat(120*90){w.step(1f/120,1f,140f)}

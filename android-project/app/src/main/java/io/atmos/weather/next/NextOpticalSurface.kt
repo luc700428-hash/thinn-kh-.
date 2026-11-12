@@ -1,6 +1,8 @@
 package io.atmos.weather.next
 
 import io.atmos.weather.ui.brandColor
+import io.atmos.weather.ui.BrandPalette
+import io.atmos.weather.ui.FluidGlassStyle
 
 import io.atmos.weather.ui.thinnBackdrop
 import io.atmos.weather.ui.thinnSpecularEdge
@@ -11,8 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.core.*
-import androidx.compose.ui.platform.LocalContext
-import android.content.Context
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 /**
  * Tool/navigation materials share edge glints and touch-directed light.
  * Backdrop-enabled surfaces sample an independent scene through thinnBackdrop;
- * clearGlass keeps the tint and frost light, with an explicit opaque-accessibility mode.
+ * Navigation uses a legible regular material with live blur and an opaque-accessibility mode.
  */
 @Composable
 fun NextOpticalSurface(
@@ -45,29 +45,27 @@ fun NextOpticalSurface(
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
     val shape = RoundedCornerShape(cornerRadiusDp.dp)
     val lightTheme=!(darkBackdrop ?: (MaterialTheme.colorScheme.background.red < .5f))
-    val ctx=LocalContext.current
-    val reducedMotion=ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
-        .getBoolean("reduce_motion",false)
-    val opticalPhase=if(reducedMotion || reduceTransparency || calm) 0.5f else {
-        val transition=rememberInfiniteTransition(label="v25-control-light")
-        val t by transition.animateFloat(initialValue=.36f,targetValue=.79f,
-            animationSpec=infiniteRepeatable(tween((7000-4500*appearance.liquidMotion.coerceIn(0f,1f)).toInt()),RepeatMode.Reverse),
-            label="v25-control-glimmer")
-        t
-    }
+    val reducedMotion=io.atmos.weather.ui.rememberAppleReduceMotion()
+    // Background sampling stays live; idle controls do not run an unnecessary infinite animation.
+    val opticalPhase by animateFloatAsState(if(pressed&&!reducedMotion&&!reduceTransparency)1f else .5f,
+        if(reducedMotion)tween(0) else spring(.78f,360f),label="glass-contact-light")
     val x = NextMotionTokens.clampedTouchX(touchX)
-    val glassTint=if(clearGlass).06f-.04f*appearance.glassOpacity.coerceIn(0f,1f)
+    val nav=FluidGlassStyle.navigation(if(lightTheme)BrandPalette.light else BrandPalette.dark,!lightTheme)
+    val glassTint=if(clearGlass)nav.underlay.alpha
         else if(calm)(if(lightTheme).22f else .38f)-.12f*appearance.glassOpacity.coerceIn(0f,1f)
         else (.62f-.30f*appearance.glassOpacity.coerceIn(0f,1f))
     val background = if (reduceTransparency) {
         if(lightTheme) Brush.verticalGradient(listOf(Color.White,brandColor(0xFFF7FAF7))) else Brush.verticalGradient(listOf(brandColor(0xFF1B1D1C),brandColor(0xFF1B1D1C)))
+    } else if(clearGlass) {
+        Brush.verticalGradient(listOf(nav.underlay,nav.underlay))
     } else if(lightTheme) {
         // Pale cool-tinted glass; no heavy dark blue fill on the white Settings page.
         Brush.verticalGradient(listOf(Color.White.copy(alpha=glassTint), Color.White.copy(alpha=glassTint), Color.White.copy(alpha=glassTint)))
     } else {
         Brush.verticalGradient(listOf(brandColor(0xFF1B1D1C).copy(alpha=glassTint), brandColor(0xFF1B1D1C).copy(alpha=glassTint), brandColor(0xFF1B1D1C).copy(alpha=glassTint)))
     }
-    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x,frostScale=if(clearGlass).55f else 1f).background(background)
+    Box(modifier.clip(shape).thinnBackdrop(reduceTransparency || !useBackdrop,cornerRadiusDp.dp,x,
+        frostScale=1f,refract=!clearGlass).background(background)
         .then(if(calm)Modifier else Modifier.thinnSpecularEdge(cornerRadiusDp.dp)).drawWithContent {
         val w = size.width
         val h = size.height
@@ -87,7 +85,8 @@ fun NextOpticalSurface(
             )
         }
         drawContent()
-        drawRoundRect(
+        if(clearGlass)drawRoundRect(nav.rim,style=Stroke(.65.dp.toPx()),cornerRadius=androidx.compose.ui.geometry.CornerRadius(cornerRadiusDp.dp.toPx()))
+        else drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(
                     Color.White.copy(alpha = if(clearGlass) {if(pressed).32f else .22f} else if(calm) {if(pressed).22f else .12f} else if (pressed) .72f else .42f),

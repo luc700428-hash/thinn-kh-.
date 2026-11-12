@@ -1,63 +1,67 @@
 package io.atmos.weather.ui
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.*
 import io.atmos.weather.next.DockLiquidGeometry
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
-/** One refracting capsule lens, never a moving container or duplicate selection boxes. */
+/** The sampled optical bounds follow the drop, not the width of the entire Dock. */
 @Composable fun BoxScope.AppleLiquidDockPaint(selectedIndex:Int,tabCount:Int,dragging:Boolean,dragOffsetPx:Float,
  reduceMotion:Boolean,modifier:Modifier=Modifier,vertical:Boolean=false,darkBackdrop:Boolean?=null,
- engaged:Boolean=dragging,reduceTransparency:Boolean=false) {
+ engaged:Boolean=dragging,reduceTransparency:Boolean=false,dragOffset:(()->Float)?=null) {
  if(tabCount<1)return
- val density=LocalDensity.current.density;var widthPx by remember{mutableIntStateOf(0)}
- val inset=(if(vertical)5f else 6f)*density;val step=((widthPx-2*inset)/tabCount).coerceAtLeast(1f)
- val target=(selectedIndex.toFloat()+if(dragging)dragOffsetPx/step else 0f).coerceIn(0f,tabCount-1f)
- val location by animateFloatAsState(target,if(dragging||reduceMotion)snap() else spring(.78f,360f),label="dock-continuous-position")
- val tail by animateFloatAsState(location,if(reduceMotion)snap() else spring(.92f,145f),label="dock-viscous-tail")
- val touch by animateFloatAsState(if(engaged)1f else 0f,if(reduceMotion)snap() else spring(.8f,520f),label="dock-contact-flex")
- val light=!(darkBackdrop?:(MaterialTheme.colorScheme.background.red<.5f));val accent=MaterialTheme.colorScheme.primary
- val mask=remember(location,tail,touch,vertical,density,tabCount,reduceMotion){GenericShape{size,_->
-  val logical=if(vertical)Size(size.height,size.width) else size
-  val path=dockLensPath(logical.width,logical.height,density,tabCount,location,if(reduceMotion)location else tail,touch,vertical)
-  if(vertical)path.transform(Matrix().apply{translate(size.width,0f);rotateZ(90f)})
-  addPath(path)
- }}
- Canvas(modifier.matchParentSize().onSizeChanged{widthPx=if(vertical)it.height else it.width}.clip(mask)
-  .thinnBackdrop(reduceTransparency,24.dp,(location+.5f)/tabCount,frostScale=.12f)) {
-  val w=if(vertical)size.height else size.width;val h=if(vertical)size.width else size.height
-  val path=dockLensPath(w,h,density,tabCount,location,if(reduceMotion)location else tail,touch,vertical)
-  val center=Offset(inset+(location+.5f)*step,h*.5f)
-  withTransform({if(vertical){translate(size.width,0f);rotate(90f,pivot=Offset.Zero)}}){
-   drawPath(path,if(light)accent.copy(alpha=.035f+.035f*touch) else Color.White.copy(alpha=.07f+.035f*touch))
-   drawPath(path,Brush.radialGradient(listOf(Color.White.copy(alpha=.14f+.09f*touch),Color.Transparent),Offset(center.x-18.dp.toPx(),center.y-16.dp.toPx()),90.dp.toPx()))
-   drawPath(path,Brush.linearGradient(listOf(Color.White.copy(alpha=if(light).70f else .46f),Color.White.copy(alpha=.1f),if(light)Color.Black.copy(alpha=.08f) else Color.White.copy(alpha=.13f)),Offset(center.x-32.dp.toPx(),0f),Offset(center.x+32.dp.toPx(),h)),style=Stroke(.85.dp.toPx()))
+ val density=LocalDensity.current.density
+ var pixels by remember{mutableStateOf(IntSize.Zero)}
+ val length=if(vertical)pixels.height.toFloat() else pixels.width.toFloat()
+ val cross=if(vertical)pixels.width.toFloat() else pixels.height.toFloat()
+ val inset=(if(vertical)5f else 6f)*density
+ val step=((length-2*inset)/tabCount).coerceAtLeast(1f)
+ val target=(selectedIndex.toFloat()+if(dragging)(dragOffset?.invoke()?:dragOffsetPx)/step else 0f).coerceIn(0f,tabCount-1f)
+ val location by animateFloatAsState(target,if(dragging||reduceMotion)snap() else spring(FluidGlassStyle.POSITION_DAMPING,FluidGlassStyle.POSITION_STIFFNESS),label="dock-position")
+ val tail by animateFloatAsState(location,if(reduceMotion)snap() else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="dock-water-trail")
+ val touch by animateFloatAsState(if(engaged)1f else 0f,if(reduceMotion)snap() else spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="dock-elastic-contact")
+ val dark=darkBackdrop?:(androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f)
+ val p=if(dark)BrandPalette.dark else BrandPalette.light
+ val colors=FluidGlassStyle.navigation(p,dark)
+ Box(modifier.matchParentSize().onSizeChanged{pixels=it}) {
+  val g=DockLiquidGeometry.shape(length,cross,density,tabCount,location,if(reduceMotion)location else tail,vertical,touch)
+  if(g!=null){
+   val path=dockLensPath(length,cross,density,tabCount,location,if(reduceMotion)location else tail,touch,vertical)
+   if(vertical)path.transform(Matrix().apply{translate(cross,0f);rotateZ(90f)})
+   val b=path.getBounds()
+   if(b.width>0&&b.height>0){
+    val local=remember(path,b){Path().apply{addPath(path,Offset(-b.left,-b.top))}}
+    val mask=remember(local){GenericShape{_,_->addPath(local)}}
+    Canvas(Modifier.offset{IntOffset(b.left.roundToInt(),b.top.roundToInt())}
+     .requiredSize((b.width/density).dp,(b.height/density).dp).clip(mask)
+     .thinnBackdrop(reduceTransparency,(g.height/density/2).dp,.5f,frostScale=.78f,materialDark=dark)) {
+     drawPath(local,if(reduceTransparency)p.primaryContainer else colors.selection)
+     val energy=touch.coerceIn(0f,1f)
+     val center=Offset(size.width*.38f,size.height*.20f)
+     drawPath(local,Brush.radialGradient(listOf(Color.White.copy(alpha=if(dark).06f+energy*.10f else .16f+energy*.14f),Color.Transparent),center,size.maxDimension))
+     drawPath(local,Brush.linearGradient(listOf(Color.White.copy(alpha=if(dark).50f else .72f),colors.rim,Color.White.copy(alpha=.10f)),Offset.Zero,Offset(size.width,size.height)),style=Stroke(.8f*density))
+     if(energy>.01f){
+      val ripple=(abs(g.headX-g.tailX)/step).coerceIn(0f,.5f)
+      drawPath(local,colors.rim.copy(alpha=.08f+energy*.10f+ripple*.10f),style=Stroke((2f+energy+ripple*3)*density))
+     }
+    }
+   }
   }
  }
 }
 internal fun dockLensPath(width:Float,height:Float,density:Float,count:Int,head:Float,tail:Float,touch:Float,vertical:Boolean=false):Path {
  val g=DockLiquidGeometry.shape(width,height,density,count,head,tail,vertical,touch)?:return Path()
- val a=g.width/2;val r=g.height/2;val y=g.centerY;val left=minOf(g.headX,g.tailX);val right=maxOf(g.headX,g.tailX)
- if(abs(right-left)<density*.5f)return Path().apply{addRoundRect(RoundRect(Rect(left-a,y-r,left+a,y+r),CornerRadius(r)))}
- val mid=(left+right)/2;val neck=g.neckHalfHeight.coerceAtLeast(r*.64f);val l=left-a;val z=right+a;val shoulder=(a-r).coerceAtLeast(0f)
- return Path().apply{
-  moveTo(l+r,y-r);cubicTo(left+shoulder,y-r,mid-(right-left)*.14f,y-neck,mid,y-neck)
-  cubicTo(mid+(right-left)*.14f,y-neck,right-shoulder,y-r,z-r,y-r)
-  cubicTo(z-r*.45f,y-r,z,y-r*.55f,z,y);cubicTo(z,y+r*.55f,z-r*.45f,y+r,z-r,y+r)
-  cubicTo(right-shoulder,y+r,mid+(right-left)*.14f,y+neck,mid,y+neck)
-  cubicTo(mid-(right-left)*.14f,y+neck,left+shoulder,y+r,l+r,y+r)
-  cubicTo(l+r*.45f,y+r,l,y+r*.55f,l,y);cubicTo(l,y-r*.55f,l+r*.45f,y-r,l+r,y-r);close()
- }
+ return liquidCapsulePath(g.headX,g.tailX,g.width,g.height,g.centerY,g.neckHalfHeight)
 }

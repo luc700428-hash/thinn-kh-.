@@ -98,6 +98,7 @@ fun ThinnAppTheme(content:@Composable ()->Unit) {
         // Compose Foundation >=1.8: remove Android stretch/glow globally.
         // Add our own rubber-band effect ONLY to appropriate scroll surfaces.
         CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides colors.onSurface,
             LocalThemeMotionHost provides true,
             LocalReadingBaseDensity provides baseDensity,
             io.atmos.weather.presentation.home.LocalAppearance provides reading,

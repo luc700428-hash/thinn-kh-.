@@ -279,15 +279,7 @@ fun SeismicLiveMapPage(
                     }
                     Spacer(Modifier.height(12.dp))
                     Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
-                    io.atmos.weather.next.NextReorderableToolDock(
-                        actions=listOf(
-                            io.atmos.weather.next.NextToolAction("綜合","綜合",Icons.Rounded.Layers),
-                            io.atmos.weather.next.NextToolAction("測站","測站",Icons.Rounded.Sensors),
-                            io.atmos.weather.next.NextToolAction("震央","震央",Icons.Rounded.MyLocation)),
-                        selectedId=layer,onSelected={layer=it;selected=null},onOrderChanged={},
-                        modifier=Modifier.widthIn(max=io.atmos.weather.ui.TabletDockGeometry.contentLength(3,androidx.compose.ui.platform.LocalDensity.current.fontScale).dp).fillMaxWidth(),maxVisible=3,
-                        reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
-                        reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency())
+                    SeismicLayerSelector(layer,{layer=it;selected=null})
                     }
                     Spacer(Modifier.height(12.dp))
                     Box(Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(19.dp))
@@ -615,3 +607,26 @@ private fun MapGlass(modifier: Modifier = Modifier, content: @Composable ColumnS
 }
 
 private fun formatted(ms:Long):String = SimpleDateFormat("HH:mm:ss",Locale.TAIWAN).format(Date(ms))
+
+/** The map control samples its own themed surface, never a weather page behind the map. */
+@Composable internal fun SeismicLayerSelector(selected:String,onSelect:(String)->Unit,modifier:Modifier=Modifier) {
+    val p=MaterialTheme.colorScheme
+    val scene=io.atmos.weather.ui.rememberThinnBackdrop()
+    Box(modifier.widthIn(max=io.atmos.weather.ui.TabletDockGeometry.contentLength(3,androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
+        .fillMaxWidth().clip(RoundedCornerShape(999.dp)).testTag("seismic-layer-selector")) {
+        io.atmos.weather.ui.ThinnBackdropCapture(scene,Modifier.matchParentSize()) {
+            Box(Modifier.fillMaxSize().background(p.surface))
+        }
+        CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides scene) {
+            io.atmos.weather.next.NextReorderableToolDock(
+                actions=listOf(
+                    io.atmos.weather.next.NextToolAction("綜合","綜合",Icons.Rounded.Layers),
+                    io.atmos.weather.next.NextToolAction("測站","測站",Icons.Rounded.Sensors),
+                    io.atmos.weather.next.NextToolAction("震央","震央",Icons.Rounded.MyLocation)),
+                selectedId=selected,onSelected=onSelect,onOrderChanged={},modifier=Modifier.fillMaxWidth(),maxVisible=3,
+                darkBackdrop=p.background.red<.5f,
+                reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
+                reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency())
+        }
+    }
+}

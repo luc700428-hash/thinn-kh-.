@@ -22,7 +22,7 @@ internal data class WeatherPhysicsStyle(val rain:Float=0f,val snow:Float=0f,
   }
   fun windPixels(kmh:Float,strong:Boolean,time:Float):Float {
    val base=(if(kmh.isFinite())kmh else 0f).coerceIn(-190f,190f)*3.2f
-   val gust=if(strong).92f+.36f*sin(time*1.7f)+.17f*sin(time*4.3f) else 1f+.08f*sin(time*.7f)
+   val gust=if(strong)1f+.24f*MotionNoise.value(time,731,.35f)+.16f*MotionNoise.value(time,293,1.4f) else 1f+.08f*MotionNoise.value(time,179,.18f)
    return (base*gust).coerceIn(-620f,620f)
   }
  }

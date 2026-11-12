@@ -18,6 +18,13 @@ class WidgetLayoutPlanTest {
             assertEquals(p.body,p.sp(p.body)*p.systemFontScale,.001f)
         }
     }
+    @Test fun resizingGrowsTheTypographyAsWellAsTheAvailableSpace() {
+        val sizes=listOf(180f,320f,480f,720f).map{WidgetLayoutPlan.create(it,it)}
+        sizes.zipWithNext().forEach{(a,b)->
+            assertTrue(b.hero>a.hero);assertTrue(b.city>a.city);assertTrue(b.body>a.body)
+            assertTrue(b.caption>a.caption);assertTrue(b.clock>a.clock)
+        }
+    }
     @Test fun missingAndInvalidMeasurementsStayFinite() {
         val p=WidgetLayoutPlan.create(Float.NaN,Float.POSITIVE_INFINITY,Float.NaN,Float.NaN)
         assertTrue(p.width.isFinite()&&p.height.isFinite()&&p.clock.isFinite())

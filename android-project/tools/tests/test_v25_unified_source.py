@@ -18,7 +18,8 @@ class UnifiedWiringTests(unittest.TestCase):
         self.assertNotIn('updateValue(1-currentValue)',a)
     def test_global_glimmer_obeys_accessibility(self):
         src=(SRC/'next/NextOpticalSurface.kt').read_text()
-        self.assertIn('if(reducedMotion || reduceTransparency || calm)',src)
+        self.assertIn('if(pressed&&!reducedMotion&&!reduceTransparency)',src)
+        self.assertNotIn('rememberInfiniteTransition',src)
         self.assertIn('opticalPhase',src)
     def test_taiwan_voice_used_in_both_earthquake_speakers(self):
         for f in ('SeismicSpeech.kt','SeismicTrainingVoice.kt'):

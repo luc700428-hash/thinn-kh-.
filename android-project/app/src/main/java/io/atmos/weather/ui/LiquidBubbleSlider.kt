@@ -27,20 +27,8 @@ import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine
 import kotlin.math.abs
 
-private fun lensPath(g:BubbleSliderGeometry.Lens):Path {
- val r=g.height/2;val left=minOf(g.head,g.tail)-g.width/2;val right=maxOf(g.head,g.tail)+g.width/2
- val mid=(g.head+g.tail)/2;val neck=g.neck.coerceIn(r*.62f,r)
- return Path().apply{
-  moveTo(left+r,g.y-r);cubicTo(left+g.width*.8f,g.y-r,mid,g.y-neck,mid,g.y-neck)
-  cubicTo(mid,g.y-neck,right-g.width*.8f,g.y-r,right-r,g.y-r)
-  cubicTo(right-r*.45f,g.y-r,right,g.y-r*.55f,right,g.y)
-  cubicTo(right,g.y+r*.55f,right-r*.45f,g.y+r,right-r,g.y+r)
-  cubicTo(right-g.width*.8f,g.y+r,mid,g.y+neck,mid,g.y+neck)
-  cubicTo(mid,g.y+neck,left+g.width*.8f,g.y+r,left+r,g.y+r)
-  cubicTo(left+r*.45f,g.y+r,left,g.y+r*.55f,left,g.y)
-  cubicTo(left,g.y-r*.55f,left+r*.45f,g.y-r,left+r,g.y-r);close()
- }
-}
+private fun lensPath(g:BubbleSliderGeometry.Lens):Path =
+    liquidCapsulePath(g.head,g.tail,g.width,g.height,g.y,g.neck)
 
 /** A fixed independent track capture feeds only the water lens; foreground never captures itself. */
 @Composable
@@ -58,9 +46,10 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
     val change by rememberUpdatedState(onValueChange)
     val finish by rememberUpdatedState(onValueChangeFinished)
     var dragging by remember{mutableStateOf(false)}
+    var pressed by remember{mutableStateOf(false)}
     val head by animateFloatAsState(fraction,if(dragging||reduce)tween(0) else spring(response.damping,response.stiffness),label="bubble head")
-    val tail by animateFloatAsState(head,if(reduce)tween(0) else spring(.92f,95f),label="adhering water tail")
-    val lift by animateFloatAsState(if(dragging&&!reduce)1f else 0f,if(reduce)tween(0) else spring(.62f,240f),label="bubble rebound")
+    val tail by animateFloatAsState(head,if(reduce)tween(0) else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="adhering water tail")
+    val lift by animateFloatAsState(if((dragging||pressed)&&!reduce)1f else 0f,if(reduce)tween(0) else spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="bubble rebound")
     val dark=MaterialTheme.colorScheme.background.red<.5f
     val active=colors?.activeTrackColor?:MaterialTheme.colorScheme.primary
     val inactive=colors?.inactiveTrackColor?:if(dark)brandColor(0xFF565C5A) else Color(0xFFC7C7CC)
@@ -76,7 +65,8 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
         .then(if(enabled)Modifier.pointerInput(low,high,steps) {
             val inset=(BubbleSliderGeometry.insetDp*density.density).coerceAtMost(size.width/2f)
             fun mapped(x:Float)=quantized(low+(high-low)*((x-inset)/(size.width-2*inset).coerceAtLeast(1f)).coerceIn(0f,1f))
-            detectTapGestures {p->change(mapped(p.x));feedback?.play(HapticEngine.Event.TAP);finish?.invoke()}
+            detectTapGestures(onPress={pressed=true;try{tryAwaitRelease()}finally{pressed=false}},
+                onTap={p->change(mapped(p.x));feedback?.play(HapticEngine.Event.TAP);finish?.invoke()})
         }.pointerInput(low,high,steps) {
             val inset=(BubbleSliderGeometry.insetDp*density.density).coerceAtMost(size.width/2f)
             var grab=0f
@@ -104,7 +94,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
             }
         }
         CompositionLocalProvider(LocalThinnBackdrop provides source) {
-        Canvas(Modifier.matchParentSize().clip(mask).thinnBackdrop(opaque,18.dp,head,frostScale=.22f)) {
+        Canvas(Modifier.matchParentSize().clip(mask).thinnBackdrop(opaque,18.dp,head,frostScale=.70f)) {
                     val g=BubbleSliderGeometry.lens(size.width,size.height,density.density,head,opticalTail,lift,reduce)?:return@Canvas
                     val inset=30.dp.toPx().coerceAtMost(size.width/2)
                     val end=size.width-inset

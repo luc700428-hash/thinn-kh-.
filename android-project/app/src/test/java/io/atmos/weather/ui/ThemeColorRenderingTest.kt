@@ -30,6 +30,7 @@ class ThemeColorPickerRenderingTest:TabletDockFixture() {
         val context=RuntimeEnvironment.getApplication();initializeWorkspaceWorkers(context)
         for(dark in listOf(false,true)) {
             var primary=0
+            var showing by mutableStateOf(true)
             windowWidth=768;windowHeight=1024
             render(dark,1.5f,"theme-color-picker",{
                 AppSystemBars(dark)
@@ -38,11 +39,15 @@ class ThemeColorPickerRenderingTest:TabletDockFixture() {
                     Column(Modifier.fillMaxSize().padding(24.dp)) {
                         var query by remember{mutableStateOf("嘉義")}
                         BasicTextField(query,{query=it},Modifier.testTag("theme-query"))
-                        ThemeColorPicker()
+                        if(showing)ThemeColorPage(Modifier.weight(1f)){showing=false}
                     }
                 }
             }){view,_->
+                val original=AppThemeColors.saved
                 for(theme in AppThemeColor.entries) {
+                    val gallery=tagged(view,"theme-color-gallery")
+                    assertTrue(gallery.config[SemanticsActions.ScrollToIndex].action!!.invoke(theme.ordinal))
+                    pump(view).recycle()
                     val option=nodes(view).single{it.config.contains(SemanticsProperties.ContentDescription)&&
                         "主題顏色：${theme.title}" in it.config[SemanticsProperties.ContentDescription]}
                     assertTrue(option.config[SemanticsActions.OnClick].action!!.invoke())
@@ -53,22 +58,23 @@ class ThemeColorPickerRenderingTest:TabletDockFixture() {
                     val background=window.decorView.background as android.graphics.drawable.ColorDrawable
                     assertEquals(BrandPalette.scheme(theme,dark).background.toArgb(),background.color)
                     assertEquals(android.graphics.Color.TRANSPARENT,window.navigationBarColor)
-                    assertEquals(theme.id,context.getSharedPreferences("thinn_settings",0).getString(AppThemeColors.KEY,null)?:AppThemeColor.FOREST.id)
+                    assertEquals(original,AppThemeColors.saved)
+                    assertEquals(original.id,context.getSharedPreferences("thinn_settings",0).getString(AppThemeColors.KEY,null)?:AppThemeColor.FOREST.id)
                     assertEquals("嘉義",tagged(view,"theme-query").config[SemanticsProperties.EditableText].text)
                     val options=nodes(view).filter{it.config.contains(SemanticsProperties.ContentDescription)&&
                         it.config[SemanticsProperties.ContentDescription].any{s->s.startsWith("主題顏色：")}}
-                    assertEquals(AppThemeColor.entries.size,options.size);assertEquals(1,options.count{it.config[SemanticsProperties.Selected]})
-                    options.forEach{visible(it.boundsInRoot)}
+                    assertEquals(1,options.count{it.config[SemanticsProperties.Selected]})
+                    visible(option.boundsInRoot)
                     val widget=io.atmos.weather.widgets.WidgetGlassRenderer.palette(0)
-                    val actualHue=FloatArray(3);val expectedHue=FloatArray(3)
-                    android.graphics.Color.colorToHSV(widget.top,actualHue)
-                    android.graphics.Color.colorToHSV(theme.primaryArgb.toInt(),expectedHue)
-                    val distance=kotlin.math.abs(actualHue[0]-expectedHue[0])
-                    assertTrue("Widget kept the previous theme",minOf(distance,360-distance)<18f)
+                    assertEquals(io.atmos.weather.widgets.WidgetGlassRenderer.paletteFor(original,0).top,widget.top)
                     save(view,"theme-picker-${theme.id}-$dark")
                 }
-                // Re-reading preferences is the same route used after process or worker startup.
-                AppThemeColors.initialize(context);assertEquals(AppThemeColor.entries.last(),AppThemeColors.value)
+                val confirm=nodes(view).single{it.config.contains(SemanticsProperties.ContentDescription)&&"確認" in it.config[SemanticsProperties.ContentDescription]&&it.config.contains(SemanticsActions.OnClick)}
+                assertTrue(confirm.config[SemanticsActions.OnClick].action!!.invoke());pump(view).recycle()
+                assertFalse(showing)
+                AppThemeColors.initialize(context)
+                assertEquals(AppThemeColor.entries.last(),AppThemeColors.value)
+                assertEquals(AppThemeColor.entries.last(),AppThemeColors.saved)
             }
         }
     }

@@ -43,6 +43,21 @@ EXPECTED = {'io.atmos.weather.ui.WeatherSurfacePhysicsTest': {'scrollingEitherWa
  'io.atmos.weather.ui.TabletDockPositionsRenderingTest': {'allFourEdgesStayReadableInBothThemesAndRetainLiveFormState'}}
 
 
+# Keep the fluid-control, theme preview and wind/lightning regressions mandatory.
+EXPECTED.update({'io.atmos.weather.ui.LightningLeafMotionTest': {'lightningBranchesAreDeterministicAndEndOnTheActualImpact', 'coherentNoiseIsSmoothBoundedAndDifferentForEachLeaf', 'leafPhysicsAgreesAtSixtyAndOneHundredSixtySixHz', 'attachedLeavesFlutterIndependentlyAroundTheirContact', 'flashProfilesHaveIrregularIntervalsAndAtMostThreeReturnStrokes', 'navigationForegroundsRemainReadableInEveryThemeAndAppearance'}, 'io.atmos.weather.ui.ThemePreviewCancellationRenderingTest': {'returningCancelsThePreviewWithoutChangingSavedThemeOrWidget'}, 'io.atmos.weather.ui.FluidGlassContrastRenderingTest': {'selectedLensCoversItsCellAndDarkIconsRemainVisibleOverOppositeScenes'}, 'io.atmos.weather.ui.RefreshRatePolicyTest': {'accepts119Point88AndFallsBackOn90HzHardware', 'prefers144WhenHardwareSupportsIt', 'ignoresCorruptModesAndKeepsResolution', 'selectsExact166AndNeverChangesTheCurrentResolution', 'accepts165Point9AndDoesNotPreferAFasterModeUnnecessarily', 'doesNotChangeScreenResolutionToGetAHighRate'}, 'io.atmos.weather.next.DockLiquidGeometryTest': {'densityScalesMaterialAndNeckTogether', 'touchLiftsAndPullingDeformsTheMaterialWithoutMovingTheHitCell', 'overshootAndFastJumpsStayInsideTheDockAndNeverHighlightEveryTab', 'invalidMeasurementsAreNotPainted', 'restingLensesMatchTheInnerDockHeightAcrossDensitiesAndAxes'}})
+
+EXPECTED['io.atmos.weather.ui.OverflowDockRenderingTest']={'overflowUsesTheFourthSlotAndNamesItsSelectedDestination'}
+
+# Keep resize growth and seismic material isolation mandatory.
+EXPECTED.update({'io.atmos.weather.ui.SeismicSelectorContrastRenderingTest': {'mapLayersKeepTheirOwnReadableMaterialOverAnUnrelatedWeatherBackdrop'}, 'io.atmos.weather.widgets.WidgetResizeRenderingTest': {'enlargedWidgetsGrowTheirTypeAndTheSquareBuddyUsesBothColumns'}, 'io.atmos.weather.widgets.WidgetLayoutPlanTest': {'missingAndInvalidMeasurementsStayFinite', 'resizingGrowsTheTypographyAsWellAsTheAvailableSpace', 'sizeChangesInformationDensityInsteadOfScalingOneLayout', 'largeTextIsFittedToAvailableSpaceAfterSystemScaling'}})
+
+EXPECTED['io.atmos.weather.widgets.WidgetResizeRenderingTest'].add('photoSizedWidgetsKeepTemperatureTimeAndDateVisibleAfterResize')
+EXPECTED['io.atmos.weather.presentation.home.AppearanceSaveControllerTest']={
+    'continuousDragPreviewsDoNotWriteAtDisplayFrameRate',
+    'backgroundOrDisposalKeepsTheFinalValueAndRefreshesPlacedWidgetsOnce',
+    'resumingDragCancelsTheOutdatedLauncherRefresh',
+}
+
 def verify(root):
     seen = set()
     total = 0

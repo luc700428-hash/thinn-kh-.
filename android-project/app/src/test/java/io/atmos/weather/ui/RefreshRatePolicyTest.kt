@@ -13,9 +13,13 @@ class RefreshRatePolicyTest {
         assertEquals(119.88f,RefreshRatePolicy.choose(listOf(mode(1,60f),mode(2,119.88f)),1080,2400)!!.hz,.001f)
         assertEquals(90f,RefreshRatePolicy.choose(listOf(mode(1,60f),mode(2,90f)),1080,2400)!!.hz,.001f)
     }
-    @Test fun accepts143Point9AndDoesNotPreferAFasterModeUnnecessarily() {
-        assertEquals(2,RefreshRatePolicy.choose(listOf(mode(1,120f),mode(2,143.9f),mode(3,165f)),1080,2400)!!.id)
-        assertEquals(144f,RefreshRatePolicy.TARGET_HZ,0f)
+    @Test fun accepts165Point9AndDoesNotPreferAFasterModeUnnecessarily() {
+        assertEquals(2,RefreshRatePolicy.choose(listOf(mode(1,120f),mode(2,165.9f),mode(3,240f)),1080,2400)!!.id)
+        assertEquals(166f,RefreshRatePolicy.TARGET_HZ,0f)
+    }
+    @Test fun selectsExact166AndNeverChangesTheCurrentResolution() {
+        assertEquals(4,RefreshRatePolicy.choose(listOf(mode(1,120f),mode(2,144f),mode(3,165.9f),mode(4,166f),mode(5,166f,720)),1080,2400)!!.id)
+        assertEquals(165f,RefreshRatePolicy.choose(listOf(mode(1,60f),mode(2,165f)),1080,2400)!!.hz,0f)
     }
     @Test fun ignoresCorruptModesAndKeepsResolution() {
         assertNull(RefreshRatePolicy.choose(listOf(mode(1,Float.NaN),mode(2,-1f)),1080,2400))
