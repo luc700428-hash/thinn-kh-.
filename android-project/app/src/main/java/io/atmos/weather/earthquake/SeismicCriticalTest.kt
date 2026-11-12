@@ -38,7 +38,7 @@ internal object SeismicCriticalTest {
             now-prefs(ctx).getLong("created",0L) in 0..65_000L&&SeismicCriticalMode.enabled(ctx)&&SeismicAlertDelivery.active.value==null
     fun cancel(ctx:Context) {
         pending?.let{(handler,task)->handler.removeCallbacks(task)};pending=null
-        prefs(ctx).edit().remove("token").remove("created").apply()
+        prefs(ctx).edit().remove("token").remove("created").remove("status").apply()
         (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION)
     }
     private fun publish(ctx:Context,token:String) {
@@ -61,7 +61,10 @@ internal object SeismicCriticalTest {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setContentIntent(action).setAutoCancel(true).setTimeoutAfter(60_000)
         if(SeismicAlertDelivery.mayUseFullScreen(ctx)&&importance>=NotificationManager.IMPORTANCE_HIGH)note.setFullScreenIntent(action,true)
         runCatching{nm.notify(NOTIFICATION,note.build())}
-            .onSuccess{status(ctx,"演練通知已送出；請依實際聲音與鎖屏畫面確認")}
+            .onSuccess{
+                val visible=SeismicForegroundWindow.open(intent){valid(ctx,token)}
+                status(ctx,if(visible)"演練已開始，並非真實地震" else "演練提醒已送出，請確認鎖定畫面與聲音")
+            }
             .onFailure{status(ctx,"測試未送出：通知權限或系統狀態已改變")}
     }
 }

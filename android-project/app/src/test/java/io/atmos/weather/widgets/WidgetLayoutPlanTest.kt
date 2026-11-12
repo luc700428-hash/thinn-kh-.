@@ -25,6 +25,14 @@ class WidgetLayoutPlanTest {
             assertTrue(b.caption>a.caption);assertTrue(b.clock>a.clock)
         }
     }
+    @Test fun launcherPreferenceIsBoundedAndChangesReadingSizesIndependently(){
+        for(value in listOf(Float.NaN,Float.POSITIVE_INFINITY,Float.NEGATIVE_INFINITY))assertEquals(1f,WidgetTypography.bounded(value),.001f)
+        assertEquals(.8f,WidgetTypography.bounded(-4f),.001f);assertEquals(1.6f,WidgetTypography.bounded(5f),.001f)
+        val small=WidgetLayoutPlan.create(360f,360f,widgetScale=.8f)
+        val large=WidgetLayoutPlan.create(360f,360f,widgetScale=1.6f)
+        assertTrue(large.city>small.city);assertTrue(large.body>small.body);assertTrue(large.caption>small.caption);assertTrue(large.hero>small.hero)
+        assertEquals(small.padding,large.padding,.001f);assertEquals(small.mode,large.mode)
+    }
     @Test fun missingAndInvalidMeasurementsStayFinite() {
         val p=WidgetLayoutPlan.create(Float.NaN,Float.POSITIVE_INFINITY,Float.NaN,Float.NaN)
         assertTrue(p.width.isFinite()&&p.height.isFinite()&&p.clock.isFinite())

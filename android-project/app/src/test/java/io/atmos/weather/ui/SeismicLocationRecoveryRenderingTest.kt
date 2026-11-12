@@ -28,13 +28,13 @@ class SeismicLocationRecoveryRenderingTest:WeatherInformationRenderingFixture() 
         render(true,1.5f,"late-location",{SeismicWarningOverlay(incident,false,null,{})}){_,_->
             val dialog=ShadowDialog.getLatestDialog();val sheet=dialog.window!!.decorView;pump(sheet).recycle()
             assertTrue(nodes(sheet).any{text(it,"選擇所在地")})
-            assertTrue(nodes(sheet).any{text(it,"尚未取得所在地 · 無法計算抵達時間")})
+            assertTrue(nodes(sheet).any{text(it,"請選擇所在地")})
             // Same persisted preference as the inline location menu and earthquake settings.
             SeismicUserLocation.choose(ctx,"嘉義市")
-            settle(sheet){nodes(sheet).any{text(it,"本機 IASP91 模型估算")}}
+            settle(sheet){nodes(sheet).any{text(it,"本機走時估算")}}
             assertSame(dialog,ShadowDialog.getLatestDialog())
             assertTrue(nodes(sheet).any{text(it,"嘉義市")})
-            assertFalse(nodes(sheet).any{text(it,"尚未取得所在地 · 無法計算抵達時間")})
+            assertFalse(nodes(sheet).any{text(it,"請選擇所在地")})
             save(sheet,"late-location-recovered")
         }
     }

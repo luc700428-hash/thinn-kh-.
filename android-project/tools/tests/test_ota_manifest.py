@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from hashlib import sha256
@@ -39,6 +41,22 @@ class ManifestTests(unittest.TestCase):
         self.notes.write_text("大"*50000,encoding='utf-8')
         with self.assertRaisesRegex(ValueError,'128 KiB'):
             module.make_manifest(self.apk,self.notes,"25.0.300",25000300)
+
+    def test_stable_notes_require_short_current_changes(self):
+        current=Path(__file__).resolve().parents[1]/"stable_maintenance_notes.md"
+        module.make_manifest(self.apk,current,"25.0.340",25000340,concise=True)
+        for body in ("\n".join("- 變更" for _ in range(7)),"- "+"字"*100,"工程細節\n- 變更"):
+            self.notes.write_text("<!-- THINN_INCREMENTAL_CHANGES -->\n"+body+"\n<!-- END_THINN_INCREMENTAL_CHANGES -->",encoding="utf-8")
+            with self.assertRaises(ValueError):
+                module.make_manifest(self.apk,self.notes,"25.0.340",25000340,concise=True)
+
+    def test_release_cli_cannot_publish_a_long_changes_list(self):
+        self.notes.write_text("<!-- THINN_INCREMENTAL_CHANGES -->\n"+"- 變更\n"*7+"<!-- END_THINN_INCREMENTAL_CHANGES -->",encoding="utf-8")
+        target=Path(self.tmp.name)/"ota.json"
+        result=subprocess.run([sys.executable,str(MODULE_PATH),"--apk",str(self.apk),"--notes",str(self.notes),"--version","25.0.340","--version-code","25000340","--output",str(target)],capture_output=True,text=True)
+        self.assertNotEqual(0,result.returncode)
+        self.assertIn("1–6 short user-facing bullets",result.stderr)
+        self.assertFalse(target.exists())
 
     def test_reject_version_injection(self):
         with self.assertRaises(ValueError):

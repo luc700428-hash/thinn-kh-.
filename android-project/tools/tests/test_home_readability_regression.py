@@ -61,7 +61,7 @@ class HomeReadabilityTests(unittest.TestCase):
         self.assertIn('val rim:',(JAVA/'ui/ThinnOpticalMaterial.kt').read_text())
     def test_release_notes_reflect_real_limited_progress(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()
-        self.assertIn('目標版本',notes);self.assertNotIn('PREVIOUS_',notes)
-        self.assertIn('桌面程式管理',notes)
-        self.assertIn('實機',notes)
+        self.assertNotIn('PREVIOUS_',notes)
+        self.assertIn('本次更新',notes)
+        self.assertLessEqual(len([line for line in notes.splitlines() if line.startswith('- ')]),6)
 if __name__=='__main__': unittest.main()

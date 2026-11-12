@@ -231,7 +231,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                     }
                                 }
                             }
-                            Text("未手動選擇時優先使用最近 15 分鐘內的手機定位。無可靠定位就不宣稱預估當地震度。",color=pale,fontSize=14.sp)
+                            Text("依此位置估算當地震度與抵達時間。",color=pale,fontSize=14.sp)
                         }
                         SettingsPanel("接收狀態") {SeismicDeliveryReadiness(criticalEnabled=critical)}
                     }
@@ -253,7 +253,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             }
                             Text("最低 1 級 · 預設 3 級。震度與規模 M 不同。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=8.dp))
                             HorizontalDivider(modifier=Modifier.padding(vertical=14.dp),color=MaterialTheme.colorScheme.outlineVariant)
-                            SettingsSwitch("所在地震度未知時仍提醒","來源與本機模型均無法判定時仍提醒；顯示『待來源提供』，不以其他縣市震度代替",unknown){unknown=it;pref.edit().putBoolean("eew_notify_unknown_local",it).apply()}
+                            SettingsSwitch("所在地震度未知時仍提醒","無法取得當地震度時，仍顯示速報並標示未知",unknown){unknown=it;pref.edit().putBoolean("eew_notify_unknown_local",it).apply()}
                         }
                         SettingsPanel("速報通知") {
                             listOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE).forEachIndexed { i,s ->
@@ -261,12 +261,12 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                 if(i<2) HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f), modifier=Modifier.padding(vertical=10.dp))
                             }
                         }
-                        SettingsPanel("鎖定畫面與焦點通知") {
-                            SettingsSwitch("緊急速報模式","正式速報改用鬧鐘音訊，可穿透鈴聲靜音；優先勿擾需另外授權。可隨時關閉。",critical) {
+                        SettingsPanel("警報顯示與聲音") {
+                            SettingsSwitch("緊急速報模式","使用鬧鐘音量；勿擾例外需另外授權",critical) {
                                 critical=it;SeismicCriticalMode.setEnabled(ctx,it);if(it)fullscreen=true
                             }
                             HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=MaterialTheme.colorScheme.outlineVariant)
-                            SettingsSwitch("允許鎖定時全螢幕警示", "只對有效且達提醒門檻的真實速報提出喚醒請求，需系統授權",fullscreen) {
+                            SettingsSwitch("允許鎖定時全螢幕警示", "達提醒門檻時請求喚醒畫面，需系統授權",fullscreen) {
                                 fullscreen=it;pref.edit().putBoolean("allow_seismic_full_screen",it).apply()
                             }
                             Spacer(Modifier.height(6.dp))
@@ -280,10 +280,10 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             Text("規模門檻：M ${"%.1f".format(java.util.Locale.US,magnitude)}",color=MaterialTheme.colorScheme.onSurface)
                             Slider(value=magnitude,onValueChange={magnitude=it},valueRange=3f..7f,steps=7,
                                 onValueChangeFinished={pref.edit().putFloat("report_min_magnitude",magnitude).apply()})
-                            Text("一般使用者不需要申請 CWA 授權碼；震後報告由公開的 ExpTech 資料來源查詢。",color=pale,fontSize=14.sp,lineHeight=21.sp)
+                            Text("此門檻只影響震後報告，不影響即時速報。",color=pale,fontSize=14.sp,lineHeight=21.sp)
                         }
                         SettingsPanel("測站檢知 · 進階選項") {
-                            Text("預設關閉。啟用後，只在第三方 RTS 測站資料連續三筆達門檻時發出本機觀測提醒；兩分鐘內不重複。這不是官方地震預警，也不能預測即將發生地震。",color=pale,fontSize=14.sp,lineHeight=19.sp)
+                            Text("第三方測站連續三筆達門檻時提醒，預設關閉。此功能不是地震預警。",color=pale,fontSize=14.sp,lineHeight=19.sp)
                             Spacer(Modifier.height(10.dp))
                             listOf(SeismicAlertPolicy.Scenario.DETECT_WEAK,SeismicAlertPolicy.Scenario.DETECT_MEDIUM,
                                 SeismicAlertPolicy.Scenario.DETECT_STRONG,SeismicAlertPolicy.Scenario.GAL_MEDIUM,
@@ -299,15 +299,15 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             Spacer(Modifier.height(10.dp));SoundRow(SeismicAlertPolicy.Scenario.REPORT)
                         }
                         SettingsPanel("即時地震語音") {
-                            SettingsSwitch("速報語音播報", "來源數值優先；補算會明說本機估算，並播報震央、規模與避難指引",eewVoice) {
+                            SettingsSwitch("速報語音播報", "播報當地震度、震央、規模與避難指引",eewVoice) {
                                 eewVoice=it;SeismicSpeech.setEnabled(ctx,"eew_voice_enabled",it)
                             }
                             Spacer(Modifier.height(9.dp))
-                            SettingsSwitch("震後報告語音播報", "收到新震後報告時播報；不宣稱第三方彙整為官方已驗證報告",reportVoice) {
+                            SettingsSwitch("震後報告語音播報", "收到新震後報告時播報",reportVoice) {
                                 reportVoice=it;SeismicSpeech.setEnabled(ctx,"report_voice_enabled",it)
                             }
                             Spacer(Modifier.height(9.dp))
-                            SettingsSwitch("歷史回放語音", "播放歷史速報首報時語音提醒『這是歷史回放，不是現在發生地震』",replayVoice) {
+                            SettingsSwitch("歷史回放語音", "回放時明確播報為歷史事件",replayVoice) {
                                 replayVoice=it;SeismicSpeech.setEnabled(ctx,"replay_voice_enabled",it)
                             }
                         }

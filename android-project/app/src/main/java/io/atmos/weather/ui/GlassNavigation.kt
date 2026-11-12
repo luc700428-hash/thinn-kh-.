@@ -136,11 +136,11 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         },
         onOrderChanged={ _ -> /* Main tabs have a fixed canonical order. */ },
         maxVisible=4,
-        allowReorder=false,vertical=vertical,fillAvailableHeight=edgeSized,darkBackdrop=darkBackdrop,
+        allowReorder=false,vertical=vertical,fillAvailableHeight=true,darkBackdrop=darkBackdrop,
         reduceMotion=rememberAppleReduceMotion(),
         reduceTransparency=rememberAppleReduceTransparency(),
         modifier=if(edgeSized)modifier else modifier.widthIn(max=(FloatingDockContent.length(4,androidx.compose.ui.platform.LocalDensity.current.fontScale)+32f).dp)
-            .fillMaxWidth().padding(horizontal=16.dp).height(maxOf(68f,54f+24f*androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
+            .fillMaxWidth().padding(horizontal=16.dp).height(FloatingDockContent.thickness(androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
     )
 }
 

@@ -37,13 +37,21 @@ class ChiChiWarningRenderingTest:WeatherInformationRenderingFixture() {
                 val dialog=ShadowDialog.getLatestDialog();assertNotNull(dialog);assertTrue(dialog.isShowing)
                 val sheet=dialog.window!!.decorView;pump(sheet).recycle()
                 assertTrue(sheet.width>=400)
-                for(label in listOf("臺灣 921 大地震演練","收到地震速報 · 慎防強烈搖晃","M 7.3","8 km","7 級")) {
+                for(label in listOf("臺灣 921 大地震演練","M 7.3","8 km")) {
                     val n=nodes(sheet).filter{text(it,label)}.minBy{it.boundsInRoot.top}
                     assertFalse("Clipped $label at $scale",layout(n).hasVisualOverflow)
-                    contrast(n,if(label in listOf("M 7.3","8 km","7 級"))palette.surface else palette.background)
+                    contrast(n,if(label in listOf("M 7.3","8 km"))palette.surface else palette.background)
                 }
                 assertTrue(nodes(sheet).any{text(it,"4 級")})
-                assertTrue(nodes(sheet).any{text(it,"本機模型估算 · 僅供演練")})
+                assertTrue(nodes(sheet).any{text(it,"本機演練估算")})
+                assertFalse(nodes(sheet).any{text(it,"7 級")})
+                assertTrue(nodes(sheet).none{it.config.contains(SemanticsProperties.VerticalScrollAxisRange)})
+                click(sheet,"歷史觀測與詳細資訊")
+                val details=ShadowDialog.getLatestDialog().window!!.decorView;pump(details).recycle()
+                assertTrue(nodes(details).any{text(it,"歷史最大震度（舊制）")})
+                assertTrue(nodes(details).any{text(it,"7 級")})
+                val dismiss=nodes(details).single{it.config.contains(SemanticsProperties.ContentDescription)&&"關閉" in it.config[SemanticsProperties.ContentDescription]&&it.config.contains(SemanticsActions.OnClick)}
+                assertTrue(dismiss.config[SemanticsActions.OnClick].action!!.invoke());pump(sheet).recycle()
                 save(sheet,"921-fullscreen-$dark-${(scale*100).toInt()}")
                 click(sheet,"結束模擬演練");pump(view).recycle();assertFalse(visible)
             }

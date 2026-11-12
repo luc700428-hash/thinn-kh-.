@@ -4,7 +4,7 @@ from pathlib import Path
 from math import sin,cos,pi
 import random
 ROOT=Path(__file__).resolve().parents[1];DRAW=ROOT/'app/src/main/res/drawable'
-KINDS=['sun','moon','cloud','rain','snow','storm','mist','unknown'];FRAMES=24
+KINDS=['sun','moon','cloud','rain','snow','storm','mist','unknown'];FRAMES=48;EYE_FRAMES=48;VARIANTS=6
 def path(d,fill='#00000000',stroke=None,width=1):
     a='' if stroke is None else f' android:strokeColor="{stroke}" android:strokeWidth="{width}" android:strokeLineCap="round" android:strokeLineJoin="round"'
     return f'<path android:pathData="{d}" android:fillColor="{fill}"{a}/>'
@@ -35,17 +35,24 @@ def body(k,day):
     return s
 def eyes(k,f,v=0):
     if k=='unknown':return ''
-    t=f/(FRAMES-1);blink=.24+random.Random(271+v*179).random()*.47;o=min(1,abs(t-blink)/.065)
-    if v==3:o=min(o,min(1,abs(t-.82)/.045))
-    gx=sin(t*2*pi)*(1+v*.5);gy=sin(t*4*pi)*.65;y=44 if k=='sun' else 46 if k=='moon' else 52;l,r=(37,52) if k=='moon' else (40,62);s=''
-    for x in [l,r]:
-        s+=path(f'M{x-2.2},{y}L{x+2.2},{y}',stroke='#FF283E5C',width=2.3) if o<.23 else oval(x+gx,y+gy,2.6,3.8*o,'#FF283E5C')+oval(x-.5+gx,y-1.6+gy,.85*o,.85*o,'#FFF8FCFF')
-    return s+path(f'M{l+5},{y+5}Q{(l+r)/2},{y+13} {r-5},{y+5}',stroke='#FF283E5C',width=1.5)
+    t=f/(EYE_FRAMES-1);blink=.24+random.Random(271+v*179).random()*.47
+    opening=lambda center,width:min(1,abs(t-center)/width)
+    o=opening(blink,.065)
+    if v in (3,5):o=min(o,opening(.82,.045))
+    # A smooth excursion returns to exactly the same resting gaze at each boundary.
+    focus=sin(t*pi)**2
+    gx=sin(t*2*pi)*(1+v*.32);gy=sin(t*4*pi)*(.45+v*.08)*focus
+    y=44 if k=='sun' else 46 if k=='moon' else 52;l,r=(37,52) if k=='moon' else (40,62);s=''
+    for index,x in enumerate([l,r]):
+        eye=opening(blink,.065) if v==4 and index==0 else (1 if v==4 else o)
+        s+=path(f'M{x-2.2},{y}L{x+2.2},{y}',stroke='#FF283E5C',width=2.3) if eye<.23 else oval(x+gx,y+gy,2.6,3.8*eye,'#FF283E5C')+oval(x-.5+gx,y-1.6+gy,.85*eye,.85*eye,'#FFF8FCFF')
+    return s+path(f'M{l+5},{y+5}Q{(l+r)/2},{y+13+.65*focus:.3f} {r-5},{y+5}',stroke='#FF283E5C',width=1.5)
 def fx(k,f,ground=False):
     t=f/FRAMES;s=''
     if k in ['rain','storm','snow']:
         for i in range(6):
-            x=23+i*10;q=(t+i/6)%1
+            x=23+i*10;q=(t*(1 if i%3 else 2)+i/6)%1
+            drift=sin(q*2*pi+i)*2.2 if k=='snow' else (q-.5)*(1+i%3)
             if ground:
                 age=(q-.82)/.18
                 if k=='snow':s+=oval(x,92,1.7,1,'#99EAF8FF')
@@ -55,7 +62,7 @@ def fx(k,f,ground=False):
                     for sign in [-1,1]:s+=oval(x+sign*age*5,91-sin(age*pi)*4,.65,.65,col)
             elif q<.82:
                 y=69+q/.82*22
-                s+=oval(x+sin(q*2*pi)*2,y,1.4,1.4,'#F2EAF8FF') if k=='snow' else path(f'M{x+1},{y:.3f}L{x},{y+3:.3f}',stroke='#D9A9E8FF',width=1.5)
+                s+=oval(x+drift,y,1.1+i%2*.35,1.1+i%2*.35,'#F2EAF8FF') if k=='snow' else path(f'M{x+1+drift:.3f},{y:.3f}L{x+drift:.3f},{y+2.5+i%3*.5:.3f}',stroke=['#C5A9E8FF','#E0BDEEFF','#A1A9E8FF'][i%3],width=1.1+i%3*.25)
     elif not ground and k!='unknown':
         for i,(x,y) in enumerate([(76,23),(20,60),(79,74)]):
             a=int(75+140*(.5+.5*sin((t+i/3)*2*pi)));col=f'#{a:02X}FFF4CC' if k in ['sun','moon'] else f'#{a:02X}D9F5FF';r=1.1+.6*sin((t+i/3)*2*pi)
@@ -74,8 +81,8 @@ def main():
             n=f'{k}_{f:02}';wet=k in ['rain','storm','snow'];write('buddy_vector_fx_'+n,fx(k,f),100,34,(0,64)) if wet else write('buddy_vector_fx_'+n,fx(k,f))
             if wet:write('buddy_vector_ground_'+n,fx(k,f,True),100,10,(0,86))
     for face in ['sun','moon','cloud']:
-        for v in range(4):
-            for f in range(FRAMES):write(f'buddy_vector_eye_{face}_{v}_{f:02}',eyes(face,f,v),47,28,(28,34 if face=='sun' else 36 if face=='moon' else 42))
+        for v in range(VARIANTS):
+            for f in range(EYE_FRAMES):write(f'buddy_vector_eye_{face}_{v}_{f:02}',eyes(face,f,v),47,28,(28,34 if face=='sun' else 36 if face=='moon' else 42))
     out=['package io.atmos.weather.widgets','import io.atmos.weather.R','internal object BuddyVectorResources {']
     def arr(n,vals):out.append(f'    val {n}=intArrayOf('+','.join('R.drawable.'+v for v in vals)+')')
     for k in KINDS:
@@ -83,15 +90,15 @@ def main():
         arr('fx_'+k,[f'buddy_vector_fx_{k}_{f:02}' for f in range(FRAMES)])
         if k in ['rain','storm','snow']:arr('ground_'+k,[f'buddy_vector_ground_{k}_{f:02}' for f in range(FRAMES)])
     for face in ['sun','moon','cloud']:
-        for v in range(4):arr(f'eye_{face}_{v}',[f'buddy_vector_eye_{face}_{v}_{f:02}' for f in range(FRAMES)])
+        for v in range(VARIANTS):arr(f'eye_{face}_{v}',[f'buddy_vector_eye_{face}_{v}_{f:02}' for f in range(EYE_FRAMES)])
     for fun,pre,day,wet in [('body','body',True,False),('still','still',True,False),('effects','fx',False,False),('ground','ground',False,True)]:
         out.append(f'    fun {fun}(kind:WeatherBuddyArt.Kind'+(',day:Boolean' if day else '')+')=when(kind) {')
         for k in (['rain','storm','snow'] if wet else KINDS):out.append(f'        WeatherBuddyArt.Kind.{k.upper()}->{pre}_{k}'+('[if(day)0 else 1]' if day else ''))
         if wet:out.append('        else->intArrayOf()')
         out.append('    }')
-    out+=['    fun eyes(kind:WeatherBuddyArt.Kind,variant:Int):IntArray {','        val v=Math.floorMod(variant,4)','        return when(kind) {']
-    for k in ['sun','moon']:out.append(f'            WeatherBuddyArt.Kind.{k.upper()}->arrayOf('+','.join(f'eye_{k}_{v}' for v in range(4))+')[v]')
-    out+=['            else->arrayOf(eye_cloud_0,eye_cloud_1,eye_cloud_2,eye_cloud_3)[v]','        }','    }','}']
+    out+=['    fun eyes(kind:WeatherBuddyArt.Kind,variant:Int):IntArray {',f'        val v=Math.floorMod(variant,{VARIANTS})','        return when(kind) {']
+    for k in ['sun','moon']:out.append(f'            WeatherBuddyArt.Kind.{k.upper()}->arrayOf('+','.join(f'eye_{k}_{v}' for v in range(VARIANTS))+')[v]')
+    out += ['            else->arrayOf('+','.join(f'eye_cloud_{v}' for v in range(VARIANTS))+')[v]','        }','    }','}']
     (ROOT/'app/src/main/java/io/atmos/weather/widgets/BuddyVectorResources.kt').write_text('\n'.join(out)+'\n')
     print('Native vector resources:',len(list(DRAW.glob('buddy_vector_*.xml'))))
 if __name__=='__main__':main()

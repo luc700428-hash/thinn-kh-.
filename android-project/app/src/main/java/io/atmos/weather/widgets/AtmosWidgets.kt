@@ -51,7 +51,7 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
 @Composable internal fun OpticalWidgetContent(context:Context,variant:Int,data:OpticalWidgetData) {
     val size=LocalSize.current
     val prefs=context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
-    val plan=WidgetLayoutPlan.create(size.width.value,size.height.value,prefs.getFloat("v4_fontscale",1f),context.resources.configuration.fontScale)
+    val plan=WidgetLayoutPlan.create(size.width.value,size.height.value,prefs.getFloat("v4_fontscale",1f),context.resources.configuration.fontScale,WidgetTypography.read(context))
     val family=when(variant){25->5;26->6;27->7;28->8;else->variant/5}
     val index=when(variant){25->0;26->3;27,28->if(data.day)0 else 1;else->variant%5}
     val alert=data.alertRecent&&(family==4||family==5)
@@ -94,6 +94,10 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
 }
 @Composable private fun BuddyContent(context:Context,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean) {
     val p=s.plan
+    if(p.textScale!=1f) {
+        ScaledBuddyContent(context,d,s,motion)
+        return
+    }
     val location=io.atmos.weather.location.LocationLabels.microcity(d.city).ifBlank{d.city}
     val shortRange=d.highLow.replace("最高 ","高").replace("最低 ","低")
     val visualScale=p.typeGrowth
@@ -185,6 +189,32 @@ private class WidgetStyle(val plan:WidgetLayoutPlan,val colors:WidgetGlassRender
         Spacer(GlanceModifier.height(3.dp));WText(shortRange,s,s.soft,captionSize)
         if(clock){Spacer(GlanceModifier.height(6.dp));LiveClock(context,s,25f,false)}
     }
+}
+@Composable private fun ScaledBuddyContent(context:Context,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean) {
+    val p=s.plan
+    val title=minOf(p.city,p.innerWidth/9f)
+    val header=title*1.65f+6f
+    val footer=if(p.showFooter)p.caption*1.65f+8f else 0f
+    val rangeHeight=if(p.showHighLow)p.caption*1.7f+6f else 0f
+    val clockRoom=(p.innerHeight-header-footer-rangeHeight-14f-p.body*1.85f-32f*1.85f)/1.55f
+    val showClock=p.innerHeight>=220f&&p.innerWidth>=200f&&clockRoom>=14f
+    val clock=if(!showClock)0f else minOf(38f*p.typeGrowth*p.textScale,p.innerWidth/(if(DateFormat.is24HourFormat(context))4.2f else 6.2f),p.innerHeight*.22f,clockRoom)
+    val room=(p.innerHeight-header-footer-rangeHeight-clock*1.55f-14f).coerceAtLeast(50f)
+    val row=if(showClock)minOf(room,p.innerHeight*.51f) else room
+    val art=minOf(row,p.innerWidth*(.48f/p.textScale.coerceAtLeast(1f)))
+    val textWidth=p.innerWidth-art-8f
+    val value=minOf(64f*p.typeGrowth*p.textScale,textWidth/(d.temperature.length*.60f),((row-p.body*1.85f)/1.85f).coerceAtLeast(12f))
+    WText(io.atmos.weather.location.LocationLabels.microcity(d.city).ifBlank{d.city},s,s.ink,title,true)
+    Spacer(GlanceModifier.height(6.dp))
+    Row(GlanceModifier.fillMaxWidth().height(row.dp),verticalAlignment=Alignment.Vertical.CenterVertically) {
+        Column(GlanceModifier.defaultWeight(),verticalAlignment=Alignment.Vertical.CenterVertically) {
+            WText(d.temperature,s,s.ink,value,true)
+            WText(d.description(),s,s.soft,minOf(p.body,textWidth/5f))
+        }
+        Spacer(GlanceModifier.width(8.dp));BuddyScene(context,d,art,motion)
+    }
+    if(p.showHighLow){Spacer(GlanceModifier.height(6.dp));WText(d.highLow.replace("最高 ","高 ").replace("最低 ","低 "),s,s.soft,p.caption)}
+    if(showClock){Spacer(GlanceModifier.height(8.dp));LiveClock(context,s,clock,true,inlineDate=true)}
 }
 @Composable private fun CompactWidget(context:Context,family:Int,d:OpticalWidgetData,s:WidgetStyle,motion:Boolean) {
     val p=s.plan

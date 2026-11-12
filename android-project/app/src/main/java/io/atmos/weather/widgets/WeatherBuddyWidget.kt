@@ -39,14 +39,14 @@ internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed
             setViewVisibility(R.id.buddy_eyes,if(kind==WeatherBuddyArt.Kind.UNKNOWN)View.GONE else View.VISIBLE)
             removeAllViews(R.id.buddy_eyes)
             val random=kotlin.random.Random(seed)
-            repeat(4) {
-                BuddyVectorResources.eyes(kind,random.nextInt(4)).forEach {resource->
+            repeat(2) {
+                BuddyVectorResources.eyes(kind,random.nextInt(6)).forEach {resource->
                     addView(R.id.buddy_eyes,RemoteViews(context.packageName,R.layout.widget_buddy_frame).apply {
                         setImageViewResource(R.id.buddy_frame,resource)
                     })
                 }
             }
-            setInt(R.id.buddy_eyes,"setFlipInterval",140+Math.floorMod(seed,45))
+            setInt(R.id.buddy_eyes,"setFlipInterval",90+Math.floorMod(seed,26))
             setInt(R.id.buddy_eyes,"setDisplayedChild",0)
         }
         addView(R.id.buddy_float,face);setInt(R.id.buddy_float,"setFlipInterval",3600)
@@ -59,7 +59,7 @@ internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed
         BuddyVectorResources.ground(kind).forEach {resource->
             addView(R.id.buddy_ground,RemoteViews(context.packageName,R.layout.widget_buddy_frame).apply {setImageViewResource(R.id.buddy_frame,resource)})
         }
-        val period=if(wet)70 else 180
+        val period=if(wet)35 else 90
         setInt(R.id.buddy_rain,"setFlipInterval",period);setInt(R.id.buddy_ground,"setFlipInterval",period)
         setInt(R.id.buddy_rain,"setDisplayedChild",0);setInt(R.id.buddy_ground,"setDisplayedChild",0)
     }

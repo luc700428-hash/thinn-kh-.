@@ -244,7 +244,7 @@ class TabletFormRenderingTest:TabletRenderingFixture() {
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class TabletSeismicWarningRenderingTest:TabletRenderingFixture() {
-    @Test fun emergencyLayoutKeepsMapAndLocalWarningVisibleAndCanBeDismissedAtAnyWidth() {
+    @Test fun emergencySummaryAndMapInspectorRemainReachableAndDismissibleAtAnyWidth() {
         val ctx=org.robolectric.RuntimeEnvironment.getApplication()
         (ctx.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager).ringerMode=android.media.AudioManager.RINGER_MODE_SILENT
         io.atmos.weather.earthquake.SeismicUserLocation.choose(ctx,"臺北市")
@@ -254,10 +254,18 @@ class TabletSeismicWarningRenderingTest:TabletRenderingFixture() {
             render(true,1f,"tablet-eew-host",{if(open)io.atmos.weather.earthquake.SeismicWarningOverlay(incident,true,"臺北市",{open=false},simulation=true)}){host,_->
                 val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
                 val heading=nodes(sheet).single{text(it,"臺灣 921 大地震演練")}
-                val warning=nodes(sheet).single{text(it,"收到地震速報 · 慎防強烈搖晃")}
+                val warning=nodes(sheet).single{text(it,"預估震度")}
                 visible(heading.boundsInRoot);assertFalse(layout(heading).hasVisualOverflow)
-                // Critical text now precedes the map, including the first pane on a tablet.
-                if(w>=840){visible(warning.boundsInRoot);assertTrue(warning.boundsInRoot.left<w/2)}
+                visible(warning.boundsInRoot);assertFalse(layout(warning).hasVisualOverflow)
+                assertTrue(nodes(sheet).none{it.config.contains(SemanticsProperties.VerticalScrollAxisRange)})
+                if(w>=980){
+                    val map=tagged(sheet,"seismic-warning-map")
+                    visible(map.boundsInRoot)
+                    assertTrue("Critical values precede the tablet map",warning.boundsInRoot.left<map.boundsInRoot.left)
+                } else {
+                    val details=nodes(sheet).single{text(it,"歷史觀測與詳細資訊")}
+                    visible(details.boundsInRoot);assertFalse(layout(details).hasVisualOverflow)
+                }
                 val close=nodes(sheet).single{text(it,"結束模擬演練")&&it.config.contains(SemanticsActions.OnClick)}
                 visible(close.boundsInRoot)
                 save(sheet,"tablet-eew-${w}x$h")

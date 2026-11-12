@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.*
 import io.atmos.weather.next.DockLiquidGeometry
 import kotlin.math.abs
@@ -45,7 +46,7 @@ import kotlin.math.roundToInt
     val local=remember(path,b){Path().apply{addPath(path,Offset(-b.left,-b.top))}}
     val mask=remember(local){GenericShape{_,_->addPath(local)}}
     Canvas(Modifier.offset{IntOffset(b.left.roundToInt(),b.top.roundToInt())}
-     .requiredSize((b.width/density).dp,(b.height/density).dp).clip(mask)
+     .requiredSize((b.width/density).dp,(b.height/density).dp).testTag("dock-selection-lens").clip(mask)
      .thinnBackdrop(reduceTransparency,(g.height/density/2).dp,.5f,frostScale=.78f,materialDark=dark)) {
      drawPath(local,if(reduceTransparency)p.primaryContainer else colors.selection)
      val energy=touch.coerceIn(0f,1f)

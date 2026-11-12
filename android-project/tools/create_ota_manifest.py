@@ -13,7 +13,21 @@ REPOSITORY = "luc700428-hash/thinn-kh-."
 PACKAGE = "io.atmos.weather"
 
 
-def make_manifest(apk: Path, notes: Path, version: str, version_code: int, preview: bool = False) -> dict:
+def validate_concise_notes(text: str) -> None:
+    """Stable releases list only a few current, user-facing changes."""
+    start="<!-- THINN_INCREMENTAL_CHANGES -->";end="<!-- END_THINN_INCREMENTAL_CHANGES -->"
+    if text.count(start)!=1 or text.count(end)!=1:
+        raise ValueError("Concise release notes require one current changes block")
+    body=text.split(start,1)[1].split(end,1)[0]
+    lines=[line.strip() for line in body.splitlines() if line.strip()]
+    if not 1<=len(lines)<=6 or any(not line.startswith("- ") or len(line)>90 for line in lines):
+        raise ValueError("Release notes must have 1–6 short user-facing bullets, at most 88 characters each")
+    outside=text.split(start,1)[0]+text.split(end,1)[1]
+    if any(line.strip() and not line.startswith("# ") for line in outside.splitlines()) or len(text)>750:
+        raise ValueError("Keep release notes to a title and the current short changes")
+
+
+def make_manifest(apk: Path, notes: Path, version: str, version_code: int, preview: bool = False, concise: bool = False) -> dict:
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("version must be a safe x.y.z string")
     if version_code < 1:
@@ -37,6 +51,8 @@ def make_manifest(apk: Path, notes: Path, version: str, version_code: int, previ
         "sha256": checksum.hexdigest(),
         "notes": notes.read_text(encoding="utf-8"),
     }
+    if concise:
+        validate_concise_notes(manifest["notes"])
     if len((json.dumps(manifest,ensure_ascii=False,indent=2)+"\n").encode("utf-8")) > 131072:
         raise ValueError("OTA manifest exceeds 128 KiB; shorten release notes explicitly instead of silent truncation")
     return manifest
@@ -51,7 +67,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--preview", action="store_true", help="Signed rolling test-channel OTA; not a stable release")
     args = parser.parse_args()
-    data = make_manifest(args.apk, args.notes, args.version, args.version_code, preview=args.preview)
+    data = make_manifest(args.apk, args.notes, args.version, args.version_code, preview=args.preview, concise=True)
     args.output.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Public OTA manifest created: {data['version']} SHA256={data['sha256']}")
 

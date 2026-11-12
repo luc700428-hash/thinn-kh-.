@@ -33,24 +33,29 @@ class SeismicForegroundRenderingTest:WeatherInformationRenderingFixture(){
                 assertNotNull(SeismicAlertDelivery.publish(ctx,incident))
                 settle(view){ShadowDialog.getLatestDialog()?.isShowing==true}
                 val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
-                for(label in listOf("緊急地震速報","收到地震速報 · 慎防強烈搖晃","3 級","M 6.2","18 km")){
+                for(label in listOf("緊急地震速報","3 級","M 6.2","18 km")){
                     val node=nodes(sheet).filter{text(it,label)}.minBy{it.boundsInRoot.top};assertFalse("Clipped $label at $scale",layout(node).hasVisualOverflow)
                     contrast(node,if(label in listOf("3 級","M 6.2","18 km"))p.surface else p.background)
                 }
-                assertTrue(nodes(sheet).any{text(it,"本機 IASP91 模型估算")})
+                assertTrue(nodes(sheet).any{text(it,"本機走時估算")})
                 assertTrue(nodes(sheet).any{text(it,"花蓮縣近海")})
-                settle(sheet){nodes(sheet).any{text(it,"© 國土測繪中心 · 灰：未提供")}}
+                assertTrue(nodes(sheet).none{it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange)})
+                click(sheet,"地圖與詳細資訊")
+                val details=ShadowDialog.getLatestDialog().window!!.decorView
+                settle(details){nodes(details).any{text(it,"© 國土測繪中心 · 灰：未提供")}}
+                val dismiss=nodes(details).single{it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)&&"關閉" in it.config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription]&&it.config.contains(androidx.compose.ui.semantics.SemanticsActions.OnClick)}
+                assertTrue(dismiss.config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action!!.invoke());pump(sheet).recycle()
                 save(sheet,"live-eew-$dark-${(scale*100).toInt()}")
                 // Source-supplied past arrival changes the tile without inferring an ETA from wave rings.
                 assertNotNull(SeismicAlertDelivery.publish(ctx,incident.copy(serial=5,arrivalAtMsByCounty=mapOf("臺北市" to System.currentTimeMillis()-1000))))
                 settle(view){
-                    val latest=ShadowDialog.getLatestDialog().window!!.decorView
+                    val latest=sheet
                     pump(latest).recycle();nodes(latest).any{text(it,"已抵達")}
                 }
-                val updatedSheet=ShadowDialog.getLatestDialog().window!!.decorView
+                val updatedSheet=sheet
                 val arrived=nodes(updatedSheet).single{text(it,"已抵達")}
                 assertFalse(layout(arrived).hasVisualOverflow)
-                assertTrue(nodes(updatedSheet).any{text(it,"第 5 報")})
+                assertTrue(nodes(updatedSheet).any{it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Text)&&it.config[androidx.compose.ui.semantics.SemanticsProperties.Text].any{t->t.text.contains("第 5 報")}})
                 save(updatedSheet,"live-arrived-$dark-${(scale*100).toInt()}")
                 click(updatedSheet,"我已採取避難措施");pump(view).recycle()
                 assertNull(SeismicAlertDelivery.active.value)

@@ -132,7 +132,7 @@ class WidgetRenderingTest {
             assertNotNull(float.inAnimation)
             val eyes=view.findViewById<android.widget.ViewFlipper>(R.id.buddy_eyes)
             assertEquals(96,eyes.childCount)
-            assertEquals(if(reading.condition in listOf(WeatherCondition.RAIN,WeatherCondition.SNOW))70 else 180,view.findViewById<android.widget.ViewFlipper>(R.id.buddy_rain).flipInterval)
+            assertEquals(if(reading.condition in listOf(WeatherCondition.RAIN,WeatherCondition.SNOW))35 else 90,view.findViewById<android.widget.ViewFlipper>(R.id.buddy_rain).flipInterval)
             assertTrue(view.findViewById<android.widget.ImageView>(R.id.buddy_body).drawable is android.graphics.drawable.VectorDrawable)
             val bitmaps=java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Bitmap,Boolean>())
             fun collect(v:View){

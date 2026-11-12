@@ -102,11 +102,14 @@ class SeismicTabletWarningRenderingTest:TabletDockFixture() {
             render(dark,scale,"seismic-tablet-warning",{SeismicWarningOverlay(event,true,"臺北市",{})}){_,_->
                 val dialog=ShadowDialog.getLatestDialog();val sheet=dialog.window!!.decorView
                 for((w,h) in listOf(1280 to 900,600 to 960,1280 to 900)) {
-                    resize(sheet,w,h);val map=tagged(sheet,"seismic-warning-map")
+                    resize(sheet,w,h)
+                    assertTrue(nodes(sheet).none{it.config.contains(SemanticsProperties.VerticalScrollAxisRange)})
+                    val map=if(w==1280)tagged(sheet,"seismic-warning-map") else null
                     save(sheet,"seismic-warning-${w}x$h-$dark-$scale")
-                    assertTrue("Warning map too narrow at ${w}x$h: ${map.size}",map.size.width>=300)
-                    assertTrue("Warning map too short at ${w}x$h: ${map.size}",map.size.height>=180)
+
                     if(w==1280) {
+                        assertNotNull(map);val map=map!!
+                        assertTrue(map.size.width>=300)
                         val critical=tagged(sheet,"seismic-leading-pane")
                         val detail=tagged(sheet,"seismic-inspector-pane")
                         assertTrue("Tablet map must be taller than the compact map: ${map.size}",map.size.height>310)
@@ -114,7 +117,11 @@ class SeismicTabletWarningRenderingTest:TabletDockFixture() {
                         assertEquals("Map must start in the detail pane",detail.positionInRoot.x,map.positionInRoot.x,1f)
                         assertTrue("Map must have more width than the critical values",map.size.width>critical.size.width)
                     }
-                    for(label in listOf("3 級","M 6.2","18 km"))assertFalse(layout(nodes(sheet).first{text(it,label)}).hasVisualOverflow)
+                    for(label in listOf("3 級","M 6.2","18 km","趴下 · 掩護 · 穩住","結束歷史回放")){
+                        val node=nodes(sheet).first{text(it,label)}
+                        assertFalse("Clipped $label at ${w}x$h / $scale: ${layout(node).size} ${layout(node).layoutInput.constraints}",layout(node).hasVisualOverflow);visible(node.boundsInRoot)
+                    }
+                    if(w==600)assertTrue(nodes(sheet).any{text(it,"地圖與詳細資訊")})
                 }
                 dialog.dismiss()
             }

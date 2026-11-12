@@ -11,6 +11,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.font.FontWeight
+import io.atmos.weather.ui.GlassButton
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,35 +50,46 @@ import io.atmos.weather.ui.GlassTextButton
     val blocked=channels.any{it.importance==NotificationManager.IMPORTANCE_NONE}
     val bypass=channels.isNotEmpty()&&channels.all{it.canBypassDnd()}
     fun open(intent:Intent){runCatching{ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))}}
-    @Composable fun ReadinessRow(label:String,ready:Boolean){Text(label,color=if(ready)seismicHealthyInk else seismicCautionInk,fontSize=14.sp,lineHeight=22.sp,modifier=Modifier.fillMaxWidth())}
     val connection=SeismicFeedHealth.eew(live.enabled,live.eewStatus)
-    ReadinessRow("速報串流：${SeismicFeedHealth.eewLabel(connection)}",connection==SeismicFeedState.LIVE)
-    ReadinessRow(if(notifications)"通知權限：已允許" else "通知權限：未允許",notifications)
-    ReadinessRow(if(fullscreen)"系統全螢幕通知：目前允許" else "系統全螢幕通知：尚未授權",fullscreen)
-    if(fullScreen){
-        val appFullscreen=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean("allow_seismic_full_screen",false)
-        ReadinessRow(if(appFullscreen)"App 鎖屏警示：已啟用" else "App 鎖屏警示：目前關閉",appFullscreen)
+    @Composable fun StatusRow(label:String,value:String,ready:Boolean,onClick:(()->Unit)?=null) {
+        Row(Modifier.fillMaxWidth().then(if(onClick!=null)Modifier.clickable(onClick=onClick) else Modifier)
+            .padding(vertical=12.dp).testTag("seismic-readiness-$label"),verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(10.dp)){
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+                Text(label,color=p.onSurface,fontSize=15.sp,lineHeight=22.sp,fontWeight=FontWeight.Medium,modifier=Modifier.fillMaxWidth())
+                Text(value,color=if(ready)seismicHealthyInk else seismicCautionInk,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+            }
+            if(onClick!=null)Icon(Icons.Rounded.ChevronRight,null,tint=p.onSurfaceVariant,modifier=Modifier.size(20.dp))
+        }
+        io.atmos.weather.ui.GlassDivider(color=p.outlineVariant)
     }
-    if(blocked)Text("部分速報通知分類已在系統中關閉",color=p.error,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+    StatusRow("速報連線",SeismicFeedHealth.eewLabel(connection),connection==SeismicFeedState.LIVE)
+    StatusRow("系統通知",if(notifications&&!blocked)"已允許" else if(blocked)"部分速報分類已關閉" else "尚未允許",notifications&&!blocked){
+        open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,ctx.packageName))
+    }
+    if(fullScreen&&Build.VERSION.SDK_INT>=34)StatusRow("鎖定時全螢幕",if(fullscreen)"已允許" else "前往系統授權",fullscreen){
+        open(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,Uri.parse("package:${ctx.packageName}")))
+    }
     if(criticalEnabled){
-        ReadinessRow(if(policy)"勿擾存取：已授權" else "勿擾存取：尚未授權",policy)
-        ReadinessRow(if(bypass)"優先勿擾例外：已設定" else "優先勿擾例外：需在系統通知分類確認",bypass)
-        ReadinessRow(if(audio.getStreamVolume(AudioManager.STREAM_ALARM)>0)"緊急音訊：使用鬧鐘音量" else "鬧鐘音量為零，目前無法發聲",audio.getStreamVolume(AudioManager.STREAM_ALARM)>0)
+        StatusRow("勿擾模式",if(!policy)"尚未授權" else if(bypass)"優先勿擾例外已設定" else "請確認緊急速報分類",policy&&bypass){
+            if(!policy)open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            else open(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,ctx.packageName)
+                .putExtra(Settings.EXTRA_CHANNEL_ID,SeismicAlertPolicy.channelId(ctx,SeismicAlertPolicy.Scenario.EEW_URGENT)))
+        }
+        val audible=audio.getStreamVolume(AudioManager.STREAM_ALARM)>0
+        StatusRow("警報音量",if(audible)"使用鬧鐘音量" else "音量為零",audible){open(Intent(Settings.ACTION_SOUND_SETTINGS))}
         if(nm.currentInterruptionFilter==NotificationManager.INTERRUPTION_FILTER_NONE)
-            Text("目前為系統完全靜音；Android 不允許通知分類穿透此模式。",color=p.error,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
-        if(!policy)GlassTextButton(onClick={open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))}){Text("授權勿擾存取")}
-        GlassTextButton(onClick={open(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,ctx.packageName)
-            .putExtra(Settings.EXTRA_CHANNEL_ID,SeismicAlertPolicy.channelId(ctx,SeismicAlertPolicy.Scenario.EEW_URGENT)))}){Text("管理緊急速報通知分類")}
-        GlassTextButton(onClick={open(Intent(Settings.ACTION_SOUND_SETTINGS))}){Text("調整鬧鐘音量")}
+            Text("完全靜音模式下無法穿透勿擾。",color=p.error,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=8.dp))
     }
-    if(fullScreen&&Build.VERSION.SDK_INT>=34)GlassTextButton(onClick={open(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,Uri.parse("package:${ctx.packageName}")))}){Text("管理全螢幕通知權限")}
-    GlassTextButton(onClick={open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,ctx.packageName))}){Text("管理系統通知")}
     if(fullScreen&&criticalEnabled){
-        GlassTextButton(onClick={scheduled=SeismicCriticalTest.schedule(ctx);revision++},enabled=!scheduled){Text(if(scheduled)"演練已安排，可先鎖屏" else "5 秒後測試緊急警報")}
-        if(scheduled)GlassTextButton(onClick={SeismicCriticalTest.cancel(ctx);scheduled=false;revision++}){Text("取消演練通知")}
-        val testStatus=remember(revision){SeismicCriticalTest.status(ctx)}
-        if(testStatus.isNotBlank())Text(testStatus,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+        Spacer(Modifier.height(16.dp))
+        GlassButton(onClick={scheduled=SeismicCriticalTest.schedule(ctx);revision++},enabled=!scheduled,
+            modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)){
+            Text(if(scheduled)"已安排，可先鎖定螢幕" else "5 秒後測試緊急警報",fontSize=15.sp,lineHeight=22.sp,modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+        }
+        if(scheduled)GlassTextButton(onClick={SeismicCriticalTest.cancel(ctx);scheduled=false;revision++},modifier=Modifier.fillMaxWidth()){Text("取消演練通知")}
+        val testStatus=remember(revision,meter){SeismicCriticalTest.status(ctx)}
+        if(testStatus.isNotBlank())Text(testStatus,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=8.dp))
     }
-    Spacer(Modifier.height(4.dp))
-    Text("授權後會請求穿透優先勿擾，仍受目前系統規則及通知分類控制。解鎖使用其他 App 時，Android 通常顯示浮動警報；鎖定或熄屏時才嘗試全螢幕喚醒。",color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=22.sp,modifier=Modifier.fillMaxWidth())
+    Text("App 使用中會直接顯示速報。鎖定或使用其他 App 時，顯示方式由系統控制。",color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=12.dp))
 }

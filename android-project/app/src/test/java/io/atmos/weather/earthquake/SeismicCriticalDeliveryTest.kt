@@ -83,6 +83,7 @@ class SeismicCriticalDeliveryTest {
     }
     @Test fun cancellingBeforeTheDelayPreventsNotificationDelivery() {
         SeismicCriticalMode.setEnabled(ctx,true);assertTrue(SeismicCriticalTest.schedule(ctx));SeismicCriticalTest.cancel(ctx)
+        assertTrue("Cancelled drills must not keep a pending status",SeismicCriticalTest.status(ctx).isBlank())
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(6));assertNull(shadowOf(nm).getNotification(29205))
     }
     @Test fun aRealAcceptedWarningPreemptsThePendingDrill() {

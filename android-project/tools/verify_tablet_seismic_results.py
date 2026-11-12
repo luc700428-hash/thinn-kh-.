@@ -58,6 +58,18 @@ EXPECTED['io.atmos.weather.presentation.home.AppearanceSaveControllerTest']={
     'resumingDragCancelsTheOutdatedLauncherRefresh',
 }
 
+# Phone defaults, automatic foreground alerts and independent launcher typography.
+EXPECTED.update({
+ 'io.atmos.weather.ui.TabletSeismicWarningRenderingTest': {'emergencySummaryAndMapInspectorRemainReachableAndDismissibleAtAnyWidth'},
+ 'io.atmos.weather.ui.PhoneDockProportionRenderingTest': {'actualPhoneModeKeepsLensAndAllFourLabelsInsideOneCenteredCapsule'},
+ 'io.atmos.weather.ui.SeismicSingleScreenRenderingTest': {'drillAndLiveEssentialsFitShortPhonesLargeTextAndLandscapeWithoutScrolling'},
+ 'io.atmos.weather.ui.SeismicReadinessRenderingTest': {'permissionStatusesAndTestActionUseDistinctFullWidthRowsAtLargeReadingSize'},
+ 'io.atmos.weather.ui.WidgetTypographySettingsRenderingTest': {'launcherFontControlPreviewsPersistsAndLeavesAppReadingSizeAlone'},
+ 'io.atmos.weather.widgets.WidgetTypographyRenderingTest': {'independentPreferenceGrowsWeatherAndClockTextAndFitsEveryFamily'},
+ 'io.atmos.weather.earthquake.SeismicForegroundLaunchTest': {'acceptedLiveWarningLaunchesThePrivateScreenWithoutTappingANotification','explicitFiveSecondDrillOpensInTheVisibleAppWithoutPublishingALiveIncident','backgroundAndPausedWindowsLeavePresentationToTheSystemNotification','dismissedTicketAndPauseBetweenDeliveryAndLaunchCannotOpenAStaleWarning'},
+})
+EXPECTED['io.atmos.weather.widgets.WidgetLayoutPlanTest'].add('launcherPreferenceIsBoundedAndChangesReadingSizesIndependently')
+
 def verify(root):
     seen = set()
     total = 0

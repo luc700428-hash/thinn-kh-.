@@ -18,6 +18,7 @@ object SeismicAlertNotifier {
         val scenario=if(requested==SeismicAlertPolicy.Scenario.EEW_UPDATE&&!SeismicAlertDelivery.hasDelivered(ctx,e))SeismicAlertPolicy.Scenario.EEW_FIRST else requested
         if(!SeismicAlertPolicy.alertEnabled(ctx,scenario)||!SeismicAlertThreshold.accepts(ctx,e))return false
         val ticket=SeismicAlertDelivery.publish(ctx,e,scenario=scenario)?:return false
+        SeismicForegroundWindow.present(ctx,ticket)
         if(!PermissionGuide.canNotify(ctx))return true
         SeismicAlertPolicy.ensureChannels(ctx)
         val channel=SeismicAlertPolicy.channelId(ctx,scenario)

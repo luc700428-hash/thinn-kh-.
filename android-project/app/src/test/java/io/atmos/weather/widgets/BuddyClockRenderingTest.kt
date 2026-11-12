@@ -42,7 +42,7 @@ class BuddyClockRenderingTest {
                 val character=children.single{it.id==R.id.buddy_still} as ImageView
                 assertTrue("$name: character=${character.drawable?.javaClass?.name}, visible=${character.visibility}, size=${character.width}x${character.height}",character.drawable is android.graphics.drawable.VectorDrawable)
                 assertTrue(character.visibility==View.VISIBLE&&character.width>20&&character.height>20)
-                if(h>=190||(w>=260&&h>=160))assertTrue(children.single{it.id==R.id.buddy_clock_refresh}.isClickable)
+                assertEquals("Top-right refresh is removed",View.GONE,children.single{it.id==R.id.buddy_clock_refresh}.visibility)
             }
         }
         for((w,h) in listOf(140 to 110,160 to 160,180 to 280,180 to 340,180 to 420,240 to 360,320 to 160,320 to 240,500 to 340,320 to 320,320 to 600,640 to 450,800 to 600))
