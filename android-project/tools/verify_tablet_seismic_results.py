@@ -81,6 +81,22 @@ EXPECTED.update({
  'io.atmos.weather.ui.WeatherScenePauseRenderingTest':{'coveredSceneStopsFramesAndResumesItsOriginalParticleWorld'},
 })
 
+for classname in (
+    'io.atmos.weather.widgets.WidgetHostReapplyRenderingTest',
+    'io.atmos.weather.widgets.LegacyWidgetHostReapplyRenderingTest',
+    'io.atmos.weather.widgets.Android16WidgetHostReapplyRenderingTest',
+):
+    EXPECTED[classname]={
+        'repeatedUpdatesReplaceTheExistingRegionsInsteadOfStackingThem',
+        'resizingAndChangingEveryFamilyDropsOldTextAndKeepsTheTreeBounded',
+        'anAlreadyDuplicatedR4TreeIsRepairedOnItsFirstUpdate',
+        'detachedOldAnimationsCannotKeepAddingLauncherWork',
+        'reducedMotionAndUnknownWeatherCreateNoHiddenAnimationTimers',
+    }
+EXPECTED['io.atmos.weather.widgets.WidgetLauncherUpdateRenderingTest']={
+    'allTwentyNineWidgetsSurviveRealHostUpdatesAndExtremeResizesWithoutGhosts'
+}
+
 def verify(root):
     seen = set()
     total = 0

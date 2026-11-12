@@ -127,6 +127,11 @@ class WidgetRenderingTest {
             render(27,180,180,1f,"buddy_motion_$index",reading)
             val remote=buddyRemote(context,reading,true,487)
             val view=remote.apply(context,FrameLayout(context))
+            if(reading.condition==WeatherCondition.UNKNOWN){
+                assertNull("Unknown weather has no animation timer",view.findViewById<View>(R.id.buddy_float))
+                assertEquals(View.VISIBLE,view.findViewById<View>(R.id.buddy_still).visibility)
+                continue
+            }
             val float=view.findViewById<android.widget.ViewFlipper>(R.id.buddy_float)
             assertEquals(1,float.childCount)
             assertNotNull(float.inAnimation)

@@ -59,8 +59,11 @@ object WidgetSync {
     }
     fun updateVisible(context:Context) { refreshCached(context) }
     fun refreshCached(context:Context){
-        WorkManager.getInstance(context).enqueueUniqueWork("thinn-widget-cached-view",ExistingWorkPolicy.APPEND_OR_REPLACE,
-            OneTimeWorkRequestBuilder<WidgetCachedViewWorker>().build())
+        // A burst of preferences/snapshots needs only the latest cached presentation.
+        // Appending one render per change lets obsolete work keep rebuilding launcher trees.
+        WorkManager.getInstance(context).enqueueUniqueWork("thinn-widget-cached-view",ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<WidgetCachedViewWorker>()
+                .setInitialDelay(300,TimeUnit.MILLISECONDS).build())
     }
 }
 class WeatherWidgetWorker(context:Context,params:WorkerParameters):CoroutineWorker(context,params){

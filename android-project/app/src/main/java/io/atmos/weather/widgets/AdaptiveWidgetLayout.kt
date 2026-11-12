@@ -219,6 +219,10 @@ internal object AdaptiveWidgetLayout{
 internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData,p:WidgetLayoutPlan,colors:WidgetGlassRenderer.Palette,
     motion:Boolean,showUpdated:Boolean=true,showAgenda:Boolean=true):RemoteViews{
     val result=RemoteViews(context.packageName,R.layout.widget_adaptive);val dip=TypedValue.COMPLEX_UNIT_DIP
+    // Launchers reapply this RemoteViews to an existing tree, including r4's duplicates.
+    // Replace the complete region set before adding the latest layout. Otherwise old
+    // TextClocks and ViewFlippers remain attached and accumulate on every update.
+    result.removeAllViews(R.id.widget_adaptive_root)
     val seed=(d.stamp xor(d.stamp ushr 32)).toInt()
     val bold=context.getSharedPreferences("thinn_settings",0).getFloat("v4_fontweight",400f)>=620f
     AdaptiveWidgetLayout.create(p,family,d,android.text.format.DateFormat.is24HourFormat(context),showUpdated,showAgenda).forEach{r->
@@ -263,6 +267,12 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
 }
 private fun weatherRemote(context:Context,condition:io.atmos.weather.domain.model.WeatherCondition,day:Boolean,size:Float,motion:Boolean):RemoteViews{
     val px=(size*context.resources.displayMetrics.density).toInt().coerceIn(24,192)
+    if(!motion||condition==io.atmos.weather.domain.model.WeatherCondition.UNKNOWN){
+        return RemoteViews(context.packageName,R.layout.widget_weather_still).apply{
+            setImageViewBitmap(R.id.widget_glyph_static,WidgetWeatherArt.render(condition,day,px,0))
+            setContentDescription(R.id.widget_glyph_static,condition.label())
+        }
+    }
     return RemoteViews(context.packageName,R.layout.widget_motion_glyph).apply{
         setImageViewBitmap(R.id.widget_glyph_a,WidgetWeatherArt.render(condition,day,px,0));setImageViewBitmap(R.id.widget_glyph_b,WidgetWeatherArt.render(condition,day,px,1))
         setImageViewBitmap(R.id.widget_glyph_static,WidgetWeatherArt.render(condition,day,px,0))

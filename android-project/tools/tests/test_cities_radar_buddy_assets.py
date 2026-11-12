@@ -45,7 +45,7 @@ class CitiesRadarBuddy(unittest.TestCase):
  def test_embedded_update_notes_match_release_notes(self):
   self.assertEqual((ROOT/'tools/stable_maintenance_notes.md').read_bytes(),(ASSETS/'current_release_notes.md').read_bytes())
   text=(ASSETS/'current_release_notes.md').read_text().split('<!-- THINN_INCREMENTAL_CHANGES -->',1)[1].split('<!-- END_THINN_INCREMENTAL_CHANGES -->',1)[0]
-  for feature in ('Dock','字體大小','長寬比例','地震','颱風'):self.assertIn(feature,text)
+  for feature in ('小工具','重疊','流暢度'):self.assertIn(feature,text)
   history=(ASSETS/'current_release_notes.md').read_text()
   self.assertNotIn('PREVIOUS_',history);self.assertEqual(1,history.count('<!-- THINN_INCREMENTAL_CHANGES -->'))
  def test_q_buddy_registered_and_obeys_power_and_motion_settings(self):

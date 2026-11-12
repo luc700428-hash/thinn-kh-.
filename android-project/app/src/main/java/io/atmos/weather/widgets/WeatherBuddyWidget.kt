@@ -16,6 +16,14 @@ class WeatherBuddyWidgetReceiver:SyncedWidgetReceiver(){override val glanceAppWi
 /** Native vectors resolve at the launcher's final dimensions, including after a resize. */
 internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed:Int,sizeDp:Float=112f,layoutId:Int=R.layout.widget_buddy_scene):RemoteViews {
     val kind=WeatherBuddyArt.kind(d.condition,d.day)
+    // GONE auto-start ViewFlippers still own timers in a visible launcher window.
+    // Static/unknown weather has no animation views at all.
+    if(!motion||kind==WeatherBuddyArt.Kind.UNKNOWN){
+        return RemoteViews(context.packageName,R.layout.widget_buddy_still).apply{
+            setImageViewResource(R.id.buddy_still,BuddyVectorResources.still(kind,d.day))
+            setContentDescription(R.id.buddy_root,"天氣夥伴 · ${d.description()}")
+        }
+    }
     val side=sizeDp.takeIf{it.isFinite()}?.coerceIn(16f,1000f)?:112f
     val wet=kind in listOf(WeatherBuddyArt.Kind.RAIN,WeatherBuddyArt.Kind.STORM,WeatherBuddyArt.Kind.SNOW)
     val unit=android.util.TypedValue.COMPLEX_UNIT_DIP
@@ -24,14 +32,11 @@ internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed
         setViewLayoutMargin(id,RemoteViews.MARGIN_LEFT,side*left,unit)
         setViewLayoutMargin(id,RemoteViews.MARGIN_TOP,side*top,unit)
     }
-    return RemoteViews(context.packageName,layoutId).apply {
+    return RemoteViews(context.packageName,if(wet)layoutId else R.layout.widget_buddy_scene_dry).apply {
         setContentDescription(R.id.buddy_root,"天氣夥伴 · ${d.description()}")
-        setViewVisibility(R.id.buddy_float,if(motion)View.VISIBLE else View.GONE)
-        setViewVisibility(R.id.buddy_rain,if(motion)View.VISIBLE else View.GONE)
-        setViewVisibility(R.id.buddy_ground,if(motion&&wet)View.VISIBLE else View.GONE)
-        setViewVisibility(R.id.buddy_still,if(motion)View.GONE else View.VISIBLE)
-        if(!motion){setImageViewResource(R.id.buddy_still,BuddyVectorResources.still(kind,d.day));return@apply}
-        removeAllViews(R.id.buddy_float);removeAllViews(R.id.buddy_rain);removeAllViews(R.id.buddy_ground)
+        if(wet)setViewVisibility(R.id.buddy_ground,View.VISIBLE)
+        removeAllViews(R.id.buddy_float);removeAllViews(R.id.buddy_rain)
+        if(wet)removeAllViews(R.id.buddy_ground)
         val face=RemoteViews(context.packageName,R.layout.widget_buddy_face).apply {
             setImageViewResource(R.id.buddy_body,BuddyVectorResources.body(kind,d.day))
             val eyeTop=when(kind){WeatherBuddyArt.Kind.SUN->.34f;WeatherBuddyArt.Kind.MOON->.36f;else->.42f}
@@ -60,8 +65,9 @@ internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed
             addView(R.id.buddy_ground,RemoteViews(context.packageName,R.layout.widget_buddy_frame).apply {setImageViewResource(R.id.buddy_frame,resource)})
         }
         val period=if(wet)35 else 90
-        setInt(R.id.buddy_rain,"setFlipInterval",period);setInt(R.id.buddy_ground,"setFlipInterval",period)
-        setInt(R.id.buddy_rain,"setDisplayedChild",0);setInt(R.id.buddy_ground,"setDisplayedChild",0)
+        setInt(R.id.buddy_rain,"setFlipInterval",period)
+        setInt(R.id.buddy_rain,"setDisplayedChild",0)
+        if(wet){setInt(R.id.buddy_ground,"setFlipInterval",period);setInt(R.id.buddy_ground,"setDisplayedChild",0)}
     }
 }
 @Composable internal fun BuddyScene(context:Context,d:OpticalWidgetData,size:Float,motion:Boolean) {

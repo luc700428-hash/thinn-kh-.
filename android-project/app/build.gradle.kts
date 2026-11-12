@@ -54,7 +54,13 @@ android {
         unitTests.isReturnDefaultValues = true
         unitTests.isIncludeAndroidResources = true
         // Native Compose tests recreate Android Loopers; isolate their static dispatcher/render state.
-        unitTests.all { it.forkEvery = 1 }
+        unitTests.all {
+            it.forkEvery = 1
+            // Robolectric's Android 16 runtime needs Java 21. App bytecode stays Java 17.
+            it.javaLauncher.set(project.extensions.getByType<org.gradle.jvm.toolchain.JavaToolchainService>().launcherFor {
+                languageVersion.set(org.gradle.jvm.toolchain.JavaLanguageVersion.of(21))
+            })
+        }
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }

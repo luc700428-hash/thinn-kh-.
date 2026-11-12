@@ -53,9 +53,24 @@ class WidgetSynchronizationTest {
         assertFalse(context.getSharedPreferences("weather_cache",0).contains("widget_time"))
     }
     @Test fun foregroundSnapshotRepaintsWithoutLaunchingAnExtraNetworkRequest() {
-        initializeWorkspaceWorkers(context);WidgetSync.updateVisible(context)
+        if(!WorkManager.isInitialized())initializeWorkspaceWorkers(context)
+        WidgetSync.updateVisible(context)
         val manager=WorkManager.getInstance(context)
         assertTrue(manager.getWorkInfosForUniqueWork("thinn-khi-widget-now").get(5,TimeUnit.SECONDS).isEmpty())
         assertTrue(manager.getWorkInfosForUniqueWork("thinn-widget-cached-view").get(5,TimeUnit.SECONDS).isNotEmpty())
+    }
+    @Test fun rapidCachedRefreshesKeepOnlyTheLatestRenderInsteadOfAChainOfObsoleteWork() {
+        if(!WorkManager.isInitialized())initializeWorkspaceWorkers(context)
+        val prefs=context.getSharedPreferences("thinn_settings",0)
+        repeat(50){
+            prefs.edit().putFloat(WidgetTypography.KEY,.8f+it/49f*.8f).commit()
+            WidgetSync.refreshCached(context)
+        }
+        val manager=WorkManager.getInstance(context)
+        val pending=manager.getWorkInfosForUniqueWork("thinn-widget-cached-view").get(30,TimeUnit.SECONDS).filter{!it.state.isFinished}
+        assertEquals("Each settings change must replace pending obsolete renders",1,pending.size)
+        assertEquals(androidx.work.WorkInfo.State.ENQUEUED,pending.single().state)
+        assertEquals(1.6f,prefs.getFloat(WidgetTypography.KEY,0f),.001f)
+        assertTrue("A cached redraw must not request weather again",manager.getWorkInfosForUniqueWork("thinn-khi-widget-now").get(5,TimeUnit.SECONDS).isEmpty())
     }
 }

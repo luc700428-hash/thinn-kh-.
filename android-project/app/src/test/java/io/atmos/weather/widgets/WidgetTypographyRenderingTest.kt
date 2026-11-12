@@ -32,7 +32,7 @@ class WidgetTypographyRenderingTest {
                             val temp=descendants(view).filterIsInstance<TextView>().first{it.text.toString()=="24°"}
                             sizes[variant to custom]=temp.textSize
                         }
-                        if(variant==28)assertEquals(View.GONE,view.findViewById<View>(R.id.buddy_clock_refresh).visibility)
+                        if(variant==28)assertFalse("Refresh control must not be visible",descendants(view).any{it.id==R.id.buddy_clock_refresh&&it.visibility==View.VISIBLE})
                     }
                 }
             }

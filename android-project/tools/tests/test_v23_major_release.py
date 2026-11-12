@@ -72,7 +72,7 @@ class MajorV23Contract(unittest.TestCase):
         self.assertIn('訂閱成功不等於後端已部署',push)
     def test_release_notes_disclose_remaining_work(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()
-        self.assertIn('地震速報直接顯示臺灣地圖',notes)
+        self.assertIn('修正桌面小工具',notes)
         self.assertNotIn('100%',notes)
         self.assertLess(len(notes),750)
 if __name__=='__main__': unittest.main()
