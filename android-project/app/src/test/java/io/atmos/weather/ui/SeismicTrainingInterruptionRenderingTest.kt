@@ -35,7 +35,7 @@ class SeismicTrainingInterruptionRenderingTest:WeatherInformationRenderingFixtur
             val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
             assertTrue(nodes(sheet).any{text(it,"緊急地震速報")})
             assertFalse(nodes(sheet).any{text(it,"臺灣 921 大地震演練")})
-            click(sheet,"我已採取避難措施");assertNull(SeismicAlertDelivery.active.value)
+            click(sheet,"已避難");assertNull(SeismicAlertDelivery.active.value)
         }
     }
 }

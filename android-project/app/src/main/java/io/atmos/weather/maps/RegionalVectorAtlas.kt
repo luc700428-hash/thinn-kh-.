@@ -30,6 +30,7 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
         override fun removeEldestEntry(eldest:MutableMap.MutableEntry<Key,Batch>?)=size>4
     }
     @Volatile internal var batchBuildCount=0;private set
+    @Volatile internal var mainThreadBatchBuildCount=0;private set
     private val overview=Batch(Path().apply{fillType=Path.FillType.EVEN_ODD;polygons.forEach{addPath(it.details[0].path)}},
         polygons.size,polygons.sumOf{it.details[0].vertices},polygons.filter{it.minor})
     private fun cameraKey(view:TyphoonViewport):Key {
@@ -44,7 +45,7 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
         val visible=polygons.filter{it.bounds.right>=key.left*2&&it.bounds.left<=key.right*2&&it.bounds.bottom>=key.top*2&&it.bounds.top<=key.bottom*2}
         val path=Path().apply{fillType=Path.FillType.EVEN_ODD;visible.forEach{addPath(it.details[key.level].path)}}
         val built=Batch(path,visible.size,visible.sumOf{it.details[key.level].vertices},visible.filter{it.minor})
-        return synchronized(batches){key to (batches[key]?:built.also{batches[key]=it;batchBuildCount++})}
+        return synchronized(batches){key to (batches[key]?:built.also{batches[key]=it;batchBuildCount++;if(android.os.Looper.myLooper()==android.os.Looper.getMainLooper())mainThreadBatchBuildCount++})}
     }
     suspend fun prepare(view:TyphoonViewport)=withContext(Dispatchers.Default){batch(view);Unit}
     internal fun prepared(view:TyphoonViewport)=synchronized(batches){batches.containsKey(cameraKey(view))}
@@ -55,6 +56,7 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
     }
     val polygonCount get()=polygons.size
     val minorIslandCount get()=polygons.count{it.minor}
+    private var islandPoints=FloatArray(0)
     private val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL}
     private val edge=Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}
     fun hasLandNear(lon:Double,lat:Double,tolerance:Double=.08)=polygons.any {
@@ -73,7 +75,8 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
         canvas.scale((pixelsPerDegree*view.cosCenter).toFloat(),-pixelsPerDegree)
         // One immutable vector batch replaces thousands of drawPath calls per gesture frame.
         canvas.drawPath(batch.path,fill);canvas.drawPath(batch.path,edge)
-        val dots=FloatArray(batch.minor.size*2);var count=0
+        if(islandPoints.size<batch.minor.size*2)islandPoints=FloatArray(batch.minor.size*2)
+        val dots=islandPoints;var count=0
         batch.minor.forEach {p->
             if(p.bounds.width()*pixelsPerDegree<scope.density*1.4f) {
                 dots[count++]=p.bounds.centerX()-100;dots[count++]=p.bounds.centerY()

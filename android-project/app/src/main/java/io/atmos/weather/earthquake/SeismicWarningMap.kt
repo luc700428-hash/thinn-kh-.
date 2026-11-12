@@ -36,6 +36,9 @@ import io.atmos.weather.alerts.WarningCountyAtlas
 import io.atmos.weather.alerts.WarningMapLayout
 import io.atmos.weather.ui.AppText as Text
 import io.atmos.weather.ui.GlassTextButton
+import kotlinx.coroutines.delay
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 
 internal object SeismicIntensityColors {
     fun color(value:String?):Color=when(value){
@@ -45,7 +48,7 @@ internal object SeismicIntensityColors {
     }
 }
 /** County detail stays vector. Advancing rings redraw independently of static polygon/label layers. */
-@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier,viewportHeight:Dp=310.dp) {
+@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier,viewportHeight:Dp=310.dp,compact:Boolean=false,simulation:Boolean=false,subtitle:String?=null) {
     val ctx=LocalContext.current.applicationContext
     val atlas by produceState<WarningCountyAtlas?>(null,ctx){value=WarningCountyAtlas.load(ctx)}
     val dark=MaterialTheme.colorScheme.background.red<.5f
@@ -54,20 +57,37 @@ internal object SeismicIntensityColors {
     var zoom by remember(incident.id){mutableFloatStateOf(1f)};var pan by remember(incident.id){mutableStateOf(Offset.Zero)}
     val fill=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL}}
     val edge=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}}
+    val reduce=io.atmos.weather.ui.rememberAppleReduceMotion()
+    val rotation=remember(values,place?.name){SeismicCountyRotation.entries(values,place?.name)}
+    val page=remember(incident.id){mutableIntStateOf(0)}
+    val labelAlpha=remember(incident.id){Animatable(1f)}
+    LaunchedEffect(incident.id,rotation,reduce){
+        page.intValue=0
+        while(true){
+            delay(2400)
+            if(!reduce)labelAlpha.animateTo(0f,tween(120))
+            page.intValue=(page.intValue+1)%((rotation.size+1)/2)
+            if(!reduce)labelAlpha.animateTo(1f,tween(180))
+        }
+    }
     val labels=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)}}
     Column(modifier){
-        if(!historical&&values.isEmpty()){
+        if(compact)Text((if(historical)"縣市歷史震度 · 舊制" else if(simulation)"演練情境震度（虛構）" else "來源縣市預估震度")+
+            (subtitle?.let{" · $it"}?:""),fontSize=14.sp,lineHeight=18.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
+        if(!compact&&!historical&&values.isEmpty()){
             Text("此速報未附縣市震度；灰色不代表無震。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
         }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){
+        if(!compact)Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){
             (if(historical)listOf("1","2","3","4","5","6","7") else SeismicAlertThreshold.grades).forEach{grade->Box(Modifier.clip(RoundedCornerShape(6.dp)).background(SeismicIntensityColors.color(grade)).padding(horizontal=7.dp,vertical=4.dp)){
                 Text(SeismicDisplayFormat.symbol(grade),fontSize=14.sp,color=if(grade in listOf("6強","7"))Color.White else brandColor(0xFF0D1C18))
             }}
         }
-        Spacer(Modifier.height(8.dp))
-        Box(Modifier.fillMaxWidth().height(viewportHeight).testTag("seismic-warning-map").clip(RoundedCornerShape(24.dp)).background(sea)
-            .semantics{contentDescription="可縮放的臺灣縣市震度地圖；依來源縣市震度著色，灰色為未提供"}
+        if(!compact)Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth().then(if(compact)Modifier.weight(1f) else Modifier.height(viewportHeight)).testTag("seismic-warning-map").clip(RoundedCornerShape(24.dp)).background(sea)
+            .semantics{contentDescription="可縮放的臺灣縣市震度地圖；"+
+                (if(historical)"921 歷史縣市最大震度（舊制）；" else if(simulation)"演練情境震度（虛構）；" else "依來源縣市震度著色；")+
+                "灰色為未提供；波圈為示意，非到達預測。"+rotation.joinToString("；"){it.county+" "+it.grade}}
             .pointerInput(incident.id){detectTransformGestures{centroid,move,factor,_->
                 if(factor.isFinite()&&factor>0&&move.x.isFinite()&&move.y.isFinite()){
                     val next=(zoom*factor).coerceIn(1f,8f);val anchor=centroid-Offset(size.width/2f,size.height/2f)
@@ -82,9 +102,11 @@ internal object SeismicIntensityColors {
                     edge.color=if(dark)animatedBrandArgb(0xFF14392F) else animatedBrandArgb(0xFF487165);edge.strokeWidth=(.75f*density/view.scale).toFloat()
                     loaded.counties.filter{view.county==null||view.county==it.name}.forEach{shape->
                         val color=SeismicIntensityColors.color(values[shape.name]?:values[shape.name.replace('臺','台')])
+                        fill.alpha=255;edge.alpha=255;labels.alpha=255
                         fill.color=android.graphics.Color.rgb((color.red*255).toInt(),(color.green*255).toInt(),(color.blue*255).toInt())
                         canvas.drawPath(shape.path,fill);canvas.drawPath(shape.path,edge)
                     };canvas.restore()
+                    if(compact)return@forEach
                     val occupied=mutableListOf<android.graphics.RectF>()
                     labels.textSize=12*density*readingScale
                     labels.setShadowLayer(2*density,0f,0f,if(dark)animatedBrandArgb(0xFF091A16) else animatedBrandArgb(0xFFF1FAF8))
@@ -115,11 +137,55 @@ internal object SeismicIntensityColors {
                 }
                 place?.let{val at=main.project(it.lon,it.lat);drawCircle(Color.White,6.dp.toPx(),at);drawCircle(brandColor(0xFF328E74),4.dp.toPx(),at)}
             }
-            GlassTextButton({zoom=1f;pan=Offset.Zero},modifier=Modifier.align(Alignment.TopEnd).padding(8.dp)){Text("重設地圖")}
+            // Highlighting two counties never rebuilds their immutable source polygons.
+            Canvas(Modifier.matchParentSize().graphicsLayer()){
+                val loaded=atlas?:return@Canvas
+                val views=WarningMapLayout.viewports(size.width,size.height,density,zoom,pan)
+                val canvas=drawContext.canvas.nativeCanvas;val occupied=mutableListOf<android.graphics.RectF>()
+                labels.textSize=13*density*readingScale;labels.clearShadowLayer()
+                SeismicCountyRotation.page(rotation,page.intValue).forEachIndexed{index,entry->
+                    val shape=loaded.counties.firstOrNull{it.name==entry.county}?:return@forEachIndexed
+                    val view=views.firstOrNull{it.county==entry.county}?:views.first()
+                    val at=view.project(shape.label.first,shape.label.second)
+                    if(!view.rectangle.contains(at))return@forEachIndexed
+                    val text=entry.county+" "+entry.grade;val w=labels.measureText(text)+12*density;val h=labels.textSize*1.45f
+                    val candidates=listOf(Offset(at.x+8*density,at.y-h),Offset(at.x-w-8*density,at.y-h),
+                        Offset(at.x-w/2,at.y+10*density),Offset(size.width-w-6*density,6*density+index*(h+6*density)))
+                    val box=candidates.map{point->
+                        val x=point.x.coerceIn(4*density,(size.width-w-4*density).coerceAtLeast(4*density))
+                        val y=point.y.coerceIn(4*density,(size.height-h-30*density).coerceAtLeast(4*density))
+                        android.graphics.RectF(x,y,x+w,y+h)
+                    }.firstOrNull{candidate->occupied.none{android.graphics.RectF.intersects(it,candidate)}}?:return@forEachIndexed
+                    occupied+=box;val alpha=labelAlpha.value
+                    drawLine(Color.White.copy(alpha=alpha*.85f),at,Offset(box.centerX(),box.centerY()),1.2f*density)
+                    drawCircle(Color.White.copy(alpha=alpha),3*density,at)
+                    fill.color=if(dark)0xF2182421.toInt() else 0xF7FFFFFF.toInt();fill.alpha=(alpha*245).toInt()
+                    canvas.drawRoundRect(box,7*density,7*density,fill)
+                    labels.color=if(dark)android.graphics.Color.WHITE else 0xFF142820.toInt();labels.alpha=(alpha*255).toInt()
+                    canvas.drawText(text,box.left+6*density,box.top+(h-labels.fontMetrics.ascent-labels.fontMetrics.descent)/2,labels)
+                }
+            }
+            if(zoom>1.01f||pan!=Offset.Zero)GlassTextButton({zoom=1f;pan=Offset.Zero},modifier=Modifier.align(Alignment.TopEnd).padding(8.dp)){Text("重設地圖")}
             Text(if(atlas==null)"載入縣市向量地圖…" else "© 國土測繪中心 · 灰：未提供",fontSize=14.sp,color=if(dark)brandColor(0xFFC9ECE2) else brandColor(0xFF1A4A3C),
                 modifier=Modifier.align(Alignment.BottomStart).background(sea.copy(alpha=.94f)).padding(8.dp))
         }
-        Spacer(Modifier.height(6.dp))
-        Text(if(historical)"色塊：921 歷史最大震度（舊制） · 波圈為演練示意" else "色塊：來源預估震度 · 波圈為示意，非到達預測",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+        if(!compact)Spacer(Modifier.height(6.dp))
+        if(!compact)Text(if(historical)"色塊：921 歷史最大震度（舊制） · 波圈為演練示意" else "色塊：來源預估震度 · 波圈為示意，非到達預測",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+    }
+}
+
+/** Missing counties stay unknown; legacy 5/6 remain legacy grades. */
+internal object SeismicCountyRotation {
+    data class Entry(val county:String,val grade:String)
+    fun entries(values:Map<String,String>,local:String?):List<Entry>{
+        val normalized=values.mapKeys{it.key.replace('台','臺')};val localCounty=local?.replace('台','臺')
+        return SeismicWarningCounties.counties.map{county->Entry(county,normalized[county]?.let{SeismicDisplayFormat.symbol(it)+" 級"}?:"—")}
+            .sortedWith(compareByDescending<Entry>{it.county==localCounty}.thenByDescending{
+                normalized[it.county]?.let{grade->SeismicAlertThreshold.grades.indexOf(when(grade){"5"->"5弱";"6"->"6弱";else->grade})}?:-1
+            })
+    }
+    fun page(entries:List<Entry>,index:Int):List<Entry>{
+        if(entries.isEmpty())return emptyList()
+        return entries.drop(Math.floorMod(index,(entries.size+1)/2)*2).take(2)
     }
 }

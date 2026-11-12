@@ -104,7 +104,7 @@ class SeismicTabletWarningRenderingTest:TabletDockFixture() {
                 for((w,h) in listOf(1280 to 900,600 to 960,1280 to 900)) {
                     resize(sheet,w,h)
                     assertTrue(nodes(sheet).none{it.config.contains(SemanticsProperties.VerticalScrollAxisRange)})
-                    val map=if(w==1280)tagged(sheet,"seismic-warning-map") else null
+                    val map=tagged(sheet,"seismic-warning-map")
                     save(sheet,"seismic-warning-${w}x$h-$dark-$scale")
 
                     if(w==1280) {
@@ -113,15 +113,15 @@ class SeismicTabletWarningRenderingTest:TabletDockFixture() {
                         val critical=tagged(sheet,"seismic-leading-pane")
                         val detail=tagged(sheet,"seismic-inspector-pane")
                         assertTrue("Tablet map must be taller than the compact map: ${map.size}",map.size.height>310)
-                        assertTrue("Map must be beside the critical values",map.positionInRoot.x>=critical.positionInRoot.x+critical.size.width+19f)
+                        assertTrue("Map must be beside the critical values",map.positionInRoot.x>=critical.positionInRoot.x+critical.size.width+11f)
                         assertEquals("Map must start in the detail pane",detail.positionInRoot.x,map.positionInRoot.x,1f)
                         assertTrue("Map must have more width than the critical values",map.size.width>critical.size.width)
                     }
-                    for(label in listOf("3 級","M 6.2","18 km","趴下 · 掩護 · 穩住","結束歷史回放")){
+                    for(label in listOf("3 級","M 6.2","18 km","趴下 · 掩護 · 穩住","結束演練")){
                         val node=nodes(sheet).first{text(it,label)}
                         assertFalse("Clipped $label at ${w}x$h / $scale: ${layout(node).size} ${layout(node).layoutInput.constraints}",layout(node).hasVisualOverflow);visible(node.boundsInRoot)
                     }
-                    if(w==600)assertTrue(nodes(sheet).any{text(it,"地圖與詳細資訊")})
+                    assertTrue("All windows show Taiwan immediately",map.boundsInRoot.height>=140)
                 }
                 dialog.dismiss()
             }

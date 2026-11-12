@@ -38,6 +38,9 @@ import androidx.compose.ui.platform.LocalDensity
 import io.atmos.weather.maps.rememberNlscMap
 import io.atmos.weather.maps.NlscTerrain
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.flow.conflate
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -89,7 +92,7 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
     val reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion()
     var progress by remember(storm.signature) { mutableFloatStateOf(0f) }
     val maxStep=(storm.fixes.size-1).toFloat()
-    val smoothProgress by animateFloatAsState(progress,tween(durationMillis=if(reduceMotion) 0 else 190),label="storm timeline transition")
+    val smoothProgress = animateFloatAsState(progress,tween(durationMillis=if(reduceMotion) 0 else 190),label="storm timeline transition")
     val chosen=storm.fixes[progress.roundToInt().coerceIn(0,storm.fixes.lastIndex)]
     var terrainCanvasSize by remember { mutableStateOf(IntSize.Zero) }
     val terrainPoints=remember(storm){storm.fixes.map { it.latitude to it.longitude }+
@@ -104,8 +107,18 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
         terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)
         else TyphoonViewport.forTaiwan(terrainCanvasSize.width.toFloat().coerceAtLeast(1f),
             terrainCanvasSize.height.toFloat().coerceAtLeast(1f),terrainPad)}
-    val scale=base.pxPerKm*zoom
-    val camera=base.copy(originXKm=base.originXKm-pan.x/scale,originYKm=base.originYKm+pan.y/scale,pxPerKm=scale)
+    val camera=remember(base,zoom,pan){
+        val scale=base.pxPerKm*zoom
+        base.copy(originXKm=base.originXKm-pan.x/scale,originYKm=base.originYKm+pan.y/scale,pxPerKm=scale)
+    }
+    val latestCamera by rememberUpdatedState(camera)
+    var atlasRevision by remember{mutableIntStateOf(0)}
+    LaunchedEffect(regional){
+        val loaded=regional?:return@LaunchedEffect
+        snapshotFlow{latestCamera}.conflate().collect{view->loaded.prepare(view);atlasRevision++}
+    }
+    val points=remember(storm,camera){storm.fixes.map{fix->camera.project(fix.longitude,fix.latitude).let{Offset(it.first,it.second)}}}
+    val timeLabels=remember(storm){storm.fixes.map{timeFormatter.format(it.time)}}
     androidx.activity.compose.BackHandler(onBack=onDismiss)
     Box(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         Box(Modifier.fillMaxSize()
@@ -130,57 +143,36 @@ fun StormTimelineOverlay(storm:StormTimeline,onDismiss:()->Unit) {
                 }
                 Box(Modifier.fillMaxWidth().height(315.dp).clip(RoundedCornerShape(26.dp))
                     .background(if(dark)brandColor(0xFF0B201A) else brandColor(0xFFDDF3ED))) {
-                    Canvas(Modifier.fillMaxSize().onSizeChanged { terrainCanvasSize=it }.pointerInput(Unit) {
-                        detectTransformGestures {centroid,move,magnification,_ ->
+                    // The cursor reads animation state only in its own draw phase.
+                    Box(Modifier.fillMaxSize().onSizeChanged{terrainCanvasSize=it}.testTag("storm-timeline-map").pointerInput(Unit){
+                        detectTransformGestures{centroid,move,magnification,_->
                             if(!magnification.isFinite()||magnification<=0||!move.x.isFinite()||!move.y.isFinite())return@detectTransformGestures
                             val next=(zoom*magnification).coerceIn(1f,32f)
                             val anchor=centroid-Offset(size.width/2f,size.height/2f)
                             pan=anchor+(pan-anchor)*(next/zoom)+move;zoom=next
                         }
-                    }) {
-                        val viewport=camera
-                        val pad=28.dp.toPx()
-                        regional?.draw(this,viewport,dark)
-                        if(atlas!=null) atlas.draw(this) {lon,lat ->
-                            val (x,y)=viewport.project(lon,lat);Offset(x,y)
+                    }){
+                        Canvas(Modifier.matchParentSize().graphicsLayer()){
+                            atlasRevision
+                            regional?.draw(this,camera,dark,preparedOnly=true)
+                            atlas?.draw(this){lon,lat->camera.project(lon,lat).let{Offset(it.first,it.second)}}
+                            drawRegionalPlaceLabels(camera,dark)
+                            for(i in 1..5)drawLine(cyan.copy(alpha=.09f),Offset(0f,size.height*i/6f),Offset(size.width,size.height*i/6f),1.dp.toPx())
                         }
-                        drawRegionalPlaceLabels(viewport,dark)
-                        val pts=storm.fixes.map {fix ->
-                            val (x,y)=viewport.project(fix.longitude,fix.latitude)
-                            Offset(x,y)
-                        }
-                        for (i in 1..5) {
-                            val y=size.height*i/6f
-                            drawLine(cyan.copy(alpha=.09f),Offset(0f,y),Offset(size.width,y),1.dp.toPx())
-                        }
-                        // Precisely CWA forecast coordinates; no synthetic forecast beyond end points.
-                        for(i in 0 until pts.lastIndex)drawDirectedTrack(pts[i],pts[i+1],cyan)
-                        val occupied=ArrayList<Offset>()
-                        pts.forEachIndexed {index,point ->
-                            if(occupied.none {(it-point).getDistance()<76.dp.toPx()}) {
-                                drawTrackTime(timeFormatter.format(storm.fixes[index].time),point);occupied+=point
+                        Canvas(Modifier.matchParentSize().graphicsLayer()){
+                            for(i in 0 until points.lastIndex)drawDirectedTrack(points[i],points[i+1],cyan)
+                            val occupied=ArrayList<Offset>()
+                            points.forEachIndexed{index,point->
+                                if(occupied.none{(it-point).getDistance()<76.dp.toPx()}){drawTrackTime(timeLabels[index],point);occupied+=point}
+                                drawCircle(cyan.copy(alpha=.23f),7.dp.toPx(),point);drawCircle(cyan,3.dp.toPx(),point)
                             }
                         }
-                        pts.forEachIndexed { index,pt ->
-                            drawCircle(cyan.copy(alpha=.23f),7.dp.toPx(),pt)
-                            drawCircle(if(index==progress.roundToInt()) Color.White else cyan,3.dp.toPx(),pt)
-                        }
-                        val idx=floor(smoothProgress).toInt().coerceIn(0,pts.lastIndex)
-                        val following=(idx+1).coerceAtMost(pts.lastIndex)
-                        val fraction=(smoothProgress-idx).coerceIn(0f,1f)
-                        val here=Offset(pts[idx].x+(pts[following].x-pts[idx].x)*fraction,
-                            pts[idx].y+(pts[following].y-pts[idx].y)*fraction)
-                        val nearest=storm.fixes[idx]
-                        nearest.radius7Km?.let { radius ->
-                            drawCircle(cyan.copy(alpha=.21f),radius=radius.toFloat()*viewport.pxPerKm.toFloat(),center=here,
-                                style=Stroke(width=1.5.dp.toPx()))
-                        }
-                        drawCircle(Color(0xFFFFD39F),7.dp.toPx(),here)
-                        drawCircle(cream,3.dp.toPx(),here)
-                        val (tx,ty)=viewport.project(121.0,23.65)
-                        if(tx in pad..(size.width-pad) && ty in pad..(size.height-pad)) {
-                            drawCircle(Color(0xFF83F4D1),4.dp.toPx(),Offset(tx,ty))
-                            drawCircle(Color(0xFF83F4D1).copy(alpha=.35f),9.dp.toPx(),Offset(tx,ty),style=Stroke(1.dp.toPx()))
+                        Canvas(Modifier.matchParentSize().graphicsLayer()){
+                            val cursor=smoothProgress.value
+                            val idx=floor(cursor).toInt().coerceIn(0,points.lastIndex);val next=(idx+1).coerceAtMost(points.lastIndex)
+                            val here=androidx.compose.ui.geometry.lerp(points[idx],points[next],(cursor-idx).coerceIn(0f,1f))
+                            storm.fixes[idx].radius7Km?.let{radius->drawCircle(cyan.copy(alpha=.21f),radius.toFloat()*camera.pxPerKm.toFloat(),here,style=Stroke(1.5.dp.toPx()))}
+                            drawCircle(Color(0xFFFFD39F),7.dp.toPx(),here);drawCircle(cream,3.dp.toPx(),here)
                         }
                     }
                     StormText("Natural Earth · 國土測繪中心",14,muted,

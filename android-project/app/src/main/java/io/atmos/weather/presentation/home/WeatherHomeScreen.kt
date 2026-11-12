@@ -53,6 +53,7 @@ import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -503,16 +504,19 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     var details by remember { mutableStateOf<Pair<String,String>?>(null) }
     var showLifestyleDetails by remember { mutableStateOf(false) }
     val reducedMotion = io.atmos.weather.ui.rememberAppleReduceMotion()
-    val transition = rememberInfiniteTransition(label="sky")
+    val weatherSceneActive=mainPager.currentPage==0&&!settingsOpen&&!settingsDetailOpen&&!lifestyleSettingsOpen&&
+        !pushSettingsOpen&&!diagnosticsOpen&&!briefingOpen&&!tasksOpen&&!updatePageOpen&&
+        !earthquakePageOpen&&!typhoonPageOpen&&!weatherAlarmOpen&&!marineOpen&&!skyOpen&&!alertsOpen&&!insightsOpen&&!nativeRadarOpen
     // Keep the animation value as State. Reading it in this parent would recompose the
     // complete forecast screen every frame (including scrolling and lists).
-    val motionState: State<Float> = if(reducedMotion) rememberUpdatedState(0f)
-        else transition.animateFloat(0f,1f,infiniteRepeatable(
+    val motionState: State<Float> = if(reducedMotion||!weatherSceneActive) rememberUpdatedState(0f)
+        else rememberInfiniteTransition(label="sky").animateFloat(0f,1f,infiniteRepeatable(
             tween((18000 - appearance.liquidMotion * 13000).toInt(), easing=LinearEasing)),label="weather motion")
     // At most a handful of impacts are sampled, tied to actual particle wraps.
     // Screen weather audio and haptic effects stop when this lifecycle stops.
     LaunchedEffect(lifecycleOwner, snapshot?.condition, heavyRain,
-        hapticSettings.enabled, hapticSettings.rainDrops, hapticSettings.thunder) {
+        hapticSettings.enabled, hapticSettings.rainDrops, hapticSettings.thunder,weatherSceneActive) {
+        if(!weatherSceneActive)return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             val raining = snapshot?.condition in setOf(WeatherCondition.RAIN,WeatherCondition.THUNDERSTORM)
             var previousTime = RainParticles.secondsNow()
@@ -581,7 +585,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val themedPage=mainPager.currentPage!=0||settingsOpen||settingsDetailOpen||lifestyleSettingsOpen||
             pushSettingsOpen||diagnosticsOpen||briefingOpen||tasksOpen||updatePageOpen||
             earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen||nativeRadarOpen
-        io.atmos.weather.ui.AppSystemBars(if(themedPage)darkAppearance else weatherSky.dark)
+        io.atmos.weather.ui.AppSystemBars(if(themedPage)darkAppearance else weatherSky.dark,transparentNavigation=!themedPage)
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         androidx.compose.runtime.CompositionLocalProvider(
@@ -655,11 +659,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides if(workspace.tablet)workspaceSceneBackdrop else weatherBackdrop,
                     LocalWeatherCardPalette provides weatherCards,LocalWeatherSceneInk provides weatherSky.ink) {
                 io.atmos.weather.ui.RainCollisionScene(rainIntensity,signedWind,Modifier.fillMaxSize(),
-                    style=physicsStyle,strongWind=strongWind,lightningEvent=lightningBolt,lightBackdrop=!weatherSky.dark) {
+                    style=physicsStyle,strongWind=strongWind,lightningEvent=lightningBolt,lightBackdrop=!weatherSky.dark,active=weatherSceneActive) {
                     if(!workspace.tablet)io.atmos.weather.ui.ThinnBackdropCapture(weatherBackdrop,Modifier.matchParentSize()) {
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))))
                     // Full-screen background layer. It never captures gestures.
-                    SkyEffects(demoCondition ?: snapshot?.condition, isNight,
+                    if(weatherSceneActive)SkyEffects(demoCondition ?: snapshot?.condition, isNight,
                         heavyRain || demoCondition == WeatherCondition.THUNDERSTORM,
                         hazy, appearance.liquidMotion, motionState, 0f,
                         lightningBolt, snapshot?.windKmh ?: 0.0, snapshot?.weatherCode, snapshot?.visibilityM)
@@ -670,10 +674,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         refreshRequested=true;refreshText="正在取得最新天氣…"
                         hapticEngine.play(HapticEngine.Event.RELEASE)
                         viewModel.onIntent(WeatherIntent.Refresh)
-                    },Modifier.fillMaxSize().padding(bottom=io.atmos.weather.ui.floatingDockContentClearance()).weatherCollisionViewport().zIndex(1f)) {
+                    },Modifier.fillMaxSize().testTag("weather-scroll-viewport").weatherCollisionViewport().zIndex(1f)) {
                     io.atmos.weather.ui.AdaptiveScrollingPanes(
                         modifier=Modifier.fillMaxSize().zIndex(1f),scrollState=weatherScrollState,
-                        horizontalPadding=20.dp,topPadding=18.dp,bottomPadding=176.dp,
+                        horizontalPadding=20.dp,topPadding=18.dp,bottomPadding=maxOf(176.dp,io.atmos.weather.ui.floatingDockContentClearance()),
                         leading={
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Row(Modifier.weight(1f).heightIn(min=54.dp).clip(RoundedCornerShape(999.dp))
@@ -965,7 +969,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     io.atmos.weather.ui.ThinnAtmosphereFocus(
                         snapshot=snapshot,
                         location=io.atmos.weather.location.LocationLabels.display(state.city.name),
-                        reducedMotion=reduceCityMotion
+                        reducedMotion=reduceCityMotion||!weatherSceneActive
                     )
                     Spacer(Modifier.height(14.dp))
                 }
@@ -1339,7 +1343,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             selected = dockRequestedTab ?: mainPager.targetPage,
             onSelect = ::navigateWorkspace,
             darkBackdrop=if(themedPage)null else weatherSky.dark,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp)) }
+            modifier = Modifier.align(Alignment.BottomCenter).testTag("floating-navigation-dock").navigationBarsPadding().padding(bottom = 16.dp)) }
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
             title={Text(info.first)},text={Text(info.second)}) }

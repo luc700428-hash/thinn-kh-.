@@ -31,11 +31,12 @@ class CrispMapGoogleWidgets(unittest.TestCase):
         self.assertNotIn('HttpURLConnection',s)
     def test_dynamic_state_widget_art(self):
         w=(B/'widgets/AtmosWidgets.kt').read_text()
-        self.assertIn('AndroidRemoteViews(glyph',w)
+        self.assertIn('AndroidRemoteViews(remote',w)
+        self.assertIn('WidgetWeatherArt.render(', (B/'widgets/AdaptiveWidgetLayout.kt').read_text())
         self.assertIn('widget_motion_enabled',w)
         self.assertIn('isPowerSaveMode',w)
         self.assertIn('WidgetGlassRenderer.background(',w)
-        self.assertIn('condition',w)
+        self.assertIn('weatherRemote(context,d.condition', (B/'widgets/AdaptiveWidgetLayout.kt').read_text())
     def test_retains_signing_and_release_gate(self):
         root=Path(__file__).resolve().parents[2]
         import json

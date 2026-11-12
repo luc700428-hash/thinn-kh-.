@@ -37,7 +37,7 @@ class SeismicLocalEstimateRenderingTest:WeatherInformationRenderingFixture() {
             val incident=original.copy(id="render-${width}-$dark-$scale",issuedAtMs=clock,originAtMs=clock-30_000)
             render(dark,scale,"local-eew-host-$width",{SeismicWarningOverlay(incident,false,"嘉義市",{})}){_,p->
                 val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
-                for(label in listOf("預估震度","預估抵達","本機初估","本機走時估算")) {
+                for(label in listOf("本機預估震度","本機估算抵達")) {
                     val node=nodes(sheet).single{text(it,label)}
                     assertTrue("Hidden $label at $width/$scale",node.boundsInRoot.height>0f)
                     assertFalse("Clipped $label",layout(node).hasVisualOverflow)
@@ -64,7 +64,7 @@ class SeismicLocalEstimateRenderingTest:WeatherInformationRenderingFixture() {
             val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
             val range=nodes(sheet).single{text(it,"4 級以上")}
             assertTrue(range.boundsInRoot.height>0);assertFalse(layout(range).hasVisualOverflow);contrast(range,p.surface)
-            assertTrue(nodes(sheet).any{text(it,"本機初估")})
+            assertTrue(nodes(sheet).any{text(it,"本機預估震度")})
             save(sheet,"high-pga-range-150")
         }
     }

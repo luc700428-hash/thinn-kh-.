@@ -16,9 +16,10 @@ class V25StormWidgetIntegration(unittest.TestCase):
         self.assertIn('Duration.between',src)
         self.assertIn('kilometers(',src)
     def test_original_weather_character_fifteen_state_fallback(self):
-        widget=(ROOT/'widgets/AtmosWidgets.kt').read_text()
+        widget=(ROOT/'widgets/AdaptiveWidgetLayout.kt').read_text()
         self.assertIn('d.condition',widget)
         self.assertIn('WidgetWeatherArt.render(',widget)
-        self.assertIn('fontSize=s.plan.sp(size).sp',widget)
+        self.assertIn('setTextViewTextSize(id,dip,r.font)',widget)
+        self.assertIn('WidgetLayoutPlan.create', (ROOT/'widgets/AtmosWidgets.kt').read_text())
         self.assertIn('d.age',widget)
 if __name__=='__main__': unittest.main()

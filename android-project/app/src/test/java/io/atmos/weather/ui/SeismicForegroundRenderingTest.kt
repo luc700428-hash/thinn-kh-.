@@ -37,14 +37,12 @@ class SeismicForegroundRenderingTest:WeatherInformationRenderingFixture(){
                     val node=nodes(sheet).filter{text(it,label)}.minBy{it.boundsInRoot.top};assertFalse("Clipped $label at $scale",layout(node).hasVisualOverflow)
                     contrast(node,if(label in listOf("3 級","M 6.2","18 km"))p.surface else p.background)
                 }
-                assertTrue(nodes(sheet).any{text(it,"本機走時估算")})
+                assertTrue(nodes(sheet).any{text(it,"本機估算抵達")})
                 assertTrue(nodes(sheet).any{text(it,"花蓮縣近海")})
                 assertTrue(nodes(sheet).none{it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange)})
-                click(sheet,"地圖與詳細資訊")
-                val details=ShadowDialog.getLatestDialog().window!!.decorView
-                settle(details){nodes(details).any{text(it,"© 國土測繪中心 · 灰：未提供")}}
-                val dismiss=nodes(details).single{it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)&&"關閉" in it.config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription]&&it.config.contains(androidx.compose.ui.semantics.SemanticsActions.OnClick)}
-                assertTrue(dismiss.config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action!!.invoke());pump(sheet).recycle()
+                settle(sheet){nodes(sheet).any{text(it,"© 國土測繪中心 · 灰：未提供")}}
+                val map=nodes(sheet).single{it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.TestTag)&&it.config[androidx.compose.ui.semantics.SemanticsProperties.TestTag]=="seismic-warning-map"}
+                assertTrue("Map must be visible before any tap",map.boundsInRoot.height>=140f)
                 save(sheet,"live-eew-$dark-${(scale*100).toInt()}")
                 // Source-supplied past arrival changes the tile without inferring an ETA from wave rings.
                 assertNotNull(SeismicAlertDelivery.publish(ctx,incident.copy(serial=5,arrivalAtMsByCounty=mapOf("臺北市" to System.currentTimeMillis()-1000))))
@@ -57,7 +55,7 @@ class SeismicForegroundRenderingTest:WeatherInformationRenderingFixture(){
                 assertFalse(layout(arrived).hasVisualOverflow)
                 assertTrue(nodes(updatedSheet).any{it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Text)&&it.config[androidx.compose.ui.semantics.SemanticsProperties.Text].any{t->t.text.contains("第 5 報")}})
                 save(updatedSheet,"live-arrived-$dark-${(scale*100).toInt()}")
-                click(updatedSheet,"我已採取避難措施");pump(view).recycle()
+                click(updatedSheet,"已避難");pump(view).recycle()
                 assertNull(SeismicAlertDelivery.active.value)
                 assertTrue(nodes(view).any{text(it,"天氣主頁")})
             }

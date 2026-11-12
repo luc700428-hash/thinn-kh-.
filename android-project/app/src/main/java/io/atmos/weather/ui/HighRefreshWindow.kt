@@ -88,7 +88,7 @@ private fun Context.activity():Activity?=when(this) {
 }
 /** Match system icons to the visible page, including full-screen dialog windows. */
 @Suppress("DEPRECATION")
-@Composable internal fun AppSystemBars(darkBackground:Boolean) {
+@Composable internal fun AppSystemBars(darkBackground:Boolean,transparentNavigation:Boolean=false) {
     val view=LocalView.current
     val navigationColor=if(darkBackground)BrandPalette.dark.background.toArgb() else BrandPalette.light.background.toArgb()
     SideEffect {
@@ -101,8 +101,8 @@ private fun Context.activity():Activity?=when(this) {
             // Android 15+ draws gesture bars transparently over the app window.
             // Keep the underlay themed instead of relying on the retired color API.
             if(dialogWindow==null)it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(navigationColor))
-            it.navigationBarColor=if(Build.VERSION.SDK_INT>=35)android.graphics.Color.TRANSPARENT else navigationColor
-            if(Build.VERSION.SDK_INT>=35)it.isNavigationBarContrastEnforced=false
+            it.navigationBarColor=if(transparentNavigation||Build.VERSION.SDK_INT>=35)android.graphics.Color.TRANSPARENT else navigationColor
+            it.isNavigationBarContrastEnforced=!transparentNavigation&&Build.VERSION.SDK_INT<35
         }
     }
 }

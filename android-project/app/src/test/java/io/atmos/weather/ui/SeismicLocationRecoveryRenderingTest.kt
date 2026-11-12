@@ -31,7 +31,7 @@ class SeismicLocationRecoveryRenderingTest:WeatherInformationRenderingFixture() 
             assertTrue(nodes(sheet).any{text(it,"請選擇所在地")})
             // Same persisted preference as the inline location menu and earthquake settings.
             SeismicUserLocation.choose(ctx,"嘉義市")
-            settle(sheet){nodes(sheet).any{text(it,"本機走時估算")}}
+            settle(sheet){nodes(sheet).any{text(it,"本機估算抵達")}}
             assertSame(dialog,ShadowDialog.getLatestDialog())
             assertTrue(nodes(sheet).any{text(it,"嘉義市")})
             assertFalse(nodes(sheet).any{text(it,"請選擇所在地")})

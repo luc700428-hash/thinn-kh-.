@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -101,131 +103,96 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     // not reset a locally calculated arrival: it is anchored to the earthquake origin.
     val arrival=if(historical)estimate?.let{started+(it.arrivalSeconds*1000).toLong()} else prediction.arrivalAtMs
     val arrivalText=if(historical)arrival?.let{if(it<=now)"已抵達" else "${kotlin.math.ceil((it-now)/1000.0).toInt()} s"}?:"—" else prediction.arrivalText(now)
-    var showDetails by remember(eventKey){mutableStateOf(false)}
     val intensity=local?.let{if(it.contains("以上"))it.replace("級"," 級") else "${SeismicDisplayFormat.symbol(it)} 級"}?:"—"
     val intensityReason=if(historical)if(estimate==null)"請選擇所在地" else "本機模型估算 · 僅供演練" else prediction.intensityReason
     val arrivalReason=if(historical)"模型示意 · 非官方預測" else prediction.arrivalReason
     val title=if(historical)"臺灣 921 大地震演練" else if(simulation)"地震演練" else if(replay)"歷史地震演練" else "緊急地震速報"
     val notice=if(historical)"1999/09/21 歷史情境 · 非即時警報" else if(simulation)"虛構情境 · 並非真實速報" else if(replay)"過去事件回放 · 非即時警報" else "${incident.source} · 第 ${incident.serial} 報"
-    val intensityCaption=when {
-        historical->if(estimate==null)"請選擇所在地" else "本機演練估算"
-        prediction.intensityOrigin==PredictionOrigin.SOURCE->"來源預估"
-        prediction.intensityOrigin==PredictionOrigin.LOCAL_MODEL->"本機初估"
-        place==null->"請選擇所在地"
-        else->"待來源提供"
+    val intensityLabel=when{
+        historical->"本機震度估算"
+        prediction.intensityOrigin==PredictionOrigin.LOCAL_MODEL->"本機預估震度"
+        else->"預估震度"
     }
-    val arrivalCaption=when {
-        historical->"演練示意"
-        prediction.arrivalOrigin==PredictionOrigin.SOURCE->"來源預估"
-        prediction.arrivalOrigin==PredictionOrigin.LOCAL_MODEL->"本機走時估算"
-        place==null->"請選擇所在地"
-        else->"待來源提供"
+    val arrivalLabel=when{
+        historical->"演練示意倒數"
+        prediction.arrivalOrigin==PredictionOrigin.LOCAL_MODEL->"本機估算抵達"
+        else->"預估抵達"
     }
-    val scale=LocalDensity.current.fontScale
+    val maximum=if(historical)"7 級" else incident.maximumIntensity?.let{"${SeismicDisplayFormat.symbol(it)} 級"}?:"—"
+    val issued=if(historical)"1999/09/21 01:47:15.9" else java.time.Instant.ofEpochMilli(incident.issuedAtMs)
+        .atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm:ss"))
     Dialog(onDismissRequest=onClose,properties=DialogProperties(dismissOnClickOutside=false,usePlatformDefaultWidth=false,decorFitsSystemWindows=false),adaptiveContentWidth=null){
-        io.atmos.weather.ui.AdaptiveWindowProvider(Modifier.background(palette.background)) {
-        io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=1280.dp) {
-        BoxWithConstraints(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
-            val landscape=maxWidth>maxHeight*1.15f
-            val tight=maxHeight.value<720f||scale>1.3f
-            val gap=if(tight)6.dp else 12.dp
+        io.atmos.weather.ui.AdaptiveWindowProvider(Modifier.background(palette.background)){
+        io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=1280.dp){
+        BoxWithConstraints(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()){
+            val sideBySide=maxWidth>maxHeight*1.15f
+            val shortLandscape=sideBySide&&maxHeight<520.dp
+            val tight=maxHeight<760.dp||LocalDensity.current.fontScale>1.3f
+            val gap=if(tight)4.dp else 8.dp
+            val facts:@Composable (Modifier)->Unit={modifier->
+                Row(modifier.testTag("seismic-warning-facts").clip(RoundedCornerShape(20.dp)).background(palette.surface)
+                    .padding(horizontal=10.dp,vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                    WarningStatistic("規模",SeismicDisplayFormat.magnitude(incident.magnitude),Modifier.weight(1f))
+                    WarningStatistic("深度",SeismicDisplayFormat.depth(incident.depthKm),Modifier.weight(1f))
+                    WarningStatistic(if(historical)"歷史最大" else "來源最大",maximum,Modifier.weight(1f))
+                }
+            }
             Column(Modifier.fillMaxSize().graphicsLayer{alpha=reveal;scaleX=reveal;scaleY=reveal}.testTag("seismic-warning-summary")){
-                Row(Modifier.fillMaxWidth().padding(horizontal=18.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
+                Row(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                     Column(Modifier.weight(1f)){
-                        Text(title,fontSize=20.sp,lineHeight=26.sp,fontWeight=FontWeight.Bold,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
-                        Text(notice,fontSize=14.sp,lineHeight=19.sp,color=if(simulation||replay)palette.tertiary else palette.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
+                        Text(title,fontSize=18.sp,lineHeight=23.sp,fontWeight=FontWeight.Bold,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
+                        Text(notice,fontSize=14.sp,lineHeight=18.sp,color=if(simulation||replay)palette.tertiary else palette.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
                     }
+                    if(shortLandscape)facts(Modifier.weight(1f))
                     GlassIconButton(onClick=onClose){Icon(Icons.Rounded.Close,"關閉速報",tint=palette.onSurface)}
                 }
-                // Critical values are bounded by the viewport. Only the optional inspector scrolls.
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(horizontal=18.dp)) {
-                    val paneWidth=maxWidth;val paneHeight=maxHeight
-                    val wide=maxWidth.value>=980f*scale.coerceIn(1f,1.2f)&&maxHeight>=420.dp
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(horizontal=14.dp)){
                     val summary:@Composable (Modifier)->Unit={modifier->
                         Column(modifier.testTag("seismic-leading-pane"),verticalArrangement=Arrangement.spacedBy(gap)){
-                            if(!landscape&&!tight)Text("收到地震速報 · 慎防強烈搖晃",fontSize=16.sp,lineHeight=22.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
                             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                                Text(county.ifBlank{"未設定所在地"},color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=19.sp,modifier=Modifier.weight(1f))
+                                Text(county.ifBlank{"請選擇所在地"},color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=19.sp,modifier=Modifier.weight(1f))
                                 if(place==null)WarningLocationChoice{SeismicUserLocation.choose(context,it)}
-                                if(landscape)TextButton(onClick={showDetails=true}){Text(if(historical)"歷史觀測與詳細資訊" else "地圖與詳細資訊",fontSize=14.sp,lineHeight=21.sp,color=palette.primary)}
                             }
-                            val heroes:@Composable (Modifier)->Unit={heroModifier->
-                                BoxWithConstraints(heroModifier){
-                                    val cellWidth=(maxWidth.value-10f)/2f
-                                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                                        WarningHero("預估震度",intensity,intensityCaption,accent,Modifier.weight(1f).fillMaxHeight(),tight,cellWidth)
-                                        WarningHero(if(historical)"演練示意倒數" else "預估抵達",arrivalText,arrivalCaption,palette.primary,Modifier.weight(1f).fillMaxHeight(),tight,cellWidth)
-                                    }
+                            BoxWithConstraints(Modifier.fillMaxWidth()){
+                                val cellWidth=(maxWidth.value-8f)/2f
+                                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                                    WarningHero(intensityLabel,intensity,"",accent,Modifier.weight(1f).fillMaxHeight().semantics{contentDescription="$intensityLabel $intensity；$intensityReason"},tight,cellWidth)
+                                    WarningHero(arrivalLabel,arrivalText,"",palette.primary,Modifier.weight(1f).fillMaxHeight().semantics{contentDescription="$arrivalLabel $arrivalText；$arrivalReason"},tight,cellWidth)
                                 }
                             }
-                            val facts:@Composable (Modifier)->Unit={factModifier->
-                                Column(factModifier,verticalArrangement=Arrangement.spacedBy(gap)){
-                                    WarningPlate(compact=tight){
-                                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                                            WarningStatistic("規模",SeismicDisplayFormat.magnitude(incident.magnitude),Modifier.weight(1f))
-                                            WarningStatistic("深度",SeismicDisplayFormat.depth(incident.depthKm),Modifier.weight(1f))
-                                        }
-                                    }
-                                    Text(SeismicDisplayFormat.location(incident.epicenter),fontSize=14.sp,lineHeight=20.sp,fontWeight=FontWeight.Medium,color=palette.onSurface,
-                                        maxLines=if(tight)1 else 2,overflow=TextOverflow.Ellipsis,modifier=Modifier.fillMaxWidth())
-                                }
-                            }
-                            if(landscape&&!wide){
-                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(16.dp)){
-                                    heroes(Modifier.weight(1.2f));facts(Modifier.weight(1f))
-                                }
-                            } else {heroes(Modifier.fillMaxWidth());facts(Modifier.fillMaxWidth())}
-                            if(!landscape)TextButton(onClick={showDetails=true},modifier=Modifier.fillMaxWidth().heightIn(min=44.dp)){
-                                Text(if(historical)"歷史觀測與詳細資訊" else "地圖與詳細資訊",fontSize=14.sp,lineHeight=21.sp,color=palette.primary,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
-                            }
+                            if(!shortLandscape)facts(Modifier.fillMaxWidth())
+                            Text(SeismicDisplayFormat.location(incident.epicenter),fontSize=14.sp,lineHeight=19.sp,fontWeight=FontWeight.Medium,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
+                            if(!shortLandscape)Text(issued+if(historical)" · 舊制" else " · 第 ${incident.serial} 報",fontSize=14.sp,lineHeight=18.sp,color=palette.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
                         }
                     }
-                    if(wide){
-                        Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(20.dp)){
-                            summary(Modifier.width((paneWidth*.40f).coerceAtMost(470.dp)))
-                            Box(Modifier.weight(1f).fillMaxHeight().testTag("seismic-inspector-pane")){
-                                SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,place,historical,frameNow,
-                                    Modifier.fillMaxWidth(),viewportHeight=paneHeight.coerceAtMost(640.dp))
-                            }
+                    val map:@Composable (Modifier)->Unit={modifier->
+                        SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,
+                            place,historical,frameNow,modifier.testTag("seismic-inspector-pane"),compact=true,simulation=simulation,
+                            subtitle=if(shortLandscape)issued else null)
+                    }
+                    if(sideBySide){
+                        Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                            summary(Modifier.weight(1f));map(Modifier.weight(1.2f).fillMaxHeight())
                         }
-                    }else summary(Modifier.fillMaxSize())
+                    }else{
+                        Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(gap)){
+                            summary(Modifier.fillMaxWidth());map(Modifier.fillMaxWidth().weight(1f))
+                        }
+                    }
                 }
-                Column(Modifier.fillMaxWidth().background(palette.surface).padding(horizontal=18.dp,vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){
-                    Text("趴下 · 掩護 · 穩住",fontSize=if(landscape)18.sp else 22.sp,lineHeight=if(landscape)24.sp else 29.sp,fontWeight=FontWeight.Bold,color=palette.onSurface,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(6.dp))
-                    Button(onClick=onClose,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),colors=ButtonDefaults.buttonColors(containerColor=if(simulation||replay)palette.primary else palette.error,contentColor=if(simulation||replay)palette.onPrimary else palette.onError)){
-                        Text(if(simulation)"結束模擬演練" else if(replay)"結束歷史回放" else "我已採取避難措施",fontSize=15.sp,lineHeight=22.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
+                Row(Modifier.fillMaxWidth().background(palette.surface).padding(horizontal=14.dp,vertical=8.dp),
+                    verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                    Text("趴下 · 掩護 · 穩住",fontSize=16.sp,lineHeight=22.sp,fontWeight=FontWeight.Bold,color=palette.onSurface,modifier=Modifier.weight(1f))
+                    Button(onClick=onClose,modifier=Modifier.width(((if(simulation||replay)4 else 3)*14f*LocalDensity.current.fontScale+44f).dp).heightIn(min=48.dp).testTag("seismic-warning-dismiss")
+                        .semantics{contentDescription=if(simulation)"結束模擬演練" else if(replay)"結束歷史回放" else "我已採取避難措施"},
+                        colors=ButtonDefaults.buttonColors(containerColor=if(simulation||replay)palette.primary else palette.error,contentColor=if(simulation||replay)palette.onPrimary else palette.onError)){
+                        Text(if(simulation||replay)"結束演練" else "已避難",fontSize=14.sp,lineHeight=22.sp,fontWeight=FontWeight.SemiBold,
+                            textAlign=TextAlign.Center,maxLines=1,softWrap=false,modifier=Modifier.fillMaxWidth())
                     }
                 }
             }
         }
         }
-        }
-        if(showDetails)io.atmos.weather.ui.IOSFormSheet(if(historical)"921 歷史觀測" else "地震詳細資訊",{showDetails=false},onDone={showDetails=false}){
-            Text(if(historical)"震源與縣市最大震度採官方歷史資料；本頁觀測不是所在地的模型預估。" else if(simulation)"所有震央與震度均為演練情境。" else "資料來源：${incident.source} · 第 ${incident.serial} 報",fontSize=14.sp,lineHeight=21.sp,color=palette.onSurfaceVariant)
-            WarningPlate{
-                Text("所在地震度：$intensityReason\n抵達時間：$arrivalReason",fontSize=14.sp,lineHeight=21.sp,color=palette.onSurfaceVariant)
-                Text(SeismicDisplayFormat.location(incident.epicenter),fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface)
-                WarningStatistic(if(historical)"歷史最大震度（舊制）" else "來源最大震度",if(historical)"7 級" else incident.maximumIntensity?.let{"${SeismicDisplayFormat.symbol(it)} 級"}?:"待來源提供",Modifier.fillMaxWidth())
-                Text(if(historical)"歷史發震：1999/09/21 01:47:15.9（臺灣時間）\n震央：23.85°N · 120.82°E" else
-                    "發布："+java.time.Instant.ofEpochMilli(incident.issuedAtMs).atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm:ss")),fontSize=14.sp,lineHeight=21.sp,color=palette.onSurfaceVariant)
-                place?.let{Text(it.source,fontSize=14.sp,color=palette.onSurfaceVariant)}
-            }
-            Text(if(historical)"本機演練估算不代表當年即時速報；地形、土壤與斷層會影響實際搖晃。" else "本機估算可能有誤差。請立即避難，勿等待倒數。",fontSize=14.sp,lineHeight=21.sp,color=palette.onSurfaceVariant)
-            SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,place,historical,frameNow,Modifier.fillMaxWidth(),viewportHeight=300.dp)
-            WarningPlate{
-                Text(if(historical)"921 歷史縣市最大震度（舊制）" else if(simulation)"演練情境震度（虛構）" else "各縣市預估震度",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface)
-                (if(historical)SeismicWarningCounties.counties.map{CountyIntensity(it,ChiChi921.historicalCountyMaxima[it])} else allCounties).chunked(2).forEach{row->
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                        row.forEach{entry->Column(Modifier.weight(1f).padding(vertical=6.dp)){
-                            Text(entry.county,fontSize=14.sp,color=palette.onSurfaceVariant)
-                            Text(entry.intensity?.let{"${SeismicDisplayFormat.symbol(it)} 級"}?:"—",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=palette.onSurface)
-                        }}
-                        if(row.size==1)Spacer(Modifier.weight(1f))
-                    }
-                }
-                Text(if(historical)"歷史最大值不是每個地點的震度；舊制 5、6 級不換算成現制強弱。— 為歷史報告未列示。" else "灰色與 — 表示來源尚未提供，並非震度為零。",fontSize=14.sp,lineHeight=21.sp,color=palette.onSurfaceVariant)
-            }
         }
     }
 }
@@ -254,13 +221,13 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     Column(modifier.clip(RoundedCornerShape(24.dp)).background(p.surface).border(1.dp,p.outlineVariant.copy(alpha=.5f),RoundedCornerShape(24.dp)).padding(if(tight)10.dp else 14.dp)){
         Text(label,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.fillMaxWidth())
         Text(value,color=accent,fontSize=size.sp,lineHeight=(size*1.24f).sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth(),style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
-        Text(caption,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.fillMaxWidth())
+        if(caption.isNotEmpty())Text(caption,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.fillMaxWidth())
     }
 }
 @Composable private fun WarningStatistic(label:String,value:String,modifier:Modifier){
     val p=MaterialTheme.colorScheme
-    Column(modifier,verticalArrangement=Arrangement.spacedBy(4.dp)){
-        Text(label,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+    Column(modifier,verticalArrangement=Arrangement.spacedBy(1.dp)){
+        Text(label,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=18.sp,modifier=Modifier.fillMaxWidth())
         Text(value,color=p.onSurface,fontSize=18.sp,lineHeight=24.sp,fontWeight=FontWeight.Medium,modifier=Modifier.fillMaxWidth())
     }
 }

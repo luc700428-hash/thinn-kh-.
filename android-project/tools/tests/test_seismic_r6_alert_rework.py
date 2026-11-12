@@ -11,7 +11,7 @@ class SeismicR6Tests(unittest.TestCase):
         self.assertNotIn('僅在前景收到有效來源資料時顯示',ui)
         self.assertNotIn('震波到達倒數：缺少可驗證資料',ui)
         self.assertIn('if(replay)"歷史地震演練" else "緊急地震速報"',ui)
-        self.assertIn('資料來源：${incident.source}',ui)
+        self.assertIn('${incident.source} · 第 ${incident.serial} 報',ui)
     def test_only_real_source_intensities(self):
         source=src('earthquake/SeismicWarningCounties.kt')
         self.assertIn('SeismicWavePhysics.intensityLabel(values[county])',source)

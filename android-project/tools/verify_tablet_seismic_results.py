@@ -70,6 +70,17 @@ EXPECTED.update({
 })
 EXPECTED['io.atmos.weather.widgets.WidgetLayoutPlanTest'].add('launcherPreferenceIsBoundedAndChangesReadingSizesIndependently')
 
+EXPECTED.update({
+ 'io.atmos.weather.ui.TyphoonTimelineRenderingTest':{'actualTimelineKeepsItsSourceMapAndNeverBuildsPathsOnTheUiThreadWhileScrubbing'},
+ 'io.atmos.weather.widgets.WidgetExtremeReflowRenderingTest':{'allFamiliesRenderWideTowersAndLargeTypeWithoutInvertedPrimarySizes'},
+ 'io.atmos.weather.widgets.WidgetCountdownRenderingTest':{'clockFamiliesOnlyShowACountdownForAValidAlarmWithinTheNextDay'},
+ 'io.atmos.weather.widgets.AdaptiveWidgetLayoutTest':{'extremeHostShapesReflowAndPrimaryFontsGrowMonotonically'},
+ 'io.atmos.weather.earthquake.SeismicCountyRotationTest':{'allCountiesRotateAndHistoricalGradesAndMissingValuesRemainDistinct'},
+ 'io.atmos.weather.ui.PhoneWeatherDockTransparencyRenderingTest':{'forecastCoversDockAndGestureAreaWithActualSystemInsets'},
+ 'io.atmos.weather.ui.LegacyPhoneWeatherDockTransparencyRenderingTest':{'forecastCoversDockAndGestureAreaWithActualSystemInsets'},
+ 'io.atmos.weather.ui.WeatherScenePauseRenderingTest':{'coveredSceneStopsFramesAndResumesItsOriginalParticleWorld'},
+})
+
 def verify(root):
     seen = set()
     total = 0

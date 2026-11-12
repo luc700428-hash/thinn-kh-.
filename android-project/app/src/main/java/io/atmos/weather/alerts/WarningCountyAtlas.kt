@@ -89,7 +89,8 @@ internal object WarningMapLayout {
             WarningMapViewport(Rect.Zero,118.10,24.10,119.53,25.05,"金門縣"),
             WarningMapViewport(Rect.Zero,119.28,23.15,119.78,23.85,"澎湖縣"))
         val slot=(height-2*margin)/slots.size
-        return listOf(main)+slots.mapIndexed{i,v->v.copy(rectangle=Rect(margin,margin+i*slot+22*density,side-margin,margin+(i+1)*slot-12*density))}
+        val labelGap=minOf(22*density,slot*.18f);val bottomGap=minOf(12*density,slot*.10f)
+        return listOf(main)+slots.mapIndexed{i,v->v.copy(rectangle=Rect(margin,margin+i*slot+labelGap,side-margin,margin+(i+1)*slot-bottomGap))}
     }
     fun hit(atlas:WarningCountyAtlas,views:List<WarningMapViewport>,point:Offset):String? {
         val view=views.lastOrNull{it.rectangle.inflate(4f).contains(point)}?:return null

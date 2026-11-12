@@ -254,22 +254,17 @@ class TabletSeismicWarningRenderingTest:TabletRenderingFixture() {
             render(true,1f,"tablet-eew-host",{if(open)io.atmos.weather.earthquake.SeismicWarningOverlay(incident,true,"臺北市",{open=false},simulation=true)}){host,_->
                 val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
                 val heading=nodes(sheet).single{text(it,"臺灣 921 大地震演練")}
-                val warning=nodes(sheet).single{text(it,"預估震度")}
+                val warning=nodes(sheet).single{text(it,"本機震度估算")}
                 visible(heading.boundsInRoot);assertFalse(layout(heading).hasVisualOverflow)
                 visible(warning.boundsInRoot);assertFalse(layout(warning).hasVisualOverflow)
                 assertTrue(nodes(sheet).none{it.config.contains(SemanticsProperties.VerticalScrollAxisRange)})
-                if(w>=980){
-                    val map=tagged(sheet,"seismic-warning-map")
-                    visible(map.boundsInRoot)
-                    assertTrue("Critical values precede the tablet map",warning.boundsInRoot.left<map.boundsInRoot.left)
-                } else {
-                    val details=nodes(sheet).single{text(it,"歷史觀測與詳細資訊")}
-                    visible(details.boundsInRoot);assertFalse(layout(details).hasVisualOverflow)
-                }
-                val close=nodes(sheet).single{text(it,"結束模擬演練")&&it.config.contains(SemanticsActions.OnClick)}
+                val map=tagged(sheet,"seismic-warning-map")
+                visible(map.boundsInRoot);assertTrue("Taiwan map must be on the primary screen",map.boundsInRoot.height>=140)
+                if(w>=980)assertTrue(warning.boundsInRoot.left<map.boundsInRoot.left)
+                val close=nodes(sheet).single{text(it,"結束演練")&&it.config.contains(SemanticsActions.OnClick)}
                 visible(close.boundsInRoot)
                 save(sheet,"tablet-eew-${w}x$h")
-                click(sheet,"結束模擬演練");pump(host).recycle();assertFalse(open)
+                click(sheet,"結束演練");pump(host).recycle();assertFalse(open)
             }
         }
     }

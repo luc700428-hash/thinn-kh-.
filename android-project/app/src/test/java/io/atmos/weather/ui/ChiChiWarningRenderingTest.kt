@@ -43,17 +43,14 @@ class ChiChiWarningRenderingTest:WeatherInformationRenderingFixture() {
                     contrast(n,if(label in listOf("M 7.3","8 km"))palette.surface else palette.background)
                 }
                 assertTrue(nodes(sheet).any{text(it,"4 級")})
-                assertTrue(nodes(sheet).any{text(it,"本機演練估算")})
-                assertFalse(nodes(sheet).any{text(it,"7 級")})
+                assertTrue(nodes(sheet).any{text(it,"本機震度估算")})
+                assertTrue(nodes(sheet).any{text(it,"歷史最大")})
+                assertTrue(nodes(sheet).any{text(it,"7 級")})
                 assertTrue(nodes(sheet).none{it.config.contains(SemanticsProperties.VerticalScrollAxisRange)})
-                click(sheet,"歷史觀測與詳細資訊")
-                val details=ShadowDialog.getLatestDialog().window!!.decorView;pump(details).recycle()
-                assertTrue(nodes(details).any{text(it,"歷史最大震度（舊制）")})
-                assertTrue(nodes(details).any{text(it,"7 級")})
-                val dismiss=nodes(details).single{it.config.contains(SemanticsProperties.ContentDescription)&&"關閉" in it.config[SemanticsProperties.ContentDescription]&&it.config.contains(SemanticsActions.OnClick)}
-                assertTrue(dismiss.config[SemanticsActions.OnClick].action!!.invoke());pump(sheet).recycle()
+                val map=nodes(sheet).single{it.config.contains(SemanticsProperties.TestTag)&&it.config[SemanticsProperties.TestTag]=="seismic-warning-map"}
+                assertTrue("Historical map must be visible before a tap",map.boundsInRoot.height>=140f)
                 save(sheet,"921-fullscreen-$dark-${(scale*100).toInt()}")
-                click(sheet,"結束模擬演練");pump(view).recycle();assertFalse(visible)
+                click(sheet,"結束演練");pump(view).recycle();assertFalse(visible)
             }
         }
     }

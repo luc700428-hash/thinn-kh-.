@@ -32,7 +32,7 @@ class SeismicSingleScreenRenderingTest:TabletDockFixture(){
                 val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
                 val summary=tagged(sheet,"seismic-warning-summary").boundsInRoot
                 assertTrue(nodes(sheet).none{it.config.contains(SemanticsProperties.VerticalScrollAxisRange)})
-                val labels=listOf("預估震度",if(drill)"演練示意倒數" else "預估抵達","規模","深度","趴下 · 掩護 · 穩住",if(drill)"結束模擬演練" else "我已採取避難措施")
+                val labels=listOf(if(drill)"本機震度估算" else "預估震度",if(drill)"演練示意倒數" else "預估抵達","規模","深度","趴下 · 掩護 · 穩住",if(drill)"結束演練" else "已避難")
                 save(sheet,"single-screen-before-${w}x$h-$scale-$drill-${place?:"unknown"}")
                 for(label in labels){
                     val node=nodes(sheet).single{text(it,label)}
@@ -40,9 +40,11 @@ class SeismicSingleScreenRenderingTest:TabletDockFixture(){
                     assertFalse("$w/$h/$scale clipped $label: ${layout(node).size} ${layout(node).layoutInput.constraints}, font=${layout(node).layoutInput.style}",layout(node).hasVisualOverflow)
                     assertTrue("$w/$h/$scale hid $label: $bounds vs $summary",bounds.width>0&&bounds.height>0&&bounds.top>=summary.top&&bounds.bottom<=summary.bottom+1)
                 }
-                val end=nodes(sheet).single{text(it,if(drill)"結束模擬演練" else "我已採取避難措施")}.boundsInRoot
-                val details=nodes(sheet).single{text(it,if(drill)"歷史觀測與詳細資訊" else "地圖與詳細資訊")}.boundsInRoot
-                assertTrue("Summary must not overlap its footer: $details / $end",details.bottom<end.top)
+                val end=nodes(sheet).single{text(it,if(drill)"結束演練" else "已避難")}.boundsInRoot
+                val map=tagged(sheet,"seismic-warning-map").boundsInRoot
+                assertTrue("Map disappeared at $w/$h/$scale/$drill/$place: $map",map.width>=120&&map.height>=110)
+                assertTrue("Map must stay above the action: $map / $end",map.bottom<=end.top+1)
+                assertTrue("Map may not require details",nodes(sheet).none{it.config.contains(SemanticsProperties.Text)&&it.config[SemanticsProperties.Text].any{t->t.text.contains("詳細資訊")}})
                 save(sheet,"single-screen-${w}x$h-$scale-$drill-${place?:"unknown"}")
                 ShadowDialog.getLatestDialog().dismiss()
             }

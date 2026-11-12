@@ -63,7 +63,7 @@ private val surfaceIds=AtomicInteger(1)
  */
 @Composable internal fun RainCollisionScene(intensity:Float,windKmh:Float,modifier:Modifier=Modifier,
     style:WeatherPhysicsStyle=WeatherPhysicsStyle(rain=intensity),strongWind:Boolean=false,lightningEvent:Int=0,
-    lightBackdrop:Boolean=false,content:@Composable BoxScope.()->Unit) {
+    lightBackdrop:Boolean=false,active:Boolean=true,content:@Composable BoxScope.()->Unit) {
     val layout=remember {RainLayout(RainCollisionWorld())}
     val world=layout.world
     val particles=layout.particles
@@ -77,11 +77,11 @@ private val surfaceIds=AtomicInteger(1)
         val observer=LifecycleEventObserver {_,_->started=lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)}
         lifecycle.addObserver(observer);onDispose {lifecycle.removeObserver(observer)}
     }
-    LaunchedEffect(lightningEvent,style.thunder,reduce){
-        if(lightningEvent>0&&style.thunder&&!reduce)particles.strike(world.surfaces.values,world.width,world.height,lightningEvent)
+    LaunchedEffect(lightningEvent,style.thunder,reduce,active){
+        if(active&&lightningEvent>0&&style.thunder&&!reduce)particles.strike(world.surfaces.values,world.width,world.height,lightningEvent)
     }
-    LaunchedEffect(style,windKmh,strongWind,started,reduce) {
-        if(!started || reduce) {world.clearAir();particles.clearAir();frame.longValue++;return@LaunchedEffect}
+    LaunchedEffect(style,windKmh,strongWind,started,reduce,active) {
+        if(!active||!started || reduce) {world.clearAir();particles.clearAir();frame.longValue++;return@LaunchedEffect}
         var last=withFrameNanos {it}
         while(style.active||strongWind||world.hasMotion||particles.hasMotion)withFrameNanos {now ->
             val dt=((now-last)/1_000_000_000.0).toFloat();last=now

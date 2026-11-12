@@ -17,7 +17,7 @@ class R10SafetyAndVisual(unittest.TestCase):
         self.assertIn('test=true',scenario)
         self.assertIn('simulation=true', (JAVA/'earthquake/EarthquakeCenterPage.kt').read_text())
         for text in ('演練情境震度（虛構）','並非真實速報','SeismicTrainingVoice'):
-            self.assertIn(text,overlay)
+            self.assertIn(text,overlay+(JAVA/'earthquake/SeismicWarningMap.kt').read_text())
         for forbidden in ('FirebaseMessaging','NotificationManager','sendWarning(','register('):
             self.assertNotIn(forbidden,scenario)
     def test_wheels_and_audio_cards_not_material(self):
