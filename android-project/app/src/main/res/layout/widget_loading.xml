@@ -4,5 +4,5 @@
   <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="—°" android:textColor="#FF23312F" android:textSize="40sp" android:fontFamily="sans-serif-light"/>
   <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="等待天氣同步" android:textColor="#FF50635D" android:textSize="14sp"/>
  </LinearLayout>
- <ImageView android:layout_width="44dp" android:layout_height="44dp" android:layout_gravity="top|end" android:src="@drawable/island_cloud_0" android:contentDescription="天氣圖示"/>
+ <ImageView android:layout_width="44dp" android:layout_height="44dp" android:layout_gravity="top|end" android:src="@drawable/island_cloud_0" android:tint="#FF50635D" android:contentDescription="天氣圖示"/>
 </FrameLayout>

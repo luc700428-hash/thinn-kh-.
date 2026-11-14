@@ -98,20 +98,17 @@ object XiaomiFocusBridge {
         val heading = (information?.title ?: title).take(64)
         val body = (information?.detail ?: detail).take(400)
         val isWarning = rank(kind).rank <= IslandPriority.WEATHER_ALERT.rank
-        val headingColor = if (isWarning) "#E74747" else "#70CCFA"
-        val shortLabel = when(kind) {
-            Kind.SEISMIC_EEW -> "地震速報"
-            Kind.WEATHER_WARNING, Kind.WARNING_SUMMARY -> "天氣警報"
-            Kind.ALARM_RINGING -> "鬧鐘"
-            Kind.TIMER_RUNNING -> "計時器"
-            Kind.VERIFIED_MINUTE_RAIN -> "即時降雨"
-            Kind.TASK_REMINDER -> "待辦提醒"
-            Kind.AMBIENT_WEATHER -> "目前天氣"
-            Kind.USER_TEST -> "測試"
-            Kind.APP_UPDATE -> "更新"
-            Kind.EARTHQUAKE_REPORT -> "地震報告"
-            Kind.STATION_DETECTION -> "測站檢知"
-            Kind.WEATHER_BRIEFING -> "天氣"
+        // One short label beside the glyph and one value on the far side; see IslandContent.
+        val compact = IslandContent.compose(kind.name, title, detail, information?.primary,
+            information?.weatherLabel, information?.temperatureC)
+        val headingColor = compact.accent
+        // An island for something still running stays until that thing ends. The notification
+        // being cancelled removes it; a short fixed hold made a download or timer vanish early.
+        val ongoingSeconds: Long? = when {
+            information?.deadlineMillis != null ->
+                ((information.deadlineMillis - System.currentTimeMillis()) / 1000L).coerceIn(1L, 3600L)
+            kind == Kind.APP_UPDATE && information?.progress != null -> 3600L
+            else -> null
         }
         val params = JSONObject().apply {
             put("protocol", 1)
@@ -124,10 +121,10 @@ object XiaomiFocusBridge {
             put("timeout", if (kind == Kind.USER_TEST) 2 else if (kind == Kind.ALARM_RINGING) 10 else 45)
             // Never filter out normal Android notifications because Xiaomi approval is missing.
             put("filterWhenNoPermission", false)
-            put("ticker", heading.take(18))  // HyperOS 2 state bar
-            put("tickerPic", "miui.focus.pic_alert")
-            put("tickerPicDark", "miui.focus.pic_alert")
-            put("aodTitle", heading.take(24))
+            put("ticker", IslandContent.fit("${compact.label} ${compact.value}", 18))  // HyperOS 2 state bar
+            put("tickerPic", "miui.focus.pic_ticker")
+            put("tickerPicDark", "miui.focus.pic_ticker")
+            put("aodTitle", IslandContent.fit(heading, 24))
             put("aodPic", "miui.focus.pic_aod")
             put("baseInfo", JSONObject().apply {
                 put("type", 2)
@@ -138,7 +135,7 @@ object XiaomiFocusBridge {
             if (protocol >= 3) {
                 put("param_island", JSONObject().apply {
                     put("islandProperty", if (kind == Kind.ALARM_RINGING || kind == Kind.TIMER_RUNNING) 2 else 1)
-                    put("islandTimeout", if (kind == Kind.USER_TEST) 10 else if (kind == Kind.ALARM_RINGING) 600 else rank(kind).holdMillis / 1000L)
+                    put("islandTimeout", ongoingSeconds ?: if (kind == Kind.USER_TEST) 10 else if (kind == Kind.ALARM_RINGING) 600 else rank(kind).holdMillis / 1000L)
                     put("smallIslandArea", JSONObject().apply {
                         put("picInfo", JSONObject().apply {
                             put("type", 1)
@@ -154,10 +151,8 @@ object XiaomiFocusBridge {
                             })
                             // Exact key appears in Xiaomi's HyperOS 3 published sample.
                             put("textInfo", JSONObject().apply {
-                                put("frontTitle", shortLabel)
-                                put("title", shortLabel.take(4))
-                                put("content", IslandInformationPolicy.short(heading,4))
-                                put("showHighlightColor", isWarning)
+                                put("title", compact.label)
+                                put("showHighlightColor", compact.urgent)
                             })
                         })
                         when {
@@ -169,8 +164,8 @@ object XiaomiFocusBridge {
                                 put("progressInfo",JSONObject().put("progress",information.progress).put("colorReach","#0A84FF").put("colorUnReach","#48484A"))
                                 put("textInfo",JSONObject().put("title","${information.progress}%").put("showHighlightColor",false))
                             })
-                            !information?.primary.isNullOrBlank() -> put("sameWidthDigitInfo",JSONObject().put("digit",information?.primary).put("content",if(kind==Kind.ALARM_RINGING)"鬧鐘" else "").put("showHighlightColor",false))
-                            else -> put("textInfo",JSONObject().put("title",IslandInformationPolicy.short(body,4)).put("showHighlightColor",isWarning))
+                            !information?.primary.isNullOrBlank() -> put("sameWidthDigitInfo",JSONObject().put("digit",information?.primary).put("content","").put("showHighlightColor",false))
+                            else -> put("textInfo",JSONObject().put("title",compact.value).put("showHighlightColor",compact.urgent))
                         }
                     })
                 })
@@ -223,12 +218,14 @@ object XiaomiFocusBridge {
                 val wind=cached.getFloat("widget_wind",-1f).takeIf{it.isFinite()&&it>=0f}?.let{"風速 ${"%.1f".format(it)} m/s"}
                 listOfNotNull("${cached.getString("widget_city","")} · $temperature° · ${IslandInformationPolicy.weatherLabel(cached.getString("widget_condition","")?:"")}",rain,wind,"更新 $at").joinToString(" · ")
             } else ""
-            val info=IslandInformation(title,listOf(detail,weatherLine).filter{it.isNotBlank()}.joinToString("\n"),producerPrimary,deadline,progress)
+            val info=IslandInformation(title,listOf(detail,weatherLine).filter{it.isNotBlank()}.joinToString("\n"),producerPrimary,deadline,progress,
+                if(showWeather)IslandInformationPolicy.weatherLabel(cached.getString("widget_condition","")?:"") else null,if(showWeather)temperature else null)
             notification.extras.putString("miui.focus.param", focusJson(p,title,detail,kind,info))
             // The system may show one static state; Xiaomi has NOT documented a
             // general-purpose animated-vector playback contract inside compact islands.
             val pics = Bundle().apply {
                 putParcelable("miui.focus.pic_alert",Icon.createWithBitmap(IslandGlyphPainter.bitmap(context,scene,frame.frame)))
+                putParcelable("miui.focus.pic_ticker",Icon.createWithBitmap(IslandGlyphPainter.bitmap(context,scene,frame.frame,chip=true)))
                 putParcelable("miui.focus.pic_aod",Icon.createWithBitmap(IslandGlyphPainter.bitmap(context,scene,0,true)))
             }
             notification.extras.putBundle("miui.focus.pics", pics)

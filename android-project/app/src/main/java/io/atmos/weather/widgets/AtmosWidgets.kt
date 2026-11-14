@@ -52,11 +52,13 @@ class WidgetRefreshAction:ActionCallback {
     val family=when(variant){25->5;26->6;27->7;28->8;else->variant/5}
     val index=when(variant){25->0;26->3;27,28->if(data.day)0 else 1;else->variant%5}
     val alert=data.alertRecent&&(family==4||family==5)
-    val colors=WidgetGlassRenderer.palette(index,alert);val density=context.resources.displayMetrics.density
+    // Light or dark glass follows what the system reports about the wallpaper.
+    val tone=WidgetGlassTone.current(context)
+    val colors=WidgetGlassRenderer.palette(index,alert,tone.dark);val density=context.resources.displayMetrics.density
     val corner=minOf(28f,plan.width*.16f,plan.height*.16f)
-    val bitmap=remember(size,index,colors,density,prefs.getFloat("v4_opacity",.66f),prefs.getFloat("v4_edge",.65f)){
+    val bitmap=remember(size,index,colors,density,tone,prefs.getFloat("v4_opacity",.66f),prefs.getFloat("v4_edge",.65f)){
         WidgetGlassRenderer.background((plan.width*density).toInt(),(plan.height*density).toInt(),index,
-            prefs.getFloat("v4_edge",.65f),prefs.getFloat("v4_opacity",.66f),alert,corner*density)
+            prefs.getFloat("v4_edge",.65f),prefs.getFloat("v4_opacity",.66f),alert,corner*density,tone)
     }
     val power=context.getSystemService(Context.POWER_SERVICE) as PowerManager
     val animated=prefs.getBoolean("widget_motion_enabled",true)&&!prefs.getBoolean("reduce_motion",false)&&!power.isPowerSaveMode&&

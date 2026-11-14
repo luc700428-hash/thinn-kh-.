@@ -12,7 +12,9 @@ import io.atmos.weather.presentation.home.LocalAppearance
 data class IOSMotionResponse(val damping:Float,val stiffness:Float)
 @Composable fun iosMotionResponse():IOSMotionResponse{
  val v=LocalAppearance.current.springiness.coerceIn(0f,1f)
- return IOSMotionResponse(.9f-.35f*v,320f-100f*v)
+ // Default springiness 0.7 gives damping 0.62 and stiffness 264: the response (0.387 s) and the
+ // ~8% overshoot measured frame by frame on the iOS island (islandcn's recordings).
+ return IOSMotionResponse(.9f-.4f*v,320f-80f*v)
 }
 /** Observes the existing click gesture; never steals scrolling or replaces a callback. */
 fun Modifier.iosJellyPress():Modifier=composed{

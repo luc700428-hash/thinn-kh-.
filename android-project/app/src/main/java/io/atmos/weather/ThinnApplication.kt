@@ -8,6 +8,7 @@ class ThinnApplication:Application() {
         super.onCreate()
         CrashDiagnostics.install(this)
         io.atmos.weather.ui.AppThemeColors.initialize(this)
+        io.atmos.weather.widgets.WidgetGlassTone.install(this)
         registerActivityLifecycleCallbacks(object:ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity:Activity,state:Bundle?) {HighRefreshWindow.apply(activity.window,activity.window.decorView)}
             override fun onActivityResumed(activity:Activity) {

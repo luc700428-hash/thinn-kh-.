@@ -1,15 +1,21 @@
 package io.atmos.weather.notifications
 
-import io.atmos.weather.ui.brandArgb
 import android.content.Context
 import android.graphics.*
 import androidx.core.content.ContextCompat
-/** A shared original vector atlas, a neutral optical plate, and an AOD-only white glyph. */
+/**
+ * Island artwork from the shared original vector atlas.
+ * The island is already a black pill, so its glyph has a transparent background and fills the
+ * frame. The status-bar ticker has no pill of its own and gets the glyph on a dark chip, which
+ * stays visible on a light or a dark bar. Always-on display gets a white-only glyph.
+ */
 object IslandGlyphPainter {
- internal fun bitmap(context:Context,scene:IslandIconScene,frame:Int,monochrome:Boolean=false):Bitmap{
-  val b=Bitmap.createBitmap(128,128,Bitmap.Config.ARGB_8888);val c=Canvas(b);val p=Paint(Paint.ANTI_ALIAS_FLAG)
-  if(!monochrome){p.shader=LinearGradient(0f,0f,128f,128f,intArrayOf(brandArgb(0xA8608279),0x3A203730,0x68192F28),null,Shader.TileMode.CLAMP);c.drawRoundRect(RectF(3f,3f,125f,125f),32f,32f,p);p.style=Paint.Style.STROKE;p.strokeWidth=1.4f;p.shader=LinearGradient(0f,0f,128f,128f,0xCFFFFFFF.toInt(),0x00FFFFFF,Shader.TileMode.CLAMP);c.drawRoundRect(RectF(3f,3f,125f,125f),32f,32f,p)}
-  ContextCompat.getDrawable(context,IslandMotionResources.drawable(scene,frame))?.mutate()?.let{d->if(monochrome)d.setTint(Color.WHITE);d.setBounds(13,13,115,115);d.draw(c)}
+ private const val SIZE=144
+ internal fun bitmap(context:Context,scene:IslandIconScene,frame:Int,monochrome:Boolean=false,chip:Boolean=false):Bitmap{
+  val b=Bitmap.createBitmap(SIZE,SIZE,Bitmap.Config.ARGB_8888);val c=Canvas(b)
+  if(chip&&!monochrome)c.drawCircle(SIZE/2f,SIZE/2f,SIZE/2f-2f,Paint(Paint.ANTI_ALIAS_FLAG).apply{color=0xFF1C1C1E.toInt()})
+  val inset=if(chip&&!monochrome)26 else 8
+  ContextCompat.getDrawable(context,IslandMotionResources.drawable(scene,frame))?.mutate()?.let{d->if(monochrome)d.setTint(Color.WHITE);d.setBounds(inset,inset,SIZE-inset,SIZE-inset);d.draw(c)}
   return b
  }
 }

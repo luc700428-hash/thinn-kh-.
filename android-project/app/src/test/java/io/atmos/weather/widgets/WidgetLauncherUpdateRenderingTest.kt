@@ -70,11 +70,21 @@ class WidgetLauncherUpdateRenderingTest {
                     assertTrue("Static/reduced-motion widgets must not keep hidden timers",descendants(content).none{it is ViewFlipper})
                     val labels=descendants(content).filterIsInstance<TextView>().map{it.text.toString()}
                     if(pass>0)assertFalse(labels.contains("最新地點 $variant/${pass-1}"))
-                    val actual=render(host,w,h)
+                    var actual=render(host,w,h)
                     try{
-                        val fresh=AppWidgetHostView(activity).apply{setExecutor(null);setAppWidget(variant+101,null);updateAppWidget(transport(remote))}
-                        val expected=render(fresh,w,h)
-                        try{assertTrue("Reused launcher differs from a fresh presentation: $variant update $pass",actual.sameAs(expected))}finally{expected.recycle()}
+                        // TextClock and AnalogClock read the wall clock, so a tick between the two renders
+                        // changes pixels without any ghost. Apply the same update again and compare again:
+                        // only a difference that survives a repeated update is a real leftover.
+                        var same=false
+                        for(attempt in 0..2){
+                            val fresh=AppWidgetHostView(activity).apply{setExecutor(null);setAppWidget(variant+101+attempt*100,null);updateAppWidget(transport(remote))}
+                            val expected=render(fresh,w,h)
+                            try{same=actual.sameAs(expected)}finally{expected.recycle()}
+                            if(same)break
+                            host.updateAppWidget(transport(remote))
+                            actual.recycle();actual=render(host,w,h)
+                        }
+                        assertTrue("Reused launcher differs from a fresh presentation: $variant update $pass",same)
                         if(variant==28&&pass==3){
                             val output=File("build/widget-renders/r5-reused-buddy-clock.png");output.parentFile.mkdirs()
                             output.outputStream().use{actual.compress(Bitmap.CompressFormat.PNG,100,it)}

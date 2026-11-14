@@ -1,6 +1,7 @@
 package io.atmos.weather.notifications
 /** Only producer supplied values enter clocks/progress. No inferred warning numbers. */
-data class IslandInformation(val title:String,val detail:String,val primary:String?=null,val deadlineMillis:Long?=null,val progress:Int?=null)
+data class IslandInformation(val title:String,val detail:String,val primary:String?=null,val deadlineMillis:Long?=null,val progress:Int?=null,
+ val weatherLabel:String?=null,val temperatureC:Int?=null)
 object IslandInformationPolicy {
  fun short(text:String,count:Int):String=text.substring(0,text.offsetByCodePoints(0,minOf(count.coerceAtLeast(0),text.codePointCount(0,text.length))))
  fun progress(value:Int,max:Int,indeterminate:Boolean):Int?=if(!indeterminate&&max>0&&value in 0..max)(value.toLong()*100/max).toInt() else null

@@ -113,6 +113,7 @@ class OtaDownloadService:Service() {
             val bytes=OtaRetainedSession.downloaded.longValue
             builder.setProgress(1000,if(total>0L) ((bytes.toDouble()/total)*1000).toInt().coerceIn(0,1000) else 0,total<=0L)
             builder.setRequestPromotedOngoing(true)
+            if(total>0L) builder.setShortCriticalText("${((bytes.toDouble()/total)*100).toInt().coerceIn(0,100)}%")
             val stop=PendingIntent.getService(this,1,Intent(this,OtaDownloadService::class.java).setAction(CANCEL),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             builder.addAction(0,"暫停",stop)
         }

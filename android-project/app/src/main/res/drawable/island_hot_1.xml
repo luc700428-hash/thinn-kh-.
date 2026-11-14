@@ -1,8 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="48" android:viewportHeight="48">
-    <path android:pathData="M24,13 L24,33" android:fillColor="#00000000" android:strokeColor="#F8FBFF" android:strokeWidth="2.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
-    <path android:pathData="M31,36 A7,7 0 1,0 17,36 A7,7 0 1,0 31,36 Z" android:fillColor="#00000000" android:strokeColor="#FFB76A" android:strokeWidth="2.4" android:strokeLineCap="round" android:strokeLineJoin="round" />
-    <path android:pathData="M20,33 L20,10 C20,4 28,4 28,10 L28,33" android:fillColor="#00000000" android:strokeColor="#FFB76A" android:strokeWidth="2.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
-    <path android:pathData="M33,13 Q37,9 33,5 M37,23 Q43,18 38,14" android:fillColor="#00000000" android:strokeColor="#FFB76A" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" />
-    <path android:pathData="M12,12 Q8,8 12,5" android:fillColor="#00000000" android:strokeColor="#FFB76A" android:strokeWidth="2.4" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M20,10 A4,4 0 0 1 28,10 L28,26.57 A8,8 0 1 1 20,26.57 Z" android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="3.6" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M19.7,33.5 A4.3,4.3 0 1 1 28.3,33.5 A4.3,4.3 0 1 1 19.7,33.5 Z" android:fillColor="#FF453A" />
+    <path android:pathData="M24,33.5 L24,10.5" android:fillColor="#00000000" android:strokeColor="#FF453A" android:strokeWidth="3.4" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M34,11.5 L39,8.5 M35,18.5 L41,18.5 M34,25.5 L39,28.5" android:fillColor="#00000000" android:strokeColor="#FF9F0A" android:strokeWidth="3.2" android:strokeLineCap="round" android:strokeLineJoin="round" />
 </vector>

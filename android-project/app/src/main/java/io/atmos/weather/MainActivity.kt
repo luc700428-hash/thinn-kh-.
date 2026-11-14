@@ -126,6 +126,8 @@ class MainActivity : ComponentActivity() {
             } // Current resizable app window; no physical-tablet or pixel-ratio flag.
             } // ThinnAppTheme
         }
+        // Brand entry film over the already-running app. Alerts, alarms and deep links skip it.
+        io.atmos.weather.ui.AppIntro.attachIfAppropriate(this,intent,savedInstanceState)
     }
     override fun onResume() {
         super.onResume()

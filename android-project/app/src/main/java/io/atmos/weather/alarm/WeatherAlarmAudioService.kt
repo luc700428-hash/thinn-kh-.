@@ -99,8 +99,10 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                 val text = String.format(Locale.TAIWAN,"%02d:%02d 鬧鐘響鈴中",alarm.hour,alarm.minute)
                 // If Xiaomi rejects the island (including a higher-priority EEW),
                 // the same ringing service and standard heads-up notification remain.
-                XiaomiFocusBridge.decorate(ctx,note,"鬧鐘",text,
+                val onIsland = XiaomiFocusBridge.decorate(ctx,note,"鬧鐘",text,
                     XiaomiFocusBridge.Kind.ALARM_RINGING,BASE_NOTIFICATION_ID+alarm.id)
+                // The island was the reason to skip the ringing screen. Without it, restore that screen.
+                if (!onIsland) note = b.setFullScreenIntent(openIntent(ctx,alarm.id),true).build()
             }
             return note
         }
