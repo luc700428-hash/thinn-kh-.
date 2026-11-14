@@ -10,6 +10,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -21,7 +23,7 @@ import kotlin.math.roundToInt
 /** The sampled optical bounds follow the drop, not the width of the entire Dock. */
 @Composable fun BoxScope.AppleLiquidDockPaint(selectedIndex:Int,tabCount:Int,dragging:Boolean,dragOffsetPx:Float,
  reduceMotion:Boolean,modifier:Modifier=Modifier,vertical:Boolean=false,darkBackdrop:Boolean?=null,
- engaged:Boolean=dragging,reduceTransparency:Boolean=false,dragOffset:(()->Float)?=null) {
+ engaged:Boolean=dragging,reduceTransparency:Boolean=false,dragOffset:(()->Float)?=null,position:Float?=null) {
  if(tabCount<1)return
  val density=LocalDensity.current.density
  var pixels by remember{mutableStateOf(IntSize.Zero)}
@@ -30,7 +32,9 @@ import kotlin.math.roundToInt
  val inset=(if(vertical)5f else 6f)*density
  val step=((length-2*inset)/tabCount).coerceAtLeast(1f)
  val target=(selectedIndex.toFloat()+if(dragging)(dragOffset?.invoke()?:dragOffsetPx)/step else 0f).coerceIn(0f,tabCount-1f)
- val location by animateFloatAsState(target,if(dragging||reduceMotion)snap() else spring(FluidGlassStyle.POSITION_DAMPING,FluidGlassStyle.POSITION_STIFFNESS),label="dock-position")
+ val animated by animateFloatAsState(target,if(dragging||reduceMotion)snap() else spring(FluidGlassStyle.POSITION_DAMPING,FluidGlassStyle.POSITION_STIFFNESS),label="dock-position")
+ // The Dock passes the lens position so the resting pill and the lifted lens never part ways.
+ val location=position?.takeIf{it.isFinite()}?.coerceIn(0f,tabCount-1f)?:animated
  val tail by animateFloatAsState(location,if(reduceMotion)snap() else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="dock-water-trail")
  val touch by animateFloatAsState(if(engaged)1f else 0f,if(reduceMotion)snap() else spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="dock-elastic-contact")
  val dark=darkBackdrop?:(androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f)
@@ -46,7 +50,9 @@ import kotlin.math.roundToInt
     val local=remember(path,b){Path().apply{addPath(path,Offset(-b.left,-b.top))}}
     val mask=remember(local){GenericShape{_,_->addPath(local)}}
     Canvas(Modifier.offset{IntOffset(b.left.roundToInt(),b.top.roundToInt())}
-     .requiredSize((b.width/density).dp,(b.height/density).dp).testTag("dock-selection-lens").clip(mask)
+     .requiredSize((b.width/density).dp,(b.height/density).dp).testTag("dock-selection-lens")
+     // iOS 27: the tinted pill gives way to the clear lens while a finger is down.
+     .graphicsLayer{alpha=(1f-touch).coerceIn(0f,1f)}.clip(mask)
      .thinnBackdrop(reduceTransparency,(g.height/density/2).dp,.5f,frostScale=.78f,materialDark=dark)) {
      drawPath(local,if(reduceTransparency)p.primaryContainer else colors.selection)
      val energy=touch.coerceIn(0f,1f)
@@ -65,4 +71,62 @@ import kotlin.math.roundToInt
 internal fun dockLensPath(width:Float,height:Float,density:Float,count:Int,head:Float,tail:Float,touch:Float,vertical:Boolean=false):Path {
  val g=DockLiquidGeometry.shape(width,height,density,count,head,tail,vertical,touch)?:return Path()
  return liquidCapsulePath(g.headX,g.tailX,g.width,g.height,g.centerY,g.neckHalfHeight)
+}
+
+/**
+ * iOS 27 tab-bar lens. While a finger is down the selection lifts out of the bar as clear glass,
+ * taller than the bar itself, magnifying the icons beneath it. It follows the finger with the
+ * interactive spring, stretches along its motion and squashes across it, and on release it
+ * springs back into the tinted pill on the chosen tab. Drawn outside the Dock's clip.
+ */
+@Composable fun BoxScope.AppleLiquidDockLens(position:Float,tail:Float,contact:Float,tabCount:Int,
+ icons:androidx.compose.ui.graphics.layer.GraphicsLayer,vertical:Boolean=false,darkBackdrop:Boolean?=null,
+ reduceTransparency:Boolean=false,touch:(()->Float)?=null) {
+ if(tabCount<1)return
+ var pixels by remember{mutableStateOf(IntSize.Zero)}
+ // A plain inner Box: the Dock's outer Box propagates min constraints, which would centre the lens.
+ Box(Modifier.matchParentSize().onSizeChanged{pixels=it}) {LensBody(pixels,position,tail,contact,tabCount,icons,vertical,darkBackdrop,reduceTransparency,touch)}
+}
+
+@Composable private fun LensBody(pixels:IntSize,position:Float,tail:Float,contact:Float,tabCount:Int,
+ icons:androidx.compose.ui.graphics.layer.GraphicsLayer,vertical:Boolean,darkBackdrop:Boolean?,
+ reduceTransparency:Boolean,touch:(()->Float)?) {
+ val density=LocalDensity.current.density
+ val energy=contact.coerceIn(0f,1.25f)
+ if(energy<.015f||pixels.width<=0||pixels.height<=0)return
+ val length=if(vertical)pixels.height.toFloat() else pixels.width.toFloat()
+ val cross=if(vertical)pixels.width.toFloat() else pixels.height.toFloat()
+ val g=DockLiquidGeometry.shape(length,cross,density,tabCount,position,position,vertical,0f)?:return
+ val inset=(if(vertical)5f else 6f)*density
+ val slot=((length-2*inset)/tabCount).coerceAtLeast(1f)
+ val lift=energy.coerceIn(0f,1.15f)
+ val lag=position-tail
+ val stretch=LiquidGlassKit.stretch(lag)
+ val major=g.width*(1f+.12f*lift)*(1f+stretch)
+ val minor=(cross-10f*density)*(1f+LiquidGlassKit.DOCK_LIFT*lift)*(1f-stretch*.40f)
+ // The body leans back toward where it came from, like a drop being pulled.
+ val along=g.headX-lag.coerceIn(-.6f,.6f)*slot*.16f
+ val rect=if(vertical)Rect(cross/2-minor/2,along-major/2,cross/2+minor/2,along+major/2)
+  else Rect(along-major/2,cross/2-minor/2,along+major/2,cross/2+minor/2)
+ val dark=darkBackdrop?:(androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f)
+ val sampled=thinnBackdropAvailable(reduceTransparency)
+ val base=androidx.compose.material3.MaterialTheme.colorScheme.surface
+ val light=GlassLight.current(follow=!reduceTransparency)
+ val local=remember(rect.width,rect.height){LiquidGlassKit.capsule(Rect(0f,0f,rect.width,rect.height))}
+ val mask=remember(local){GenericShape{_,_->addPath(local)}}
+ Canvas(Modifier.offset{IntOffset(rect.left.roundToInt(),rect.top.roundToInt())}
+  .wrapContentSize(androidx.compose.ui.Alignment.TopStart,unbounded=true)
+  .requiredSize((rect.width/density).dp,(rect.height/density).dp).testTag("dock-liquid-lens")
+  .graphicsLayer{alpha=(energy*1.8f).coerceIn(0f,1f)}.clip(mask)
+  .thinnBackdrop(reduceTransparency,(minor/density/2).dp,.5f,frostScale=.18f)) {
+  // Clear glass: the backdrop is sampled without the Dock's material tone.
+  // Without a live backdrop the icons below must still be covered before the magnified copy.
+  if(!sampled)drawPath(local,base.copy(alpha=.96f))
+  drawPath(local,Color.White.copy(alpha=if(dark).03f else .05f))
+  val zoom=1f+(LiquidGlassKit.MAGNIFY-1f)*lift.coerceIn(0f,1f)
+  val pivot=Offset(rect.center.x,rect.center.y)
+  withTransform({translate(-rect.left,-rect.top);scale(zoom,zoom,pivot)}) {drawLayer(icons)}
+  val finger=touch?.invoke()?.takeIf{it.isFinite()}?.let{t->if(vertical)Offset(size.width/2,t-rect.top) else Offset(t-rect.left,size.height/2)}
+  liquidGlassEdge(local,light,energy,dark,finger)
+ }
 }

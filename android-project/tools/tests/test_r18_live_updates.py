@@ -16,10 +16,22 @@ class UserInitiatedLiveUpdateTests(unittest.TestCase):
         self.assertIn('promoteLive: Boolean = false',src)
         self.assertIn('if (promoteLive) request.action = ACTION_START_LIVE',src)
         self.assertIn('Build.VERSION.SDK_INT >= 36 && liveUpdateRequested',src)
-        self.assertIn('setRequestPromotedOngoing(true)',src)
+        self.assertIn('LiveUpdates.promote(builder,"監測中")',src)
         self.assertIn('setOnlyAlertOnce(true)',src)
         self.assertIn('ACTION_UNPIN_LIVE',src)
         self.assertIn('"停止監測"',src)
+        live=(SRC/'notifications/LiveUpdates.kt').read_text()
+        for item in ('setRequestPromotedOngoing(true)','canPostPromotedNotifications()','ProgressStyle()',
+                     'ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS','setChronometerCountDown(true)','setColorized(false)'):
+            self.assertIn(item,live)
+    def test_every_time_critical_activity_is_a_live_update(self):
+        for path,needle in (('update/OtaDownloadService.kt','LiveUpdates.progress('),
+                            ('earthquake/SeismicAlertNotifier.kt','LiveUpdates.promote('),
+                            ('notifications/IslandEventPublisher.kt','LiveUpdates.promote('),
+                            ('alarm/WeatherAlarm.kt','LiveUpdates.publishSnooze(')):
+            self.assertIn(needle,(SRC/path).read_text(),path)
+        self.assertIn('.notifications.LiveUpdateActionReceiver" android:exported="false"',
+                      (ROOT/'app/src/main/AndroidManifest.xml').read_text())
     def test_manual_ui_is_opt_in_and_emergency_alerts_stay_normal(self):
         settings=(SRC/'earthquake/SeismicSettings.kt').read_text()
         center=(SRC/'earthquake/EarthquakeCenterPage.kt').read_text()

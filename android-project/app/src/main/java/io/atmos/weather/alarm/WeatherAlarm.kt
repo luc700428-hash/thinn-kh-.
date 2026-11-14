@@ -86,7 +86,13 @@ object WeatherAlarmScheduler {
         val alarm=WeatherAlarmStore.load(ctx).firstOrNull { it.id==id } ?: return
         if (!alarm.snooze) return
         val minutes=WeatherAlarmTime.validSnoozeMinutes(alarm.snoozeMinutes)
-        set(ctx,System.currentTimeMillis()+minutes*60_000L,pending(ctx,id,true))
+        val at=System.currentTimeMillis()+minutes*60_000L
+        set(ctx,at,pending(ctx,id,true))
+        // Live Update: the status-bar chip counts down to the next ring.
+        io.atmos.weather.notifications.LiveUpdates.publishSnooze(ctx,id,alarm.title,at,minutes)
+    }
+    fun cancelSnooze(ctx:Context,id:Int) {
+        (ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending(ctx,id,true))
     }
     fun cancel(ctx: Context,id:Int) {
         val manager=ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -109,6 +115,7 @@ class WeatherAlarmReceiver : BroadcastReceiver() {
         }
         val id=intent.getIntExtra("alarm_id",-1)
         val snoozed=intent.getBooleanExtra("snoozed",false)
+        if(snoozed)io.atmos.weather.notifications.LiveUpdates.clearSnooze(ctx,id)
         val alarm=WeatherAlarmStore.load(ctx).firstOrNull {it.id==id && (it.enabled || snoozed)} ?:return
         if (!snoozed) {
             if (alarm.days.isEmpty()) {

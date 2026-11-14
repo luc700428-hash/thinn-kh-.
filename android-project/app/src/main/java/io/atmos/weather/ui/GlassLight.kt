@@ -2,14 +2,13 @@ package io.atmos.weather.ui
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.shredzone.commons.suncalc.MoonPosition
 import org.shredzone.commons.suncalc.SunPosition
@@ -65,17 +64,36 @@ object GlassLight {
         return lat to lon
     }
 
-    /** Current light for the selected city, refreshed once a minute while glass is on screen. */
-    @Composable fun current(follow:Boolean):Light {
-        val context=LocalContext.current
-        var light by remember{mutableStateOf(REST)}
-        LaunchedEffect(follow) {
-            if(!follow){light=REST;return@LaunchedEffect}
+    // One shared light for the whole app: a single minute ticker, however many glass views exist.
+    private var shared by mutableStateOf(REST)
+    private var users=0
+    private var ticker:kotlinx.coroutines.Job?=null
+    private val scope=kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()+Dispatchers.Default)
+
+    private fun acquire(context:Context) {
+        if(users++>0)return
+        val app=context.applicationContext
+        ticker=scope.launch {
             while(true) {
-                light=withContext(Dispatchers.Default){val (lat,lon)=place(context);at(lat,lon,Date())}
+                val (lat,lon)=place(app)
+                val next=at(lat,lon,Date())
+                withContext(Dispatchers.Main){shared=next}
                 delay(UPDATE_MS)
             }
         }
-        return light
+    }
+    private fun release() {
+        if(--users>0)return
+        users=0;ticker?.cancel();ticker=null
+    }
+
+    /** Current light for the selected city, refreshed once a minute while any glass is on screen. */
+    @Composable fun current(follow:Boolean):Light {
+        val context=LocalContext.current
+        androidx.compose.runtime.DisposableEffect(follow) {
+            if(follow)acquire(context)
+            onDispose{if(follow)release()}
+        }
+        return if(follow)shared else REST
     }
 }

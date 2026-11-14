@@ -65,6 +65,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import io.atmos.weather.ui.AppleLiquidDockPaint
+import io.atmos.weather.ui.AppleLiquidDockLens
+import io.atmos.weather.ui.FluidGlassStyle
+import io.atmos.weather.ui.LiquidGlassKit
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.unit.sp
 import io.atmos.weather.ui.ThinnPopup as Popup
 import androidx.compose.ui.window.PopupProperties
@@ -111,6 +119,7 @@ fun NextReorderableToolDock(
     var dockWidthPx by remember { mutableIntStateOf(0) }
     var dockHeightPx by remember {mutableIntStateOf(0)}
     var touching by remember{mutableStateOf(false)}
+    var pressAt by remember{mutableFloatStateOf(Float.NaN)}
     var scrubbing by remember { mutableStateOf(false) }
     var scrubX by remember { mutableFloatStateOf(0f) }
     var displayId by remember {mutableStateOf(selectedId)}
@@ -153,15 +162,32 @@ fun NextReorderableToolDock(
         if(scrubbing&&visible.isNotEmpty())geometry.nearest(scrubX) else lightIndex
     }}
     val lightX=if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/slotCount
-    NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
+    // iOS 27 lens: one position drives both the resting pill and the lifted glass. While held it
+    // follows the finger continuously (interactive spring); on release it settles on the tab.
+    val engagedNow=touching||scrubbing||draggingId!=null
+    val fingerSlot=if(pressAt.isFinite()&&slotPx>0f)((pressAt-dockInsetPx)/slotPx-.5f).coerceIn(0f,slotCount-1f) else lightIndex.toFloat()
+    val lensTarget=if((touching||scrubbing)&&draggingId==null&&!reduceMotion)fingerSlot else lightIndex.toFloat()
+    val lensPosition by animateFloatAsState(lensTarget,if(reduceMotion)snap() else if(engagedNow)
+        spring(LiquidGlassKit.FOLLOW_DAMPING,LiquidGlassKit.FOLLOW_STIFFNESS) else spring(FluidGlassStyle.POSITION_DAMPING,FluidGlassStyle.POSITION_STIFFNESS),label="dock-lens-position")
+    val lensTail by animateFloatAsState(lensPosition,if(reduceMotion)snap() else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="dock-lens-tail")
+    val lensContact by animateFloatAsState(if(engagedNow&&!reduceMotion)1f else 0f,if(reduceMotion)snap() else
+        spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="dock-lens-lift")
+    val iconLayer=rememberGraphicsLayer()
+    // A selection tick each time the lens crosses into another tab, like the iOS tab bar.
+    LaunchedEffect(activeDisplayIndex,scrubbing){if(scrubbing)haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)}
+    Box(modifier,propagateMinConstraints=true) {
+    NextOpticalSurface(modifier = Modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
         cornerRadiusDp = 9999f, useBackdrop = true, touchX = if(vertical).5f else lightX, touchY=if(vertical)lightX else .08f,calm = true,
         pressed = touching || scrubbing || draggingId != null, reduceTransparency = reduceTransparency,darkBackdrop=darkBackdrop,clearGlass=true) {
         Box((if(fillAvailableHeight)Modifier.fillMaxSize() else Modifier.fillMaxWidth())
             .onSizeChanged { dockWidthPx=if(vertical)it.height else it.width;dockHeightPx=it.height }
-            .pointerInput(Unit){awaitEachGesture{
-                awaitFirstDown(requireUnconsumed=false);touching=true
-                try{do{val event=awaitPointerEvent(PointerEventPass.Final)}while(event.changes.any{it.pressed})}finally{touching=false}
+            .pointerInput(geometry,vertical){awaitEachGesture{
+                val down=awaitFirstDown(requireUnconsumed=false);touching=true
+                pressAt=geometry.clamp(if(vertical)down.position.y else down.position.x)
+                try{do{val event=awaitPointerEvent(PointerEventPass.Final)
+                    event.changes.firstOrNull{it.id==down.id&&it.pressed}?.let{pressAt=geometry.clamp(if(vertical)it.position.y else it.position.x)}
+                }while(event.changes.any{it.pressed})}finally{touching=false}
             }}
             .pointerInput(visible.map { it.id }, dockWidthPx,vertical) {
                 val start:(androidx.compose.ui.geometry.Offset)->Unit={point->
@@ -184,8 +210,12 @@ fun NextReorderableToolDock(
                 dragging=scrubbing || draggingId != null,
                 dragOffsetPx=0f,
                 dragOffset={if(scrubbing)scrubX-(dockInsetPx+(lightIndex+.5f)*slotPx) else dockDragOffsetPx},
-                reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop,engaged=touching||scrubbing||draggingId!=null,reduceTransparency=reduceTransparency)
-        DockAxisLayout(vertical,fillAvailableHeight) {
+                reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop,engaged=lensContact>.02f,reduceTransparency=reduceTransparency,
+                position=if(draggingId==null)lensPosition else null)
+        DockAxisLayout(vertical,fillAvailableHeight,Modifier.drawWithContent{
+            iconLayer.record{this@drawWithContent.drawContent()}
+            drawLayer(iconLayer)
+        }) {
             visible.forEach { action ->
                 key(action.id) {
                     var localX by remember { mutableFloatStateOf(0f) }
@@ -281,12 +311,15 @@ fun NextReorderableToolDock(
         }
         } // AppleLiquidDockPaint Box wrapper
     }
+    AppleLiquidDockLens(position=lensPosition,tail=lensTail,contact=lensContact,tabCount=slotCount,icons=iconLayer,
+        vertical=vertical,darkBackdrop=darkBackdrop,reduceTransparency=reduceTransparency,touch={pressAt})
+    }
 }
 
 
 /** Fixed child slots; text stays upright when the dock changes axis. */
-@Composable private fun DockAxisLayout(vertical:Boolean,stretch:Boolean,content:@Composable ()->Unit) {
-    Layout(content=content,modifier=Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=5.dp)) {children,c->
+@Composable private fun DockAxisLayout(vertical:Boolean,stretch:Boolean,modifier:Modifier=Modifier,content:@Composable ()->Unit) {
+    Layout(content=content,modifier=modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=5.dp)) {children,c->
         val width=c.maxWidth
         val height=if((vertical||stretch)&&c.hasBoundedHeight)c.maxHeight else maxOf(58.dp.roundToPx(),(34f+24f*fontScale).dp.roundToPx()).coerceIn(c.minHeight,c.maxHeight)
         val count=children.size.coerceAtLeast(1)

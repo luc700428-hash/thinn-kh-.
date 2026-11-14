@@ -71,18 +71,26 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
         source.origin=it.positionInWindow()+Offset(xy[0].toFloat(),xy[1].toFloat())
     }.drawWithContent {
         val pixels=IntSize(size.width.toInt(),size.height.toInt())
+        var recorded=false
         if(source.active && !source.failed && BackdropSampling.canCapture(pixels.width,pixels.height)) {
             try {
                 source.layer.record(size=pixels) {this@drawWithContent.drawContent()}
-                source.pixels=pixels;source.ready=true
+                source.pixels=pixels;source.ready=true;recorded=true
             } catch(error:RuntimeException) {
                 source.failed=true;source.ready=false
                 io.atmos.weather.CrashDiagnostics.graphicsFailure(context,"backdrop-capture",error)
             }
         } else source.ready=false
-        // The foreground always follows the ordinary Compose drawing path.
-        drawContent()
+        // Show the page by replaying the display list just recorded, instead of drawing the
+        // whole page a second time. This halves the cost of every frame on glass screens.
+        if(recorded)drawLayer(source.layer) else drawContent()
     }
+}
+
+/** True when [thinnBackdrop] here would really paint the scene behind (not a no-op). */
+@Composable fun thinnBackdropAvailable(reduceTransparency:Boolean):Boolean {
+    val source=LocalThinnBackdrop.current
+    return !reduceTransparency && source!=null && source !in LocalBackdropAncestors.current
 }
 
 /** Crop before filtering AND when painting; sampled pixels cannot cover siblings. */

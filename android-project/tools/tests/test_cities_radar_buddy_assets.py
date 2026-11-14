@@ -34,7 +34,8 @@ class CitiesRadarBuddy(unittest.TestCase):
   self.assertIn('NextReorderableToolDock(',(SRC/'earthquake/SeismicLiveMapPage.kt').read_text())
  def test_slider_uses_an_independent_track_capture_and_safe_geometry(self):
   s=(SRC/'ui/LiquidBubbleSlider.kt').read_text()
-  self.assertIn('ThinnBackdropCapture(source',s);self.assertIn('LocalThinnBackdrop provides source',s)
+  # iOS 27 knob: the track is cut out under the glass and redrawn magnified inside it.
+  self.assertIn('clipPath(knob,ClipOp.Difference)',s);self.assertIn('liquidGlassEdge(knob',s)
   self.assertNotIn('RuntimeShader(',s);self.assertNotIn('Path.combine(',s)
   self.assertIn('setProgress {',s);self.assertIn('onValueChangeFinished',s)
  def test_native_radar_bounds_attribution_and_cache(self):

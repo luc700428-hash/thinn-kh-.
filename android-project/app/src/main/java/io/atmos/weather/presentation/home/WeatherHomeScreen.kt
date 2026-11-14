@@ -1560,6 +1560,18 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
                        hazy:Boolean, liquidMotion:Float, motion: State<Float>,
                        lightningAlpha:Float, boltSeed:Int, windKmh:Double,
                        weatherCode:Int?, visibilityM:Double?) {
+    // The sky animates every frame. Keeping it in its own render layer means a sky frame
+    // re-records only the sky, never the backdrop capture or the forecast cards above it.
+    Box(Modifier.fillMaxSize().graphicsLayer()) {
+        SkyLayers(condition,night,heavyRain,hazy,liquidMotion,motion,lightningAlpha,boltSeed,windKmh,weatherCode,visibilityM)
+    }
+}
+
+@Composable
+private fun SkyLayers(condition:WeatherCondition?, night:Boolean, heavyRain:Boolean,
+                       hazy:Boolean, liquidMotion:Float, motion: State<Float>,
+                       lightningAlpha:Float, boltSeed:Int, windKmh:Double,
+                       weatherCode:Int?, visibilityM:Double?) {
     val phase=if(liquidMotion > .001f) motion.value else 0f
     AtmosphereCanvas(condition ?: WeatherCondition.CLEAR, night, phase, Modifier.fillMaxSize())
     if (hazy && condition != WeatherCondition.FOG) Canvas(Modifier.fillMaxSize()) {
@@ -1635,7 +1647,7 @@ private fun ContinuousRain(heavy: Boolean, modifier: Modifier = Modifier) {
             withFrameNanos { frameNanos.longValue = it }
         }
     }
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         val t = RainParticles.secondsAt(frameNanos.longValue)
         val width=size.width
         val height=size.height
@@ -1688,7 +1700,7 @@ private fun ContinuousSnow(modifier:Modifier=Modifier) {
     LaunchedEffect(Unit) {
         while(isActive) withFrameNanos { frame.longValue=it }
     }
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         val elapsed=((frame.longValue-entered).coerceAtLeast(0L)/1_000_000_000.0).toFloat()
         val w=size.width;val h=size.height
         for(i in 0 until 85){

@@ -25,6 +25,7 @@
     <queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>
     <application android:name=".ThinnApplication" android:allowBackup="false" android:usesCleartextTraffic="false"
       android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/Theme.Atmos" android:supportsRtl="true">
+        <receiver android:name=".notifications.LiveUpdateActionReceiver" android:exported="false" />
         <receiver android:name=".alarm.WeatherAlarmReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
