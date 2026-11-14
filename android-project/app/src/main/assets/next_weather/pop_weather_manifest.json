@@ -27,7 +27,7 @@
       "label": "城市晨光",
       "genre": "City Pop",
       "bpm": 104,
-      "key": 60,
+      "key": 63,
       "lead": "brass",
       "chords": [
         3,
@@ -37,55 +37,59 @@
         1,
         4,
         0,
-        0
+        0,
+        3,
+        4,
+        2,
+        5,
+        1,
+        4,
+        3,
+        4
       ],
       "hooks": [
         [
-          9,
-          7,
-          16,
-          14
-        ],
-        [
-          14,
+          5,
           11,
-          9,
-          7
-        ],
-        [
-          11,
-          7,
-          16,
-          14
-        ],
-        [
           12,
-          11,
-          9,
-          16
+          11
         ],
         [
-          17,
+          7,
+          12,
+          14,
+          12
+        ],
+        [
+          11,
+          14,
           16,
+          14
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          9,
+          12,
+          12,
+          12
+        ],
+        [
+          7,
+          14,
           14,
           9
         ],
         [
-          11,
-          9,
           7,
-          5
-        ],
-        [
-          16,
-          14,
           12,
-          7
+          12,
+          12
         ],
         [
-          16,
-          19,
-          14,
+          7,
           12
         ]
       ],
@@ -100,7 +104,7 @@
       "label": "海風假期",
       "genre": "Tropical Pop",
       "bpm": 110,
-      "key": 62,
+      "key": 65,
       "lead": "marimba",
       "chords": [
         0,
@@ -109,57 +113,61 @@
         3,
         0,
         4,
+        3,
+        4,
+        0,
+        4,
         5,
-        3
+        3,
+        1,
+        4,
+        3,
+        4
       ],
       "hooks": [
         [
-          16,
-          19,
-          16,
-          14
+          7,
+          9,
+          9,
+          7
         ],
         [
+          7,
           11,
           14,
-          19,
-          14
-        ],
-        [
-          12,
-          16,
-          21,
-          19
+          11
         ],
         [
           9,
           12,
-          17,
-          16
-        ],
-        [
           16,
-          19,
-          24,
-          19
+          11
         ],
         [
-          14,
-          19,
-          23,
-          19
-        ],
-        [
-          16,
-          21,
-          19,
-          16
-        ],
-        [
-          17,
-          16,
-          12,
+          9,
           9
+        ],
+        [
+          7,
+          12,
+          11,
+          7
+        ],
+        [
+          7,
+          12,
+          14,
+          9
+        ],
+        [
+          9,
+          11,
+          12,
+          11
+        ],
+        [
+          7,
+          11
         ]
       ],
       "rhythm": [
@@ -173,66 +181,70 @@
       "label": "晴空出走",
       "genre": "Indie Pop",
       "bpm": 116,
-      "key": 57,
+      "key": 64,
       "lead": "guitar",
       "chords": [
-        3,
         0,
-        4,
         5,
         3,
-        0,
         4,
-        0
+        0,
+        5,
+        3,
+        4,
+        3,
+        4,
+        5,
+        4,
+        3,
+        4,
+        0,
+        4
       ],
       "hooks": [
         [
+          4,
+          7,
           9,
-          12,
-          14,
-          16
-        ],
-        [
-          16,
-          14,
-          12,
           7
         ],
         [
+          4,
+          12,
           11,
-          14,
-          19,
-          14
+          7
         ],
         [
-          12,
-          16,
-          14,
+          5,
+          9,
+          7,
+          4
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          4,
+          9,
+          9,
           9
         ],
         [
-          9,
+          4,
           12,
-          17,
-          16
-        ],
-        [
-          19,
-          16,
-          14,
+          12,
           12
         ],
         [
-          14,
-          11,
+          5,
           9,
+          9,
+          9
+        ],
+        [
+          2,
           7
-        ],
-        [
-          16,
-          14,
-          12,
-          12
         ]
       ],
       "rhythm": [
@@ -246,66 +258,70 @@
       "label": "雨後慢拍",
       "genre": "Neo Soul / R&B",
       "bpm": 86,
-      "key": 58,
+      "key": 62,
       "lead": "rhodes",
       "chords": [
-        0,
-        2,
-        5,
         3,
+        2,
         1,
         4,
+        3,
+        2,
+        1,
         0,
-        0
+        3,
+        2,
+        5,
+        4,
+        3,
+        2,
+        1,
+        4
       ],
       "hooks": [
         [
-          16,
-          14,
-          11,
-          7
-        ],
-        [
-          11,
-          14,
-          16,
-          19
-        ],
-        [
           12,
-          16,
-          14,
-          9
-        ],
-        [
-          9,
-          12,
-          16,
-          14
-        ],
-        [
-          17,
-          16,
-          14,
-          9
+          7,
+          5,
+          2
         ],
         [
           14,
           11,
           9,
-          7
+          9
         ],
         [
-          16,
-          14,
           12,
+          9,
+          7,
+          4
+        ],
+        [
+          11,
           7
         ],
         [
-          19,
-          16,
+          9,
+          9,
+          5,
+          4
+        ],
+        [
           14,
-          12
+          9,
+          7,
+          9
+        ],
+        [
+          12,
+          11,
+          7,
+          5
+        ],
+        [
+          11,
+          11
         ]
       ],
       "rhythm": [
@@ -319,66 +335,69 @@
       "label": "極光派對",
       "genre": "Future Pop",
       "bpm": 120,
-      "key": 60,
+      "key": 66,
       "lead": "bell",
       "chords": [
-        0,
         5,
+        3,
+        0,
+        4,
+        5,
+        3,
+        0,
+        4,
+        5,
+        3,
+        0,
+        4,
         3,
         4,
-        0,
         5,
-        3,
         4
       ],
       "hooks": [
         [
+          24,
           19,
-          16,
-          14,
-          12
-        ],
-        [
           21,
-          19,
-          16,
-          12
-        ],
-        [
-          17,
-          16,
-          12,
-          9
-        ],
-        [
-          19,
-          14,
-          11,
-          7
+          19
         ],
         [
           24,
           19,
-          16,
-          14
-        ],
-        [
           21,
-          19,
-          16,
-          12
+          19
         ],
         [
-          17,
+          24,
+          19,
           21,
-          19,
-          17
+          19
         ],
         [
-          19,
-          14,
-          11,
-          12
+          23,
+          19
+        ],
+        [
+          24,
+          21,
+          21,
+          21
+        ],
+        [
+          24,
+          21,
+          21,
+          16
+        ],
+        [
+          24,
+          21,
+          21
+        ],
+        [
+          23,
+          23
         ]
       ],
       "rhythm": [
@@ -399,59 +418,63 @@
         4,
         5,
         3,
-        1,
-        4,
         0,
-        0
+        4,
+        3,
+        4,
+        5,
+        3,
+        0,
+        4,
+        5,
+        3,
+        1,
+        4
       ],
       "hooks": [
         [
-          16,
-          19,
-          14,
-          12
-        ],
-        [
-          14,
-          19,
-          11,
+          7,
+          4,
+          4,
           7
         ],
         [
-          16,
-          21,
-          19,
-          12
-        ],
-        [
-          17,
-          16,
-          12,
+          7,
+          2,
+          5,
           9
         ],
         [
-          17,
-          16,
-          14,
-          9
-        ],
-        [
-          14,
-          11,
           9,
+          4,
+          7,
+          11
+        ],
+        [
+          9,
+          5
+        ],
+        [
+          7,
+          5,
+          0,
+          5
+        ],
+        [
+          7,
+          7,
+          2,
           7
         ],
         [
-          16,
-          19,
-          14,
-          12
+          9,
+          5,
+          0,
+          5
         ],
         [
-          19,
-          16,
-          14,
-          12
+          7,
+          7
         ]
       ],
       "rhythm": [
@@ -462,7 +485,7 @@
       ]
     }
   },
-  "authorship": "Original scores and synthesis; no third-party music, melodies or samples",
+  "authorship": "Original scores rendered with sampled instruments (FluidR3 GM soundfont, MIT licence); no third-party melodies",
   "human_listening_or_wake_efficacy_verified": false,
   "assets": [
     {
@@ -470,360 +493,360 @@
       "variant": "neutral",
       "path": "next_weather/music/citypop/neutral.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_citypop.ogg",
-      "sha256": "85f866afdfaff3b400995bad0389223cff9a333d6e2813765c0b4c0b3aa4adb3",
-      "fallback_sha256": "c4ac62e0c0dd0d9ddf2bdb5b726fb76f4b840a7f993972a36e8ad3f8866449f1",
+      "sha256": "d41661b3026f7ec2e3a898f1d92956ca7076abf288e858561f5bb59454d529ec",
+      "fallback_sha256": "5b85cc675be2ec672ae98c2c3ec39dc54ca2d05587af13264523e679fd635584",
       "sample_rate": 32000,
-      "frames": 1181538,
-      "seconds": 36.9230625,
-      "peak_dbfs": -5.655682310548793,
-      "rms_dbfs": -19.576478928597666,
+      "frames": 1181539,
+      "seconds": 36.92309,
+      "peak_dbfs": -7.138,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "bc7833196f5db770218ba6564d10eafd5d67bfec70d374a2b492ed35bcc44eba"
+      "score_sha256": "defa3e8d207c95f3385a86b66de96afbaa953b21d03bb82f5f746c3d2e27ec85"
     },
     {
       "theme": "citypop",
       "variant": "clear",
       "path": "next_weather/music/citypop/clear.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_citypop_clear.ogg",
-      "sha256": "20197c95227ed1299f2a2d9605f16a8a39774023702f0e1ea4c01b90b59efd16",
-      "fallback_sha256": "5948290cddc9bc80a1f425ff9f8d35eb0e218a541e6c7b7bd81203edea0256ae",
+      "sha256": "769a90817a39a54ccb757d994b5f12ca50b7d9d7734d9aea3472e4d4ae94a622",
+      "fallback_sha256": "b76b291f059ecca8da335e4b0cbe4ed2f322cdec08f406978b0746d2e39c81ec",
       "sample_rate": 32000,
-      "frames": 1181538,
-      "seconds": 36.9230625,
-      "peak_dbfs": -5.5863183628692195,
-      "rms_dbfs": -19.576478828692096,
+      "frames": 1181539,
+      "seconds": 36.92309,
+      "peak_dbfs": -7.391,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "bc7833196f5db770218ba6564d10eafd5d67bfec70d374a2b492ed35bcc44eba"
+      "score_sha256": "14069eaa42dd317b49fdb80a04661471081b13e5332a6d8a683dce7f4f0905a6"
     },
     {
       "theme": "citypop",
       "variant": "rain",
       "path": "next_weather/music/citypop/rain.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_citypop_rain.ogg",
-      "sha256": "ff3d936f1cedb33a13a6f13464d976e5ccc9a0363d837fb7925d2b5b10e913da",
-      "fallback_sha256": "bce8da14b633c5cafe180e0ec12d2a9a4cc0bd88a464d1a0f29d81535d9e0961",
+      "sha256": "53453c7bdd919cdc05dd6c3c701269d128aeab77a8e97d43c6a2d64513259b3d",
+      "fallback_sha256": "175000f05e07a6bca45b882c4458c7955348fa48cd3b9d6e3acca47c77be751c",
       "sample_rate": 32000,
-      "frames": 1181538,
-      "seconds": 36.9230625,
-      "peak_dbfs": -5.834927428726646,
-      "rms_dbfs": -19.576479591283956,
+      "frames": 1181539,
+      "seconds": 36.92309,
+      "peak_dbfs": -6.757,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "bc7833196f5db770218ba6564d10eafd5d67bfec70d374a2b492ed35bcc44eba"
+      "score_sha256": "2d7bc299d9f24519b8771e1fbfa3832de9e1d7fbb1d7401fb999415ae15d528c"
     },
     {
       "theme": "citypop",
       "variant": "snow",
       "path": "next_weather/music/citypop/snow.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_citypop_snow.ogg",
-      "sha256": "0845e9c88b404857bad421559fe67f69244a0af71fb95268890a811a55565224",
-      "fallback_sha256": "b0b96a824fa371a207aae998a2675041e00f757bb48b9b76d29d5f1ca5eddee3",
+      "sha256": "4c7af42322f7733142e32b700ef3165372dbbf03f4b7c36911b434cec2190b75",
+      "fallback_sha256": "8c24aff40c0d60a591dfb2cb7a6a1ca814af4d6044fdc754e3f771fe32debc6f",
       "sample_rate": 32000,
-      "frames": 1181538,
-      "seconds": 36.9230625,
-      "peak_dbfs": -6.280509947578227,
-      "rms_dbfs": -19.576480041974484,
+      "frames": 1181539,
+      "seconds": 36.92309,
+      "peak_dbfs": -3.979,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "2851bc198b836e33c9c224ae357b72df1674cb0b6f4bf5ef8a3631a86ba441c9"
+      "score_sha256": "03183cc80812fe406a58e7a84c415c242abf9cbf785ecd5d5e6a66cf4f6e3359"
     },
     {
       "theme": "tropical",
       "variant": "neutral",
       "path": "next_weather/music/tropical/neutral.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_tropical.ogg",
-      "sha256": "08de2de23a615a5eb391e455dd2b8f64ab9cfd8545a27b81a0b25cbc66d2b93b",
-      "fallback_sha256": "93ed9f21fb02e8f5f18eae4aa80dcea1dc779307cf31553a7ae3ef2c04ba10e0",
+      "sha256": "fc77973b79d38e2ebe853842d0c6df0e71b915087ad685481d57998350e9081b",
+      "fallback_sha256": "4440f59d25fc59d67ceaa452cd9cb2fb979ea56718b7f006e92acd52b8d9e260",
       "sample_rate": 32000,
-      "frames": 1117091,
-      "seconds": 34.90909375,
-      "peak_dbfs": -5.41900312250129,
-      "rms_dbfs": -19.57647998594021,
+      "frames": 1117092,
+      "seconds": 34.90913,
+      "peak_dbfs": -3.583,
+      "rms_dbfs": -21.414,
       "loop_jump_pcm": 0,
-      "score_sha256": "600f5af66a518d7d02c58541af765d9043a68515027bbd2cac978af595561194"
+      "score_sha256": "782a623aacf8dc405562f400858cc534cb578e1fa558cfdb1f7d77ab5879b552"
     },
     {
       "theme": "tropical",
       "variant": "clear",
       "path": "next_weather/music/tropical/clear.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_tropical_clear.ogg",
-      "sha256": "d21ccc1f32aaa201d0e1a2c5e6a84049d6633f10b5e6c67b9a1d3b20ef5c1f6a",
-      "fallback_sha256": "ac9178d958d6ed6eda62d49bf103f03cc9f6e6724a9c28454ae93868c3d401fd",
+      "sha256": "e021f86ab3af1422036c4182bc3efa870b62a2c44ada178fbedac3a17ea426a9",
+      "fallback_sha256": "ea5562bd1c140575b2b8da04a96c6f50cdda8a45e70b5681e064ede0099bb818",
       "sample_rate": 32000,
-      "frames": 1117091,
-      "seconds": 34.90909375,
-      "peak_dbfs": -5.389373587925814,
-      "rms_dbfs": -19.57647921252941,
+      "frames": 1117092,
+      "seconds": 34.90913,
+      "peak_dbfs": -3.672,
+      "rms_dbfs": -21.414,
       "loop_jump_pcm": 0,
-      "score_sha256": "600f5af66a518d7d02c58541af765d9043a68515027bbd2cac978af595561194"
+      "score_sha256": "018c16ff52902770cc65e14b86fcbb31d7f99ee4a6ffaa49e4158e3fd25154ea"
     },
     {
       "theme": "tropical",
       "variant": "rain",
       "path": "next_weather/music/tropical/rain.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_tropical_rain.ogg",
-      "sha256": "352680e2123dc06f5bc7bad26f723ef63981701eec14fc06fceb5f02af973e48",
-      "fallback_sha256": "08f31984c63bcfff3294c03cfb669b0014505d76d37d292fd5dcf17d841b4487",
+      "sha256": "86871155664103ff7f48c0df0182e61ae3da93c425dff589a621a98acff963ba",
+      "fallback_sha256": "f4d3356f5c43a286d3995ef335f3340eb22fb25d00068f77ee17716f6b64fdc8",
       "sample_rate": 32000,
-      "frames": 1117091,
-      "seconds": 34.90909375,
-      "peak_dbfs": -5.719457521714315,
-      "rms_dbfs": -19.57647945944431,
+      "frames": 1117092,
+      "seconds": 34.90913,
+      "peak_dbfs": -7.543,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "600f5af66a518d7d02c58541af765d9043a68515027bbd2cac978af595561194"
+      "score_sha256": "c4bd71327834f32ca477a018151eafde4ccefa0fb63f8032c4f934a2e001600d"
     },
     {
       "theme": "tropical",
       "variant": "snow",
       "path": "next_weather/music/tropical/snow.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_tropical_snow.ogg",
-      "sha256": "54736ae526f48490aea419c7613e4b8283fac39b16758c08bbfd4db335ae7f9a",
-      "fallback_sha256": "77e4f223f4239e2835d279708808811ca9e5bdd362fb8fbcbd04d4b7858ab3ac",
+      "sha256": "935897af2f29326d205f920cecb3e5d4212430f54b0ad8606c138cf49c3b87b7",
+      "fallback_sha256": "649404b128faf85b595938dc165bb1d265bb0227e2aa374511e7b10a0b0e64be",
       "sample_rate": 32000,
-      "frames": 1117091,
-      "seconds": 34.90909375,
-      "peak_dbfs": -5.713314742364902,
-      "rms_dbfs": -19.57648088701124,
+      "frames": 1117092,
+      "seconds": 34.90913,
+      "peak_dbfs": -3.807,
+      "rms_dbfs": -21.413,
       "loop_jump_pcm": 0,
-      "score_sha256": "7d8e5b59a14f972a84f51fc0141f56b56c80b4163bd366a6ade0b5dd99deebf5"
+      "score_sha256": "56005a7f83e81f53d2fa2e3cee9faff702cb3a5887127df579aed3c983dface0"
     },
     {
       "theme": "indiepop",
       "variant": "neutral",
       "path": "next_weather/music/indiepop/neutral.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_indiepop.ogg",
-      "sha256": "1306a56a88c736bd3619767b77c68143fa85d8a8e5b3a0a9b70c264228433d47",
-      "fallback_sha256": "bc3a15119519f704740189c33cfc7f6f7d5a612e6cf3f1d287a9ca7f91d74fc4",
+      "sha256": "1521df7e0960e04d433e31617cbfc33e1f165d8db26085f4ec3a8a798fd469cc",
+      "fallback_sha256": "f036778b93937925c3c04ff4c6fc275c3f29a4f5ce02d176707dd4ca0249cd11",
       "sample_rate": 32000,
-      "frames": 1059310,
-      "seconds": 33.1034375,
-      "peak_dbfs": -6.391005650991556,
-      "rms_dbfs": -19.576478049442706,
+      "frames": 1059311,
+      "seconds": 33.10347,
+      "peak_dbfs": -5.358,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "a89d5915b85a3cedd505fb78639e6dbed1a2ce116acdb8e87524d7016e67c2fc"
+      "score_sha256": "0a07d430b8edde35d23b0b1d13ed2609118cb8303e077e1a014ef0543850e910"
     },
     {
       "theme": "indiepop",
       "variant": "clear",
       "path": "next_weather/music/indiepop/clear.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_indiepop_clear.ogg",
-      "sha256": "d1d09427e81454883eaa585a538b0e2c0570013fb3d2dc3da244b8b320ac8d63",
-      "fallback_sha256": "e4f1cd2abf4ebf7b4e97539b87e87040f7f7f3f70cdbd5db611e53fb07fa985f",
+      "sha256": "a828873c0fa44da462cc177c7f983a240128116e706f3f7472095ce3f04ff61d",
+      "fallback_sha256": "35e89a15d1bdaba166765571b7541f0a91cb0d0e8a9db757a24c531b2664825c",
       "sample_rate": 32000,
-      "frames": 1059310,
-      "seconds": 33.1034375,
-      "peak_dbfs": -6.311702024531289,
-      "rms_dbfs": -19.57647792530116,
+      "frames": 1059311,
+      "seconds": 33.10347,
+      "peak_dbfs": -5.252,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "a89d5915b85a3cedd505fb78639e6dbed1a2ce116acdb8e87524d7016e67c2fc"
+      "score_sha256": "7118578cbffe0eef3cda7170bf4338b4fe107229733dd188bea18be053aac09f"
     },
     {
       "theme": "indiepop",
       "variant": "rain",
       "path": "next_weather/music/indiepop/rain.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_indiepop_rain.ogg",
-      "sha256": "9211a0a2412f039f32b894a95a23478ae8c8470fcc081acb8e384f4e49eea124",
-      "fallback_sha256": "17609014dbb4cd0265c2e37c9aa0711a9ac279778d2a74b8625e10f24dc3c6a2",
+      "sha256": "5ba2680919ea043776a1b52f942fa714cff5fbf2686007af648694123e6f0afa",
+      "fallback_sha256": "c496ec236f8c742e0e3094243c2c03fdf7a2cc798f4864395f870d8dde858254",
       "sample_rate": 32000,
-      "frames": 1059310,
-      "seconds": 33.1034375,
-      "peak_dbfs": -6.477742947341526,
-      "rms_dbfs": -19.57647614199923,
+      "frames": 1059311,
+      "seconds": 33.10347,
+      "peak_dbfs": -8.362,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "a89d5915b85a3cedd505fb78639e6dbed1a2ce116acdb8e87524d7016e67c2fc"
+      "score_sha256": "d1ff16c90f2e8ddc3041a66a4f5a5a59e3494f705844cda92b68f5bf7158a77b"
     },
     {
       "theme": "indiepop",
       "variant": "snow",
       "path": "next_weather/music/indiepop/snow.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_indiepop_snow.ogg",
-      "sha256": "e5883a79aaa6a6efe05b0b33d58903536b9266dd9aacdae44c9fc59927885914",
-      "fallback_sha256": "dd13bb15ca1c39734e6a1633034a16be056be1a982f4fac2b9c31092e829e289",
+      "sha256": "1407c331091d9e4ae3958376b49457cb40bb6e463795dae7862e77fc32553779",
+      "fallback_sha256": "f2fc4f597707b12a26cf5c8c5e19e07271bb6a76bb068110f34cf742dc545a3b",
       "sample_rate": 32000,
-      "frames": 1059310,
-      "seconds": 33.1034375,
-      "peak_dbfs": -6.109588364989937,
-      "rms_dbfs": -19.576477157058413,
+      "frames": 1059311,
+      "seconds": 33.10347,
+      "peak_dbfs": -4.995,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "aeb46c07aba9c8c10b37ee04d961e4b37b46bf66317a75728825e31f61b0da11"
+      "score_sha256": "4a4c746fc543cd4265eab8218a36f847c06cf77984f4c3a6627803cd9268b506"
     },
     {
       "theme": "rnb",
       "variant": "neutral",
       "path": "next_weather/music/rnb/neutral.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_rnb.ogg",
-      "sha256": "12bae0cc24a67e2892c12b0544028b3cb99563804d80b097909c4d98954d3730",
-      "fallback_sha256": "3a7a58569a5e8c69abc0d41897949f61c8489fbcac504290844ee2d8d537fcb6",
+      "sha256": "7ec33ebb4f1653eca99bd8aa0410a5b62423836e280a5b091bbeace3965ab76a",
+      "fallback_sha256": "2ae0c85f18f008554d337ecdbdcc14764b6191811f64687c02308648e43f63e1",
       "sample_rate": 32000,
-      "frames": 1428837,
-      "seconds": 44.65115625,
-      "peak_dbfs": -6.954383665045411,
-      "rms_dbfs": -19.576479450440555,
+      "frames": 1428838,
+      "seconds": 44.65119,
+      "peak_dbfs": -8.427,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "26afc27765add184132769fec7825bf69571763c30b126cf3f31ca3df4e8b974"
+      "score_sha256": "b4bb1876f424ddcf289446d0f1b460917e4a6d886bc6c651378cde511fe404b3"
     },
     {
       "theme": "rnb",
       "variant": "clear",
       "path": "next_weather/music/rnb/clear.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_rnb_clear.ogg",
-      "sha256": "e4462541d13b63bd90c962f158d518a765a09271b86db549dfc352368f01cce8",
-      "fallback_sha256": "5b3215b826dd4aab6885b8601eaffee52a0b5a7f7780039abf39237a0193624c",
+      "sha256": "d1a4b7c90dd60711a0c61abbec3c944f5c2bfebb301b1170a4b4f06af440aa29",
+      "fallback_sha256": "892f6ccf3938fde6d16cc1de5b17a932acfb9bdd7b25b4cb19b059ec9f8b3790",
       "sample_rate": 32000,
-      "frames": 1428837,
-      "seconds": 44.65115625,
-      "peak_dbfs": -6.823149597121148,
-      "rms_dbfs": -19.576480698581896,
+      "frames": 1428838,
+      "seconds": 44.65119,
+      "peak_dbfs": -9.051,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "26afc27765add184132769fec7825bf69571763c30b126cf3f31ca3df4e8b974"
+      "score_sha256": "0e7753c86de309b5526c875cc141d55869065ad49555c5a67d01c29ba6309b20"
     },
     {
       "theme": "rnb",
       "variant": "rain",
       "path": "next_weather/music/rnb/rain.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_rnb_rain.ogg",
-      "sha256": "d18321ce41d23fd260819862182a1d52a8fd951a45a94e7e66a961ae8e431c3d",
-      "fallback_sha256": "9cc2b35b86361fdeb310caef41fcb4c2f31df70a1685336fc2c4b3fa488ed5cb",
+      "sha256": "1abbf8919224e99777317893f0eb5b74b72f197298a5854fa5aa2cdc6b87f994",
+      "fallback_sha256": "65992453970a699cdc2ee904ceb9bd87303203a750d9c88cfa1bf523396f5d63",
       "sample_rate": 32000,
-      "frames": 1428837,
-      "seconds": 44.65115625,
-      "peak_dbfs": -7.147782820442476,
-      "rms_dbfs": -19.576479626581072,
+      "frames": 1428838,
+      "seconds": 44.65119,
+      "peak_dbfs": -7.162,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "26afc27765add184132769fec7825bf69571763c30b126cf3f31ca3df4e8b974"
+      "score_sha256": "c86c099d7ad44f0c779068110ce3110723c3e2ad8bf0fa6b6a310f8aeebcd026"
     },
     {
       "theme": "rnb",
       "variant": "snow",
       "path": "next_weather/music/rnb/snow.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_rnb_snow.ogg",
-      "sha256": "caeaa9df784da76703a99f34b279a785aa4d15fb8d3cedf5f67a31e91366c879",
-      "fallback_sha256": "a31ec1a8b7b634f2e1ea15670c931e450aa70fad642fe96093e9e0bfabf62856",
+      "sha256": "be621abcba31e36e73542c780bc9c4d85a394a3af8351b88d1a3953621234c12",
+      "fallback_sha256": "3bb0ce89b445874e77a3cb23f8fd9d4d0f18ae4b80b7b54bf804460fb20ec75f",
       "sample_rate": 32000,
-      "frames": 1428837,
-      "seconds": 44.65115625,
-      "peak_dbfs": -6.842941861411537,
-      "rms_dbfs": -19.576479503802908,
+      "frames": 1428838,
+      "seconds": 44.65119,
+      "peak_dbfs": -5.929,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "98b7985884a9aab532cd1d2e631835e54a35c337819bd46219d765e3dd5a892f"
+      "score_sha256": "d3a12e6c7d5f897aceb5aca588eb203062b94707429b9db4382ea5c70ff59d02"
     },
     {
       "theme": "futurepop",
       "variant": "neutral",
       "path": "next_weather/music/futurepop/neutral.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_futurepop.ogg",
-      "sha256": "4705649b7b195da1fc3d1cb2fd32504fadf2519c8f81365eb0e8181ae28ca519",
-      "fallback_sha256": "92b013351b5ca96e1ee9ce6e3dd220a96ff2416addc0704b6ca1d4d0baac9571",
+      "sha256": "8794c430a7fd1a0a2f022578b14fafa9eb2c7f91e7a2716642d08af645f8af46",
+      "fallback_sha256": "82e910977bedd9e0c373a1734b310afa3aed110a82d7b324017477bcdc489769",
       "sample_rate": 32000,
-      "frames": 1024000,
-      "seconds": 32.0,
-      "peak_dbfs": -5.424446184519988,
-      "rms_dbfs": -19.57647803410452,
+      "frames": 1024001,
+      "seconds": 32.00003,
+      "peak_dbfs": -6.025,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "f92ec0846fe5935227a5711db265afba5ad1fcd05b1a0c6e1153285cb80b80b6"
+      "score_sha256": "197c065f9220d3d96542a4955ed7dc1ec9f1fc8c6ce57bf47fcd907b0bfa3a0f"
     },
     {
       "theme": "futurepop",
       "variant": "clear",
       "path": "next_weather/music/futurepop/clear.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_futurepop_clear.ogg",
-      "sha256": "299409ab665809340bbcfc3cf5456944c74bd8f9fee4c9f9f216489fc6b0ccb9",
-      "fallback_sha256": "a51aacf64adc894c287e4e5b27009f1c6361b72bc709fdce21b84183a0f6d016",
+      "sha256": "842f6acdc2e3f1f06634c6b5e57dc27d1548323b12c041cd9e25667c65630951",
+      "fallback_sha256": "34f81b3ba126ec760030a30e5459226d70a74886e4aaf4e304eb1ea52b561d60",
       "sample_rate": 32000,
-      "frames": 1024000,
-      "seconds": 32.0,
-      "peak_dbfs": -5.3269891555198745,
-      "rms_dbfs": -19.576478443691524,
+      "frames": 1024001,
+      "seconds": 32.00003,
+      "peak_dbfs": -6.544,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "f92ec0846fe5935227a5711db265afba5ad1fcd05b1a0c6e1153285cb80b80b6"
+      "score_sha256": "bbc3b9942a7bce07611fba4d085153f706761f6532a802bfcd1d0864a5308273"
     },
     {
       "theme": "futurepop",
       "variant": "rain",
       "path": "next_weather/music/futurepop/rain.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_futurepop_rain.ogg",
-      "sha256": "78c4a2b7b88e69b98409ce56f03efcf216facad11a87e221ee3743009e3778f1",
-      "fallback_sha256": "2a65e769aa845d23c96d4b8a6d8fb93ab2057f4f08be031dfe594d86646c7824",
+      "sha256": "7fd2f1f232742f2b5d3a00df7412ea422c800197cf9b4770e9d476a997976be0",
+      "fallback_sha256": "0aeaa335897e302c50fe69f4ac48bc2ab79a6ffb09c3047b1566ea966dcb1a48",
       "sample_rate": 32000,
-      "frames": 1024000,
-      "seconds": 32.0,
-      "peak_dbfs": -5.5205063390293425,
-      "rms_dbfs": -19.57647893319544,
+      "frames": 1024001,
+      "seconds": 32.00003,
+      "peak_dbfs": -9.278,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "f92ec0846fe5935227a5711db265afba5ad1fcd05b1a0c6e1153285cb80b80b6"
+      "score_sha256": "e8533172fe492ece9fee519bc2d25d653a95626eac2fca79dda07e2b7d33ec22"
     },
     {
       "theme": "futurepop",
       "variant": "snow",
       "path": "next_weather/music/futurepop/snow.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_futurepop_snow.ogg",
-      "sha256": "9b21b9eccc463cfe9c1c563b1d38222581f913398cf6b4c8109b328acfcecd0a",
-      "fallback_sha256": "f20f30a5a532feb237ec0908984cc641034360f2e9c8de3b841193041e844aae",
+      "sha256": "1cd9255b307f6e3d979fded3945ec5d5147bc5919226113793fd2eb008a51682",
+      "fallback_sha256": "e4620adf960f73fff5fa1109c1ad873e53e6646a79ceffb2ce9ab3cd0e3e5c1b",
       "sample_rate": 32000,
-      "frames": 1024000,
-      "seconds": 32.0,
-      "peak_dbfs": -5.302550757658229,
-      "rms_dbfs": -19.576479308028937,
+      "frames": 1024001,
+      "seconds": 32.00003,
+      "peak_dbfs": -4.959,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "1555394a668fdae4fef74167dc0b5d96837debffc9890c556d2f3e1979606bc8"
+      "score_sha256": "bdd39d7feb1b866b7b38d9dab3f588838571666dafde173ccd09250839b2ca91"
     },
     {
       "theme": "daybreak",
       "variant": "neutral",
       "path": "next_weather/music/daybreak/neutral.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_daybreak.ogg",
-      "sha256": "42d11771849fb3de1ad32ec3dae13d82305f8498cd00fdb4883f5e947eeb33a1",
-      "fallback_sha256": "8f3b3d517194f3bbb2848b260b18734c02d61c7b6582ea211b1120893325a55d",
+      "sha256": "e2069985ac59a31c0c93b32811660b6c7989ad1bc60e75ddc67726c3b61dd50a",
+      "fallback_sha256": "d410eaa534749efcc187e26e6acfc06b33b407750535f552cc0f0613492bb2f2",
       "sample_rate": 32000,
-      "frames": 1335652,
-      "seconds": 41.739125,
-      "peak_dbfs": -5.838041581005495,
-      "rms_dbfs": -19.576482271445194,
+      "frames": 1335653,
+      "seconds": 41.73916,
+      "peak_dbfs": -5.71,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "c8781e43b426019d0874d4fd616941b42487391b2604a5ce3e6731ea86ea366d"
+      "score_sha256": "2e70dc2778963edd872ce663027cac1f0209254b258df8a9471636254c83552c"
     },
     {
       "theme": "daybreak",
       "variant": "clear",
       "path": "next_weather/music/daybreak/clear.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_daybreak_clear.ogg",
-      "sha256": "331e08d1bb4ad9c6201bbcba703d5bd8ae8aadb5e691286b91920b6c16669f74",
-      "fallback_sha256": "d9de92971a255c6350e66acf7f6350aeecbaf22c80c21231be35b2d7e8f7a61c",
+      "sha256": "0e199ff8363cf0ad214813a03c3e93fcd1185c846ed0ef09ac09474681332c4a",
+      "fallback_sha256": "d6667e103d38396b6290c361c8c71ed81132f56b52f885ff72faa4dd5f332d73",
       "sample_rate": 32000,
-      "frames": 1335652,
-      "seconds": 41.739125,
-      "peak_dbfs": -5.866640124012844,
-      "rms_dbfs": -19.576480102108007,
+      "frames": 1335653,
+      "seconds": 41.73916,
+      "peak_dbfs": -5.685,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "c8781e43b426019d0874d4fd616941b42487391b2604a5ce3e6731ea86ea366d"
+      "score_sha256": "935acb6a6c91191530072aecdd40d82788e0e9c9141fd3abba73fa78e0cc625a"
     },
     {
       "theme": "daybreak",
       "variant": "rain",
       "path": "next_weather/music/daybreak/rain.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_daybreak_rain.ogg",
-      "sha256": "f41edf883da60de98b2c9e435675405b3f572e1cb762534a2b8f210c4eb49556",
-      "fallback_sha256": "5ae7777bccd30b3c11ff1a972287c3be55b8532d0ec4c26e8444bbbfa59f0836",
+      "sha256": "163d7d0b1a2d8d3b98c6d1312671b9adc0e3005f366f779f24e4eefac7cae3b3",
+      "fallback_sha256": "0aed6531a122705362ad86fbd3791b2a5b2ea518e4ba7d5dc832ab0d8781be6d",
       "sample_rate": 32000,
-      "frames": 1335652,
-      "seconds": 41.739125,
-      "peak_dbfs": -5.902651975809945,
-      "rms_dbfs": -19.576480317379623,
+      "frames": 1335653,
+      "seconds": 41.73916,
+      "peak_dbfs": -5.895,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "c8781e43b426019d0874d4fd616941b42487391b2604a5ce3e6731ea86ea366d"
+      "score_sha256": "8b30b4b3af5e9588de8a04d58e284f565c8384f7394fc0d2c6a15b3e63701d5a"
     },
     {
       "theme": "daybreak",
       "variant": "snow",
       "path": "next_weather/music/daybreak/snow.wav",
       "fallback": "app/src/main/res/raw/thinn_alarm_daybreak_snow.ogg",
-      "sha256": "917e86b275feb550d0cd7f8041a3d2c8e41279fe8bf23e7ba1856113297a37dd",
-      "fallback_sha256": "aa949c27fd99bbd14a7682208878aaf4bc83720886bb17517268327d270a22b1",
+      "sha256": "e00112b41a8e78a22f28f83780533625f2f90c17924420664ef04fa7737a98df",
+      "fallback_sha256": "4be522ffafccf272b3b721b5b99cc1d77a68cde3083f83bf360dbfca4d8fb039",
       "sample_rate": 32000,
-      "frames": 1335652,
-      "seconds": 41.739125,
-      "peak_dbfs": -5.713826474750123,
-      "rms_dbfs": -19.576481729505453,
+      "frames": 1335653,
+      "seconds": 41.73916,
+      "peak_dbfs": -6.027,
+      "rms_dbfs": -21.412,
       "loop_jump_pcm": 0,
-      "score_sha256": "01c590728aaf0c9e0d394d19a4963508c48ce4867dcc41082639e600a013056e"
+      "score_sha256": "7e5f6aa13f6f159237b591d8daccba48668de82895bdc761c3bc729c028fe230"
     }
   ]
 }

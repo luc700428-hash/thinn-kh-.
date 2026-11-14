@@ -108,17 +108,15 @@ fun AppleSpringButton(
     val scale by animateFloatAsState(
         targetValue = if (pressed && enabled && !reduceMotion) AppleMotion.pressedScale else 1f,
         animationSpec = if (reduceMotion) tween(0) else if (pressed)
-            tween(100, easing = AppleMotion.fluid)
-        else spring(dampingRatio = AppleMotion.springDamping,
-            stiffness = AppleMotion.springStiffness),
+            AppleMotion.interactive()
+        else AppleMotion.bouncy(),
         label = "Apple press scale"
     )
     val alpha by animateFloatAsState(
         targetValue = if (pressed && enabled && !reduceMotion) AppleMotion.pressedAlpha else 1f,
         animationSpec = if (reduceMotion) tween(0) else if (pressed)
-            tween(100, easing = AppleMotion.fluid)
-        else spring(dampingRatio = AppleMotion.springDamping,
-            stiffness = AppleMotion.springStiffness),
+            AppleMotion.interactive()
+        else AppleMotion.bouncy(),
         label = "Apple press opacity"
     )
     Box(modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)

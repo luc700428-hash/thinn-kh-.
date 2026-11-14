@@ -20,6 +20,30 @@ object AppleMotion {
     const val springStiffness: Float = 190f
     const val glassBlurDp: Int = 30 // Visual backdrop, only when a backdrop slot is supplied.
     const val glowDurationMillis: Int = 9000
+
+    /**
+     * Apple's springs converted exactly: stiffness = (2π / duration)², dampingRatio = 1 − bounce.
+     * smooth/snappy/bouncy are SwiftUI's presets at 0.5 s; interactive follows the finger;
+     * zoom and glass-morph values were measured frame by frame on iOS 26/27.
+     */
+    fun <T> appleSpring(duration:Float=0.5f,bounce:Float=0f):androidx.compose.animation.core.SpringSpec<T> =
+        androidx.compose.animation.core.spring(dampingRatio=if(bounce>=0f)1f-bounce else 1f/(1f+bounce),
+            stiffness=(2f*Math.PI.toFloat()/duration.coerceAtLeast(.05f)).let{it*it})
+    fun <T> smooth()=appleSpring<T>(0.5f,0f)
+    fun <T> snappy()=appleSpring<T>(0.5f,0.15f)
+    fun <T> bouncy()=appleSpring<T>(0.5f,0.30f)
+    fun <T> interactive()=androidx.compose.animation.core.spring<T>(dampingRatio=0.86f,stiffness=1754.6f)
+    fun <T> zoomOpen()=androidx.compose.animation.core.spring<T>(dampingRatio=0.975f,stiffness=281f)
+    fun <T> zoomClose()=androidx.compose.animation.core.spring<T>(dampingRatio=0.98f,stiffness=365f)
+    /** iOS 26/27 glass controls grow under the finger instead of sinking. */
+    const val pressedSwell: Float = 1.06f
+    /** UIAlertController-style entrance: from 1.15× to 1× with no overshoot. */
+    const val alertStartScale: Float = 1.15f
+    fun <T> alert()=appleSpring<T>(0.4f,0f)
+    fun <T> sheet()=appleSpring<T>(0.5f,0f)
+    /** Navigation push and pop: critically damped, about 0.35 s. */
+    fun <T> push()=appleSpring<T>(0.35f,0f)
+    fun <T> glassMorph()=androidx.compose.animation.core.spring<T>(dampingRatio=0.87f,stiffness=503.5f)
 }
 
 /** Preferences are observable so changing accessibility affects the dock and controls immediately. */

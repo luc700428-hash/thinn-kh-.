@@ -60,12 +60,12 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     val reduce=rememberAppleReduceMotion()
     val interaction=remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    var entered by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { entered=true }
-    val pressScale by animateFloatAsState(if(pressed && !reduce) AppleMotion.pressedScale else 1f,
-        animationSpec=if(reduce) tween(0) else if(pressed) tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃按鈕按壓")
-    val appear by animateFloatAsState(if(entered) 1f else .94f,
-        animationSpec=tween(if(reduce) 0 else 170,easing=AppleMotion.fluid),label="玻璃按鈕入場")
+    // iOS 26/27 glass: the control swells and lights up under the finger, then springs back.
+    val pressScale by animateFloatAsState(if(pressed && !reduce) AppleMotion.pressedSwell else 1f,
+        animationSpec=if(reduce) tween(0) else if(pressed) AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃按鈕按壓")
+    val glow by animateFloatAsState(if(pressed && !reduce) 1f else 0f,
+        animationSpec=if(reduce) tween(0) else if(pressed) AppleMotion.interactive() else AppleMotion.smooth(),label="玻璃按鈕高光")
+    val appear=1f
     val palette=androidx.compose.material3.MaterialTheme.colorScheme
     val weatherCards=LocalWeatherCardPalette.current
     val fill=if(colors!=null) {
@@ -79,12 +79,13 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
         ?: if(outlined) weatherCards?.accent?:palette.primary
         else Color.White
     Row(modifier.defaultMinSize(minHeight=48.dp)
-        .graphicsLayer { scaleX=(2f-pressScale)*appear;scaleY=pressScale*appear;translationY=if(pressed && !reduce) 2.dp.toPx() else 0f;alpha=if(enabled) appear else appear*.45f }
+        .graphicsLayer { scaleX=pressScale*appear;scaleY=(1f+(pressScale-1f)*.75f)*appear;alpha=if(enabled) appear else appear*.45f }
         .clip(corner)
         .thinnBackdrop(opaque,ThinnDesignTokens.radiusControl)
         .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque)1f else if(!outlined&&colors==null).92f else if(pressed).80f else .93f))}))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
         .thinnSpecularEdge(ThinnDesignTokens.radiusControl)
+        .drawWithContent { drawContent(); if(glow>0f) drawRect(Color.White.copy(alpha=.16f*glow)) }
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=androidx.compose.ui.semantics.Role.Button,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
         })
@@ -127,15 +128,16 @@ fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
     val pressed by interaction.collectIsPressedAsState()
     val context=LocalContext.current
     val reduce=rememberAppleReduceMotion()
-    val scale by animateFloatAsState(if(pressed && !reduce)AppleMotion.pressedScale else 1f,
-        animationSpec=if(reduce)tween(0) else if(pressed)tween(100,easing=AppleMotion.fluid) else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃圖示按鈕回饋")
+    val scale by animateFloatAsState(if(pressed && !reduce)AppleMotion.pressedSwell+.02f else 1f,
+        animationSpec=if(reduce)tween(0) else if(pressed)AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃圖示按鈕回饋")
     Box(modifier.defaultMinSize(48.dp,48.dp)
-        .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else if(pressed && !reduce) AppleMotion.pressedAlpha else 1f }
+        .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else 1f }
         .clip(CircleShape)
         .thinnBackdrop(opaque,24.dp)
         .background(if(opaque)ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.subtlePill)
         .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)
         .thinnSpecularEdge(24.dp)
+        .drawWithContent { drawContent(); if(pressed && !reduce) drawRect(Color.White.copy(alpha=.16f)) }
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
         }),contentAlignment=Alignment.Center){

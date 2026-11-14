@@ -33,10 +33,9 @@ fun MainDetailLayer(visible:Boolean,onBack:()->Unit,inset:Dp=LocalWorkspaceDetai
         }
     }
     AnimatedVisibility(visible=visible,modifier=Modifier.fillMaxSize().padding(start=inset),
-        enter=slideInHorizontally(tween(if(reduce)0 else 420,easing=AppleMotion.fluid)){it}+
-            fadeIn(tween(if(reduce)0 else 230),initialAlpha=.65f),
-        exit=slideOutHorizontally(tween(if(reduce)0 else 360,easing=AppleMotion.fluid)){it}+
-            fadeOut(tween(if(reduce)0 else 320))) {
+        // iOS navigation: the page slides in from the right edge on a critically damped spring, no fade.
+        enter=if(reduce)fadeIn(tween(150)) else slideInHorizontally(AppleMotion.push()){it},
+        exit=if(reduce)fadeOut(tween(150)) else slideOutHorizontally(AppleMotion.push()){it}) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val width=constraints.maxWidth.toFloat()
             Box(Modifier.fillMaxSize().graphicsLayer {

@@ -35,7 +35,7 @@ data class WidgetLayoutPlan(
                 else->Mode.SQUARE
             }
             val growth=sqrt((minOf(w,h)/180f).coerceAtLeast(1f)).coerceAtMost(2.6f)
-            val pad=if(minOf(w,h)<100f)6f else if(minOf(w,h)<220f)12f else 16f
+            val pad=if(minOf(w,h)<100f)8f else if(minOf(w,h)<140f)11f else 16f // iOS widget margins
             val iw=w-pad*2;val ih=h-pad*2;val max=WidgetTypography.MAX
             // Fit the BASE against the largest preference. Optional detail changes first.
             val bodyBase=minOf(14f*read*growth,iw/(4f*max),if(mode==Mode.STRIP)Float.MAX_VALUE else ih/(7.2f*max))

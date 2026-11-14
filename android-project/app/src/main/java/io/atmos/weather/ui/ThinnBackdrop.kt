@@ -98,12 +98,18 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     var failed by remember(source) {mutableStateOf(false)}
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
     val frost=appearance.glassFrost.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
-    val radius=with(LocalDensity.current) {((8f+22f*frost)*frostScale.coerceIn(.1f,1f)).dp.toPx()}
-    val corner=with(LocalDensity.current) {cornerRadius.toPx()}
     val optics=remember(refract) {if(refract&&Build.VERSION.SDK_INT>=33)try {LiquidOpticsEngine()} catch(_:RuntimeException) {null} else null}
+    // iOS 27 glass is clear, not frosted: a little blur, with most of the effect at the lensing rim.
+    val radius=with(LocalDensity.current) {((2.5f+6.5f*frost)*frostScale.coerceIn(.1f,1f)).dp.toPx()}
+    val density=LocalDensity.current.density
+    // One fixed light from the upper-left for every piece of glass.
+    // Highlights sit on the edge facing the real sun, or the moon at night.
+    val light=GlassLight.current(follow=optics!=null)
+    val lightX=light.x;val lightY=light.y
+    val corner=with(LocalDensity.current) {cornerRadius.toPx()}
     val effect=remember(radius,materialDark) {
         val blur=RenderEffect.createBlurEffect(radius,radius,Shader.TileMode.CLAMP)
-        val saturation=ColorMatrixColorFilter(ColorMatrix().apply {setSaturation(1.08f)})
+        val saturation=ColorMatrixColorFilter(ColorMatrix().apply {setSaturation(1.5f)})
         val filtered=RenderEffect.createColorFilterEffect(saturation,blur)
         if(materialDark==null)filtered else GlassToneEffect.apply(filtered,materialDark)
     }
@@ -126,7 +132,7 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
                 glass.colorFilter=if(materialDark!=null&&!drawContext.canvas.nativeCanvas.isHardwareAccelerated)
                     GlassToneEffect.softwareColorFilter(materialDark) else null
                 glass.renderEffect=if(Build.VERSION.SDK_INT>=33 && optics!=null)
-                    optics.effect(sample.width.toFloat(),sample.height.toFloat(),corner,focusX,appearance.edgeLight,effect).asComposeRenderEffect()
+                    optics.effect(sample.width.toFloat(),sample.height.toFloat(),corner,focusX,appearance.edgeLight,effect,lightX,lightY,density).asComposeRenderEffect()
                     else effect.asComposeRenderEffect()
                 glass.record(size=IntSize(sample.width,sample.height)) {
                     clipRect {

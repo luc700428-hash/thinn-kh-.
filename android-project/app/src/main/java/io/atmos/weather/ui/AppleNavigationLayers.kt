@@ -85,7 +85,7 @@ fun ApplePullDownMenu(
                 LaunchedEffect(Unit) { appeared=true }
                 val shown=appeared && !closing
                 val progress by animateFloatAsState(if(shown)1f else 0f,
-                    animationSpec=tween(if(reduce)0 else if(closing)160 else 200,easing=AppleMotion.popover),
+                    animationSpec=if(reduce)tween(0) else if(closing)tween(160,easing=AppleMotion.popover) else AppleMotion.glassMorph(),
                     label="anchored-menu-origin")
                 Column(Modifier.width(230.dp).graphicsLayer {
                     scaleX=.85f+.15f*progress;scaleY=scaleX;alpha=progress
@@ -184,7 +184,7 @@ fun AppleDepthSheetHost(
 ){
     val reduced=rememberAppleReduceMotion()
     val p by animateFloatAsState(if(open)1f else 0f,
-        animationSpec=if(reduced)tween(0) else tween(440,easing=AppleMotion.fluid),
+        animationSpec=if(reduced)tween(0) else AppleMotion.sheet(),
         label="sheet-perspective-root")
     var dismissDrag by remember { mutableFloatStateOf(0f) }
     BoxWithConstraints(modifier) {

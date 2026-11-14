@@ -19,7 +19,7 @@ data class IOSMotionResponse(val damping:Float,val stiffness:Float)
 /** Observes the existing click gesture; never steals scrolling or replaces a callback. */
 fun Modifier.iosJellyPress():Modifier=composed{
  val reduce=rememberAppleReduceMotion();val response=iosMotionResponse();var down by remember{mutableStateOf(false)}
- val x by animateFloatAsState(if(down&&!reduce).975f else 1f,if(reduce)snap() else spring(response.damping,response.stiffness),label="果凍橫向回彈")
- val y by animateFloatAsState(if(down&&!reduce).95f else 1f,if(reduce)snap() else spring(response.damping,response.stiffness),label="果凍縱向回彈")
+ val x by animateFloatAsState(if(down&&!reduce).975f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍橫向回彈")
+ val y by animateFloatAsState(if(down&&!reduce).95f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍縱向回彈")
  this.graphicsLayer{scaleX=x;scaleY=y;alpha=if(down&&!reduce).92f else 1f}.pointerInput(Unit){awaitEachGesture{awaitFirstDown(requireUnconsumed=false);down=true;try{var held=true;while(held){val event=awaitPointerEvent(PointerEventPass.Final);held=event.changes.any{it.pressed}}}finally{down=false}}}
 }

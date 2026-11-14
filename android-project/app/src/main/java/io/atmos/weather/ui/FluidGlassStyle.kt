@@ -10,12 +10,15 @@ import kotlin.math.min
 
 /** Independently tuned Android motion; Apple's public guidance does not publish private spring constants. */
 internal object FluidGlassStyle {
- const val POSITION_DAMPING=.78f
- const val POSITION_STIFFNESS=420f
- const val TAIL_DAMPING=.76f
- const val TAIL_STIFFNESS=145f
- const val CONTACT_DAMPING=.60f
- const val CONTACT_STIFFNESS=360f
+ // iOS 26/27 measured springs (stiffness = (2π/duration)², dampingRatio = 1 − bounce):
+ // the lens follows like a glass morph (0.28 s, 0.87), its liquid tail rebounds like
+ // SwiftUI .bouncy (0.5 s, bounce 0.3) and a touch swells like the island long-press (0.387 s).
+ const val POSITION_DAMPING=.87f
+ const val POSITION_STIFFNESS=503.5f
+ const val TAIL_DAMPING=.70f
+ const val TAIL_STIFFNESS=157.9f
+ const val CONTACT_DAMPING=.62f
+ const val CONTACT_STIFFNESS=263.6f
  data class Navigation(val underlay:Color,val selection:Color,val selectedInk:Color,val ink:Color,val rim:Color)
  fun navigation(theme:AppThemeColor,dark:Boolean)=navigation(BrandPalette.scheme(theme,dark),dark)
  fun navigation(p:androidx.compose.material3.ColorScheme,dark:Boolean):Navigation {

@@ -253,8 +253,9 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
             }
             else->{
                 val temp=r.kind==WidgetRegion.Kind.TEMPERATURE&&family==8;id=if(temp)R.id.buddy_clock_temp else R.id.widget_adaptive_text
-                RemoteViews(context.packageName,if(temp)R.layout.widget_adaptive_temperature else R.layout.widget_adaptive_text).apply{
-                    val reading=android.text.SpannableString(r.text).apply{if(r.bold||bold)setSpan(android.text.style.StyleSpan(Typeface.BOLD),0,length,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)}
+                val hero=!temp&&r.kind==WidgetRegion.Kind.TEMPERATURE&&r.font>=26f
+                RemoteViews(context.packageName,if(temp)R.layout.widget_adaptive_temperature else if(hero)R.layout.widget_adaptive_hero else R.layout.widget_adaptive_text).apply{
+                    val reading=android.text.SpannableString(r.text).apply{if(!hero&&(r.bold||bold))setSpan(android.text.style.StyleSpan(Typeface.BOLD),0,length,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)}
                     setTextViewText(id,reading);setTextViewTextSize(id,dip,r.font);setTextColor(id,if(r.soft)colors.secondary else colors.ink)
                     setInt(id,"setMaxLines",r.lines);setInt(id,"setGravity",android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START)
                 }

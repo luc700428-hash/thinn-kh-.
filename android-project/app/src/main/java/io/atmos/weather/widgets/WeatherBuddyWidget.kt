@@ -54,7 +54,19 @@ internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed
             setInt(R.id.buddy_eyes,"setFlipInterval",90+Math.floorMod(seed,26))
             setInt(R.id.buddy_eyes,"setDisplayedChild",0)
         }
-        addView(R.id.buddy_float,face);setInt(R.id.buddy_float,"setFlipInterval",3600)
+        addView(R.id.buddy_float,face)
+        // Living layers behind the buddy: a weather-coloured glow on its own 2.6 s rhythm and a
+        // ground shadow that tightens as the 3.6 s float lifts the buddy.
+        rect(R.id.buddy_halo,.04f,.02f,.92f,.92f)
+        setImageViewResource(R.id.buddy_halo_image,when(kind){
+            WeatherBuddyArt.Kind.SUN->R.drawable.widget_buddy_halo_sun;WeatherBuddyArt.Kind.MOON->R.drawable.widget_buddy_halo_moon
+            WeatherBuddyArt.Kind.RAIN->R.drawable.widget_buddy_halo_rain;WeatherBuddyArt.Kind.SNOW->R.drawable.widget_buddy_halo_snow
+            WeatherBuddyArt.Kind.STORM->R.drawable.widget_buddy_halo_storm;WeatherBuddyArt.Kind.MIST->R.drawable.widget_buddy_halo_mist
+            else->R.drawable.widget_buddy_halo_cloud})
+        setInt(R.id.buddy_halo,"setFlipInterval",2600)
+        rect(R.id.buddy_shadow,.24f,.84f,.52f,.09f)
+        setInt(R.id.buddy_shadow,"setFlipInterval",3600)
+        setInt(R.id.buddy_float,"setFlipInterval",3600)
         // Tight layer bounds keep a large character sharp without full-card animated bitmaps.
         rect(R.id.buddy_rain,0f,if(wet).64f else 0f,1f,if(wet).34f else 1f)
         rect(R.id.buddy_ground,0f,.86f,1f,.10f)

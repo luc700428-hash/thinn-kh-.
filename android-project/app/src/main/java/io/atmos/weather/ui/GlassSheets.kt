@@ -52,7 +52,7 @@ fun GlassModalBottomSheet(onDismissRequest:()->Unit,containerColor:Color=Materia
     var closing by remember {mutableStateOf(false)}
     val animatedY by animateFloatAsState(offsetPx,
         animationSpec=if(reduceMotion || grabbing) androidx.compose.animation.core.snap() else
-            androidx.compose.animation.core.spring(dampingRatio=AppleMotion.springDamping,stiffness=AppleMotion.springStiffness),
+            AppleMotion.sheet(),
         label="底部面板進退場")
     LaunchedEffect(Unit) { offsetPx=0f }
     fun dismissAnimated() {
@@ -99,9 +99,9 @@ fun GlassAlertDialog(onDismissRequest:()->Unit,confirmButton:@Composable ()->Uni
     val reduceMotion=rememberAppleReduceMotion()
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown=true }
-    val opacity by animateFloatAsState(if(shown)1f else 0f,animationSpec=tween(if(reduceMotion)0 else 180,easing=AppleMotion.fluid),label="對話框進場")
-    val scale by animateFloatAsState(if(shown)1f else .88f,
-        animationSpec=tween(if(reduceMotion)0 else 190,easing=AppleMotion.fluid),label="對話框縮放")
+    val opacity by animateFloatAsState(if(shown)1f else 0f,animationSpec=tween(if(reduceMotion)0 else 200,easing=AppleMotion.fluid),label="對話框進場")
+    val scale by animateFloatAsState(if(shown)1f else AppleMotion.alertStartScale,
+        animationSpec=if(reduceMotion)tween(0) else AppleMotion.alert(),label="對話框縮放")
     Dialog(onDismissRequest=onDismissRequest) {
         Box(Modifier.fillMaxWidth()
             .graphicsLayer { scaleX=scale;scaleY=scale;alpha=opacity }) {
@@ -150,7 +150,15 @@ fun GlassDropdownMenu(expanded:Boolean,onDismissRequest:()->Unit,
         onDismissRequest=onDismissRequest,
         properties=androidx.compose.ui.window.PopupProperties(focusable=true)
     ) {
-        Column(Modifier.widthIn(min=230.dp,max=310.dp).heightIn(max=340.dp)
+        // iOS 26/27 menus grow out of the control that opened them, with a small glass rebound.
+        val reduce=rememberAppleReduceMotion()
+        var open by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { open=true }
+        val grow by animateFloatAsState(if(open)1f else 0f,if(reduce)tween(0) else AppleMotion.glassMorph(),label="選單展開")
+        val fade by animateFloatAsState(if(open)1f else 0f,tween(if(reduce)0 else 140),label="選單淡入")
+        Column(Modifier.graphicsLayer { scaleX=.7f+.3f*grow;scaleY=.6f+.4f*grow;alpha=fade
+                transformOrigin=androidx.compose.ui.graphics.TransformOrigin(0f,0f) }
+            .widthIn(min=230.dp,max=310.dp).heightIn(max=340.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(ThinnOpticalMaterial.surface)
             .border(1.dp,glassBorder,RoundedCornerShape(22.dp))
