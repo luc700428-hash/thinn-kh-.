@@ -210,12 +210,21 @@ class RenderingRegressionTest {
         frame();assertTrue("Slider drag did not reach the end of its range",value.floatValue>=90f)
         slider.performSemanticsAction(SemanticsActions.SetProgress){it(50f)}
         frame()
+        // iOS 27: at rest the knob is the solid white capsule.
+        val resting=compose.onNodeWithTag("bubble-background").captureToImage().toPixelMap()
+        val knob=resting[resting.width/2,resting.height*22/60]
+        assertTrue("Resting knob must be the white iOS capsule: $knob",knob.red>.85f&&knob.green>.85f&&knob.blue>.85f)
+        // Held, it lifts into a clear lens: both halves of the scene show through it.
+        slider.performTouchInput {down(center)}
+        frame()
         val image=compose.onNodeWithTag("bubble-background").captureToImage()
         val pixels=image.toPixelMap()
         val left=pixels[(pixels.width*152/320),(pixels.height*22/60)]
         val right=pixels[(pixels.width*168/320),(pixels.height*22/60)]
-        assertTrue("Bubble hid the magenta scene behind an opaque fill",left.red>left.green+.25f)
-        assertTrue("Bubble hid the green scene behind an opaque fill",right.green>right.red+.25f)
+        slider.performTouchInput {up()}
+        frame()
+        assertTrue("Held lens hid the magenta scene behind an opaque fill: $left",left.red>left.green+.25f)
+        assertTrue("Held lens hid the green scene behind an opaque fill: $right",right.green>right.red+.25f)
         val directory=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
         File(directory,"bubble-transparency.png").outputStream().use {image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
         assertNull(CrashDiagnostics.graphics(context))

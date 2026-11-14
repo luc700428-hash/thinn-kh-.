@@ -118,8 +118,9 @@ internal fun dockLensPath(width:Float,height:Float,density:Float,count:Int,head:
   .wrapContentSize(androidx.compose.ui.Alignment.TopStart,unbounded=true)
   .requiredSize((rect.width/density).dp,(rect.height/density).dp).testTag("dock-liquid-lens")
   .graphicsLayer{alpha=(energy*1.8f).coerceIn(0f,1f)}.clip(mask)
-  .thinnBackdrop(reduceTransparency,(minor/density/2).dp,.5f,frostScale=.18f)) {
-  // Clear glass: the backdrop is sampled without the Dock's material tone.
+  .thinnBackdrop(reduceTransparency,(minor/density/2).dp,.5f,frostScale=.18f,refract=false)) {
+  // Clear glass: the backdrop is sampled without the Dock's material tone, and without the
+  // runtime shader (the magnified icons already give the lens; the Dock itself skips it too).
   // Without a live backdrop the icons below must still be covered before the magnified copy.
   if(!sampled)drawPath(local,base.copy(alpha=.96f))
   drawPath(local,Color.White.copy(alpha=if(dark).03f else .05f))
