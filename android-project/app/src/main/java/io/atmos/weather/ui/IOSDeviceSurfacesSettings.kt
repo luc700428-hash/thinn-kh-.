@@ -50,6 +50,22 @@ import kotlinx.coroutines.withContext
    Text("天氣夥伴會隨日夜變換角色，搭配自然漂浮、眨眼、視線與雨滴水花。動畫會配合桌面與省電設定。",color=palette.onSurfaceVariant,fontSize=14.sp)
    GlassButton(onClick={WidgetSync.refreshCached(ctx)},modifier=Modifier.fillMaxWidth()){Text("讓天氣夥伴換個表情")}
    GlassButton(onClick={WidgetSync.request(ctx)},modifier=Modifier.fillMaxWidth()){Text("同步桌面天氣")}
+   Text("即時動態（Live Updates）",color=palette.onSurfaceVariant,fontSize=14.sp)
+   var live by remember{mutableStateOf(io.atmos.weather.notifications.LiveUpdates.available(ctx))}
+   val owner=androidx.lifecycle.compose.LocalLifecycleOwner.current
+   DisposableEffect(owner){val o=androidx.lifecycle.LifecycleEventObserver{_,e->if(e==androidx.lifecycle.Lifecycle.Event.ON_RESUME)live=io.atmos.weather.notifications.LiveUpdates.available(ctx)}
+    owner.lifecycle.addObserver(o);onDispose{owner.lifecycle.removeObserver(o)}}
+   IOSV25SettingsGroup{
+    Column(Modifier.padding(horizontal=14.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+      Text("狀態列即時動態",color=palette.onSurface,fontSize=16.sp)
+      Text(if(android.os.Build.VERSION.SDK_INT<36)"需要 Android 16" else if(live)"已開啟" else "已關閉",color=palette.onSurfaceVariant,fontSize=15.sp)
+     }
+     Text("軟體更新下載、地震速報倒數、即將下雨、計時器與鬧鐘稍後提醒，會以狀態列膠囊與鎖定畫面卡片即時更新。",color=palette.onSurfaceVariant,fontSize=14.sp)
+    }
+   }
+   if(android.os.Build.VERSION.SDK_INT>=36&&!live)GlassOutlinedButton(onClick={runCatching{ctx.startActivity(io.atmos.weather.notifications.LiveUpdates.settingsIntent(ctx))}},
+    modifier=Modifier.fillMaxWidth()){Text("開啟即時動態")}
    Text("小米超級島",color=palette.onSurfaceVariant,fontSize=14.sp)
    IOSV25SettingsGroup{GlassToggle("鬧鐘與天氣詳細資訊","僅附加有效天氣快取，保留真實標籤及操作",weather){weather=it;p.edit().putBoolean("island_weather_details",it).apply()}}
    Text(when(capability){null->"正在檢查裝置相容性";XiaomiFocusBridge.Availability.ENABLED->"已啟用 · 系統協定 $protocol";XiaomiFocusBridge.Availability.NOT_XIAOMI->"此裝置使用通知與 App 響鈴介面";XiaomiFocusBridge.Availability.UNSUPPORTED->"此系統版本未提供相容的超級島協定";else->"系統尚未授權此 App 的焦點通知"},color=palette.onSurfaceVariant,fontSize=14.sp)

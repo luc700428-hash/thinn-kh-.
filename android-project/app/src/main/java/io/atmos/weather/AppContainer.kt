@@ -30,9 +30,17 @@ object AppContainer {
     @Volatile private var instance: WeatherDataRepository? = null
     fun repository(context: Context): WeatherDataRepository = synchronized(this) {
         instance ?: DefaultWeatherDataRepository(
-            // Open-Meteo first; MET Norway takes over when it times out or fails.
-            providers = listOf(OpenMeteoProvider(meteo,airQuality,observations=io.atmos.weather.data.remote.CwaSurfaceObservations(context.applicationContext)),
-                io.atmos.weather.data.remote.MetNorwayProvider(http)),
+            // Taiwan: Central Weather Administration open data first. Elsewhere, or whenever CWA
+            // cannot answer, Open-Meteo and then MET Norway take over.
+            providers = run {
+                val app=context.applicationContext
+                val stations=io.atmos.weather.data.remote.CwaSurfaceObservations(app)
+                listOf(io.atmos.weather.data.remote.CwaForecastProvider(http,
+                        key={io.atmos.weather.earthquake.EarthquakeSecurity.load(app)?.takeIf{it.isNotBlank()}?:io.atmos.weather.BuildConfig.THINN_CWA_API_KEY},
+                        observations=stations,airQuality=airQuality),
+                    OpenMeteoProvider(meteo,airQuality,observations=stations),
+                    io.atmos.weather.data.remote.MetNorwayProvider(http))
+            },
             diskCache = WeatherDiskCache(context.applicationContext)
         ).also { instance = it }
     }

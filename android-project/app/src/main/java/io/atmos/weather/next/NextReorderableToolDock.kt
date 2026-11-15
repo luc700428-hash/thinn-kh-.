@@ -65,6 +65,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import io.atmos.weather.ui.AppleLiquidDockPaint
+import io.atmos.weather.ui.AppleLiquidDockLens
+import io.atmos.weather.ui.FluidGlassStyle
+import io.atmos.weather.ui.LiquidGlassKit
+import io.atmos.weather.ui.AppleMotion
+import io.atmos.weather.ui.thinnBackdrop
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.layout
+import kotlin.math.roundToInt
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.unit.sp
 import io.atmos.weather.ui.ThinnPopup as Popup
 import androidx.compose.ui.window.PopupProperties
@@ -90,7 +104,11 @@ fun NextReorderableToolDock(
     allowReorder: Boolean = false,
     vertical:Boolean = false,
     fillAvailableHeight:Boolean = false,
-    darkBackdrop:Boolean? = null
+    darkBackdrop:Boolean? = null,
+    minimized:Boolean = false,
+    onExpand:()->Unit = {},
+    accessory:NextToolAction? = null,
+    onAccessory:()->Unit = {}
 ) {
     require(maxVisible >= 1) { "At least one dock item must be visible" }
     val actionIds = actions.map { it.id }
@@ -111,6 +129,7 @@ fun NextReorderableToolDock(
     var dockWidthPx by remember { mutableIntStateOf(0) }
     var dockHeightPx by remember {mutableIntStateOf(0)}
     var touching by remember{mutableStateOf(false)}
+    var pressAt by remember{mutableFloatStateOf(Float.NaN)}
     var scrubbing by remember { mutableStateOf(false) }
     var scrubX by remember { mutableFloatStateOf(0f) }
     var displayId by remember {mutableStateOf(selectedId)}
@@ -153,15 +172,54 @@ fun NextReorderableToolDock(
         if(scrubbing&&visible.isNotEmpty())geometry.nearest(scrubX) else lightIndex
     }}
     val lightX=if(visible.isEmpty()) .5f else (activeDisplayIndex+.5f)/slotCount
-    NextOpticalSurface(modifier = modifier.shadow(18.dp,RoundedCornerShape(9999.dp),
+    // iOS 27 lens: one position drives both the resting pill and the lifted glass. While held it
+    // follows the finger continuously (interactive spring); on release it settles on the tab.
+    val engagedNow=touching||scrubbing||draggingId!=null
+    val fingerSlot=if(pressAt.isFinite()&&slotPx>0f)((pressAt-dockInsetPx)/slotPx-.5f).coerceIn(0f,slotCount-1f) else lightIndex.toFloat()
+    val lensTarget=if((touching||scrubbing)&&draggingId==null&&!reduceMotion)fingerSlot else lightIndex.toFloat()
+    val lensPosition by animateFloatAsState(lensTarget,if(reduceMotion)snap() else if(engagedNow)
+        spring(LiquidGlassKit.FOLLOW_DAMPING,LiquidGlassKit.FOLLOW_STIFFNESS) else spring(FluidGlassStyle.POSITION_DAMPING,FluidGlassStyle.POSITION_STIFFNESS),label="dock-lens-position")
+    val lensTail by animateFloatAsState(lensPosition,if(reduceMotion)snap() else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="dock-lens-tail")
+    val lensContact by animateFloatAsState(if(engagedNow&&!reduceMotion)1f else 0f,if(reduceMotion)snap() else
+        spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="dock-lens-lift")
+    val iconLayer=rememberGraphicsLayer()
+    // A selection tick each time the lens crosses into another tab, like the iOS tab bar.
+    LaunchedEffect(activeDisplayIndex,scrubbing){if(scrubbing)haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)}
+    // iOS 27 tab-bar minimize: while the page scrolls down the bar condenses, as one piece of
+    // glass, into a small capsule holding only the current tab; scrolling up or a tap restores it.
+    val compact by animateFloatAsState(if(minimized&&!vertical)1f else 0f,
+        if(reduceMotion)snap() else AppleMotion.glassMorph(),label="dock-minimize")
+    val compactWidthPx=with(density){maxOf(68.dp.toPx(),dockHeightPx.toFloat())}
+    Box(modifier,propagateMinConstraints=true) {
+    NextOpticalSurface(modifier = Modifier.layout{measurable,constraints->
+            val full=constraints.maxWidth
+            val width=if(compact<=0f||full==androidx.compose.ui.unit.Constraints.Infinity)full
+                else (full+(compactWidthPx-full)*compact.coerceIn(0f,1.05f)).roundToInt().coerceIn(1,full)
+            val placeable=measurable.measure(if(width==full)constraints else constraints.copy(minWidth=width,maxWidth=width))
+            layout(maxOf(placeable.width,constraints.minWidth).coerceAtMost(full),placeable.height){placeable.place(0,0)}
+        }.shadow(18.dp,RoundedCornerShape(9999.dp),
         ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
         cornerRadiusDp = 9999f, useBackdrop = true, touchX = if(vertical).5f else lightX, touchY=if(vertical)lightX else .08f,calm = true,
         pressed = touching || scrubbing || draggingId != null, reduceTransparency = reduceTransparency,darkBackdrop=darkBackdrop,clearGlass=true) {
+        if(compact>=.5f) {
+            val current=selectedHidden?:visible.firstOrNull{it.id==displayId}?:visible.firstOrNull()
+            Box((if(fillAvailableHeight)Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(with(density){dockHeightPx.toDp()}))
+                .graphicsLayer{alpha=((compact-.5f)*2f).coerceIn(0f,1f)}
+                .semantics{contentDescription="展開分頁列，目前："+(current?.label?:"")}
+                .clickable(role=Role.Button){haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove);onExpand()},
+                contentAlignment=Alignment.Center) {
+                if(current!=null)Image(current.icon,null,Modifier.size((iconSize+3f).dp),colorFilter=ColorFilter.tint(activeInk))
+            }
+        } else
         Box((if(fillAvailableHeight)Modifier.fillMaxSize() else Modifier.fillMaxWidth())
-            .onSizeChanged { dockWidthPx=if(vertical)it.height else it.width;dockHeightPx=it.height }
-            .pointerInput(Unit){awaitEachGesture{
-                awaitFirstDown(requireUnconsumed=false);touching=true
-                try{do{val event=awaitPointerEvent(PointerEventPass.Final)}while(event.changes.any{it.pressed})}finally{touching=false}
+            .graphicsLayer{alpha=(1f-compact*2f).coerceIn(0f,1f)}
+            .onSizeChanged { if(compact<=0f){dockWidthPx=if(vertical)it.height else it.width};dockHeightPx=it.height }
+            .pointerInput(geometry,vertical){awaitEachGesture{
+                val down=awaitFirstDown(requireUnconsumed=false);touching=true
+                pressAt=geometry.clamp(if(vertical)down.position.y else down.position.x)
+                try{do{val event=awaitPointerEvent(PointerEventPass.Final)
+                    event.changes.firstOrNull{it.id==down.id&&it.pressed}?.let{pressAt=geometry.clamp(if(vertical)it.position.y else it.position.x)}
+                }while(event.changes.any{it.pressed})}finally{touching=false}
             }}
             .pointerInput(visible.map { it.id }, dockWidthPx,vertical) {
                 val start:(androidx.compose.ui.geometry.Offset)->Unit={point->
@@ -184,8 +242,12 @@ fun NextReorderableToolDock(
                 dragging=scrubbing || draggingId != null,
                 dragOffsetPx=0f,
                 dragOffset={if(scrubbing)scrubX-(dockInsetPx+(lightIndex+.5f)*slotPx) else dockDragOffsetPx},
-                reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop,engaged=touching||scrubbing||draggingId!=null,reduceTransparency=reduceTransparency)
-        DockAxisLayout(vertical,fillAvailableHeight) {
+                reduceMotion=reduceMotion,vertical=vertical,darkBackdrop=darkBackdrop,engaged=lensContact>.02f,reduceTransparency=reduceTransparency,
+                position=if(draggingId==null)lensPosition else null)
+        DockAxisLayout(vertical,fillAvailableHeight,Modifier.drawWithContent{
+            iconLayer.record{this@drawWithContent.drawContent()}
+            drawLayer(iconLayer)
+        }) {
             visible.forEach { action ->
                 key(action.id) {
                     var localX by remember { mutableFloatStateOf(0f) }
@@ -281,12 +343,74 @@ fun NextReorderableToolDock(
         }
         } // AppleLiquidDockPaint Box wrapper
     }
+    if(compact<.01f)AppleLiquidDockLens(position=lensPosition,tail=lensTail,contact=lensContact,tabCount=slotCount,icons=iconLayer,
+        vertical=vertical,darkBackdrop=darkBackdrop,reduceTransparency=reduceTransparency,touch={pressAt})
+    // A plain Box: the outer one propagates min constraints, which would stretch the bubble.
+    if(accessory!=null&&!vertical&&compact>.01f)Box(Modifier.matchParentSize()){DockAccessoryBubble(accessory,compact,compactWidthPx,dockHeightPx.toFloat(),
+        activeInk,reduceTransparency,darkBackdrop,onAccessory)}
+    }
+}
+
+/**
+ * iOS 27 glass splitting and merging: as the bar condenses, a separate glass bubble (for
+ * example search) peels off its trailing end. While the two are close a liquid neck joins
+ * them and thins out, exactly like neighbouring shapes in an iOS glass container; when the
+ * bar expands again the bubble flows back in.
+ */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.DockAccessoryBubble(action:NextToolAction,compact:Float,
+    compactWidthPx:Float,heightPx:Float,ink:Color,reduceTransparency:Boolean,darkBackdrop:Boolean?,onClick:()->Unit) {
+    val density=LocalDensity.current
+    var widthPx by remember{mutableIntStateOf(0)}
+    Box(Modifier.matchParentSize().onSizeChanged{widthPx=it.width})
+    if(widthPx<=0||heightPx<=0f)return
+    val w=widthPx.toFloat();val h=heightPx
+    val capsuleRight=w+(compactWidthPx-w)*compact.coerceIn(0f,1.05f)
+    val bubble=h
+    val gap=w-bubble-capsuleRight
+    // Fades in as it emerges from inside the bar; fully solid once it has left it.
+    val emerge=((gap+bubble*.5f)/(bubble*.5f)).coerceIn(0f,1f)
+    if(emerge<=0f)return
+    val spacing=with(density){26.dp.toPx()}
+    val nav=io.atmos.weather.ui.FluidGlassStyle.navigation(if(darkBackdrop==true)io.atmos.weather.ui.BrandPalette.dark else io.atmos.weather.ui.BrandPalette.light,darkBackdrop==true)
+    if(gap>0f&&gap<spacing) {
+        // The liquid neck: a waist that narrows as the gap opens, then lets go.
+        val pull=1f-gap/spacing
+        val r=h/2;val cy=h/2
+        val x1=capsuleRight-r*.35f;val x2=w-bubble+r*.35f
+        val waist=r*(.15f+.6f*pull*pull)
+        val neck=Path().apply {
+            moveTo(x1,cy-r*.82f)
+            quadraticTo((x1+x2)/2,cy-waist,x2,cy-r*.82f)
+            lineTo(x2,cy+r*.82f)
+            quadraticTo((x1+x2)/2,cy+waist,x1,cy+r*.82f)
+            close()
+        }
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize().graphicsLayer{alpha=emerge}
+            .clip(androidx.compose.foundation.shape.GenericShape{_,_->addPath(neck)})
+            .thinnBackdrop(reduceTransparency,9999.dp,.5f,frostScale=1f,refract=false)) {
+            drawPath(neck,nav.underlay)
+        }
+    }
+    val size=with(density){bubble.toDp()}
+    Box(Modifier.align(Alignment.CenterEnd).size(size).graphicsLayer{
+        alpha=emerge;val s=.72f+.28f*emerge;scaleX=s;scaleY=s
+    }) {
+        NextOpticalSurface(modifier=Modifier.fillMaxSize().shadow(14.dp,RoundedCornerShape(9999.dp),
+            ambientColor=Color.Black.copy(alpha=.10f),spotColor=Color.Black.copy(alpha=.10f)),
+            cornerRadiusDp=9999f,useBackdrop=true,calm=true,reduceTransparency=reduceTransparency,darkBackdrop=darkBackdrop,clearGlass=true) {
+            Box(Modifier.fillMaxSize().semantics{contentDescription=action.label}.clickable(role=Role.Button){onClick()},
+                contentAlignment=Alignment.Center) {
+                Image(action.icon,null,Modifier.size(24.dp),colorFilter=ColorFilter.tint(ink))
+            }
+        }
+    }
 }
 
 
 /** Fixed child slots; text stays upright when the dock changes axis. */
-@Composable private fun DockAxisLayout(vertical:Boolean,stretch:Boolean,content:@Composable ()->Unit) {
-    Layout(content=content,modifier=Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=5.dp)) {children,c->
+@Composable private fun DockAxisLayout(vertical:Boolean,stretch:Boolean,modifier:Modifier=Modifier,content:@Composable ()->Unit) {
+    Layout(content=content,modifier=modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=5.dp)) {children,c->
         val width=c.maxWidth
         val height=if((vertical||stretch)&&c.hasBoundedHeight)c.maxHeight else maxOf(58.dp.roundToPx(),(34f+24f*fontScale).dp.roundToPx()).coerceIn(c.minHeight,c.maxHeight)
         val count=children.size.coerceAtLeast(1)

@@ -21,19 +21,27 @@ import kotlin.math.*
 
 data class SurfaceObservation(val id:String,val name:String,val lon:Double,val lat:Double,val altitude:Double,
     val at:Instant,val temperature:Double,val humidity:Int,val windMs:Double,val pressure:Double?,
-    val direction:Int?,val description:String?,val distanceKm:Double=0.0)
+    val direction:Int?,val description:String?,val distanceKm:Double=0.0,
+    val visibilityKm:Double?=null,val uvIndex:Double?=null)
 
 /** Fresh, nearby WGS84 station readings. Distant/higher, missing and stale stations cannot override a city. */
 class CwaSurfaceObservations(context:Context) {
-    private val cacheFile=File(context.applicationContext.cacheDir,"cwa_surface_v1.json.gz")
+    private val cacheFile=File(context.applicationContext.cacheDir,"cwa_surface_v2.json.gz")
     private val lock=Mutex()
     private var cached:List<SurfaceObservation> = emptyList()
     private var fetchedAt=0L;private var attemptedAt=0L
     suspend fun nearest(city:WeatherCity,elevation:Double?,now:Instant):SurfaceObservation?=withContext(Dispatchers.IO) {
         if(!city.name.contains("台灣")&&!city.name.contains("臺灣"))return@withContext null
         if(elevation==null||!elevation.isFinite())return@withContext null
+        choose(load(now),city.coordinate.latitude,city.coordinate.longitude,elevation,now)
+    }
+    /** For sources without an elevation (CWA township forecasts): the closest fresh station. */
+    suspend fun nearestStation(city:WeatherCity,now:Instant):SurfaceObservation?=withContext(Dispatchers.IO) {
+        chooseNearest(load(now),city.coordinate.latitude,city.coordinate.longitude,now)
+    }
+    private suspend fun load(now:Instant):List<SurfaceObservation> {
         val time=now.toEpochMilli()
-        val values=lock.withLock {
+        return lock.withLock {
             if(cached.isEmpty()&&cacheFile.exists()&&time-cacheFile.lastModified() in 0..600_000L) {
                 cached=runCatching {GZIPInputStream(cacheFile.inputStream()).use {parse(readBounded(it,3_000_000))}}.getOrDefault(emptyList())
                 if(cached.isNotEmpty())fetchedAt=cacheFile.lastModified()
@@ -55,10 +63,10 @@ class CwaSurfaceObservations(context:Context) {
                   catch(_:Exception){/* The forecast remains usable when observations cannot be fetched. */}
             };cached
         }
-        choose(values,city.coordinate.latitude,city.coordinate.longitude,elevation,now)
     }
     companion object {
-        const val SOURCE_URL="https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0001-001?Authorization=rdec-key-123-45678-011121314&format=JSON"
+        // O-A0003-001: CWA weather stations, every 10 minutes, with visibility and UV.
+        const val SOURCE_URL="https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0003-001?Authorization=rdec-key-123-45678-011121314&format=JSON"
         fun parse(raw:String):List<SurfaceObservation> {
             require(raw.length<=3_000_000)
             val root=JSONObject(raw)
@@ -82,7 +90,9 @@ class CwaSurfaceObservations(context:Context) {
                 val wind=w.number("WindSpeed")?.takeIf{it in 0.0..100.0}?:return@mapNotNull null
                 SurfaceObservation(s.optString("StationId").take(30),s.optString("StationName").take(40),lon,lat,altitude,at,temperature,humidity,wind,
                     w.number("AirPressure")?.takeIf{it in 300.0..1100.0},w.number("WindDirection")?.takeIf{it in 0.0..360.0}?.roundToInt(),
-                    w.optString("Weather").takeIf{it.isNotBlank()&&it!="-99"&&it!="X"&&it.length<=24})
+                    w.optString("Weather").takeIf{it.isNotBlank()&&it!="-99"&&it!="X"&&it.length<=24},
+                    visibilityKm=w.optString("VisibilityDescription").filter{it.isDigit()||it=='.'}.toDoubleOrNull()?.takeIf{it in 0.0..100.0},
+                    uvIndex=w.number("UVIndex")?.takeIf{it in 0.0..20.0})
             }
         }
         fun choose(stations:List<SurfaceObservation>,lat:Double,lon:Double,elevation:Double,now:Instant):SurfaceObservation? {
@@ -92,6 +102,15 @@ class CwaSurfaceObservations(context:Context) {
                 val distance=distanceKm(lat,lon,s.lat,s.lon)
                 if(age !in -120L..1800L||abs(s.altitude-elevation)>200||distance>15)null else s.copy(distanceKm=distance)
             }.minByOrNull{it.distanceKm+abs(it.altitude-elevation)*.003}
+        }
+        /** Fresh stations within 12 km; the closest one wins. */
+        fun chooseNearest(stations:List<SurfaceObservation>,lat:Double,lon:Double,now:Instant):SurfaceObservation? {
+            if(!lat.isFinite()||!lon.isFinite())return null
+            return stations.mapNotNull {s->
+                val age=now.epochSecond-s.at.epochSecond
+                val distance=distanceKm(lat,lon,s.lat,s.lon)
+                if(age !in -120L..1800L||distance>12)null else s.copy(distanceKm=distance)
+            }.minByOrNull{it.distanceKm}
         }
         /** CWA's wind/humidity apparent-temperature formula; wind input is metres per second. */
         fun apparent(temperature:Double,humidity:Int,windMs:Double):Double? {
@@ -108,12 +127,26 @@ class CwaSurfaceObservations(context:Context) {
             while(true){val n=input.read(b);if(n<0)break;check(out.size()+n<=limit);out.write(b,0,n)}
             return out.toString("UTF-8")
         }
+        /** CWA now answers the file API with a 302 to its public S3 copy; follow only that host. */
+        const val MIRROR_HOST="cwaopendata.s3.ap-northeast-1.amazonaws.com"
         private fun download():String {
-            val c=URL(SOURCE_URL).openConnection() as HttpsURLConnection
-            c.connectTimeout=6000;c.readTimeout=8000;c.instanceFollowRedirects=false
-            c.setRequestProperty("Accept","application/json")
-            try {check(c.responseCode==200&&c.contentLengthLong<=3_000_000);return c.inputStream.use{readBounded(it,3_000_000)}}
-            finally{c.disconnect()}
+            var url=URL(SOURCE_URL)
+            repeat(2) {
+                val c=url.openConnection() as HttpsURLConnection
+                c.connectTimeout=6000;c.readTimeout=10000;c.instanceFollowRedirects=false
+                c.setRequestProperty("Accept","application/json")
+                try {
+                    val code=c.responseCode
+                    if(code in 301..308) {
+                        val next=URL(url,c.getHeaderField("Location")?:error("CWA redirect without location"))
+                        check(next.protocol=="https"&&next.host==MIRROR_HOST){"Unexpected CWA redirect"}
+                        url=next;return@repeat
+                    }
+                    check(code==200&&c.contentLengthLong<=3_000_000)
+                    return c.inputStream.use{readBounded(it,3_000_000)}
+                } finally{c.disconnect()}
+            }
+            error("CWA observation redirect loop")
         }
     }
 }

@@ -175,7 +175,7 @@ fun AppUpdatePage(onClose: () -> Unit) {
     LaunchedEffect(Unit){pageShown=true}
     val pageProgress by androidx.compose.animation.core.animateFloatAsState(
         if(pageShown)1f else 0f,
-        tween(if(reduceMotion)0 else if(closingPage)260 else 320,easing=AppleMotion.snap),
+        if(reduceMotion)tween(0) else AppleMotion.push(),
         label="software-update-navigation")
     fun closeUpdatePage() {
         if(closingPage)return

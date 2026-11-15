@@ -1,5 +1,6 @@
 package io.atmos.weather.presentation.home
 
+import androidx.compose.ui.graphics.graphicsLayer
 import io.atmos.weather.ui.brandColor
 
 import androidx.compose.animation.core.*
@@ -47,7 +48,7 @@ internal fun WeatherSurfaceOverlay(kind: WeatherSurface.Kind, windKmh: Float, mo
             withFrameNanos {clock=WeatherSurface.time()}
         }
     }
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         val w = size.width; val h = size.height
         if(w <= 0f || h <= 0f) return@Canvas
         val wind=windKmh.coerceIn(0f,120f)/120f

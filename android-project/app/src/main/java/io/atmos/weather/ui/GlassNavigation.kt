@@ -110,7 +110,8 @@ private val navTabs=listOf(
 )
 
 @Composable
-fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier,vertical:Boolean=false,edgeSized:Boolean=false,darkBackdrop:Boolean?=null) {
+fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier,vertical:Boolean=false,edgeSized:Boolean=false,darkBackdrop:Boolean?=null,
+    minimized:Boolean=false,onExpand:()->Unit={},accessory:io.atmos.weather.next.NextToolAction?=null,onAccessory:()->Unit={}) {
     // NEXT navigation remains aligned to the existing four main Pager pages.
     // Fixed canonical destinations; migrate away from the old saved ordering.
     val context=LocalContext.current
@@ -137,6 +138,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
         onOrderChanged={ _ -> /* Main tabs have a fixed canonical order. */ },
         maxVisible=4,
         allowReorder=false,vertical=vertical,fillAvailableHeight=true,darkBackdrop=darkBackdrop,
+        minimized=minimized,onExpand=onExpand,accessory=accessory,onAccessory=onAccessory,
         reduceMotion=rememberAppleReduceMotion(),
         reduceTransparency=rememberAppleReduceTransparency(),
         modifier=if(edgeSized)modifier else modifier.widthIn(max=(FloatingDockContent.length(4,androidx.compose.ui.platform.LocalDensity.current.fontScale)+32f).dp)

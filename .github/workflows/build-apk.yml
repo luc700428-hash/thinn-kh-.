@@ -304,6 +304,7 @@ jobs:
           THINN_FIREBASE_PROJECT_ID: ${{ vars.THINN_FIREBASE_PROJECT_ID }}
           THINN_PUSH_FUNCTIONS_REGION: ${{ vars.THINN_PUSH_FUNCTIONS_REGION }}
           THINN_AZURE_PROXY_URL: ${{ vars.THINN_AZURE_PROXY_URL }}
+          THINN_CWA_API_KEY: ${{ secrets.CWA_API_KEY }}
         run: |
           set -euo pipefail
           project=android-project
@@ -317,7 +318,9 @@ jobs:
              -PTHINN_FIREBASE_SENDER_ID="${THINN_FIREBASE_SENDER_ID:-}"
              -PTHINN_FIREBASE_PROJECT_ID="${THINN_FIREBASE_PROJECT_ID:-}"
              -PTHINN_PUSH_FUNCTIONS_REGION="${THINN_PUSH_FUNCTIONS_REGION:-asia-east1}"
-             -PTHINN_AZURE_PROXY_URL="${THINN_AZURE_PROXY_URL:-}")
+             -PTHINN_AZURE_PROXY_URL="${THINN_AZURE_PROXY_URL:-}"
+             -PTHINN_CWA_API_KEY="${THINN_CWA_API_KEY:-}")
+          if [[ -z "${THINN_CWA_API_KEY:-}" ]]; then echo '::warning::CWA_API_KEY secret is not set; Taiwan weather will use Open-Meteo.'; fi
           gradle "${args[@]}" :app:testDebugUnitTest :app:lintRelease 2>&1 | tee build.log
           if [[ "$SIGN_READY" == 'true' ]]; then task=:app:assembleRelease; else task=:app:assembleDebug; fi
           gradle "${args[@]}" "$task" 2>&1 | tee -a build.log

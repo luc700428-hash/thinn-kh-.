@@ -66,6 +66,10 @@ class RenderingRegressionTest {
             .putBoolean("sound_enabled",false).putFloat("v4_fontscale",1f).putFloat("v4_fontweight",400f).commit()
         context.getSharedPreferences("thinn_crash_diagnostics",Context.MODE_PRIVATE).edit().clear().commit()
     }
+    private fun expandDockIfCondensed() {
+        val condensed=compose.onAllNodesWithContentDescription("展開分頁列",substring=true)
+        if(condensed.fetchSemanticsNodes().isNotEmpty()){condensed[0].performClick();frame()}
+    }
     private fun frame() {compose.mainClock.advanceTimeBy(650);compose.waitForIdle()}
     private fun checkpoint(stage:String) {
         Log.i("ThinnUiRegression",stage)
@@ -210,12 +214,21 @@ class RenderingRegressionTest {
         frame();assertTrue("Slider drag did not reach the end of its range",value.floatValue>=90f)
         slider.performSemanticsAction(SemanticsActions.SetProgress){it(50f)}
         frame()
+        // iOS 27: at rest the knob is the solid white capsule.
+        val resting=compose.onNodeWithTag("bubble-background").captureToImage().toPixelMap()
+        val knob=resting[resting.width/2,resting.height*22/60]
+        assertTrue("Resting knob must be the white iOS capsule: $knob",knob.red>.85f&&knob.green>.85f&&knob.blue>.85f)
+        // Held, it lifts into a clear lens: both halves of the scene show through it.
+        slider.performTouchInput {down(center)}
+        frame()
         val image=compose.onNodeWithTag("bubble-background").captureToImage()
         val pixels=image.toPixelMap()
         val left=pixels[(pixels.width*152/320),(pixels.height*22/60)]
         val right=pixels[(pixels.width*168/320),(pixels.height*22/60)]
-        assertTrue("Bubble hid the magenta scene behind an opaque fill",left.red>left.green+.25f)
-        assertTrue("Bubble hid the green scene behind an opaque fill",right.green>right.red+.25f)
+        slider.performTouchInput {up()}
+        frame()
+        assertTrue("Held lens hid the magenta scene behind an opaque fill: $left",left.red>left.green+.25f)
+        assertTrue("Held lens hid the green scene behind an opaque fill: $right",right.green>right.red+.25f)
         val directory=File(context.getExternalFilesDir(null),"ui-regression").apply {mkdirs()}
         File(directory,"bubble-transparency.png").outputStream().use {image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)}
         assertNull(CrashDiagnostics.graphics(context))
@@ -391,6 +404,8 @@ class RenderingRegressionTest {
             centerWeatherText("24 小時預報")
             assertPaintedText("24 小時預報")
             checkpoint("weather: round $iteration settings")
+            // Scrolling down condenses the iOS 27 tab bar; a tap on it restores every tab.
+            expandDockIfCondensed()
             compose.onNodeWithContentDescription("設定").performClick()
             frame()
             checkpoint("weather: round $iteration appearance")

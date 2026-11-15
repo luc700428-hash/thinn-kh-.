@@ -42,6 +42,11 @@ android {
                 .replace("\r", "\\r")
             buildConfigField("String", key, "\"$escaped\"")
         }
+        // CWA open-data authorization code, injected by CI from the CWA_API_KEY repository
+        // secret. It is never committed; builds without it fall back to Open-Meteo/MET Norway.
+        val cwaKey = providers.gradleProperty("THINN_CWA_API_KEY").orNull.orEmpty()
+            .filter { it.isLetterOrDigit() || it == '-' }
+        buildConfigField("String", "THINN_CWA_API_KEY", "\"$cwaKey\"")
     }
     buildFeatures { compose = true; buildConfig = true }
 

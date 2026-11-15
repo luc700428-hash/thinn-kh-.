@@ -56,7 +56,7 @@ fun ApplePullDownMenu(
     fun dismiss() {
         if(closing) return
         closing=true
-        scope.launch { if(!reduce) kotlinx.coroutines.delay(160);expanded=false;closing=false }
+        scope.launch { if(!reduce) kotlinx.coroutines.delay(300);expanded=false;closing=false }
     }
     Box(modifier.onGloballyPositioned { anchor=it.boundsInWindow() }) {
         Row(Modifier.fillMaxWidth().heightIn(min=52.dp).clickable {if(!expanded) expanded=true},
@@ -84,16 +84,32 @@ fun ApplePullDownMenu(
                 var appeared by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { appeared=true }
                 val shown=appeared && !closing
-                val progress by animateFloatAsState(if(shown)1f else 0f,
-                    animationSpec=if(reduce)tween(0) else if(closing)tween(160,easing=AppleMotion.popover) else AppleMotion.glassMorph(),
+                // iOS 27: the menu is the same piece of glass as the value it opens from. It grows
+                // out of a capsule the size of that value (top-right), its corners relaxing from a
+                // pill to the panel radius, then the items fade in; closing folds it back.
+                val progressState=animateFloatAsState(if(shown)1f else 0f,
+                    animationSpec=if(reduce)tween(0) else if(closing)AppleMotion.zoomClose() else AppleMotion.glassMorph(),
                     label="anchored-menu-origin")
+                val startW=with(density){96.dp.toPx()};val startH=with(density){36.dp.toPx()};val panelR=with(density){14.dp.toPx()}
                 Column(Modifier.width(230.dp).graphicsLayer {
-                    scaleX=.85f+.15f*progress;scaleY=scaleX;alpha=progress
-                    transformOrigin=androidx.compose.ui.graphics.TransformOrigin(1f,0f)
-                }.shadow(20.dp,RoundedCornerShape(14.dp))
-                    .clip(RoundedCornerShape(14.dp)).thinnBackdrop(rememberAppleReduceTransparency(),14.dp)
+                    val p=progressState.value.coerceIn(0f,1.08f)
+                    // A new outline each frame, so the clip and its shadow follow the morph.
+                    shape=androidx.compose.foundation.shape.GenericShape{size,_->
+                        val w=(startW+(size.width-startW)*p).coerceIn(1f,size.width*1.02f)
+                        val h=(startH+(size.height-startH)*p).coerceIn(1f,size.height*1.02f)
+                        val r=(startH/2+(panelR-startH/2)*p.coerceIn(0f,1f)).coerceAtMost(minOf(w,h)/2)
+                        addRoundRect(androidx.compose.ui.geometry.RoundRect(androidx.compose.ui.geometry.Rect(size.width-w,0f,size.width,h),
+                            androidx.compose.ui.geometry.CornerRadius(r)))
+                    }
+                    clip=true;shadowElevation=20.dp.toPx()*p.coerceIn(0f,1f)
+                    alpha=(p*3f).coerceIn(0f,1f)
+                }.thinnBackdrop(rememberAppleReduceTransparency(),14.dp)
                     .background(palette.surface.copy(alpha=if(rememberAppleReduceTransparency())1f else .65f))
-                    .thinnSpecularEdge(14.dp).padding(6.dp)) {
+                    .thinnSpecularEdge(14.dp).padding(6.dp).graphicsLayer {
+                        // Items appear once the glass has opened most of the way.
+                        alpha=((progressState.value-.45f)/.45f).coerceIn(0f,1f)
+                        translationY=(1f-progressState.value.coerceIn(0f,1f))*(-8).dp.toPx()
+                    }) {
                     choices.forEach { choice ->
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp))
                             .clickable(enabled=!closing) {

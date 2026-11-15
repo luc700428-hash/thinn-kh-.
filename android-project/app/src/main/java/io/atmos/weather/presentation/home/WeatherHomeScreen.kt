@@ -39,6 +39,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -76,6 +77,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.animation.core.Animatable
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import io.atmos.weather.ui.ThinnDialog as Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.atmos.weather.haptics.HapticEngine
@@ -260,6 +263,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val mainPagerScope = rememberCoroutineScope()
     var mainTabJob by remember {mutableStateOf<kotlinx.coroutines.Job?>(null)}
     var dockRequestedTab by remember {mutableStateOf<Int?>(null)}
+    var dockMinimized by remember {mutableStateOf(false)}
+    val dockMinimizeTravelPx=with(LocalDensity.current){28.dp.toPx()}
+    // Changing page always shows the full bar again.
+    LaunchedEffect(mainPager.currentPage){dockMinimized=false}
     val tabResetEpochs=remember {mutableStateListOf(0,0,0,0)}
     fun showMainTab(index:Int,exitDelay:Long=0L) {
         mainTabJob?.cancel()
@@ -617,6 +624,23 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         val detailInset=if(workspace.listDetail&&mainPager.currentPage in 2..3&&workspaceDetailTitle!=null)
             (if(appDensity.fontScale>1.25f)366.dp else 316.dp) else 0.dp
         CompositionLocalProvider(LocalWorkspaceDetailInset provides detailInset,LocalWorkspaceDetailTitle provides workspaceDetailTitle) {
+        // iOS 27 tab bar: condense while the user scrolls a page down, restore on the way up.
+        val dockMinimizer=remember{object:androidx.compose.ui.input.nestedscroll.NestedScrollConnection{
+            var travel=0f
+            // Only a real finger (or the fling it started) condenses the bar. Accessibility
+            // scrolling (TalkBack) reports the same source but must keep every tab reachable.
+            var fingerDown=false;var releasedAt=0L
+            override fun onPreScroll(available:androidx.compose.ui.geometry.Offset,source:androidx.compose.ui.input.nestedscroll.NestedScrollSource):androidx.compose.ui.geometry.Offset {
+                val touchDriven=fingerDown||android.os.SystemClock.uptimeMillis()-releasedAt<1500L
+                if(touchDriven&&kotlin.math.abs(available.y)>kotlin.math.abs(available.x)) {
+                    if(travel!=0f&&kotlin.math.sign(travel)!=kotlin.math.sign(available.y))travel=0f
+                    travel+=available.y
+                    if(travel< -dockMinimizeTravelPx&&!dockMinimized)dockMinimized=true
+                    if(travel> dockMinimizeTravelPx&&dockMinimized)dockMinimized=false
+                }
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+        }}
         val workspaceBrush=if(themedPage)
             Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background,MaterialTheme.colorScheme.background))
             else Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))
@@ -630,6 +654,13 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             HorizontalPager(
                 state = mainPager,
                 modifier = (if(detailInset>0.dp)Modifier.width(detailInset-16.dp).fillMaxHeight() else Modifier.fillMaxSize())
+                    .pointerInput(dockMinimizer){awaitEachGesture{
+                        awaitFirstDown(requireUnconsumed=false,pass=androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                        dockMinimizer.fingerDown=true
+                        try{do{val e=awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)}while(e.changes.any{it.pressed})}
+                        finally{dockMinimizer.fingerDown=false;dockMinimizer.releasedAt=android.os.SystemClock.uptimeMillis()}
+                    }}
+                    .nestedScroll(dockMinimizer)
                     .then(if(workspace.tablet)Modifier else Modifier.background(workspaceBrush)),
                 beyondViewportPageCount = 0,
                 userScrollEnabled = !workspace.tablet && !locationOpen && !settingsOpen && !settingsDetailOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen && !typhoonPageOpen && !earthquakePageOpen && !weatherAlarmOpen && !pushSettingsOpen && !lifestyleSettingsOpen && !nativeRadarOpen && !marineOpen && !skyOpen
@@ -1018,7 +1049,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         color=Color(0xFFFFE4C6),fontSize=15.sp,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                 }
                 Spacer(Modifier.height(22.dp))
-                Text(if(snapshot?.sourceId=="met-norway")"預報：挪威氣象局 MET Norway · CC BY 4.0（備援來源）" else if(snapshot?.observationStation!=null)"觀測：中央氣象署 · 預報：Open-Meteo" else "預報：Open-Meteo.com · 依其授權條款使用",color=weatherSky.secondary,fontSize=14.sp,
+                Text(if(snapshot?.sourceId?.endsWith("cwa")==true)(if(snapshot.observationStation!=null)"觀測與預報：中央氣象署開放資料平台" else "預報：中央氣象署開放資料平台") else if(snapshot?.sourceId=="met-norway")"預報：挪威氣象局 MET Norway · CC BY 4.0（備援來源）" else if(snapshot?.observationStation!=null)"觀測：中央氣象署 · 預報：Open-Meteo" else "預報：Open-Meteo.com · 依其授權條款使用",color=weatherSky.secondary,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
                 Text("天氣是預測資訊，請以當地官方警報為準。",color=weatherSky.secondary,fontSize=14.sp,
@@ -1343,6 +1374,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             selected = dockRequestedTab ?: mainPager.targetPage,
             onSelect = ::navigateWorkspace,
             darkBackdrop=if(themedPage)null else weatherSky.dark,
+            minimized=dockMinimized,onExpand={dockMinimized=false},
+            accessory=io.atmos.weather.next.NextToolAction("search","搜尋城市",Icons.Rounded.Search),
+            onAccessory={locationOpen=true},
             modifier = Modifier.align(Alignment.BottomCenter).testTag("floating-navigation-dock").navigationBarsPadding().padding(bottom = 16.dp)) }
         details?.let { info -> AlertDialog(onDismissRequest={details=null},
             confirmButton={ TextButton(onClick={details=null}) { Text("了解") } },
@@ -1560,6 +1594,18 @@ private fun SkyEffects(condition:WeatherCondition?, night:Boolean, heavyRain:Boo
                        hazy:Boolean, liquidMotion:Float, motion: State<Float>,
                        lightningAlpha:Float, boltSeed:Int, windKmh:Double,
                        weatherCode:Int?, visibilityM:Double?) {
+    // The sky animates every frame. Keeping it in its own render layer means a sky frame
+    // re-records only the sky, never the backdrop capture or the forecast cards above it.
+    Box(Modifier.fillMaxSize().graphicsLayer()) {
+        SkyLayers(condition,night,heavyRain,hazy,liquidMotion,motion,lightningAlpha,boltSeed,windKmh,weatherCode,visibilityM)
+    }
+}
+
+@Composable
+private fun SkyLayers(condition:WeatherCondition?, night:Boolean, heavyRain:Boolean,
+                       hazy:Boolean, liquidMotion:Float, motion: State<Float>,
+                       lightningAlpha:Float, boltSeed:Int, windKmh:Double,
+                       weatherCode:Int?, visibilityM:Double?) {
     val phase=if(liquidMotion > .001f) motion.value else 0f
     AtmosphereCanvas(condition ?: WeatherCondition.CLEAR, night, phase, Modifier.fillMaxSize())
     if (hazy && condition != WeatherCondition.FOG) Canvas(Modifier.fillMaxSize()) {
@@ -1635,7 +1681,7 @@ private fun ContinuousRain(heavy: Boolean, modifier: Modifier = Modifier) {
             withFrameNanos { frameNanos.longValue = it }
         }
     }
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         val t = RainParticles.secondsAt(frameNanos.longValue)
         val width=size.width
         val height=size.height
@@ -1688,7 +1734,7 @@ private fun ContinuousSnow(modifier:Modifier=Modifier) {
     LaunchedEffect(Unit) {
         while(isActive) withFrameNanos { frame.longValue=it }
     }
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         val elapsed=((frame.longValue-entered).coerceAtLeast(0L)/1_000_000_000.0).toFloat()
         val w=size.width;val h=size.height
         for(i in 0 until 85){

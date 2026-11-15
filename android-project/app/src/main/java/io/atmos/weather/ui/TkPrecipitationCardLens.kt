@@ -1,5 +1,7 @@
 package io.atmos.weather.ui
 
+import androidx.compose.ui.graphics.graphicsLayer
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.*
 import androidx.compose.animation.core.*
@@ -53,7 +55,7 @@ val TkCardWeatherClock=compositionLocalOf<State<Float>> {stillClock}
     var snowTarget by remember {mutableFloatStateOf(0f)}
     LaunchedEffect(mood,strength) {snowTarget=if(mood==TkPrecipitationMood.SNOW)strength.coerceAtLeast(.2f) else 0f}
     val deposit=animateFloatAsState(snowTarget,tween(if(reduceMotion)0 else if(mood==TkPrecipitationMood.SNOW)18000 else 24000),label="積雪與融雪")
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer()) {
         val w=size.width;val h=size.height
         if(w<=1f || h<=1f)return@Canvas
         val snow=deposit.value
