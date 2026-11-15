@@ -32,11 +32,6 @@ object SeismicAlertNotifier {
             .setPriority(NotificationCompat.PRIORITY_MAX).setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setAutoCancel(true).setContentIntent(pi)
             .setTimeoutAfter((SeismicAlertDelivery.expires(e)-System.currentTimeMillis()).coerceIn(1,120_000))
-        // Live Update: while shaking is still on its way, the chip counts down to its arrival here.
-        val arrival=local?.let{_->SeismicUserLocation.current(ctx)?.name?.let{place->e.arrivalAtMsByCounty.entries.firstOrNull{place.contains(it.key)||it.key.contains(place)}?.value}}
-        if(arrival!=null&&arrival>System.currentTimeMillis())
-            io.atmos.weather.notifications.LiveUpdates.promote(builder.setAutoCancel(false),null,arrival)
-        else io.atmos.weather.notifications.LiveUpdates.promote(builder.setAutoCancel(false),"地震速報")
         if(SeismicAlertDelivery.mayUseFullScreen(ctx)&&(ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).getNotificationChannel(channel)?.importance?.let{it>=NotificationManager.IMPORTANCE_HIGH}==true)builder.setFullScreenIntent(pi,true)
         val sent=runCatching{WeatherNotificationDispatcher.post(ctx,29200,builder.build(),title,detail,XiaomiFocusBridge.Kind.SEISMIC_EEW)}.isSuccess
         if(!sent)return true // Permission may have changed between checking and posting.

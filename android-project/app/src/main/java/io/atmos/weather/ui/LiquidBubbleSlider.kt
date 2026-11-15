@@ -19,8 +19,6 @@ import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
@@ -29,7 +27,10 @@ import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine
 import kotlin.math.abs
 
-/** iOS 27 slider: a white knob that lifts into a clear magnifying lens while it is held. */
+private fun lensPath(g:BubbleSliderGeometry.Lens):Path =
+    liquidCapsulePath(g.head,g.tail,g.width,g.height,g.y,g.neck)
+
+/** A fixed independent track capture feeds only the water lens; foreground never captures itself. */
 @Composable
 internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier,
     valueRange:ClosedFloatingPointRange<Float>,steps:Int,onValueChangeFinished:(()->Unit)?,colors:SliderColors?,enabled:Boolean) {
@@ -53,7 +54,11 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
     val active=colors?.activeTrackColor?:MaterialTheme.colorScheme.primary
     val inactive=colors?.inactiveTrackColor?:if(dark)brandColor(0xFF565C5A) else Color(0xFFC7C7CC)
     val solid=MaterialTheme.colorScheme.surface
+    val material=MaterialTheme.colorScheme
     val opticalTail=tail.coerceIn(head-.12f,head+.12f)
+    val mask=remember(head,opticalTail,lift,reduce,density.density){GenericShape{size,_->
+        BubbleSliderGeometry.lens(size.width,size.height,density.density,head,opticalTail,lift,reduce)?.let{addPath(lensPath(it))}
+    }}
     fun quantized(v:Float)=BubbleSliderGeometry.quantize(v,low,high,steps)
     Box(modifier.fillMaxWidth().heightIn(min=48.dp)
         .graphicsLayer {alpha=if(enabled)1f else .42f}
@@ -80,49 +85,39 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
             progressBarRangeInfo=ProgressBarRangeInfo(low+(high-low)*fraction,low..high,steps.coerceIn(0,10_000))
             if(enabled)setProgress {proposed->change(quantized(proposed));finish?.invoke();true} else disabled()
         },contentAlignment=Alignment.Center) {
-        val light=GlassLight.current(follow=!opaque)
-        val knob=remember{Path()}
-        val blur=with(density){6.dp.toPx()}
-        val shadow=remember(blur){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
-            maskFilter=android.graphics.BlurMaskFilter(blur,android.graphics.BlurMaskFilter.Blur.NORMAL)}}
-        Canvas(Modifier.matchParentSize()) {
-            val g=BubbleSliderGeometry.lens(size.width,size.height,density.density,head,opticalTail,lift,reduce)?:return@Canvas
-            val inset=(BubbleSliderGeometry.insetDp*density.density).coerceAtMost(size.width/2)
-            val restW=38.dp.toPx();val restH=24.dp.toPx()
-            // The white resting knob grows into the clear lens; springs may overshoot either way.
-            val grow=if(lift.isFinite())lift.coerceIn(-.12f,1.15f) else 0f
-            val clear=BubbleSliderGeometry.unit(lift)
-            val stretch=LiquidGlassKit.stretch((g.tail-g.head)/g.width)
-            val kw=LiquidGlassKit.lerp(restW,g.width,grow)*(1f+stretch)
-            val kh=LiquidGlassKit.lerp(restH,g.height,grow)*(1f-stretch*.35f)
-            val cx=g.head+(g.tail-g.head)*.18f
-            val rect=Rect(cx-kw/2,g.y-kh/2,cx+kw/2,g.y+kh/2)
-            knob.reset();knob.addRoundRect(RoundRect(rect,CornerRadius(minOf(kw,kh)/2)))
-            val start=inset-restW/2;val end=size.width-inset+restW/2
-            val fill=inset+(size.width-2*inset)*head.coerceIn(0f,1f)
-            val thickness=5.dp.toPx()
-            fun track() {
-                drawLine(inactive.copy(alpha=.60f),Offset(start,g.y),Offset(end,g.y),thickness,StrokeCap.Round)
-                drawLine(active,Offset(start,g.y),Offset(fill,g.y),thickness,StrokeCap.Round)
+        val source=rememberThinnBackdrop()
+        ThinnBackdropCapture(source,Modifier.matchParentSize()) {
+            Canvas(Modifier.matchParentSize()) {
+                val inset=30.dp.toPx().coerceAtMost(size.width/2);val end=size.width-inset
+                drawLine(inactive.copy(alpha=.60f),Offset(inset,size.height/2),Offset(end,size.height/2),4.dp.toPx(),StrokeCap.Round)
+                drawLine(active,Offset(inset,size.height/2),Offset(inset+(end-inset)*head.coerceIn(0f,1f),size.height/2),4.dp.toPx(),StrokeCap.Round)
             }
-            // The track runs under the glass, so the knob cuts it out and shows it magnified.
-            clipPath(knob,ClipOp.Difference) {track()}
-            drawIntoCanvas {
-                shadow.color=android.graphics.Color.argb(((.20f-.10f*clear)*255).toInt().coerceIn(0,255),0,0,0)
-                it.nativeCanvas.drawRoundRect(rect.left,rect.top+2.dp.toPx(),rect.right,rect.bottom+2.dp.toPx(),kh/2,kh/2,shadow)
-            }
-            clipPath(knob) {
-                drawPath(knob,if(opaque)solid else Color.White.copy(alpha=if(dark).05f else .08f))
-                val zoom=1f+(LiquidGlassKit.MAGNIFY-1f)*clear
-                withTransform({scale(zoom,zoom*1.15f,rect.center)}) {track()}
-            }
-            liquidGlassEdge(knob,light,clear,dark,bounds=rect)
-            // At rest iOS shows a solid white knob; it clears as the finger lifts the glass.
-            val white=(1f-clear).coerceIn(0f,1f)
-            if(white>.001f) {
-                drawPath(knob,Color.White.copy(alpha=white))
-                drawPath(knob,Color.Black.copy(alpha=.06f*white),style=Stroke(.6.dp.toPx()))
-            }
+        }
+        CompositionLocalProvider(LocalThinnBackdrop provides source) {
+        Canvas(Modifier.matchParentSize().clip(mask).thinnBackdrop(opaque,18.dp,head,frostScale=.70f)) {
+                    val g=BubbleSliderGeometry.lens(size.width,size.height,density.density,head,opticalTail,lift,reduce)?:return@Canvas
+                    val inset=30.dp.toPx().coerceAtMost(size.width/2)
+                    val end=size.width-inset
+                    val path=try {lensPath(g)} catch(_:RuntimeException) {Path().apply {addRoundRect(RoundRect(g.head-g.width/2,g.y-g.height/2,g.head+g.width/2,g.y+g.height/2,CornerRadius(g.height/2)))}}
+                    // Sampling is acyclic: track -> lens. Labels remain in the sharp foreground.
+                    clipPath(path) {
+                        drawLine(active.copy(alpha=.30f),Offset(inset,g.y+1.5.dp.toPx()),Offset(inset+(end-inset)*head.coerceIn(0f,1f),g.y+1.5.dp.toPx()),6.dp.toPx(),StrokeCap.Round)
+                    }
+                    // Clear body: the underlying track/background remain visible.
+                    drawPath(path,if(opaque)solid else Color.White.copy(alpha=if(dark).065f else .035f))
+                    val safeLift=BubbleSliderGeometry.unit(lift)
+                    val phase=BubbleSliderGeometry.rimPhase(head,lift)
+                    val center=Offset((g.head+g.tail)/2,g.y)
+                    val rainbow=listOf(Color.White.copy(alpha=.82f),material.primary.copy(alpha=.26f),material.secondary.copy(alpha=.20f),Color.White.copy(alpha=.65f),Color.White.copy(alpha=.15f),material.primary.copy(alpha=.24f),Color.White.copy(alpha=.82f))
+                    val rim=Brush.sweepGradient(rainbow,center)
+                    drawPath(path,Brush.sweepGradient(rainbow.map{it.copy(alpha=.10f+safeLift*.045f)},center),style=Stroke(5.dp.toPx()))
+                    drawPath(path,rim,style=Stroke(1.25.dp.toPx()))
+                    drawPath(path,Brush.linearGradient(listOf(Color.White.copy(alpha=.82f),Color.Transparent,
+                        Color.White.copy(alpha=.56f)),Offset(g.head-g.width/2,g.y-g.height/2),Offset(g.head+g.width/2,g.y+g.height/2)),style=Stroke(.65.dp.toPx()))
+                    // Thin specular arc; no opaque blue fill or painted blue thumb.
+                    drawArc(Color.White.copy(alpha=.50f),205f,85f,false,
+                        Offset(g.head-g.width*.43f,g.y-g.height*.41f),Size(g.width*.86f,g.height*.82f),style=Stroke(.85.dp.toPx(),cap=StrokeCap.Round))
+        }
         }
     }
 }

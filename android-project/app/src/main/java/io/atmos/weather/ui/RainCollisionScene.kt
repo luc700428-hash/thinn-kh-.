@@ -1,7 +1,5 @@
 package io.atmos.weather.ui
 
-import androidx.compose.ui.graphics.graphicsLayer
-
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -100,9 +98,7 @@ private val surfaceIds=AtomicInteger(1)
             layout.refreshAll()
         }) {
             content()
-            // Own render layer: a particle frame re-records only this canvas, never the cards beneath.
-            val neck=remember {Path()}
-            Canvas(Modifier.matchParentSize().zIndex(10f).graphicsLayer()) {
+            Canvas(Modifier.matchParentSize().zIndex(10f)) {
                 frame.longValue // Draw-phase dependency only; card text does not recompose every frame.
                 // Water reflects neutral sky light rather than being dyed by the interface theme.
                 val water=if(lightBackdrop)Color(0xFF587782) else Color(0xFFD6EAF4)
@@ -126,8 +122,7 @@ private val surfaceIds=AtomicInteger(1)
                         p-Offset(spark.vx*.012f,spark.vy*.012f)*density,p,.9f*density,StrokeCap.Round)
                 }
                 drawWeatherSurfaceEffects(particles,world,density,windKmh,lightBackdrop)
-                world.surfaces.values.forEach {surface ->
-                    if(!surface.active)return@forEach
+                world.surfaces.values.filter{it.active}.forEach {surface ->
                     if(surface.wet>.005f&&surface.contour==null) {
                         drawLine(water.copy(alpha=surface.wet*.23f),
                             Offset((surface.left+surface.r)*density,surface.top*density),
@@ -140,7 +135,7 @@ private val surfaceIds=AtomicInteger(1)
                         val stretch=(bead.neckAge/.25f).coerceIn(0f,1f)
                         val center=Offset(point.x*density,point.y*density+stretch*r*1.4f)
                         if(stretch>0f) {
-                            neck.reset();neck.apply {
+                            val neck=Path().apply {
                                 moveTo(center.x-r*.65f,point.y*density)
                                 cubicTo(center.x-r*.15f,center.y-r,center.x-r,center.y,center.x,center.y+r)
                                 cubicTo(center.x+r,center.y,center.x+r*.15f,center.y-r,center.x+r*.65f,point.y*density);close()

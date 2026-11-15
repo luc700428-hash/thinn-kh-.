@@ -120,7 +120,8 @@ class ExpTechSeismicService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel,"停止監測",stopAction)
         if (promoted) {
-            io.atmos.weather.notifications.LiveUpdates.promote(builder,"監測中")
+            builder.setRequestPromotedOngoing(true)
+                .setShortCriticalText("監測中")
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel,"取消置頂",unpinAction)
                 .setDeleteIntent(unpinAction)
         }

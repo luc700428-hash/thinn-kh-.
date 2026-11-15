@@ -20,8 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import io.atmos.weather.ui.AppText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.State
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,13 +49,14 @@ fun V25HomeHero(
     val settings=ctx.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE)
     val reduceMotion=settings.getBoolean("reduce_motion",false)
     val reduceTransparency=settings.getBoolean("reduce_transparency",false)
-    // Kept as State and read only while drawing: reading it here would recompose the whole
-    // hero (texts, temperature) on every frame of the glow.
-    val phaseState:State<Float> =if(reduceMotion) rememberUpdatedState(.45f) else
-        rememberInfiniteTransition(label="v25-weather-optical").animateFloat(
+    val phase=if(reduceMotion) .45f else {
+        val transition=rememberInfiniteTransition(label="v25-weather-optical")
+        val animated by transition.animateFloat(
             initialValue=.24f,targetValue=.82f,
             animationSpec=infiniteRepeatable(tween(6400),RepeatMode.Reverse),
             label="v25-weather-glow")
+        animated
+    }
     val glow=Color(scene.glowArgb.toInt())
     val radius=RoundedCornerShape(38.dp)
     val heroInk=LocalWeatherSceneInk.current
@@ -65,7 +64,6 @@ fun V25HomeHero(
         horizontalAlignment=Alignment.CenterHorizontally) {
         Box(Modifier.fillMaxWidth().heightIn(min=226.dp).padding(vertical=12.dp),contentAlignment=Alignment.Center) {
             Canvas(Modifier.matchParentSize()) {
-                val phase=phaseState.value
                 if(!reduceTransparency) {
                     drawCircle(brush=Brush.radialGradient(
                         colors=listOf(glow.copy(alpha=.36f*phase),glow.copy(alpha=.08f),Color.Transparent),

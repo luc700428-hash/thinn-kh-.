@@ -102,8 +102,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
         }
     }
     val motion=rememberInfiniteTransition(label="seismic rings")
-    // State read only inside the ring Canvas, so the page itself does not recompose per frame.
-    val progressState=motion.animateFloat(0f,1f,infiniteRepeatable(tween((2600-appearance.liquidMotion.coerceIn(0f,1f)*900).toInt(),easing=LinearEasing)),label="wave")
+    val progress by motion.animateFloat(0f,1f,infiniteRepeatable(tween((2600-appearance.liquidMotion.coerceIn(0f,1f)*900).toInt(),easing=LinearEasing)),label="wave")
     if (settingsOpen) {
         EarthquakeSettingsPage(onClose = { settingsOpen = false })
     } else if (monitorOpen) {
@@ -130,7 +129,7 @@ fun EarthquakeCenterPage(onClose: () -> Unit) {
                             Canvas(Modifier.fillMaxSize()) {
                                 val radius=size.minDimension/2f
                                 for (i in 0..2) {
-                                    val p=(progressState.value + i/3f)%1f
+                                    val p=(progress + i/3f)%1f
                                     drawCircle(ringInk.copy(alpha=(1f-p)*.52f),radius=radius*(.20f+.78f*p),style=Stroke(width=2.dp.toPx()))
                                 }
                                 drawCircle(ringInk.copy(alpha=.36f),radius*.17f)

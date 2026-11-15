@@ -54,9 +54,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.composed
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -363,15 +360,12 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
             Text("天氣流行音樂館",color=ink,fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text("新增 6 首原創流行短曲，共 20 款風格。主歌、旋律、副歌與天氣聲景分層編曲。點選試聽，按右上角勾號套用。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
-            // Every tile has exactly the same size: a fixed height (scaled with the text size),
-            // one-line titles and two-line descriptions, and the press feedback scales uniformly.
-            val tileHeight=(150f+48f*androidx.compose.ui.platform.LocalDensity.current.fontScale).dp
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 R10AlarmTones.choices.chunked(2).forEach {row ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         row.forEach {choice->
                             val chosen=active==R10AlarmTones.prefix+choice.id
-                            Column(Modifier.weight(1f).height(tileHeight).alarmTilePress().clip(RoundedCornerShape(22.dp))
+                            Column(Modifier.weight(1f).heightIn(min=184.dp).iosJellyPress().clip(RoundedCornerShape(22.dp))
                                 .background(Brush.linearGradient(listOf(choice.upper,choice.lower)))
                                 .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.45f),Color.Black.copy(alpha=.72f))))
                                 .border(if(chosen) 2.dp else 1.dp,if(chosen) brandColor(0xFF7ED2BA) else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
@@ -386,22 +380,19 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                                         start()
                                     }}.getOrNull() else null
                                 }).padding(14.dp),verticalArrangement=Arrangement.SpaceBetween) {
-                                Box(Modifier.fillMaxWidth().weight(1f)) {
+                                Box(Modifier.fillMaxWidth().height(88.dp)) {
                                     ToneArtwork(choice.id,Modifier.fillMaxSize())
                                     Text(if(chosen) "✓ 已選擇" else "▶ 試聽",color=Color.White,fontSize=14.sp,
                                         modifier=Modifier.align(Alignment.TopStart)
                                             .background(if(chosen)brandColor(0xFF29755F) else brandColor(0xCC112620),RoundedCornerShape(14.dp))
                                             .padding(horizontal=8.dp,vertical=4.dp))
                                 }
-                                Column(Modifier.padding(top=8.dp)) {
-                                    Text(choice.label,color=Color.White,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=1,
-                                        overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                    Text(choice.description,color=Color.White.copy(alpha=.93f),fontSize=14.sp,lineHeight=17.sp,maxLines=2,
-                                        minLines=2,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                Column {
+                                    Text(choice.label,color=Color.White,fontSize=18.sp,fontWeight=FontWeight.Bold)
+                                    Text(choice.description,color=Color.White.copy(alpha=.93f),fontSize=14.sp,lineHeight=17.sp)
                                 }
                             }
                         }
-                        if(row.size<2)Spacer(Modifier.weight(1f))
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -518,20 +509,6 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
                 drawPath(crystal,brandColor(0xFFECF8F5).copy(alpha=.75f))
                 drawLine(Color.White.copy(alpha=.8f),c+Offset(0f,-r*1.2f),c+Offset(0f,r*1.2f),1.dp.toPx())
             }
-        }
-    }
-}
-
-/** Uniform iOS press: the whole tile shrinks evenly and springs back, never stretching one axis. */
-private fun Modifier.alarmTilePress():Modifier=composed {
-    val reduce=io.atmos.weather.ui.rememberAppleReduceMotion()
-    var down by remember{mutableStateOf(false)}
-    val scale by androidx.compose.animation.core.animateFloatAsState(if(down&&!reduce).97f else 1f,
-        if(down)io.atmos.weather.ui.AppleMotion.interactive() else androidx.compose.animation.core.spring(.86f,503.5f),label="鈴聲方塊按壓")
-    graphicsLayer{scaleX=scale;scaleY=scale}.pointerInput(Unit){
-        awaitEachGesture{
-            awaitFirstDown(requireUnconsumed=false);down=true
-            try{do{val e=awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Final)}while(e.changes.any{it.pressed})}finally{down=false}
         }
     }
 }

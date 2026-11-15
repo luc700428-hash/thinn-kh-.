@@ -31,10 +31,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -70,10 +66,6 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     val glow by animateFloatAsState(if(pressed && !reduce) 1f else 0f,
         animationSpec=if(reduce) tween(0) else if(pressed) AppleMotion.interactive() else AppleMotion.smooth(),label="玻璃按鈕高光")
     val appear=1f
-    val touch=remember{GlassTouch()}
-    val light=GlassLight.current(follow=!opaque)
-    val lean by androidx.compose.animation.core.animateOffsetAsState(if(pressed&&!reduce)touch.lean(with(LocalDensity.current){8.dp.toPx()}) else androidx.compose.ui.geometry.Offset.Zero,
-        if(pressed)AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃按鈕傾向手指")
     val palette=androidx.compose.material3.MaterialTheme.colorScheme
     val weatherCards=LocalWeatherCardPalette.current
     val fill=if(colors!=null) {
@@ -87,14 +79,13 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
         ?: if(outlined) weatherCards?.accent?:palette.primary
         else Color.White
     Row(modifier.defaultMinSize(minHeight=48.dp)
-        .graphicsLayer { scaleX=pressScale*appear;scaleY=(1f+(pressScale-1f)*.75f)*appear;alpha=if(enabled) appear else appear*.45f
-            translationX=lean.x;translationY=lean.y }
-        .glassTouchTracker(touch)
+        .graphicsLayer { scaleX=pressScale*appear;scaleY=(1f+(pressScale-1f)*.75f)*appear;alpha=if(enabled) appear else appear*.45f }
         .clip(corner)
         .thinnBackdrop(opaque,ThinnDesignTokens.radiusControl)
         .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque)1f else if(!outlined&&colors==null).92f else if(pressed).80f else .93f))}))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
-        .liquidGlassSurface(ThinnDesignTokens.radiusControl,{glow},touch,palette.background.red<.5f,light)
+        .thinnSpecularEdge(ThinnDesignTokens.radiusControl)
+        .drawWithContent { drawContent(); if(glow>0f) drawRect(Color.White.copy(alpha=.16f*glow)) }
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=androidx.compose.ui.semantics.Role.Button,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
         })
@@ -137,23 +128,16 @@ fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
     val pressed by interaction.collectIsPressedAsState()
     val context=LocalContext.current
     val reduce=rememberAppleReduceMotion()
-    // Small glass buttons swell more than wide ones, as on iOS 27.
-    val scale by animateFloatAsState(if(pressed && !reduce)AppleMotion.pressedSwell+.06f else 1f,
+    val scale by animateFloatAsState(if(pressed && !reduce)AppleMotion.pressedSwell+.02f else 1f,
         animationSpec=if(reduce)tween(0) else if(pressed)AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃圖示按鈕回饋")
-    val glow by animateFloatAsState(if(pressed && !reduce) 1f else 0f,
-        animationSpec=if(reduce) tween(0) else if(pressed) AppleMotion.interactive() else AppleMotion.smooth(),label="玻璃圖示按鈕高光")
-    val touch=remember{GlassTouch()}
-    val light=GlassLight.current(follow=!opaque)
-    val lean by androidx.compose.animation.core.animateOffsetAsState(if(pressed&&!reduce)touch.lean(with(LocalDensity.current){7.dp.toPx()}) else androidx.compose.ui.geometry.Offset.Zero,
-        if(pressed)AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃圖示按鈕傾向手指")
     Box(modifier.defaultMinSize(48.dp,48.dp)
-        .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else 1f;translationX=lean.x;translationY=lean.y }
-        .glassTouchTracker(touch)
+        .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else 1f }
         .clip(CircleShape)
         .thinnBackdrop(opaque,24.dp)
         .background(if(opaque)ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.subtlePill)
         .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)
-        .liquidGlassSurface(24.dp,{glow},touch,androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f,light)
+        .thinnSpecularEdge(24.dp)
+        .drawWithContent { drawContent(); if(pressed && !reduce) drawRect(Color.White.copy(alpha=.16f)) }
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
         }),contentAlignment=Alignment.Center){
@@ -183,12 +167,8 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
         label="iOS 視覺開關滑塊"
     )
     val active=enabled && onCheckedChange!=null
-    // iOS 27: while held the white knob lifts into a clear lens wider and taller than the track.
-    val lift by animateFloatAsState(if((pressed||dragging)&&active&&!reduce)1f else 0f,
-        if(reduce)tween(0) else spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="開關玻璃抬起")
-    val lag by animateFloatAsState(movement.value,if(reduce)tween(0) else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="開關果凍形變")
-    val light=GlassLight.current(follow=!opaque)
-    val dark=androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f
+    val thumbStretch by animateFloatAsState(if((pressed||dragging)&&active&&!reduce)1.12f else 1f,
+        if(reduce)tween(0) else spring(response.damping,response.stiffness),label="開關果凍形變")
     val tint=if(checked) colors?.checkedTrackColor ?: ThinnDesignTokens.positive else colors?.uncheckedTrackColor ?: androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
     Box(modifier.size(width=51.dp,height=48.dp)
         .then(if(onCheckedChange!=null)
@@ -211,30 +191,22 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
         }else Modifier)
         .graphicsLayer { alpha=if(active) 1f else .48f },
         contentAlignment=Alignment.Center) {
-        val trackColor=Brush.linearGradient(listOf(tint,tint.copy(alpha=.78f)))
-        Box(Modifier.fillMaxWidth().height(31.dp).clip(CircleShape).background(trackColor)
-            .border(1.dp,Color.White.copy(alpha=if(checked).24f else .15f),CircleShape))
-        val knob=remember{Path()}
-        Canvas(Modifier.fillMaxWidth().height(31.dp)) {
-            val grow=if(lift.isFinite())lift.coerceIn(-.12f,1.15f) else 0f
-            val clear=grow.coerceIn(0f,1f)
-            val stretch=LiquidGlassKit.stretch((lag-movement.value)/27f)
-            val w=LiquidGlassKit.lerp(27.dp.toPx(),39.dp.toPx(),grow)*(1f+stretch)
-            val h=LiquidGlassKit.lerp(27.dp.toPx(),35.dp.toPx(),grow)*(1f-stretch*.35f)
-            val cx=(2f+13.5f+movement.value).dp.toPx()+(lag-movement.value).dp.toPx()*.18f
-            val rect=Rect(cx-w/2,size.height/2-h/2,cx+w/2,size.height/2+h/2)
-            knob.reset();knob.addRoundRect(RoundRect(rect,CornerRadius(minOf(w,h)/2)))
-            drawRoundRect(Color.Black.copy(alpha=.10f*(1f-clear)),rect.topLeft+Offset(0f,1.5.dp.toPx()),rect.size,CornerRadius(minOf(w,h)/2))
-            clipPath(knob) {
-                // The lens shows the track colour beneath, brighter and magnified.
-                drawRoundRect(if(opaque)tint else tint.copy(alpha=.70f),Offset.Zero,size,CornerRadius(size.height/2))
-                drawPath(knob,Brush.verticalGradient(listOf(Color.White.copy(alpha=if(dark).16f else .26f),Color.Transparent),rect.top,rect.bottom))
+        val track=rememberThinnBackdrop()
+        Box(Modifier.fillMaxWidth().height(31.dp).clip(CircleShape)) {
+            ThinnBackdropCapture(track,Modifier.matchParentSize()) {
+                Box(Modifier.matchParentSize().background(Brush.linearGradient(listOf(tint,tint.copy(alpha=.78f))))
+                    .border(1.dp,Color.White.copy(alpha=if(checked).24f else .15f),CircleShape)) {
+                    if(checked)Canvas(Modifier.matchParentSize()) {
+                        drawLine(Color.White,Offset(12.dp.toPx(),11.dp.toPx()),Offset(12.dp.toPx(),20.dp.toPx()),1.dp.toPx())
+                    }
+                }
             }
-            liquidGlassEdge(knob,light,clear,dark,bounds=rect)
-            val white=(1f-clear).coerceIn(0f,1f)
-            if(white>.001f) {
-                drawPath(knob,Color.White.copy(alpha=white))
-                drawPath(knob,Color.Black.copy(alpha=.05f*white),style=Stroke(.6.dp.toPx()))
+            CompositionLocalProvider(LocalThinnBackdrop provides track) {
+                Box(Modifier.padding(2.dp).offset(x=movement).size(27.dp)
+                    .graphicsLayer{scaleX=thumbStretch;scaleY=if(pressed&&!reduce).97f else 1f}
+                    .clip(CircleShape).thinnBackdrop(opaque,15.dp,frostScale=.65f)
+                    .background(Color.White.copy(alpha=if(opaque)1f else if(pressed||dragging).28f else .88f),CircleShape)
+                    .border(1.dp,Color.White.copy(alpha=.68f),CircleShape).thinnSpecularEdge(15.dp))
             }
         }
     }

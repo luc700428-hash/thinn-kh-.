@@ -111,11 +111,9 @@ class OtaDownloadService:Service() {
         if(ongoing) {
             val total=OtaRetainedSession.totalBytes.value ?: 0L
             val bytes=OtaRetainedSession.downloaded.longValue
-            // Android 16 Live Update: progress-style bar plus a percentage chip in the status bar.
-            io.atmos.weather.notifications.LiveUpdates.progress(builder,
-                if(total>0L) ((bytes.toDouble()/total)*1000).toInt().coerceIn(0,1000) else 0,1000,0xFF328E74.toInt(),total<=0L)
-            io.atmos.weather.notifications.LiveUpdates.promote(builder,
-                if(total>0L)"${((bytes.toDouble()/total)*100).toInt().coerceIn(0,100)}%" else "更新中")
+            builder.setProgress(1000,if(total>0L) ((bytes.toDouble()/total)*1000).toInt().coerceIn(0,1000) else 0,total<=0L)
+            builder.setRequestPromotedOngoing(true)
+            if(total>0L) builder.setShortCriticalText("${((bytes.toDouble()/total)*100).toInt().coerceIn(0,100)}%")
             val stop=PendingIntent.getService(this,1,Intent(this,OtaDownloadService::class.java).setAction(CANCEL),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             builder.addAction(0,"暫停",stop)
         }

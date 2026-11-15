@@ -50,10 +50,7 @@ object IslandEventPublisher {
             .setContentIntent(openApp(ctx, id))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setTimeoutAfter((evidence.expiresAtMillis - now).coerceAtMost(30 * 60_000L))
-            .setOnlyAlertOnce(true).setAutoCancel(true)
-            // Live Update: the chip counts down to the expected start of the rain.
-            .let{LiveUpdates.promote(it,null,evidence.issuedAtMillis+evidence.minutesUntilRain*60_000L)}
-            .build()
+            .setOnlyAlertOnce(true).setAutoCancel(true).build()
         return WeatherNotificationDispatcher.post(ctx,id,message,text,evidence.locality,
             XiaomiFocusBridge.Kind.VERIFIED_MINUTE_RAIN)
     }
@@ -68,8 +65,10 @@ object IslandEventPublisher {
             ThinnNotificationChannels.channelId(ctx, ThinnNotificationChannels.Type.BRIEFINGS))
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("計時器進行中").setContentText(text)
-            .setContentIntent(openApp(ctx,id))
-            .let{LiveUpdates.promote(it,null,System.currentTimeMillis()+remainingSeconds*1000L)}
+            .setContentIntent(openApp(ctx,id)).setOngoing(true)
+            .setRequestPromotedOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setWhen(System.currentTimeMillis()+remainingSeconds*1000L).setUsesChronometer(true).setChronometerCountDown(true)
             .addExtras(android.os.Bundle().apply{putLong("thinn.island.deadline",System.currentTimeMillis()+remainingSeconds*1000L)})
             .setTimeoutAfter(remainingSeconds * 1000L)
             .build()

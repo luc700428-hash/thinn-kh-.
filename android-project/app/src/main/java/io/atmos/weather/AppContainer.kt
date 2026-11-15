@@ -15,8 +15,11 @@ import java.util.concurrent.TimeUnit
 
 /** Explicit app-scoped dependencies; no private location or secret leaves Weather APIs. */
 object AppContainer {
-    private val http = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(18, TimeUnit.SECONDS).build()
+    // Bounded per call: a slow or unreachable source must hand over to the next one quickly
+    // instead of leaving the user on a blank screen.
+    private val http = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS).callTimeout(16, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true).build()
     private fun retrofit(url: String) = Retrofit.Builder().baseUrl(url).client(http)
         .addConverterFactory(GsonConverterFactory.create()).build()
     private val airQuality = retrofit("https://air-quality-api.open-meteo.com/").create(OpenMeteoAirQualityApi::class.java)
@@ -27,7 +30,9 @@ object AppContainer {
     @Volatile private var instance: WeatherDataRepository? = null
     fun repository(context: Context): WeatherDataRepository = synchronized(this) {
         instance ?: DefaultWeatherDataRepository(
-            providers = listOf(OpenMeteoProvider(meteo,airQuality,observations=io.atmos.weather.data.remote.CwaSurfaceObservations(context.applicationContext))),
+            // Open-Meteo first; MET Norway takes over when it times out or fails.
+            providers = listOf(OpenMeteoProvider(meteo,airQuality,observations=io.atmos.weather.data.remote.CwaSurfaceObservations(context.applicationContext)),
+                io.atmos.weather.data.remote.MetNorwayProvider(http)),
             diskCache = WeatherDiskCache(context.applicationContext)
         ).also { instance = it }
     }

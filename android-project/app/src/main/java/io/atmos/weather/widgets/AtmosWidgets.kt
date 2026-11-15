@@ -54,18 +54,11 @@ class WidgetRefreshAction:ActionCallback {
     val alert=data.alertRecent&&(family==4||family==5)
     // Light or dark glass follows what the system reports about the wallpaper.
     val tone=WidgetGlassTone.current(context)
-    // iOS 27 appearances: live sky, dark, clear, tinted and smoked clear (see IOSWidgetSky).
-    val style=IOSWidgetSky.Style.of(index)
-    val clear=alert||style==IOSWidgetSky.Style.CLEAR||style==IOSWidgetSky.Style.CLEAR_DARK
-    val glassDark=if(style==IOSWidgetSky.Style.CLEAR_DARK)true else tone.dark
-    val colors=if(clear)WidgetGlassRenderer.palette(index,alert,glassDark)
-        else IOSWidgetSky.palette(style,data.condition,data.day,WidgetGlassRenderer.palette(0).accent)
-    val density=context.resources.displayMetrics.density
-    val corner=minOf(26f,plan.width*.15f,plan.height*.15f)
-    val bitmap=remember(size,index,colors,density,tone,data.condition,data.day,prefs.getFloat("v4_opacity",.66f),prefs.getFloat("v4_edge",.65f)){
-        if(clear)WidgetGlassRenderer.background((plan.width*density).toInt(),(plan.height*density).toInt(),index,
-            prefs.getFloat("v4_edge",.65f),prefs.getFloat("v4_opacity",.66f),alert,corner*density,tone.copy(dark=glassDark))
-        else IOSWidgetSky.render((plan.width*density).toInt(),(plan.height*density).toInt(),corner*density,style,colors,data.condition,data.day)
+    val colors=WidgetGlassRenderer.palette(index,alert,tone.dark);val density=context.resources.displayMetrics.density
+    val corner=minOf(28f,plan.width*.16f,plan.height*.16f)
+    val bitmap=remember(size,index,colors,density,tone,prefs.getFloat("v4_opacity",.66f),prefs.getFloat("v4_edge",.65f)){
+        WidgetGlassRenderer.background((plan.width*density).toInt(),(plan.height*density).toInt(),index,
+            prefs.getFloat("v4_edge",.65f),prefs.getFloat("v4_opacity",.66f),alert,corner*density,tone)
     }
     val power=context.getSystemService(Context.POWER_SERVICE) as PowerManager
     val animated=prefs.getBoolean("widget_motion_enabled",true)&&!prefs.getBoolean("reduce_motion",false)&&!power.isPowerSaveMode&&
