@@ -32,7 +32,7 @@ internal val LocalSeismicSettingsCellWidth=staticCompositionLocalOf{Dp.Unspecifi
 /** Movable slots preserve the map, selected station and replay when panes move. */
 @Composable internal fun SeismicAdaptivePanels(
     modifier:Modifier=Modifier,criticalFirst:Boolean=false,overview:@Composable ()->Unit={},
-    leading:@Composable ColumnScope.(Dp)->Unit,trailing:@Composable ColumnScope.(Dp)->Unit
+    leading:@Composable ColumnScope.(Dp)->Unit,trailing:@Composable ColumnScope.(Dp)->Unit,showLeading:Boolean=true
 ) {
     val scale=LocalDensity.current.fontScale
     val currentOverview=rememberUpdatedState(overview)
@@ -57,7 +57,7 @@ internal val LocalSeismicSettingsCellWidth=staticCompositionLocalOf{Dp.Unspecifi
         } else {
             Column(Modifier.fillMaxSize().verticalScroll(compactScroll).padding(horizontal=16.dp).padding(bottom=bottom)
                 .testTag("seismic-stacked-pane"),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-                summary();first(plan.mapHeight.dp);second(plan.mapHeight.dp)
+                summary();if(showLeading)first(plan.mapHeight.dp);second(plan.mapHeight.dp)
             }
         }
     }

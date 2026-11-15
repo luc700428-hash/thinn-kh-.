@@ -782,18 +782,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         isNight=!snapshot.isDay,
                         rainProbability=snapshot.nextHourRainProbabilityPct
                     )
-                    val sourceTime=snapshot.observedAt.atZone(runCatching{ZoneId.of(snapshot.timeZoneId?:"Asia/Taipei")}.getOrDefault(ZoneId.systemDefault())).format(DateTimeFormatter.ofPattern("HH:mm"))
-                    if(snapshot.observationStation!=null) Text("${snapshot.observationStation}站實測 · 距離 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} km · $sourceTime  ⓘ",
-                        color=weatherSky.secondary,fontSize=14.sp,textAlign=TextAlign.Center,
-                        modifier=Modifier.fillMaxWidth().clickable {
-                            details="天氣資料依據" to buildString {
-                                append("目前氣溫：${snapshot.temperatureC}°C\n")
-                                snapshot.observationStation?.let{append("附近實測：${it}站，距離約 ${"%.1f".format(snapshot.observationDistanceKm?:0.0)} 公里\n")}
-                                append("觀測／模式時間：$sourceTime\n")
-                                append("體感估算：${snapshot.feelsLikeMethod?:"氣象模式"}\n\n")
-                                append("未來預報：Open-Meteo。預報有不確定性，地形、日照、活動與每人的冷熱感受也會影響體感。")
-                            }
-                        }.padding(vertical=9.dp))
+                    // Station name, distance and observation time are kept internal and not shown.
                 } else if(state.loading) {
                     Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=weatherSky.ink,modifier=Modifier.align(Alignment.CenterHorizontally))
                 } else {

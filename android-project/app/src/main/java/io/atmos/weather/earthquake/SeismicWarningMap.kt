@@ -48,7 +48,7 @@ internal object SeismicIntensityColors {
     }
 }
 /** County detail stays vector. Advancing rings redraw independently of static polygon/label layers. */
-@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier,viewportHeight:Dp=310.dp,compact:Boolean=false,simulation:Boolean=false,subtitle:String?=null) {
+@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier,viewportHeight:Dp=310.dp,compact:Boolean=false,simulation:Boolean=false,subtitle:String?=null,observed:Boolean=false) {
     val ctx=LocalContext.current.applicationContext
     val atlas by produceState<WarningCountyAtlas?>(null,ctx){value=WarningCountyAtlas.load(ctx)}
     val dark=MaterialTheme.colorScheme.background.red<.5f
@@ -74,7 +74,7 @@ internal object SeismicIntensityColors {
     Column(modifier){
         if(compact)Text((if(historical)"縣市歷史震度 · 舊制" else if(simulation)"演練情境震度（虛構）" else "來源縣市預估震度")+
             (subtitle?.let{" · $it"}?:""),fontSize=14.sp,lineHeight=18.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
-        if(!compact&&!historical&&values.isEmpty()){
+        if(!compact&&!historical&&!observed&&values.isEmpty()){
             Text("此速報未附縣市震度；灰色不代表無震。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
         }
@@ -170,7 +170,7 @@ internal object SeismicIntensityColors {
                 modifier=Modifier.align(Alignment.BottomStart).background(sea.copy(alpha=.94f)).padding(8.dp))
         }
         if(!compact)Spacer(Modifier.height(6.dp))
-        if(!compact)Text(if(historical)"色塊：921 歷史最大震度（舊制） · 波圈為演練示意" else "色塊：來源預估震度 · 波圈為示意，非到達預測",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+        if(!compact)Text(if(observed)"色塊：各縣市實測最大震度（震後報告）" else if(historical)"色塊：921 歷史最大震度（舊制） · 波圈為演練示意" else "色塊：來源預估震度 · 波圈為示意，非到達預測",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
     }
 }
 

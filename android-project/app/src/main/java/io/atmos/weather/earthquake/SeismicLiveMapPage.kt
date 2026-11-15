@@ -93,6 +93,8 @@ fun SeismicLiveMapPage(
     var panY by remember { mutableFloatStateOf(0f) }
     var selected by remember { mutableStateOf<SeismicStation?>(null) }
     var details by remember { mutableStateOf<EarthquakeReport?>(null) }
+    // DPIP-style sections: live monitor, report list, replay and drills.
+    var section by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("監測") }
     var timestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var replayStatus by remember { mutableStateOf("") }
     var replayReport by remember { mutableStateOf<EarthquakeReport?>(null) }
@@ -268,8 +270,9 @@ fun SeismicLiveMapPage(
                 Spacer(Modifier.width(8.dp))
                 IconButton(onClick=onSettings) {Icon(Icons.Rounded.Tune,"地震設定",tint=light)}
             }
-            SeismicAdaptivePanels(Modifier.weight(1f).navigationBarsPadding(),
-                overview={SeismicObservationSummary(if(hasObservedFrame)currentStations.size.toString() else "—",
+            SeismicSectionPicker(section,{section=it},Modifier.padding(horizontal=16.dp).padding(bottom=10.dp))
+            SeismicAdaptivePanels(Modifier.weight(1f).navigationBarsPadding(),showLeading=section=="監測",
+                overview={if(section=="監測")SeismicObservationSummary(if(hasObservedFrame)currentStations.size.toString() else "—",
                     maxI?.let {"%.1f".format(Locale.US,it)}?:"—",maxPga?.let {"%.1f".format(Locale.US,it)}?:"—",readingLabel)},
                 leading={mapHeight->
                 MapGlass(Modifier.testTag("seismic-monitor-map-card")) {
@@ -433,6 +436,7 @@ fun SeismicLiveMapPage(
                     }
                 }
             },trailing={_->
+                if(section=="監測") {
                 MapGlass {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -460,32 +464,11 @@ fun SeismicLiveMapPage(
                     Text(SeismicDisplayFormat.location(quake?.epicenter ?: replayReport?.location ?: "震央位置待來源確認"),fontSize=21.sp,color=light,fontWeight=FontWeight.SemiBold)
                     Text(if(inReplay)"過去事件的教育回放，並非目前警報。" else "立即趴下、掩護、穩住。",fontSize=14.sp,color=muted)
                 }
-                MapGlass {
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Text("最近地震",color=light,fontSize=17.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-                        TextButton(onClick=onRefreshReports,enabled=!reportsLoading) { Text(if(reportsLoading)"更新中" else "更新",color=iceBlue) }
-                    }
-                    if(reportsLoading&&reports.isEmpty())Text("正在取得最新震後報告…",color=muted,fontSize=14.sp)
-                    else if(reports.isEmpty()&&reportError==null)Text("尚未取得震後報告，請檢查網路連線",color=muted,fontSize=14.sp)
-                    if(reportError!=null)Text(reportError,color=seismicCautionInk,fontSize=14.sp,lineHeight=21.sp)
-                    reports.take(8).forEach { report ->
-                        HorizontalDivider(color=light.copy(alpha=.12f),modifier=Modifier.padding(vertical=7.dp))
-                        Row(Modifier.fillMaxWidth().clickable { details=report }.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically) {
-                            Box(Modifier.size(46.dp).clip(RoundedCornerShape(999.dp))
-                                .background(palette.primary.copy(alpha=.14f)),contentAlignment=Alignment.Center) {
-                                Text("M ${"%.1f".format(Locale.US,report.magnitude)}",color=light,fontWeight=FontWeight.Bold,fontSize=14.sp)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(report.location,color=light,fontWeight=FontWeight.SemiBold,fontSize=15.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-                                Text("${report.origin.atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm"))} · 最大震度 ${report.maxIntensity ?: "未提供"}",color=muted,fontSize=14.sp)
-                            }
-                            TextButton(onClick={beginReplay(report)}) { Text("回放",color=iceBlue,fontSize=14.sp) }
-                            Icon(Icons.Rounded.ChevronRight,"查看詳情",tint=iceBlue)
-                        }
-                    }
+                SeismicCountyMaxPanel(currentStations)
+                SeismicLatestReportCard(reports.firstOrNull(),reportsLoading,{details=it},{section="報告"})
                 }
-                Spacer(Modifier.height(12.dp))
+                if(section=="報告") SeismicReportsPanel(reports,reportsLoading,reportError,reportSource,onRefreshReports){details=it}
+                if(section=="工具") {
                 MapGlass {
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         Icon(Icons.Rounded.History,null,tint=iceBlue)
@@ -563,6 +546,7 @@ fun SeismicLiveMapPage(
                         }
                     }
                 }
+                }
                 Text("速報可能受網路、資料時效與系統省電影響；請以官方災防告警為準。",color=muted,fontSize=14.sp,lineHeight=18.sp,modifier=Modifier.padding(horizontal=8.dp))
             })
         }
@@ -574,15 +558,8 @@ fun SeismicLiveMapPage(
                 onClose={simulation=null},simulation=true)
         }
         details?.let { report ->
-            AlertDialog(onDismissRequest={details=null},
-                title={Text("地震報告 · M ${"%.1f".format(Locale.US,report.magnitude)}")},
-                text={Column {
-                    Text(SeismicDisplayFormat.location(report.location))
-                    Text("震源深度：${SeismicDisplayFormat.depth(report.depthKm)}")
-                    Text("最大震度：${report.maxIntensity ?: "未提供"}")
-                    Text("時間：${report.origin.atZone(java.time.ZoneId.of("Asia/Taipei"))}")
-                    Text("此為震後報告，並非提前預警。")
-                }},confirmButton={TextButton(onClick={details=null}) {Text("關閉")} })
+            SeismicReportDetailPage(report,devicePlace,onClose={details=null},
+                onReplay={target->details=null;section="工具";beginReplay(target)})
         }
     }
 }
@@ -627,6 +604,24 @@ private fun formatted(ms:Long):String = SimpleDateFormat("HH:mm:ss",Locale.TAIWA
                 darkBackdrop=p.background.red<.5f,
                 reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
                 reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency())
+        }
+    }
+}
+
+
+/** iOS segmented control for the three earthquake sections. */
+@Composable internal fun SeismicSectionPicker(selected:String,onSelect:(String)->Unit,modifier:Modifier=Modifier) {
+    val palette=MaterialTheme.colorScheme
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(999.dp)).background(palette.onSurface.copy(alpha=.07f)).padding(3.dp)) {
+        listOf("監測","報告","工具").forEach{name->
+            val on=name==selected
+            Box(Modifier.weight(1f).heightIn(min=40.dp).clip(RoundedCornerShape(999.dp))
+                .background(if(on)palette.surface else Color.Transparent)
+                .clickable(role=androidx.compose.ui.semantics.Role.Tab){onSelect(name)}
+                .semantics{this.selected=on;contentDescription="地震$name"},contentAlignment=Alignment.Center) {
+                Text(if(name=="工具")"回放與演練" else if(name=="監測")"即時監測" else "地震報告",
+                    color=palette.onSurface,fontSize=15.sp,fontWeight=if(on)FontWeight.SemiBold else FontWeight.Normal)
+            }
         }
     }
 }

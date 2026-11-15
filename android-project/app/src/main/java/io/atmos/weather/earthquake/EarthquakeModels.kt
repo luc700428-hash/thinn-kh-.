@@ -20,8 +20,26 @@ data class EarthquakeReport(
     val reportText: String,
     val officialUrl: String,
     val category: String,
-    val shakingAreas: List<Pair<String,String>> = emptyList()
-)
+    val shakingAreas: List<Pair<String,String>> = emptyList(),
+    /** CWA report number (e.g. 115079); null for small regional reports and other sources. */
+    val number: String? = null,
+    val imageUrl: String? = null,
+    val shakemapUrl: String? = null,
+    val stations: List<ReportStation> = emptyList(),
+    val magnitudeType: String? = null
+) {
+    /** "雲林縣古坑鄉" from "...(位於雲林縣古坑鄉)", otherwise the CWA location text. */
+    val shortLocation: String get() =
+        Regex("""位於([^)）]+)[)）]""").find(location)?.groupValues?.get(1)?.trim()?.takeIf{it.isNotBlank()}
+            ?: location.substringBefore('(').trim().ifBlank{location}
+    /** County -> highest intensity, for colouring maps (keys use 臺). */
+    val countyIntensity: Map<String,String> get() = shakingAreas.groupBy({it.first.replace('台','臺').removeSuffix("地區")},{it.second})
+        .mapValues{(_,v)->v.maxByOrNull(CwaEarthquakeParser::intensityRank)!!.removeSuffix("級")}
+}
+
+/** One seismic station reading inside a CWA report. */
+data class ReportStation(val county:String,val name:String,val intensity:String,val distanceKm:Double?,
+    val latitude:Double?,val longitude:Double?,val pgaGal:Double?)
 
 object CwaEarthquakeParser {
     private val taipei = ZoneId.of("Asia/Taipei")
@@ -52,14 +70,32 @@ object CwaEarthquakeParser {
         val top = (0 until (shakingAreas?.length() ?: 0)).mapNotNull { n ->
             shakingAreas?.optJSONObject(n)?.optString("AreaIntensity")?.takeIf { it.isNotBlank() }
         }.maxByOrNull(::intensityRank)
-        val intensityAreas = (0 until (shakingAreas?.length() ?: 0)).mapNotNull { n ->
-            val area = shakingAreas?.optJSONObject(n) ?: return@mapNotNull null
-            val name = area.optString("AreaDesc").ifBlank { area.optString("CountyName") }
+        val intensityAreas = (0 until (shakingAreas?.length() ?: 0)).flatMap { n ->
+            val area = shakingAreas?.optJSONObject(n) ?: return@flatMap emptyList()
             val intensity = area.optString("AreaIntensity")
-            if (name.isBlank() || intensity.isBlank()) null else name to intensity
-        }.sortedByDescending { intensityRank(it.second) }
+            // CountyName may list several counties ("臺中市、彰化縣"); AreaDesc is a fallback.
+            val names = area.optString("CountyName").split('、',',').map{it.trim()}.filter{it.isNotBlank()}
+                .ifEmpty { listOf(area.optString("AreaDesc").removeSuffix("地區")).filter{it.isNotBlank()} }
+            if (intensity.isBlank()) emptyList() else names.map { it to intensity }
+        }.distinct().sortedByDescending { intensityRank(it.second) }
+        val stations = (0 until (shakingAreas?.length() ?: 0)).flatMap { n ->
+            val area = shakingAreas?.optJSONObject(n) ?: return@flatMap emptyList()
+            val list = area.optJSONArray("EqStation") ?: return@flatMap emptyList()
+            (0 until list.length()).mapNotNull { k ->
+                val st = list.optJSONObject(k) ?: return@mapNotNull null
+                val name = st.optString("StationName").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val grade = st.optString("SeismicIntensity").removeSuffix("級").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                fun d(o: JSONObject?, key: String) = o?.opt(key)?.toString()?.toDoubleOrNull()?.takeIf { it.isFinite() }
+                ReportStation(area.optString("CountyName").substringBefore('、'), name, grade,
+                    d(st,"EpicenterDistance"), d(st,"StationLatitude"), d(st,"StationLongitude"), d(st.optJSONObject("pga"),"IntScaleValue"))
+            }
+        }.distinctBy { it.name }.sortedWith(compareByDescending<ReportStation>{ intensityRank(it.intensity) }.thenBy { it.distanceKm ?: 999.0 })
+        fun cwaUrl(key: String) = o.optString(key).takeIf { it.startsWith("https://scweb.cwa.gov.tw/") || it.startsWith("https://www.cwa.gov.tw/") }
+        val number = o.opt("EarthquakeNo")?.toString()?.takeIf { it.isNotBlank() && it != "null" }
         return EarthquakeReport(id, origin, location, magnitude, depth, lat, lon, top,
-            o.optString("ReportContent").ifBlank { "${location}發生規模 ${magnitude} 地震" }, officialUrl, category, intensityAreas)
+            o.optString("ReportContent").ifBlank { "${location}發生規模 ${magnitude} 地震" }, officialUrl, category, intensityAreas,
+            number = number?.takeIf { it.isNotBlank() }, imageUrl = cwaUrl("ReportImageURI"), shakemapUrl = cwaUrl("ShakemapImageURI"),
+            stations = stations, magnitudeType = magnitudeObj?.optString("MagnitudeType")?.takeIf { it.isNotBlank() })
     }
     fun intensityRank(raw: String): Int = when {
         raw.contains("7") -> 9
