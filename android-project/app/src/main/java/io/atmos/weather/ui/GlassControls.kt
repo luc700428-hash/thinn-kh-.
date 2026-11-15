@@ -226,7 +226,7 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
         }
         // Lensing layer (Android 13+): the track colour inside the knob bends at its rim.
         Canvas(Modifier.fillMaxWidth().height(31.dp).graphicsLayer {
-            renderEffect=optics?.let{o->val r=knobRect(size.width,size.height,density.density)
+            renderEffect=if(android.os.Build.VERSION.SDK_INT<33)null else optics?.let{o->val r=knobRect(size.width,size.height,density.density)
                 o.effect(size.width,size.height,r,r.minDimension/2,lift.coerceIn(0f,1f),density.density)}
         }) {
             val r=knobRect(size.width,size.height,density.density)

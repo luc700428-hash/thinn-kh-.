@@ -99,7 +99,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
         // Layer 1: track, shadow and what is seen through the glass. On Android 13+ the whole
         // layer is lensed: inside the knob the magnified track bends at the rim, as in iOS 27.
         Canvas(Modifier.matchParentSize().graphicsLayer {
-            renderEffect=optics?.let{o->knobOf(size.width,size.height)?.let{k->
+            renderEffect=if(android.os.Build.VERSION.SDK_INT<33)null else optics?.let{o->knobOf(size.width,size.height)?.let{k->
                 o.effect(size.width,size.height,k.rect,k.rect.minDimension/2,k.clear,density.density)}}
         }) {
             val k=knobOf(size.width,size.height)?:return@Canvas

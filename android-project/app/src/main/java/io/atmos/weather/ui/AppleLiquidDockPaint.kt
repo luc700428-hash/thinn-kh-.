@@ -129,7 +129,7 @@ internal fun dockLensPath(width:Float,height:Float,density:Float,count:Int,head:
   .requiredSize((fullW/density).dp,(fullH/density).dp)
   .graphicsLayer{alpha=(energy*1.8f).coerceIn(0f,1f)
    // iOS 27 lensing: icons and scene bend toward the centre along the rim, with dispersion.
-   renderEffect=optics?.effect(size.width,size.height,rect.translate(margin,margin),minor/2,lift,density)}
+   renderEffect=if(android.os.Build.VERSION.SDK_INT>=33)optics?.effect(size.width,size.height,rect.translate(margin,margin),minor/2,lift,density) else null}
   .clip(mask)
   .thinnBackdrop(reduceTransparency,(minor/density/2).dp,.5f,frostScale=.18f,refract=false)) {
   // Clear glass: the backdrop is sampled without the Dock's material tone, and without the
