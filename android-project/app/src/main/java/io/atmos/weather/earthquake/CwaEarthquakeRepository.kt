@@ -12,7 +12,10 @@ import java.net.URL
 object CwaEarthquakeRepository {
     private const val base = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/"
     suspend fun latest(context: Context): List<EarthquakeReport> = withContext(Dispatchers.IO) {
-        val deviceKey = EarthquakeSecurity.load(context)
+        // A private key entered on the device first, then the app's CI-injected CWA key; only
+        // without either does the request go through the Firebase proxy.
+        val deviceKey = EarthquakeSecurity.load(context)?.takeIf { it.isNotBlank() }
+            ?: io.atmos.weather.BuildConfig.THINN_CWA_API_KEY.takeIf { it.isNotBlank() }
         val all = mutableListOf<EarthquakeReport>()
         val errors = mutableListOf<String>()
         for ((id, category) in listOf("E-A0015-001" to "顯著有感", "E-A0016-001" to "小區域有感")) {

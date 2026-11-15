@@ -52,6 +52,8 @@ class SeismicReportPagesRenderingTest {
         IOS27AppearanceMode.update(ctx,"light")
         for((name,content) in listOf<Pair<String,@androidx.compose.runtime.Composable ()->Unit>>(
             "report-list" to {Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)){SeismicReportsPanel(reports(),false,null,"中央氣象署官方震後報告",{},{})}},
+            "section-picker" to {Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+                SeismicSectionPicker("監測",{});SeismicSectionPicker("報告",{})}},
             "report-detail" to {SeismicReportDetailPage(reports().first(),SeismicPlace("嘉義市",23.48,120.45,"test"),{},{})})) {
             val c=Robolectric.buildActivity(ComponentActivity::class.java).setup();val a=c.get();val view=ComposeView(a)
             try {
