@@ -2,6 +2,8 @@ package io.atmos.weather.earthquake
 
 import io.atmos.weather.ui.glassTouchTracker
 import io.atmos.weather.ui.liquidGlassSurface
+import io.atmos.weather.ui.iosAppear
+import io.atmos.weather.ui.iosJellyPress
 import io.atmos.weather.ui.thinnBackdrop
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -183,6 +185,8 @@ fun SeismicLiveMapPage(
         }
     }
     val devicePlace = remember(timestamp) { SeismicUserLocation.current(ctx) }
+    // Re-checked every few seconds so the reminder disappears right after the user grants access.
+    val missingSetup = remember(timestamp/5000) { SeismicReadiness.missing(ctx) }
     var overlay by remember { mutableStateOf<EewIncident?>(null) }
     var overlayReplay by remember { mutableStateOf(false) }
 
@@ -276,14 +280,13 @@ fun SeismicLiveMapPage(
                     Text(if(inReplay) "歷史回放 · 非即時" else if(fresh) "即時觀測更新中" else "等待有效觀測",fontSize=14.sp,
                         color=if(fresh)seismicHealthyInk else muted)
                 }
-                IconButton(onClick=onRefreshReports,enabled=!reportsLoading) {Icon(Icons.Rounded.Refresh,"重新整理地震報告",tint=iceBlue)}
-                Spacer(Modifier.width(8.dp))
                 IconButton(onClick=onSettings) {Icon(Icons.Rounded.Tune,"地震設定",tint=light)}
             }
             SeismicSectionPicker(section,{section=it},Modifier.padding(horizontal=16.dp).padding(bottom=10.dp))
-            SeismicAdaptivePanels(Modifier.weight(1f).navigationBarsPadding(),showLeading=section=="監測",
-                overview={if(section=="監測")SeismicObservationSummary(if(hasObservedFrame)currentStations.size.toString() else "—",
-                    maxI?.let {"%.1f".format(Locale.US,it)}?:"—",maxPga?.let {"%.1f".format(Locale.US,it)}?:"—",readingLabel)},
+            SeismicAdaptivePanels(Modifier.weight(1f).navigationBarsPadding(),showLeading=section=="監測"||inReplay,
+                overview={Column{if(section=="監測"&&missingSetup.isNotEmpty())Box(Modifier.padding(bottom=10.dp)){SeismicSetupReminder(missingSetup,onSettings)}
+                    if(section=="監測")SeismicObservationSummary(if(hasObservedFrame)currentStations.size.toString() else "—",
+                    maxI?.let {"%.1f".format(Locale.US,it)}?:"—",maxPga?.let {"%.1f".format(Locale.US,it)}?:"—",readingLabel)}},
                 leading={mapHeight->
                 MapGlass(Modifier.testTag("seismic-monitor-map-card")) {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -477,67 +480,33 @@ fun SeismicLiveMapPage(
                 SeismicCountyMaxPanel(currentStations)
                 SeismicLatestReportCard(reports.firstOrNull(),reportsLoading,{details=it},{section="報告"})
                 }
-                if(section=="報告") SeismicReportsPanel(reports,reportsLoading,reportError,reportSource,onRefreshReports){details=it}
+                if(section=="報告") Box(Modifier.iosAppear()){SeismicReportsPanel(reports,reportsLoading,reportError,reportSource,onRefreshReports){details=it}}
                 if(section=="工具") {
-                MapGlass {
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.History,null,tint=iceBlue)
-                        Spacer(Modifier.width(8.dp))
-                        Text("歷史速報回放",color=light,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-                        Button(enabled=reports.isNotEmpty() && replayStatus!="讀取中",
-                            onClick={ if (inReplay) { replayPlaying=false;replayStatus="已結束回放";replayFrames=emptyList() }
-                                      else beginReplay() }) {
-                            Text(if(inReplay)"結束" else "隨機挑選")
-                        }
-                    }
-                    Text("只使用可核對的歷史速報，不會發送真實警報；語音受手機靜音、勿擾與系統 TTS 引擎控制。",color=muted,fontSize=14.sp)
-                    if(replayStatus.isNotBlank()) {
-                        Spacer(Modifier.height(7.dp))
-                        Text(if(inReplay)"歷史回放中 · 非即時預警" else replayStatus,
-                            color=if(inReplay)seismicCautionInk else iceBlue,
-                            fontSize=15.sp,fontWeight=FontWeight.Bold)
-                    }
-                    if(inReplay) {
-                        Spacer(Modifier.height(10.dp))
-                        Text("${replayReport?.location ?: "歷史地震"}  · ${replayIncident?.serial?.let { "第 $it 報" } ?: "尚未發布首報"}",
-                            color=light,fontSize=15.sp)
-                        GlassSlider(value=replayPosition,onValueChange={replayPosition=it},
-                            valueRange=0f..replayDuration,modifier=Modifier.fillMaxWidth())
-                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text("歷史事件語音（明確聲明非即時地震）",color=muted,
-                                fontSize=14.sp,modifier=Modifier.weight(1f))
-                            TextButton(enabled=replayIncident!=null && replayReport!=null,
-                                onClick={
-                                    val report=replayReport
-                                    val incident=replayIncident
-                                    if(report!=null && incident!=null) {
-                                        SeismicSpeech.speak(ctx,SeismicSpeech.replay(report,incident))
-                                    }
-                                }) { Text("重播語音",color=iceBlue,fontSize=14.sp) }
-                        }
-                        Row(verticalAlignment=Alignment.CenterVertically,
-                            horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                            Text("${replayPosition.toInt()} / ${replayDuration.toInt()} s",color=muted,fontSize=14.sp,
-                                modifier=Modifier.weight(1f))
-                            TextButton(onClick={ replayPlaying=!replayPlaying }) {
-                                Text(if(replayPlaying)"暫停" else "繼續",color=light)
+                MapGlass(Modifier.iosAppear(0)) {
+                    if(inReplay||replayStatus=="回放完成（非真實預警）"&&replayReport!=null) SeismicReplayPlayer(
+                        report=replayReport,serial=replayIncident?.serial,position=replayPosition,duration=replayDuration,
+                        playing=replayPlaying,finished=!replayPlaying&&replayPosition>=replayDuration,speed=replaySpeed,
+                        onSeek={replayPosition=it},
+                        onToggle={
+                            if(replayPosition>=replayDuration){replayPosition=0f;lastReplayShown="";replayStatus="回放中";replayPlaying=true}
+                            else {replayStatus="回放中";replayPlaying=!replayPlaying}
+                        },
+                        onSpeed={replaySpeed=it},
+                        onVoice=if(replayIncident!=null&&replayReport!=null) ({
+                            val report=replayReport
+                            val incident=replayIncident
+                            if(report!=null && incident!=null) {
+                                SeismicSpeech.speak(ctx,SeismicSpeech.replay(report,incident)) // 重播語音
                             }
-                            TextButton(onClick={replaySpeed=when(replaySpeed){1f->2f;2f->4f;else->1f}}) {
-                                Text("${replaySpeed.toInt()}×",color=light)
-                            }
-                        }
-                    }
+                        }) else null,
+                        onStop={replayPlaying=false;replayStatus="";replayFrames=emptyList();replayReport=null;replayIncident=null})
+                    else SeismicReplayPicker(reports,replayStatus.takeUnless{it=="讀取中"||it=="回放中"}?:"",replayStatus=="讀取中",
+                        onPick={beginReplay(it)},onRandom={beginReplay()})
                 }
-                Spacer(Modifier.height(12.dp))
-
-                MapGlass {
-                    Text("防災演練",fontSize=19.sp,color=light,fontWeight=FontWeight.SemiBold)
-                    Text("一般為虛構情境；921 採官方歷史震源與震度。全程標示演練，所在地震度另以本機模型示意。",fontSize=14.sp,color=muted)
-                    Spacer(Modifier.height(12.dp))
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                        TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis())},modifier=Modifier.weight(1f)) {Text("一般演練",fontSize=15.sp)}
-                        TextButton(onClick={simulation=SeismicSimulation.scenario(System.currentTimeMillis(),strong=true)},modifier=Modifier.weight(1f)) {Text("臺灣 921 大地震演練",fontSize=15.sp)}
-                    }
+                MapGlass(Modifier.iosAppear(1)) {
+                    SeismicDrillPanel(
+                        onGeneral={simulation=SeismicSimulation.scenario(System.currentTimeMillis())},
+                        onChiChi={simulation=SeismicSimulation.scenario(System.currentTimeMillis(),strong=true)})
                 }
                 MapGlass {
                     Row(Modifier.fillMaxWidth().clickable {diagnosticsExpanded=!diagnosticsExpanded},verticalAlignment=Alignment.CenterVertically) {
@@ -587,10 +556,31 @@ private fun SeismicStatusMiniCard(title:String,value:String,active:Boolean,modif
     }
 }
 
+/** iOS 27 card: themed glass with the sun- or moon-lit specular rim shared by every glass control. */
 @Composable
 private fun MapGlass(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surface)
-        .thinnSpecularEdge(24.dp).padding(16.dp),content=content)
+    val palette=MaterialTheme.colorScheme
+    val opaque=io.atmos.weather.ui.rememberAppleReduceTransparency()
+    val light=io.atmos.weather.ui.GlassLight.current(follow=!opaque)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(palette.surface)
+        .liquidGlassSurface(26.dp,{0f},null,palette.background.red<.5f,light).padding(16.dp),content=content)
+}
+
+/** Shown on the monitor until every permission a warning needs to pop up has been granted. */
+@Composable
+private fun SeismicSetupReminder(missing:List<String>,onOpen:()->Unit) {
+    val palette=MaterialTheme.colorScheme
+    MapGlass(Modifier.testTag("seismic-setup-reminder").iosAppear().iosJellyPress().clickable(onClick=onOpen)) {
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Warning,null,tint=seismicCautionInk)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("地震來時可能只會收到通知",color=palette.onSurface,fontSize=17.sp,fontWeight=FontWeight.SemiBold)
+                Text("還差：${missing.joinToString("、")}",color=palette.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp)
+            }
+            Text("前往設定",color=palette.primary,fontSize=15.sp,fontWeight=FontWeight.SemiBold)
+        }
+    }
 }
 
 private fun formatted(ms:Long):String = SimpleDateFormat("HH:mm:ss",Locale.TAIWAN).format(Date(ms))

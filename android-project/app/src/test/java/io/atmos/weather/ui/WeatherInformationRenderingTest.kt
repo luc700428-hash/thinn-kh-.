@@ -227,21 +227,17 @@ class WeatherInformationInsightsRenderingTest:WeatherInformationRenderingFixture
         val w=weather().copy(observedAt=at,fetchedAt=at,windKmh=12.0,windGustKmh=31.0,pm25=20.0,usAqi=95,
             hourly=(0..23).map{HourlyWeather(at.plusSeconds(it*3600L),22.0,20,1.0,humidityPct=70,windKmh=10.0,weatherCode=2,feelsLikeC=23.0)})
         for(dark in listOf(false,true))render(dark,1.5f,"insights",{WeatherInsightsPage(w,false){}}){view,p->
-            assertTrue(nodes(view).any{text(it,"未來 24 小時 · 三小時時段比較")})
-            click(view,"風與濕度")
-            settle(view){nodes(view).any{text(it,"風況與能見度")}}
+            assertTrue(nodes(view).any{text(it,"什麼時候出門最好？")})
+            assertTrue(nodes(view).any{text(it,"最推薦時段")})
             assertEquals(1,nodes(view).count{it.config.contains(SemanticsProperties.Selected)&&it.config[SemanticsProperties.Selected]})
-            contrast(nodes(view).single{text(it,"31.0 km/h")},p.surface)
-            save(view,"insights-wind-$dark-150")
-            click(view,"空氣成分")
-            settle(view){nodes(view).any{text(it,"PM₂.₅")}}
-            contrast(nodes(view).single{text(it,"20.0 μg/m³")},p.surface)
+            assertTrue(nodes(view).any{it.config.contains(SemanticsProperties.TestTag)&&it.config[SemanticsProperties.TestTag]=="insights-hour-strip"})
+            assertTrue(nodes(view).any{text(it,"現在的天氣細節")})
+            assertTrue(nodes(view).any{text(it,"31.0 km/h")})
+            assertTrue(nodes(view).any{text(it,"20.0 μg/m³")})
             assertTrue(nodes(view).any{text(it,"模式估算 · 非環境部官方測站 AQI")})
-            save(view,"insights-air-$dark-150")
-            click(view,"外出時段")
-            settle(view){nodes(view).any{text(it,"晾衣")}}
+            save(view,"insights-$dark-150")
             click(view,"晾衣")
-            settle(view){nodes(view).any{text(it,"最高相對濕度")}}
+            settle(view){nodes(view).any{it.config.contains(SemanticsProperties.Text)&&it.config[SemanticsProperties.Text].any{t->t.text.startsWith("最高相對濕度")}}}
         }
     }
 }

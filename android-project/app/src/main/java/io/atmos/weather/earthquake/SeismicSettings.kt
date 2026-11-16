@@ -21,6 +21,11 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -35,6 +40,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -142,55 +148,199 @@ private val ice:Color @Composable get()=MaterialTheme.colorScheme.primary
 private val pale:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 private val blue get() = brandColor(0xFF113027)
 
-/** Earthquake-specific settings, separate from the weather app's eight ordinary tones. */
+/**
+ * Earthquake settings, regrouped by what people actually want to change (DPIP-style):
+ *  速報 – where I am, how strong before I am alerted, how I am alerted, and the voice;
+ *  報告 – post-quake reports: notify, magnitude, tone, voice;
+ *  監測 – the live connection, its health and the opt-in station detections;
+ *  關於 – sources and limits.
+ * Each alert type keeps its switch, its tone and its preview on ONE row instead of being split
+ * across an "alerts" tab and a "sounds" tab.
+ */
 @Composable
 fun EarthquakeSettingsPage(onClose: () -> Unit) {
     val ctx = LocalContext.current
     val pref = remember(ctx) { ctx.getSharedPreferences("thinn_seismic_v15", Context.MODE_PRIVATE) }
     val realtime by ExpTechSeismicService.live.collectAsState()
-    var tab by remember { mutableIntStateOf(0) } // Show monitoring status before sound controls
+    var tab by remember { mutableIntStateOf(0) }
     var generalWatch by remember { mutableStateOf(pref.getBoolean("earthquake_foreground_watch", true)) }
     var autoStartRealtime by remember { mutableStateOf(pref.getBoolean("auto_start_realtime_on_app_open", true)) }
     var reportNotify by remember { mutableStateOf(pref.getBoolean("earthquake_report_notify", false)) }
     var eewVoice by remember { mutableStateOf(SeismicSpeech.enabled(ctx,"eew_voice_enabled")) }
     var reportVoice by remember { mutableStateOf(SeismicSpeech.enabled(ctx,"report_voice_enabled")) }
     var replayVoice by remember { mutableStateOf(SeismicSpeech.enabled(ctx,"replay_voice_enabled")) }
-    var fullscreen by remember { mutableStateOf(pref.getBoolean("allow_seismic_full_screen",false)) }
+    var fullscreen by remember { mutableStateOf(pref.getBoolean("allow_seismic_full_screen",true)) }
     var critical by remember {mutableStateOf(SeismicCriticalMode.enabled(ctx))}
     var chosenCounty by remember { mutableStateOf(SeismicUserLocation.chosen(ctx)) }
     var locationMenu by remember { mutableStateOf(false) }
     var magnitude by remember { mutableFloatStateOf(pref.getFloat("report_min_magnitude", 4.5f)) }
     var minimum by remember{mutableStateOf(SeismicAlertThreshold.chosen(ctx))}
-    var thresholdMenu by remember{mutableStateOf(false)}
     var unknown by remember{mutableStateOf(SeismicAlertThreshold.unknownAllowed(ctx))}
+    var stationsOpen by remember{mutableStateOf(false)}
+    var torch by remember{mutableStateOf(SeismicTorch.enabled(ctx))}
+    var presetRevision by remember{mutableIntStateOf(0)}
+    fun applyPreset(name:String) {
+        // DPIP-style quick presets; every switch stays individually editable afterwards.
+        val all=SeismicAlertPolicy.Scenario.entries
+        val on:Set<SeismicAlertPolicy.Scenario> = when(name) {
+            "全部"->all.toSet()
+            "僅緊急"->setOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT)
+            else->setOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE,SeismicAlertPolicy.Scenario.REPORT)
+        }
+        all.filter{it!=SeismicAlertPolicy.Scenario.REPORT}.forEach{SeismicAlertPolicy.setAlertEnabled(ctx,it,it in on)}
+        val grade=when(name){"全部"->"1";"僅緊急"->"4";else->"3"}
+        minimum=grade;SeismicAlertThreshold.choose(ctx,grade)
+        reportNotify=SeismicAlertPolicy.Scenario.REPORT in on;pref.edit().putBoolean("earthquake_report_notify",reportNotify).putString("seismic_preset",name).apply()
+        presetRevision++
+    }
+    var preset by remember{mutableStateOf(pref.getString("seismic_preset","")?:"")}
     val scroll=rememberScrollState()
     LaunchedEffect(tab){scroll.scrollTo(0)}
     DisposableEffect(Unit) { onDispose { SeismicPreviewPlayer.stop() } }
+    val divider=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f)
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false),adaptiveContentWidth=null) {
         io.atmos.weather.ui.AdaptiveWindowProvider(Modifier.background(MaterialTheme.colorScheme.background)) {
         io.atmos.weather.ui.AdaptivePageFrame(maxContentWidth=1120.dp) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
-            io.atmos.weather.ui.IOSSettingsHeader("地震監測設定",onClose)
+            io.atmos.weather.ui.IOSSettingsHeader("地震設定",onClose)
             Spacer(Modifier.height(8.dp))
-            val monitorTabs=listOf("一般","警報","音效","關於")
+            val monitorTabs=listOf("速報","報告","監測","關於")
             io.atmos.weather.next.NextReorderableToolDock(
                 actions=monitorTabs.mapIndexed {i,title->io.atmos.weather.next.NextToolAction(title,title,
-                    when(i){0->Icons.Rounded.Tune;1->Icons.Rounded.Warning;2->Icons.Rounded.VolumeUp;else->Icons.Rounded.Info})},
+                    when(i){0->Icons.Rounded.Warning;1->Icons.Rounded.Description;2->Icons.Rounded.Sensors;else->Icons.Rounded.Info})},
                 selectedId=monitorTabs[tab],onSelected={id->tab=monitorTabs.indexOf(id).coerceAtLeast(0);SeismicPreviewPlayer.stop()},
                 onOrderChanged={},maxVisible=4,allowReorder=false,
                 reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
                 reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency(),
                 modifier=Modifier.align(Alignment.CenterHorizontally).widthIn(max=io.atmos.weather.ui.TabletDockGeometry.contentLength(4,androidx.compose.ui.platform.LocalDensity.current.fontScale).dp).fillMaxWidth().padding(horizontal=8.dp))
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(6.dp))
             SeismicSettingsFlow(scroll,Modifier.weight(1f)) {
+                key(presetRevision) {
                 when(tab) {
                     0 -> {
-                        SettingsPanel("監測服務") {
+                        SettingsPanel("速報能不能跳出來") {
+                            SeismicDeliveryReadiness(fullScreen=true,criticalEnabled=critical)
+                        }
+                        SettingsPanel("快速設定") {
+                            Text("一鍵套用常用組合，之後仍可逐項調整。",color=pale,fontSize=14.sp,lineHeight=20.sp)
+                            Spacer(Modifier.height(10.dp))
+                            io.atmos.weather.ui.GlassChoiceGroup(listOf("推薦","全部","僅緊急"),listOf("推薦","全部","僅緊急").indexOf(preset),
+                                {i->val name=listOf("推薦","全部","僅緊急")[i];preset=name;applyPreset(name)})
+                            Text(when(preset){"全部"->"震度 1 級以上、所有速報、測站檢知與報告都通知";"僅緊急"->"只在你這裡預估 4 級以上時跳出緊急速報";"推薦"->"震度 3 級以上的速報與更新，加上地震報告";else->"目前為自訂組合"},
+                                color=pale,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.padding(top=8.dp))
+                        }
+                        SettingsPanel("我的位置") {
+                            val location=SeismicUserLocation.current(ctx)
+                            Row(verticalAlignment=Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.MyLocation,null,tint=ice)
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(location?.name ?: "尚未取得位置",color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,fontWeight=FontWeight.SemiBold)
+                                    Text(location?.source ?: "請在天氣首頁允許定位，或手動選擇縣市",color=pale,fontSize=14.sp,lineHeight=20.sp)
+                                }
+                                Box {
+                                    OutlinedButton(onClick={locationMenu=true}) {
+                                        Text(if(chosenCounty.isBlank()) "跟隨定位" else chosenCounty)
+                                        Icon(Icons.Rounded.ArrowDropDown,null)
+                                    }
+                                    DropdownMenu(expanded=locationMenu,onDismissRequest={locationMenu=false}) {
+                                        SeismicUserLocation.options().forEach { city ->
+                                            DropdownMenuItem(text={Text(city)},onClick={
+                                                val next=if(city=="跟隨手機定位") "" else city
+                                                SeismicUserLocation.choose(ctx,next)
+                                                chosenCounty=next; locationMenu=false
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                            Text("速報會依此位置估算你這裡的震度與抵達秒數。",color=pale,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.padding(top=8.dp))
+                        }
+                        SettingsPanel("提醒門檻") {
+                            Text("已選擇：${SeismicDisplayFormat.symbol(minimum)} 級以上",fontSize=17.sp,lineHeight=24.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface,modifier=Modifier.fillMaxWidth())
+                            Text("你這裡的預估震度達到門檻，才會跳出速報畫面、通知與語音。",color=pale,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(10.dp))
+                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                SeismicAlertThreshold.grades.forEach{grade->
+                                    val on=grade==minimum
+                                    val fill=SeismicIntensityColors.color(grade)
+                                    val grow by androidx.compose.animation.core.animateFloatAsState(if(on)1.08f else 1f,
+                                        androidx.compose.animation.core.spring(.6f,500f),label="門檻色塊")
+                                    Box(Modifier.size(44.dp).graphicsLayer{scaleX=grow;scaleY=grow}.clip(RoundedCornerShape(12.dp))
+                                        .background(if(on)fill else fill.copy(alpha=.22f))
+                                        .border(if(on)2.dp else 0.dp,if(on)MaterialTheme.colorScheme.onSurface else Color.Transparent,RoundedCornerShape(12.dp))
+                                        .clickable(role=androidx.compose.ui.semantics.Role.RadioButton){minimum=grade;SeismicAlertThreshold.choose(ctx,grade)}
+                                        .semantics{contentDescription="${SeismicDisplayFormat.symbol(grade)} 級以上";selected=on},
+                                        contentAlignment=Alignment.Center) {
+                                        Text(SeismicDisplayFormat.symbol(grade),fontSize=16.sp,fontWeight=FontWeight.Bold,
+                                            color=if(on)seismicInkOn(fill) else MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                            }
+                            Text("最低 1 級 · 預設 3 級。震度與規模 M 不同。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=8.dp))
+                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)
+                            SettingsSwitch("震度未知時也提醒","來源沒有你這裡的震度時，仍顯示速報並標示未知",unknown){unknown=it;pref.edit().putBoolean("eew_notify_unknown_local",it).apply()}
+                        }
+                        SettingsPanel("提醒方式") {
+                            SettingsSwitch("緊急速報模式","以鬧鐘音量響起；勿擾例外需另外授權",critical) {
+                                critical=it;SeismicCriticalMode.setEnabled(ctx,it);if(it)fullscreen=true
+                            }
+                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)
+                            SettingsSwitch("鎖定畫面時全螢幕顯示", "達門檻時喚醒螢幕，需系統授權",fullscreen) {
+                                fullscreen=it;pref.edit().putBoolean("allow_seismic_full_screen",it).apply()
+                            }
+                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)
+                            SettingsSwitch("速報語音播報", "播報你這裡的震度、秒數與避難指引",eewVoice) {
+                                eewVoice=it;SeismicSpeech.setEnabled(ctx,"eew_voice_enabled",it)
+                            }
+                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)
+                            SettingsSwitch("強震時閃爍手電筒","你這裡預估 4 級以上時閃爍閃光燈，最多 30 秒",torch) {
+                                torch=it;SeismicTorch.setEnabled(ctx,it)
+                            }
+                        }
+                        SettingsPanel("速報種類與提示音") {
+                            val eew=listOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE)
+                            eew.forEachIndexed { i,scenario ->
+                                AlertRow(scenario)
+                                if(i<eew.lastIndex) HorizontalDivider(color=divider, modifier=Modifier.padding(vertical=10.dp))
+                            }
+                        }
+                    }
+                    1 -> {
+                        SettingsPanel("震後報告") {
+                            SettingsSwitch("新地震報告通知", "中央氣象署發布報告後通知；不是提前預警", reportNotify) {
+                                reportNotify=it; pref.edit().putBoolean("earthquake_report_notify",it).apply()
+                            }
+                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)
+                            Text("只通知規模 M ${"%.1f".format(java.util.Locale.US,magnitude)} 以上",color=MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.Medium)
+                            Slider(value=magnitude,onValueChange={magnitude=it},valueRange=3f..7f,steps=7,
+                                onValueChangeFinished={pref.edit().putFloat("report_min_magnitude",magnitude).apply()})
+                            Text("此門檻只影響震後報告，不影響即時速報。",color=pale,fontSize=14.sp,lineHeight=21.sp)
+                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)
+                            SettingsSwitch("報告語音播報", "收到新震後報告時播報",reportVoice) {
+                                reportVoice=it;SeismicSpeech.setEnabled(ctx,"report_voice_enabled",it)
+                            }
+                        }
+                        SettingsPanel("報告提示音") {
+                            Text("固定音高的三聲電子提示，沒有音樂旋律。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(10.dp));SoundRow(SeismicAlertPolicy.Scenario.REPORT)
+                        }
+                        SettingsPanel("地震頁面") {
+                            SettingsSwitch("自動更新地震報告", "地震頁開啟時約每 60 秒查詢新報告", generalWatch) {
+                                generalWatch=it; pref.edit().putBoolean("earthquake_foreground_watch",it).apply()
+                            }
+                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)
+                            SettingsSwitch("歷史回放語音", "回放時播報，並明確說明為歷史事件",replayVoice) {
+                                replayVoice=it;SeismicSpeech.setEnabled(ctx,"replay_voice_enabled",it)
+                            }
+                        }
+                    }
+                    2 -> {
+                        SettingsPanel("即時監測") {
                             Row(verticalAlignment=Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f).padding(end=10.dp)) {
-                                    Text("即時串流監測",color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold)
+                                    Text(if(realtime.enabled)"監測中" else "未啟動",color=if(realtime.enabled)seismicHealthyInk else MaterialTheme.colorScheme.onSurface,fontSize=17.sp,fontWeight=FontWeight.SemiBold)
                                     Text(SeismicFeedHealth.eewLabel(SeismicFeedHealth.eew(realtime.enabled,realtime.eewStatus)),color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
-                                    Text("前景串流監測會顯示常駐通知；Android 仍可能停止連線。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
                                 }
                                 Button(onClick={
                                     runCatching {
@@ -199,139 +349,51 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                     }
                                 }) { Text(if(realtime.enabled) "停止" else "啟動") }
                             }
-                            HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.14f),modifier=Modifier.padding(vertical=12.dp))
-                            SettingsSwitch("開啟 APP 後自動啟動即時監測", "每次開啟 APP 時嘗試建立前景監測連線；會消耗網路與電量，Android 仍可能停止服務",autoStartRealtime) {
+                            Text("監測時會顯示常駐通知；Android 省電機制仍可能中斷連線。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=6.dp))
+                            HorizontalDivider(color=divider,modifier=Modifier.padding(vertical=12.dp))
+                            SettingsSwitch("開啟 APP 時自動監測", "會消耗網路與電量",autoStartRealtime) {
                                 autoStartRealtime=it
                                 pref.edit().putBoolean("auto_start_realtime_on_app_open",it).apply()
                                 if(it) runCatching { ExpTechSeismicService.start(ctx) }
                                 else runCatching { ExpTechSeismicService.stop(ctx) }
                             }
-                            Spacer(Modifier.height(10.dp))
-                            SettingsSwitch("前景地震報告更新", "監測頁開啟時約每 60 秒查詢震後報告", generalWatch) {
-                                generalWatch=it; pref.edit().putBoolean("earthquake_foreground_watch",it).apply()
-                            }
                         }
-                        SettingsPanel("預警依據位置") {
-                            val location=SeismicUserLocation.current(ctx)
-                            Text("目前：${location?.name ?: "定位資料尚未取得"}",color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.SemiBold)
-                            Text(location?.source ?: "預設手機定位；請先在天氣首頁允許並取得 GPS 定位",color=pale,fontSize=14.sp)
-                            Spacer(Modifier.height(7.dp))
-                            Box {
-                                OutlinedButton(onClick={locationMenu=true}) {
-                                    Text(if(chosenCounty.isBlank()) "跟隨手機定位（預設）" else "手動：$chosenCounty")
-                                    Icon(Icons.Rounded.ArrowDropDown,null)
-                                }
-                                DropdownMenu(expanded=locationMenu,onDismissRequest={locationMenu=false}) {
-                                    SeismicUserLocation.options().forEach { city ->
-                                        DropdownMenuItem(text={Text(city)},onClick={
-                                            val next=if(city=="跟隨手機定位") "" else city
-                                            SeismicUserLocation.choose(ctx,next)
-                                            chosenCounty=next; locationMenu=false
-                                        })
+                        SettingsPanel("速報紀錄") {
+                            if(realtime.recentIncidents.isEmpty())Text("最近沒有收到速報。",color=pale,fontSize=14.sp)
+                            realtime.recentIncidents.take(10).forEachIndexed{i,event->
+                                if(i>0)HorizontalDivider(color=divider,modifier=Modifier.padding(vertical=8.dp))
+                                Row(verticalAlignment=Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(SeismicDisplayFormat.location(event.epicenter),color=MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                                        Text("${java.text.SimpleDateFormat("MM/dd HH:mm:ss",java.util.Locale.TAIWAN).format(java.util.Date(event.issuedAtMs))} · 第 ${event.serial} 報",color=pale,fontSize=14.sp)
                                     }
+                                    Text(when{event.test->"演練";event.cancelled->"已取消";else->SeismicDisplayFormat.magnitude(event.magnitude)},
+                                        color=if(event.cancelled)pale else MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.Bold)
                                 }
                             }
-                            Text("依此位置估算當地震度與抵達時間。",color=pale,fontSize=14.sp)
                         }
-                        SettingsPanel("接收狀態") {SeismicDeliveryReadiness(criticalEnabled=critical)}
-                    }
-                    1 -> {
-                        SettingsPanel("地震速報 · 所在地震度") {
-                            Text("提醒門檻",fontSize=18.sp,lineHeight=26.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface,modifier=Modifier.fillMaxWidth())
-                            Text("所在地預估震度達門檻，才啟動速報畫面、通知與語音。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
-                            Spacer(Modifier.height(12.dp))
-                            Box {
-                                Button(onClick={thresholdMenu=true},modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) {
-                                    Icon(Icons.Rounded.Check,null);Spacer(Modifier.width(7.dp))
-                                    Text("已選擇：${SeismicDisplayFormat.symbol(minimum)} 級以上",modifier=Modifier.weight(1f));Icon(Icons.Rounded.ArrowDropDown,null)
-                                }
-                                DropdownMenu(expanded=thresholdMenu,onDismissRequest={thresholdMenu=false}) {
-                                    SeismicAlertThreshold.grades.forEach{grade->DropdownMenuItem(text={Text((if(grade==minimum)"✓ " else "")+SeismicDisplayFormat.symbol(grade)+" 級以上"+(if(grade=="3")"（預設）" else ""))},onClick={
-                                        minimum=grade;SeismicAlertThreshold.choose(ctx,grade);thresholdMenu=false
-                                    })}
+                        SettingsPanel("測站檢知 · 進階") {
+                            Row(Modifier.fillMaxWidth().clickable{stationsOpen=!stationsOpen},verticalAlignment=Alignment.CenterVertically) {
+                                Text("第三方測站連續三筆達門檻時提醒，預設關閉。這不是地震預警。",color=pale,fontSize=14.sp,lineHeight=19.sp,modifier=Modifier.weight(1f))
+                                Icon(if(stationsOpen)Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,if(stationsOpen)"收合" else "展開",tint=pale)
+                            }
+                            if(stationsOpen) {
+                                Spacer(Modifier.height(10.dp))
+                                val stations=listOf(SeismicAlertPolicy.Scenario.DETECT_WEAK,SeismicAlertPolicy.Scenario.DETECT_MEDIUM,
+                                    SeismicAlertPolicy.Scenario.DETECT_STRONG,SeismicAlertPolicy.Scenario.GAL_MEDIUM,
+                                    SeismicAlertPolicy.Scenario.GAL_STRONG)
+                                stations.forEachIndexed { i,scenario ->
+                                    AlertRow(scenario)
+                                    if(i<stations.lastIndex) HorizontalDivider(color=divider,modifier=Modifier.padding(vertical=8.dp))
                                 }
                             }
-                            Text("最低 1 級 · 預設 3 級。震度與規模 M 不同。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=8.dp))
-                            HorizontalDivider(modifier=Modifier.padding(vertical=14.dp),color=MaterialTheme.colorScheme.outlineVariant)
-                            SettingsSwitch("所在地震度未知時仍提醒","無法取得當地震度時，仍顯示速報並標示未知",unknown){unknown=it;pref.edit().putBoolean("eew_notify_unknown_local",it).apply()}
                         }
-                        SettingsPanel("速報通知") {
-                            listOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE).forEachIndexed { i,s ->
-                                AlertRow(s)
-                                if(i<2) HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f), modifier=Modifier.padding(vertical=10.dp))
-                            }
-                        }
-                        SettingsPanel("警報顯示與聲音") {
-                            SettingsSwitch("緊急速報模式","使用鬧鐘音量；勿擾例外需另外授權",critical) {
-                                critical=it;SeismicCriticalMode.setEnabled(ctx,it);if(it)fullscreen=true
-                            }
-                            HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=MaterialTheme.colorScheme.outlineVariant)
-                            SettingsSwitch("允許鎖定時全螢幕警示", "達提醒門檻時請求喚醒畫面，需系統授權",fullscreen) {
-                                fullscreen=it;pref.edit().putBoolean("allow_seismic_full_screen",it).apply()
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            SeismicDeliveryReadiness(fullScreen=true,criticalEnabled=critical)
-                        }
-                        SettingsPanel("震後報告 · 規模門檻") {
-                            SettingsSwitch("震後報告提醒", "由背景工作定期查詢；無法提前預警", reportNotify) {
-                                reportNotify=it; pref.edit().putBoolean("earthquake_report_notify",it).apply()
-                            }
-                            Spacer(Modifier.height(10.dp))
-                            Text("規模門檻：M ${"%.1f".format(java.util.Locale.US,magnitude)}",color=MaterialTheme.colorScheme.onSurface)
-                            Slider(value=magnitude,onValueChange={magnitude=it},valueRange=3f..7f,steps=7,
-                                onValueChangeFinished={pref.edit().putFloat("report_min_magnitude",magnitude).apply()})
-                            Text("此門檻只影響震後報告，不影響即時速報。",color=pale,fontSize=14.sp,lineHeight=21.sp)
-                        }
-                        SettingsPanel("測站檢知 · 進階選項") {
-                            Text("第三方測站連續三筆達門檻時提醒，預設關閉。此功能不是地震預警。",color=pale,fontSize=14.sp,lineHeight=19.sp)
-                            Spacer(Modifier.height(10.dp))
-                            listOf(SeismicAlertPolicy.Scenario.DETECT_WEAK,SeismicAlertPolicy.Scenario.DETECT_MEDIUM,
-                                SeismicAlertPolicy.Scenario.DETECT_STRONG,SeismicAlertPolicy.Scenario.GAL_MEDIUM,
-                                SeismicAlertPolicy.Scenario.GAL_STRONG).forEach { scenario ->
-                                AlertRow(scenario)
-                                HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.1f),modifier=Modifier.padding(vertical=7.dp))
-                            }
-                        }
-                    }
-                    2 -> {
-                        SettingsPanel("震後報告 · 短促提示音") {
-                            Text("固定音高的三聲電子提示，沒有音樂旋律。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
-                            Spacer(Modifier.height(10.dp));SoundRow(SeismicAlertPolicy.Scenario.REPORT)
-                        }
-                        SettingsPanel("即時地震語音") {
-                            SettingsSwitch("速報語音播報", "播報當地震度、震央、規模與避難指引",eewVoice) {
-                                eewVoice=it;SeismicSpeech.setEnabled(ctx,"eew_voice_enabled",it)
-                            }
-                            Spacer(Modifier.height(9.dp))
-                            SettingsSwitch("震後報告語音播報", "收到新震後報告時播報",reportVoice) {
-                                reportVoice=it;SeismicSpeech.setEnabled(ctx,"report_voice_enabled",it)
-                            }
-                            Spacer(Modifier.height(9.dp))
-                            SettingsSwitch("歷史回放語音", "回放時明確播報為歷史事件",replayVoice) {
-                                replayVoice=it;SeismicSpeech.setEnabled(ctx,"replay_voice_enabled",it)
-                            }
-                        }
-                        SettingsPanel("即時速報音效") {
-                            listOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE).forEachIndexed { index,s ->
-                                SoundRow(s)
-                                if(index<2) HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f),modifier=Modifier.padding(vertical=12.dp))
-                            }
-                        }
-                        SettingsPanel("測站觀測提示音") {
-                            val items=listOf(SeismicAlertPolicy.Scenario.DETECT_WEAK,SeismicAlertPolicy.Scenario.DETECT_MEDIUM,SeismicAlertPolicy.Scenario.DETECT_STRONG,SeismicAlertPolicy.Scenario.GAL_MEDIUM,SeismicAlertPolicy.Scenario.GAL_STRONG)
-                            items.forEachIndexed { index,s ->
-                                SoundRow(s)
-                                if(index<items.lastIndex) HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f),modifier=Modifier.padding(vertical=12.dp))
-                            }
-                        }
-
-                        Text("音效與檢知警報為獨立開關；需在『警報 › 測站檢知』同時啟用提醒。RTS 提醒屬第三方測站觀測、不是官方 EEW。",color=pale,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(12.dp))
                     }
                     else -> {
                         SettingsPanel("資料來源與安全") {
                             Text("thinn-khì · 臺灣即時地震監測",color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,fontWeight=FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
-                            Text("EEW / RTS：ExpTech DPIP 公開即時串流；震後報告：ExpTech 公開 API。此功能為獨立實作，並非官方 TREM-Lite App。",color=pale,fontSize=14.sp,lineHeight=19.sp)
+                            Text("速報與測站：ExpTech 公開即時串流；地震報告：中央氣象署開放資料。此功能為獨立實作，並非官方 App。",color=pale,fontSize=14.sp,lineHeight=19.sp)
                             Spacer(Modifier.height(10.dp))
                             Text("第三方資料與 Android 背景工作均無法保證即時送達。真正感覺搖晃時，請立刻趴下、掩護、穩住；保留手機官方災防告警。",color=ice,fontSize=14.sp,lineHeight=19.sp)
                             Spacer(Modifier.height(10.dp))
@@ -340,6 +402,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             Text("音效受到 Android 通知權限、通知分類、靜音與勿擾模式管理。使用者可在系統設定改變每個分類的聲音。",color=pale,fontSize=14.sp,lineHeight=21.sp)
                         }
                     }
+                }
                 }
                 Spacer(Modifier.fillMaxWidth().height(25.dp))
             }
@@ -376,8 +439,24 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
 @Composable private fun AlertRow(s:SeismicAlertPolicy.Scenario) {
     val ctx=LocalContext.current
     var checked by remember(s) { mutableStateOf(SeismicAlertPolicy.alertEnabled(ctx,s)) }
-    SettingsSwitch(s.title,s.subtitle,checked) {
-        checked=it; SeismicAlertPolicy.setAlertEnabled(ctx,s,it)
+    var sound by remember(s) { mutableStateOf(SeismicAlertPolicy.soundEnabled(ctx,s)) }
+    Column(Modifier.fillMaxWidth()) {
+        SettingsSwitch(s.title,s.subtitle,checked) {
+            checked=it; SeismicAlertPolicy.setAlertEnabled(ctx,s,it)
+        }
+        if(checked) Row(Modifier.fillMaxWidth().padding(top=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            val on=MaterialTheme.colorScheme.primary
+            Text(if(sound)"提示音：開" else "提示音：靜音",fontSize=14.sp,fontWeight=FontWeight.SemiBold,
+                color=if(sound)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                modifier=Modifier.clip(RoundedCornerShape(999.dp)).background(if(sound)on else MaterialTheme.colorScheme.onSurface.copy(alpha=.08f))
+                    .clickable(role=androidx.compose.ui.semantics.Role.Switch){sound=!sound;SeismicAlertPolicy.setSoundEnabled(ctx,s,sound)}
+                    .padding(horizontal=12.dp,vertical=7.dp))
+            Text("▶ 試聽",fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=ice,
+                modifier=Modifier.clip(RoundedCornerShape(999.dp)).background(ice.copy(alpha=.12f)).clickable(role=androidx.compose.ui.semantics.Role.Button){
+                    if(!SeismicPreviewPlayer.play(ctx,s)) android.widget.Toast.makeText(ctx,
+                        "無法播放試聽音，請檢查音量及音效資源",android.widget.Toast.LENGTH_SHORT).show()
+                }.padding(horizontal=12.dp,vertical=7.dp))
+        }
     }
 }
 @Composable private fun SoundRow(s:SeismicAlertPolicy.Scenario) {

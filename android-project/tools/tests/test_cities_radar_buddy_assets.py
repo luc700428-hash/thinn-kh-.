@@ -35,7 +35,7 @@ class CitiesRadarBuddy(unittest.TestCase):
  def test_slider_uses_an_independent_track_capture_and_safe_geometry(self):
   s=(SRC/'ui/LiquidBubbleSlider.kt').read_text()
   # iOS 27 knob: the track is cut out under the glass and redrawn magnified inside it.
-  self.assertIn('clipPath(knob,ClipOp.Difference)',s);self.assertIn('liquidGlassEdge(path,light',s);self.assertIn('LiquidLensEffect()',s)
+  self.assertIn('clipPath(knob,ClipOp.Difference)',s);self.assertIn('liquidGlassEdge(path,light',s);self.assertIn('liquidLensEffectOrNull(',s)
   self.assertNotIn('RuntimeShader(',s);self.assertNotIn('Path.combine(',s)
   self.assertIn('setProgress {',s);self.assertIn('onValueChangeFinished',s)
  def test_native_radar_bounds_attribution_and_cache(self):

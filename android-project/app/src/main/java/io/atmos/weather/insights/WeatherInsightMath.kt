@@ -8,6 +8,9 @@ internal enum class OutdoorMode(val title:String){WALK("散步"),COMMUTE("通勤
 internal data class OutdoorWindow(val hours:List<HourlyWeather>,val rain:Int,val temperature:Double,
     val wind:Double,val uv:Double?,val humidity:Int?,val caution:Boolean,val score:Double,val usesFeelsLike:Boolean)
 
+internal enum class HourLevel(val word:String){GOOD("適合"),FAIR("留意"),POOR("避開")}
+internal data class HourRating(val at:Instant,val level:HourLevel,val reason:String)
+
 /** Transparent relative comparison of available forecast hours, not a probability of safety. */
 internal object WeatherInsightMath {
     fun dewPoint(temperature:Double,humidity:Int?):Double? {
@@ -44,4 +47,26 @@ internal object WeatherInsightMath {
             OutdoorWindow(hours,rain,temp,wind,uv,humidity,caution,score,usesFeelsLike)
         }.sortedWith(compareBy({it.score},{it.hours.first().at}))
     }
+
+    /** One plain rating per forecast hour for the 24-hour strip; missing data is never "good". */
+    fun hourRatings(weather:WeatherSnapshot,mode:OutdoorMode,now:Instant):List<HourRating> =
+        weather.hourly.filter{!it.at.isBefore(now.minusSeconds(3599))&&it.at.isBefore(now.plusSeconds(24*3600))}
+            .distinctBy{it.at}.sortedBy{it.at}.map{h->
+                val rain=h.precipitationProbabilityPct?.takeIf{it in 0..100}
+                val temp=(h.feelsLikeC?:h.temperatureC)?.takeIf{it.isFinite()}
+                val wind=h.windKmh?.takeIf{it.isFinite()&&it>=0}
+                val humidity=h.humidityPct?.takeIf{it in 0..100}
+                val severe=h.weatherCode in setOf(56,57,66,67,71,73,75,77,85,86,95,96,99)
+                val poor=when{
+                    severe->"可能有雷雨或冰雪"
+                    rain!=null&&rain>=60->"降雨機率 $rain%"
+                    wind!=null&&wind>=39->"風很大"
+                    temp!=null&&(temp<6||temp>=36)->if(temp<6)"非常冷" else "非常熱"
+                    mode==OutdoorMode.LAUNDRY&&humidity!=null&&humidity>=88->"濕度 $humidity%，衣服不易乾"
+                    else->null
+                }
+                val fair=rain==null||temp==null||(rain>=30)||(wind!=null&&wind>=25)||temp<12||temp>=32||
+                    (mode==OutdoorMode.WALK&&(h.uvIndex?:0.0)>=8)||(mode==OutdoorMode.LAUNDRY&&(humidity==null||humidity>=75))
+                HourRating(h.at,if(poor!=null)HourLevel.POOR else if(fair)HourLevel.FAIR else HourLevel.GOOD,poor?:"")
+            }
 }

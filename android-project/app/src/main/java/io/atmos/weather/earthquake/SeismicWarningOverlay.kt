@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import io.atmos.weather.ui.GlassIconButton
+import io.atmos.weather.ui.iosHeartbeat
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -118,6 +120,13 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
         prediction.arrivalOrigin==PredictionOrigin.LOCAL_MODEL->"本機估算抵達"
         else->"預估抵達"
     }
+    // DPIP-style reading aids: the local grade in its CWA colour, and one plain-words line each
+    // for how hard it will shake and what to do before / after the waves arrive.
+    val localGrade=local?.replace("以上","")?.removeSuffix("級")?.trim()?.takeIf{it.isNotBlank()&&it!="—"}
+    val rank=localGrade?.let{maxOf(CwaEarthquakeParser.intensityRank(it),it.firstOrNull()?.digitToIntOrNull()?:0)}?:-1
+    val shaking=when{rank>=5->"劇烈搖晃";rank==4->"強烈搖晃";rank==3->"明顯搖晃";rank in 1..2->"輕微搖晃";else->""}
+    val arrived=arrival!=null&&arrival<=now
+    val arrivalAdvice=if(arrived)"持續掩護到搖晃停止" else if(arrival!=null)"抵達前就近掩護" else ""
     val maximum=if(historical)"7 級" else incident.maximumIntensity?.let{"${SeismicDisplayFormat.symbol(it)} 級"}?:"—"
     val issued=if(historical)"1999/09/21 01:47:15.9" else java.time.Instant.ofEpochMilli(incident.issuedAtMs)
         .atZone(java.time.ZoneId.of("Asia/Taipei")).format(java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm:ss"))
@@ -156,8 +165,10 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                             BoxWithConstraints(Modifier.fillMaxWidth()){
                                 val cellWidth=(maxWidth.value-8f)/2f
                                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                                    WarningHero(intensityLabel,intensity,"",accent,Modifier.weight(1f).fillMaxHeight().semantics{contentDescription="$intensityLabel $intensity；$intensityReason"},tight,cellWidth)
-                                    WarningHero(arrivalLabel,arrivalText,"",palette.primary,Modifier.weight(1f).fillMaxHeight().semantics{contentDescription="$arrivalLabel $arrivalText；$arrivalReason"},tight,cellWidth)
+                                    WarningHero(intensityLabel,intensity,if(tight)"" else shaking,accent,Modifier.weight(1f).fillMaxHeight().semantics{contentDescription="$intensityLabel $intensity；$intensityReason"},tight,cellWidth,
+                                        fill=localGrade?.let{SeismicIntensityColors.color(it)})
+                                    WarningHero(arrivalLabel,arrivalText,if(tight)"" else arrivalAdvice,if(arrived)palette.error else palette.primary,Modifier.weight(1f).fillMaxHeight()
+                                        .iosHeartbeat(arrivalText,strong=arrival!=null&&arrival-now<=10_000).semantics{contentDescription="$arrivalLabel $arrivalText；$arrivalReason"},tight,cellWidth)
                                 }
                             }
                             if(!shortLandscape)facts(Modifier.fillMaxWidth())
@@ -213,14 +224,24 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     val p=MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.surface).border(1.dp,p.outlineVariant.copy(alpha=.5f),RoundedCornerShape(24.dp)).padding(if(compact)12.dp else 16.dp),verticalArrangement=Arrangement.spacedBy(8.dp),content=content)
 }
-@Composable private fun WarningHero(label:String,value:String,caption:String,accent:Color,modifier:Modifier,tight:Boolean,width:Float){
+@Composable private fun WarningHero(label:String,value:String,caption:String,accent:Color,modifier:Modifier,tight:Boolean,width:Float,fill:Color?=null){
     val p=MaterialTheme.colorScheme
     val fontScale=LocalDensity.current.fontScale
     val characters=value.sumOf{if(it.code<128).58 else 1.0}.toFloat().coerceAtLeast(1f)
-    val size=minOf(if(tight)34f else 48f,(width-(if(tight)20f else 28f))/(characters*fontScale)).coerceAtLeast(14f)
-    Column(modifier.clip(RoundedCornerShape(24.dp)).background(p.surface).border(1.dp,p.outlineVariant.copy(alpha=.5f),RoundedCornerShape(24.dp)).padding(if(tight)10.dp else 14.dp)){
+    val inset=if(fill!=null)16f else 0f
+    val size=minOf(if(tight)34f else 48f,(width-(if(tight)20f else 28f)-inset)/(characters*fontScale)).coerceAtLeast(14f)
+    Column(modifier.clip(RoundedCornerShape(24.dp)).background(p.surface).border(1.dp,(fill?:p.outlineVariant).copy(alpha=if(fill!=null).9f else .5f),RoundedCornerShape(24.dp)).padding(if(tight)10.dp else 14.dp)){
         Text(label,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.fillMaxWidth())
-        Text(value,color=accent,fontSize=size.sp,lineHeight=(size*1.24f).sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth(),style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
+        if(fill!=null){
+            // The grade sits on its CWA intensity colour, like the tiles in the report list.
+            val ink=seismicInkOn(fill)
+            // The colour block pops in on a spring and re-pops when the estimate changes.
+            Box(Modifier.fillMaxWidth().padding(top=2.dp).iosHeartbeat(value,strong=true).clip(RoundedCornerShape(14.dp)).background(fill).padding(horizontal=8.dp)) {
+                Text(value,color=ink,fontSize=size.sp,lineHeight=(size*1.24f).sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth(),
+                    style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
+            }
+        }
+        else Text(value,color=accent,fontSize=size.sp,lineHeight=(size*1.24f).sp,fontWeight=FontWeight.Bold,modifier=Modifier.fillMaxWidth(),style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
         if(caption.isNotEmpty())Text(caption,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.fillMaxWidth())
     }
 }

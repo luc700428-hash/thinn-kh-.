@@ -22,9 +22,9 @@ internal object SeismicForegroundWindow {
         }
         return true
     }
-    fun present(context:Context,ticket:SeismicAlertDelivery.Ticket) {
+    fun present(context:Context,ticket:SeismicAlertDelivery.Ticket):Boolean {
         val intent=Intent(context,SeismicAlertActivity::class.java)
             .putExtra("ticket",ticket.key).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        open(intent){SeismicAlertDelivery.active.value?.key==ticket.key&&SeismicAlertDelivery.resolve(context,ticket.key)!=null}
+        return open(intent){SeismicAlertDelivery.active.value?.key==ticket.key&&SeismicAlertDelivery.resolve(context,ticket.key)!=null}
     }
 }

@@ -215,7 +215,7 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
         Box(Modifier.fillMaxWidth().height(31.dp).clip(CircleShape).background(trackColor)
             .border(1.dp,Color.White.copy(alpha=if(checked).24f else .15f),CircleShape))
         val knob=remember{Path()}
-        val optics=remember{if(android.os.Build.VERSION.SDK_INT>=33&&!opaque)runCatching{LiquidLensEffect()}.getOrNull() else null}
+        val optics=remember{liquidLensEffectOrNull(opaque)}
         fun knobRect(w:Float,h:Float,unit:Float):Rect {
             val grow=if(lift.isFinite())lift.coerceIn(-.12f,1.15f) else 0f
             val stretch=LiquidGlassKit.stretch((lag-movement.value)/27f)

@@ -280,14 +280,14 @@ class TabletSeismicSettingsRenderingTest:TabletRenderingFixture() {
         ctx.getSharedPreferences("thinn_seismic_v15",0).edit().putBoolean("auto_start_realtime_on_app_open",false).commit()
         render(false,1.5f,"tablet-monitor-host",{io.atmos.weather.earthquake.EarthquakeSettingsPage{}}){_,_->
             val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
-            click(sheet,"警報")
+            click(sheet,"速報")
             for((w,h) in listOf(1280 to 800,768 to 1024,480 to 800,1280 to 400)) {
                 resize(sheet,w,h)
-                for(label in listOf("一般","警報","音效","關於")) {
+                for(label in listOf("速報","報告","監測","關於")) {
                     val tab=nodes(sheet).single{text(it,label)&&it.config.contains(SemanticsActions.OnClick)}
                     visible(tab.boundsInRoot);assertFalse(layout(tab).hasVisualOverflow)
                 }
-                val selected=nodes(sheet).single{text(it,"警報")&&it.config.contains(SemanticsProperties.Selected)}
+                val selected=nodes(sheet).single{text(it,"速報")&&it.config.contains(SemanticsProperties.Selected)}
                 assertTrue(selected.config[SemanticsProperties.Selected])
                 save(sheet,"tablet-monitor-${w}x$h")
             }

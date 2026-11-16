@@ -81,7 +81,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
         },contentAlignment=Alignment.Center) {
         val light=GlassLight.current(follow=!opaque)
         val knob=remember{Path()};val rim=remember{Path()}
-        val optics=remember{if(android.os.Build.VERSION.SDK_INT>=33&&!opaque)runCatching{LiquidLensEffect()}.getOrNull() else null}
+        val optics=remember{liquidLensEffectOrNull(opaque)}
         class Knob(val rect:Rect,val clear:Float,val y:Float,val inset:Float)
         // One pure geometry for both layers, so the lensing and the lighting never drift apart.
         fun knobOf(w:Float,h:Float):Knob? {

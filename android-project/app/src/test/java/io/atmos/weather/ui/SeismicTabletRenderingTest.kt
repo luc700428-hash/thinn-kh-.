@@ -68,15 +68,15 @@ class SeismicTabletSettingsRenderingTest:TabletDockFixture() {
         for(dark in listOf(false,true))for(scale in listOf(1f,1.5f)) {
             ctx.getSharedPreferences("thinn_seismic_v15",0).edit().clear().commit();windowWidth=1280;windowHeight=900
             render(dark,scale,"seismic-tablet-settings",{EarthquakeSettingsPage{}}){_,_->
-                val dialog=ShadowDialog.getLatestDialog();val sheet=dialog.window!!.decorView;pump(sheet).recycle();click(sheet,"警報")
+                val dialog=ShadowDialog.getLatestDialog();val sheet=dialog.window!!.decorView;pump(sheet).recycle();click(sheet,"速報")
                 for((w,h) in listOf(1280 to 900,600 to 960,1280 to 900)) {
                     resize(sheet,w,h)
                     val panels=nodes(sheet).filter{it.config.contains(SemanticsProperties.TestTag)&&it.config[SemanticsProperties.TestTag].startsWith("seismic-settings-panel-")}
                     assertTrue(panels.size>=4)
                     if(w==1280)assertTrue(panels[1].positionInRoot.x>panels[0].positionInRoot.x+panels[0].size.width)
                     else assertEquals(panels[0].positionInRoot.x,panels[1].positionInRoot.x,1f)
-                    assertTrue(nodes(sheet).single{text(it,"警報")&&it.config.contains(SemanticsProperties.Selected)}.config[SemanticsProperties.Selected])
-                    for(label in listOf("一般","警報","音效","關於"))assertFalse(layout(nodes(sheet).single{text(it,label)&&it.config.contains(SemanticsProperties.Selected)}).hasVisualOverflow)
+                    assertTrue(nodes(sheet).single{text(it,"速報")&&it.config.contains(SemanticsProperties.Selected)}.config[SemanticsProperties.Selected])
+                    for(label in listOf("速報","報告","監測","關於"))assertFalse(layout(nodes(sheet).single{text(it,label)&&it.config.contains(SemanticsProperties.Selected)}).hasVisualOverflow)
                     save(sheet,"seismic-settings-${w}x$h-$dark-$scale")
                 }
                 dialog.dismiss()

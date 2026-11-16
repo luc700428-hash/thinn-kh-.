@@ -3,6 +3,7 @@ package io.atmos.weather.presentation.home
 import io.atmos.weather.ui.lightningScreenEffect
 
 import io.atmos.weather.ui.brandColor
+import io.atmos.weather.ui.iosAppear
 import io.atmos.weather.ui.BrandPalette
 import io.atmos.weather.ui.WeatherSkyPalette
 import io.atmos.weather.ui.WeatherDayPhase
@@ -1808,31 +1809,97 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
             Text("依中央氣象署已核對公告產生的規則式安全提醒；非 AI 推測警戒範圍。",
                 color=Color(0xFFFFDECE),fontSize=14.sp)
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(14.dp))
+        // At-a-glance numbers first (today's range, rain chance, UV), then what to bring, then
+        // the next 12 hours, and only then the wording; the old card was a wall of sentences.
+        if(!stale) OutingGlance(weather)
+        Spacer(Modifier.height(14.dp))
+        Text(if(stale)"資料較舊，請先更新再決定穿搭" else if(plan.bring.isEmpty())"不用特別帶東西" else "記得帶",color=TextSoft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+        if(!stale&&plan.bring.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                plan.bring.forEach{item->
+                    Text(item,color=White,fontSize=15.sp,fontWeight=FontWeight.SemiBold,
+                        modifier=Modifier.iosAppear(plan.bring.indexOf(item)+3).clip(RoundedCornerShape(999.dp)).background(Color.White.copy(alpha=.14f))
+                            .padding(horizontal=12.dp,vertical=7.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
         Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha=.14f)))
-        Spacer(Modifier.height(17.dp))
-        // These are not optional fine print: clothing and rain decisions are always visible.
-        Text(if(stale) "資料較舊，請先更新再決定穿搭" else plan.temperatureSummary,color=TextSoft,fontSize=15.sp,lineHeight=22.sp)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
+        Text("出門方式",color=TextSoft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
         io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
             {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
+        // These are not optional fine print: clothing and rain decisions are always visible.
         HomeAdviceRow("外套要帶嗎",if(stale) "待更新" else plan.coatDecision)
         Spacer(Modifier.height(9.dp))
         HomeAdviceRow("穿著建議",if(stale) "待更新" else "${plan.top}；${plan.bottoms}")
         Spacer(Modifier.height(9.dp))
-        HomeAdviceRow("鞋襪建議",if(stale) "待更新" else plan.shoes)
-        Spacer(Modifier.height(9.dp))
         HomeAdviceRow("雨具建議",if(stale) "待更新" else plan.umbrella)
         if(!stale) {
             Spacer(Modifier.height(9.dp))
-            HomeAdviceRow("時段提醒",plan.timeAdvice)
+            HomeAdviceRow("出門時機",plan.timeAdvice)
         }
         Spacer(Modifier.height(9.dp))
         TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
             Text("完整穿搭清單與個人偏好",color=TextSoft,fontSize=15.sp,fontWeight=FontWeight.Medium)
         }
         }
+    }
+}
+
+/** Today's range, the highest rain chance and UV in the next 12 hours, and a 12-hour strip. */
+@Composable
+private fun OutingGlance(weather:WeatherSnapshot) {
+    val zone=remember(weather.timeZoneId){runCatching{java.time.ZoneId.of(weather.timeZoneId?:"Asia/Taipei")}.getOrDefault(java.time.ZoneId.of("Asia/Taipei"))}
+    val now=remember(weather.fetchedAt){java.time.Instant.now().minusSeconds(3600)}
+    val next=remember(weather,now){weather.hourly.filter{it.at.isAfter(now)}.sortedBy{it.at}.take(13)}
+    val temps=next.mapNotNull{it.temperatureC?.takeIf{t->t.isFinite()}}+weather.temperatureC
+    val low=weather.minTempC?.takeIf{it.isFinite()}?:temps.minOrNull()
+    val high=weather.maxTempC?.takeIf{it.isFinite()}?:temps.maxOrNull()
+    val rain=next.mapNotNull{it.precipitationProbabilityPct?.takeIf{p->p in 0..100}}.maxOrNull()
+    val uv=(next.mapNotNull{it.uvIndex?.takeIf{u->u.isFinite()&&u>=0}}+listOfNotNull(weather.currentUv)).maxOrNull()
+    val uvWord=uv?.let{when{it<3->"低";it<6->"中";it<8->"高";it<11->"過量";else->"危險"}}
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        GlanceTile("今日溫度",if(low!=null&&high!=null)"${low.roundToInt()}–${high.roundToInt()}°" else "—",
+            weather.feelsLikeC?.takeIf{it.isFinite()}?.let{"體感 ${it.roundToInt()}°"}?:"",Modifier.weight(1f).iosAppear(0))
+        GlanceTile("降雨機率",rain?.let{"$it%"}?:"—",if(rain==null)"未提供" else if(rain>=50)"帶傘" else if(rain>=30)"可能下雨" else "機會低",Modifier.weight(1f).iosAppear(1))
+        GlanceTile("紫外線",uv?.let{String.format(java.util.Locale.US,"%.0f",it)}?:"—",uvWord?.let{"${it}量級"}?:"未提供",Modifier.weight(1f).iosAppear(2))
+    }
+    val slots=next.filterIndexed{i,_->i%3==0}.take(5)
+    if(slots.size>=3) {
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha=.07f)).padding(vertical=10.dp)) {
+            val hh=java.time.format.DateTimeFormatter.ofPattern("H時").withZone(zone)
+            slots.forEach{h->
+                val pop=h.precipitationProbabilityPct?.takeIf{it in 0..100}
+                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                    Text(hh.format(h.at),color=TextSoft,fontSize=14.sp)
+                    Text(h.temperatureC?.takeIf{it.isFinite()}?.let{"${it.roundToInt()}°"}?:"—",color=White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                    Box(Modifier.width(26.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha=.14f))) {
+                        // Rain bars fill from empty, left to right, when the card first appears.
+                        val reduceBars=io.atmos.weather.ui.rememberAppleReduceMotion()
+                        val fillTo=remember{androidx.compose.animation.core.Animatable(if(reduceBars)1f else 0f)}
+                        LaunchedEffect(pop){fillTo.animateTo(1f,androidx.compose.animation.core.tween(520,delayMillis=slots.indexOf(h)*60,easing=io.atmos.weather.ui.AppleMotion.fluid))}
+                        Box(Modifier.fillMaxHeight().fillMaxWidth((((pop?:0)/100f)*fillTo.value).coerceIn(0f,1f)).background(Color(0xFF8CCBFF)))
+                    }
+                    Text(pop?.let{"$it%"}?:"—",color=if((pop?:0)>=50)Color(0xFF9DD3FF) else TextSoft,fontSize=14.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlanceTile(label:String,value:String,caption:String,modifier:Modifier) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha=.09f)).padding(horizontal=10.dp,vertical=10.dp),
+        verticalArrangement=Arrangement.spacedBy(2.dp)) {
+        Text(label,color=TextSoft,fontSize=14.sp,maxLines=1)
+        Text(value,color=White,fontSize=22.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
+        if(caption.isNotEmpty())Text(caption,color=TextSoft,fontSize=14.sp,maxLines=1)
     }
 }
 

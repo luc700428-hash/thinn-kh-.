@@ -30,7 +30,7 @@ class SeismicSettingsRenderingTest:WeatherInformationRenderingFixture(){
             var visible by mutableStateOf(true)
             render(dark,scale,"seismic-settings-host",{if(visible)EarthquakeSettingsPage{visible=false}}){_,p->
                 val dialog=ShadowDialog.getLatestDialog();val sheet=dialog.window!!.decorView;pump(sheet).recycle()
-                for(label in listOf("一般","警報","音效","關於")){
+                for(label in listOf("速報","報告","監測","關於")){
                     val tab=nodes(sheet).single{text(it,label)&&it.config.contains(SemanticsActions.OnClick)}
                     assertFalse("Dock text clipped $label at $scale",layout(tab).hasVisualOverflow)
                     contrast(tab,p.surface)
@@ -38,20 +38,20 @@ class SeismicSettingsRenderingTest:WeatherInformationRenderingFixture(){
                     val chosen=nodes(sheet).single{text(it,label)&&it.config.contains(SemanticsProperties.Selected)}
                     assertTrue(chosen.config[SemanticsProperties.Selected])
                     save(sheet,"seismic-$label-$dark-${(scale*100).toInt()}")
-                    if(label=="警報"){
+                    if(label=="速報"){
                         assertTrue(nodes(sheet).any{text(it,"已選擇：3 級以上")})
                         assertTrue(nodes(sheet).any{text(it,"最低 1 級 · 預設 3 級。震度與規模 M 不同。")})
                     }
-                    if(label=="音效")assertTrue(nodes(sheet).any{text(it,"固定音高的三聲電子提示，沒有音樂旋律。")})
+                    if(label=="報告")assertTrue(nodes(sheet).any{text(it,"固定音高的三聲電子提示，沒有音樂旋律。")})
                 }
-                val start=nodes(sheet).single{text(it,"一般")&&it.config.contains(SemanticsActions.OnClick)}.boundsInRoot.center
-                val end=nodes(sheet).single{text(it,"音效")&&it.config.contains(SemanticsActions.OnClick)}.boundsInRoot.center
+                val start=nodes(sheet).single{text(it,"速報")&&it.config.contains(SemanticsActions.OnClick)}.boundsInRoot.center
+                val end=nodes(sheet).single{text(it,"監測")&&it.config.contains(SemanticsActions.OnClick)}.boundsInRoot.center
                 val time=android.os.SystemClock.uptimeMillis()
                 fun send(action:Int,x:Float,at:Long){val e=MotionEvent.obtain(time,at,action,x,start.y,0);sheet.dispatchTouchEvent(e);e.recycle()}
                 send(MotionEvent.ACTION_DOWN,start.x,time)
                 for(i in 1..10)send(MotionEvent.ACTION_MOVE,start.x+(end.x-start.x)*i/10,time+i*20)
                 send(MotionEvent.ACTION_UP,end.x,time+220);pump(sheet).recycle()
-                assertTrue(nodes(sheet).single{text(it,"音效")&&it.config.contains(SemanticsProperties.Selected)}.config[SemanticsProperties.Selected])
+                assertTrue(nodes(sheet).single{text(it,"監測")&&it.config.contains(SemanticsProperties.Selected)}.config[SemanticsProperties.Selected])
                 dialog.dismiss()
             }
         }

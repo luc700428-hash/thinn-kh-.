@@ -70,7 +70,7 @@ object SeismicAlertDelivery {
             (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(29200)
             routing.edit().remove("latest_notification_ticket").apply()
         }
-        if(active.value?.key==key){active.value=null;SeismicContinuousWarning.stop();SeismicSpeech.stop()}
+        if(active.value?.key==key){active.value=null;SeismicContinuousWarning.stop();SeismicSpeech.stop();SeismicTorch.stop();SeismicPopup.dismissCard()}
     }
     fun cancel(ctx:Context,e:EewIncident,now:Long=System.currentTimeMillis()):Boolean {
         if(!e.cancelled||e.test||now-e.issuedAtMs !in -15_000L..120_000L)return false
@@ -80,7 +80,7 @@ object SeismicAlertDelivery {
         dismiss(ctx,ticketKey);return true
     }
     fun mayUseFullScreen(ctx:Context):Boolean {
-        val enabled=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean("allow_seismic_full_screen",false)
+        val enabled=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean("allow_seismic_full_screen",true)
         val nm=ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         return enabled&&(Build.VERSION.SDK_INT<34||runCatching{nm.canUseFullScreenIntent()}.getOrDefault(false))
     }

@@ -112,7 +112,7 @@ internal fun dockLensPath(width:Float,height:Float,density:Float,count:Int,head:
  val sampled=thinnBackdropAvailable(reduceTransparency)
  val base=androidx.compose.material3.MaterialTheme.colorScheme.surface
  val light=GlassLight.current(follow=!reduceTransparency)
- val optics=remember{if(android.os.Build.VERSION.SDK_INT>=33)runCatching{LiquidLensEffect()}.getOrNull() else null}
+ val optics=remember{liquidLensEffectOrNull()}
  // The glass is painted on ONE fixed-size surface (the Dock plus the room the lens may lift
  // into); only the clip outline changes per frame. A surface that resized every frame made
  // the blur and its offscreen buffers reallocate on every frame of the spring.

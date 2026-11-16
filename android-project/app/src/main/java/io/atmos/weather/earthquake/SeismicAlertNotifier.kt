@@ -18,7 +18,7 @@ object SeismicAlertNotifier {
         val scenario=if(requested==SeismicAlertPolicy.Scenario.EEW_UPDATE&&!SeismicAlertDelivery.hasDelivered(ctx,e))SeismicAlertPolicy.Scenario.EEW_FIRST else requested
         if(!SeismicAlertPolicy.alertEnabled(ctx,scenario)||!SeismicAlertThreshold.accepts(ctx,e))return false
         val ticket=SeismicAlertDelivery.publish(ctx,e,scenario=scenario)?:return false
-        SeismicForegroundWindow.present(ctx,ticket)
+        SeismicPopup.launch(ctx,ticket)
         if(!PermissionGuide.canNotify(ctx))return true
         SeismicAlertPolicy.ensureChannels(ctx)
         val channel=SeismicAlertPolicy.channelId(ctx,scenario)
@@ -43,6 +43,7 @@ object SeismicAlertNotifier {
         SeismicAlertDelivery.markNotification(ctx,ticket.key)
         SeismicSound.stop() // Stop a local drill/replay before the real event tone.
         SeismicContinuousWarning.start(ctx,e,scenario)
+        SeismicTorch.start(ctx,local)
         io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
         if(SeismicSpeech.enabled(ctx,"eew_voice_enabled"))SeismicSpeech.speakWarning(ctx,e,SeismicUserLocation.current(ctx))
         return true

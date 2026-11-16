@@ -51,6 +51,12 @@ internal object LiquidGlassKit {
 
     fun lerp(a:Float,b:Float,t:Float)=a+(b-a)*t
 
+    /** Android emulator images (goldfish / ranchu) draw through SwiftShader, not a real GPU. */
+    val softwareRenderedDevice:Boolean by lazy {
+        val hw=android.os.Build.HARDWARE.orEmpty().lowercase()
+        hw=="ranchu"||hw=="goldfish"||android.os.Build.FINGERPRINT.orEmpty().startsWith("generic")
+    }
+
     /** Squash and stretch from the distance between the lens and its lagging tail. */
     fun stretch(lag:Float):Float=if(lag.isFinite())(abs(lag)*STRETCH_PER_LAG).coerceAtMost(MAX_STRETCH) else 0f
 
@@ -144,6 +150,15 @@ internal fun Modifier.liquidGlassSurface(corner:Dp,energy:()->Float,touch:GlassT
         liquidGlassEdge(path,light,energy(),dark,last)
     }
 }
+
+/**
+ * The refracting lens shader, or null where it must not run: below Android 13, with Reduce
+ * Transparency, and on emulators. Emulators render RuntimeShader effects in software
+ * (SwiftShader); a lens animating on every frame there has taken the whole virtual device down
+ * in CI, and it adds nothing a person would ever see. The glass still gets its rim lighting.
+ */
+internal fun liquidLensEffectOrNull(opaque:Boolean=false):LiquidLensEffect? =
+    if(android.os.Build.VERSION.SDK_INT>=33&&!opaque&&!LiquidGlassKit.softwareRenderedDevice)runCatching{LiquidLensEffect()}.getOrNull() else null
 
 /**
  * iOS 27 lensing for a lens that moves inside a FIXED-size surface (Dock lens, slider and switch

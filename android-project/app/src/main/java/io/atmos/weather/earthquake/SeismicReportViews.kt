@@ -2,6 +2,7 @@ package io.atmos.weather.earthquake
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -32,6 +33,11 @@ import io.atmos.weather.ui.AppText as Text
 import io.atmos.weather.ui.GlassButton
 import io.atmos.weather.ui.GlassOutlinedButton
 import io.atmos.weather.ui.ThinnOpticalMaterial
+import io.atmos.weather.ui.glassTouchTracker
+import io.atmos.weather.ui.iosAppear
+import io.atmos.weather.ui.iosJellyPress
+import io.atmos.weather.ui.liquidGlassSurface
+import androidx.compose.ui.geometry.isSpecified
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -45,11 +51,18 @@ private val taipei=ZoneId.of("Asia/Taipei")
 internal fun reportTime(report:EarthquakeReport,pattern:String="MM/dd HH:mm")=report.origin.atZone(taipei).format(DateTimeFormatter.ofPattern(pattern))
 private fun gradeOf(raw:String?)=raw?.removeSuffix("級")?.trim()?.takeIf{it.isNotBlank()}
 
+/** White or near-black, whichever reads better on an intensity colour (WCAG contrast). */
+internal fun seismicInkOn(fill:Color):Color {
+    val l=fill.luminance()
+    val dark=Color(0xFF10201B)
+    return if((1.05f)/(l+.05f)>=(l+.05f)/(dark.luminance()+.05f))Color.White else dark
+}
+
 /** CWA intensity tile: the colour of the scale, the numeral on top (5−/5+ for 弱/強). */
 @Composable internal fun SeismicIntensityTile(raw:String?,size:Dp=48.dp,modifier:Modifier=Modifier) {
     val grade=gradeOf(raw)
     val fill=SeismicIntensityColors.color(grade)
-    val ink=if(fill.luminance()<.36f)Color.White else Color(0xFF10201B)
+    val ink=seismicInkOn(fill)
     Box(modifier.size(size).clip(RoundedCornerShape(size*.28f)).background(fill)
         .semantics{contentDescription=grade?.let{"震度 $it 級"}?:"震度未提供"},contentAlignment=Alignment.Center) {
         Text(SeismicDisplayFormat.symbol(grade),color=ink,fontWeight=FontWeight.Bold,
@@ -59,7 +72,7 @@ private fun gradeOf(raw:String?)=raw?.removeSuffix("級")?.trim()?.takeIf{it.isN
 
 @Composable internal fun SeismicReportRow(report:EarthquakeReport,onClick:()->Unit) {
     val palette=MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable(role=Role.Button,onClick=onClick)
+    Row(Modifier.fillMaxWidth().iosJellyPress().clip(RoundedCornerShape(18.dp)).clickable(role=Role.Button,onClick=onClick)
         .padding(horizontal=10.dp,vertical=10.dp).heightIn(min=56.dp),verticalAlignment=Alignment.CenterVertically) {
         SeismicIntensityTile(report.maxIntensity)
         Spacer(Modifier.width(12.dp))
@@ -81,6 +94,8 @@ private fun gradeOf(raw:String?)=raw?.removeSuffix("級")?.trim()?.takeIf{it.isN
     onRefresh:()->Unit,onOpen:(EarthquakeReport)->Unit) {
     val palette=MaterialTheme.colorScheme
     var filter by rememberSaveable{mutableStateOf("全部")}
+    // Reports refresh on their own each time the list is shown; no manual button needed.
+    androidx.compose.runtime.LaunchedEffect(Unit){onRefresh()}
     val filters=listOf("全部","顯著有感","小區域","震度 3 以上","規模 5 以上")
     val shown=reports.filter{r->when(filter){
         "顯著有感"->r.category!="小區域有感"
@@ -95,13 +110,23 @@ private fun gradeOf(raw:String?)=raw?.removeSuffix("級")?.trim()?.takeIf{it.isN
                 Text("地震報告",color=palette.onSurface,fontSize=22.sp,fontWeight=FontWeight.Bold)
                 Text(source,color=palette.onSurfaceVariant,fontSize=14.sp)
             }
-            io.atmos.weather.ui.GlassTextButton(onClick=onRefresh,enabled=!loading){Text(if(loading)"更新中" else "更新")}
+            if(loading)Text("更新中…",color=palette.onSurfaceVariant,fontSize=14.sp)
         }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        // iOS 27 filter capsules: clear glass with the shared sun-lit rim; the chosen one is tinted.
+        val opaque=io.atmos.weather.ui.rememberAppleReduceTransparency()
+        val light=io.atmos.weather.ui.GlassLight.current(follow=!opaque)
+        val dark=palette.background.red<.5f
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical=2.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             filters.forEach{f->
                 val on=f==filter
-                Text(f,color=if(on)palette.onPrimary else palette.onSurface,fontSize=14.sp,fontWeight=if(on)FontWeight.SemiBold else FontWeight.Normal,
-                    modifier=Modifier.clip(RoundedCornerShape(999.dp)).background(if(on)palette.primary else palette.onSurface.copy(alpha=.07f))
+                val touch=remember{io.atmos.weather.ui.GlassTouch()}
+                val fill by androidx.compose.animation.animateColorAsState(if(on)palette.primary else if(dark)Color.White.copy(alpha=.08f) else Color.White.copy(alpha=.70f),
+                    androidx.compose.animation.core.tween(220,easing=io.atmos.weather.ui.AppleMotion.fluid),label="篩選玻璃")
+                Text(f,color=if(on)palette.onPrimary else palette.onSurface,fontSize=14.sp,fontWeight=if(on)FontWeight.SemiBold else FontWeight.Medium,
+                    modifier=Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp))
+                        .background(fill)
+                        .glassTouchTracker(touch)
+                        .liquidGlassSurface(999.dp,{if(touch.point.isSpecified)1f else 0f},touch,dark,light)
                         .clickable(role=Role.Tab){filter=f}.padding(horizontal=14.dp,vertical=8.dp))
             }
         }
@@ -109,10 +134,14 @@ private fun gradeOf(raw:String?)=raw?.removeSuffix("級")?.trim()?.takeIf{it.isN
         if(loading&&reports.isEmpty())Text("正在取得最新地震報告…",color=palette.onSurfaceVariant,fontSize=14.sp)
         else if(shown.isEmpty())Text(if(reports.isEmpty())"尚未取得地震報告，請檢查網路連線" else "沒有符合「$filter」的地震",
             color=palette.onSurfaceVariant,fontSize=14.sp)
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(ThinnOpticalMaterial.surface)) {
-            shown.forEachIndexed{i,r->
-                if(i>0)Box(Modifier.fillMaxWidth().padding(start=70.dp).height(.5.dp).background(palette.onSurface.copy(alpha=.10f)))
-                SeismicReportRow(r){onOpen(r)}
+        // Changing the filter re-runs the waterfall entrance, so the new list visibly replaces the old.
+        key(filter) {
+            Column(Modifier.fillMaxWidth().animateContentSize(androidx.compose.animation.core.tween(260,easing=io.atmos.weather.ui.AppleMotion.fluid))
+                .clip(RoundedCornerShape(24.dp)).background(ThinnOpticalMaterial.surface)) {
+                shown.forEachIndexed{i,r->
+                    if(i>0)Box(Modifier.fillMaxWidth().padding(start=70.dp).height(.5.dp).background(palette.onSurface.copy(alpha=.10f)))
+                    Box(Modifier.iosAppear(i)){SeismicReportRow(r){onOpen(r)}}
+                }
             }
         }
         Text("震後報告為地震發生後的官方紀錄，並非預警。",color=palette.onSurfaceVariant,fontSize=14.sp)

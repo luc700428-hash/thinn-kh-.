@@ -67,8 +67,19 @@ import io.atmos.weather.ui.GlassTextButton
     StatusRow("系統通知",if(notifications&&!blocked)"已允許" else if(blocked)"部分速報分類已關閉" else "尚未允許",notifications&&!blocked){
         open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,ctx.packageName))
     }
-    if(fullScreen&&Build.VERSION.SDK_INT>=34)StatusRow("鎖定時全螢幕",if(fullscreen)"已允許" else "前往系統授權",fullscreen){
+    val overlay=remember(revision,meter){SeismicPopup.canOverlay(ctx)}
+    StatusRow("跳出速報視窗",if(overlay)"已允許 · 使用其他 App 時也會跳出" else "尚未允許 · 目前只會收到通知",overlay){
+        open(SeismicReadiness.overlayIntent(ctx))
+    }
+    if(Build.VERSION.SDK_INT>=34)StatusRow("鎖定時全螢幕",if(fullscreen)"已允許" else "前往系統授權",fullscreen){
         open(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,Uri.parse("package:${ctx.packageName}")))
+    }
+    if(SeismicReadiness.isXiaomi)StatusRow("背景彈出視窗（小米）","請在權限中開啟「背景彈出視窗」與「鎖定畫面顯示」",false){
+        open(SeismicReadiness.xiaomiIntent(ctx))
+    }
+    val unrestricted=remember(revision,meter){SeismicReadiness.batteryUnrestricted(ctx)}
+    StatusRow("電池最佳化",if(unrestricted)"不受限制" else "可能被省電中斷 · 建議設為不受限制",unrestricted){
+        open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
     }
     if(criticalEnabled){
         StatusRow("勿擾模式",if(!policy)"尚未授權" else if(bypass)"優先勿擾例外已設定" else "請確認緊急速報分類",policy&&bypass){
@@ -91,5 +102,28 @@ import io.atmos.weather.ui.GlassTextButton
         val testStatus=remember(revision,meter){SeismicCriticalTest.status(ctx)}
         if(testStatus.isNotBlank())Text(testStatus,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=8.dp))
     }
-    Text("App 使用中會直接顯示速報。鎖定或使用其他 App 時，顯示方式由系統控制。",color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=12.dp))
+    Text("App 使用中會直接顯示速報；允許「跳出速報視窗」後，使用其他 App 時也會直接跳出。",color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=12.dp))
+}
+
+/** The settings a warning needs to actually pop up, checked without Compose for the page banner. */
+internal object SeismicReadiness {
+    val isXiaomi:Boolean get()=Build.MANUFACTURER.orEmpty().lowercase().let{it.contains("xiaomi")||it.contains("redmi")||it.contains("poco")}
+    fun batteryUnrestricted(ctx:Context)=runCatching{(ctx.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(ctx.packageName)}.getOrDefault(true)
+    fun overlayIntent(ctx:Context)=Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:${ctx.packageName}"))
+    fun xiaomiIntent(ctx:Context):Intent {
+        val miui=Intent("miui.intent.action.APP_PERM_EDITOR").setClassName("com.miui.securitycenter","com.miui.permcenter.permissions.PermissionsEditorActivity")
+            .putExtra("extra_pkgname",ctx.packageName)
+        return if(miui.resolveActivity(ctx.packageManager)!=null)miui
+            else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${ctx.packageName}"))
+    }
+    /** Plain-language names of what is still missing, most important first. */
+    fun missing(ctx:Context):List<String> {
+        val nm=ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        return buildList {
+            if(!io.atmos.weather.permission.PermissionGuide.canNotify(ctx))add("系統通知")
+            if(!SeismicPopup.canOverlay(ctx))add("跳出速報視窗")
+            if(Build.VERSION.SDK_INT>=34&&!runCatching{nm.canUseFullScreenIntent()}.getOrDefault(false))add("鎖定時全螢幕")
+            if(!batteryUnrestricted(ctx))add("電池最佳化")
+        }
+    }
 }

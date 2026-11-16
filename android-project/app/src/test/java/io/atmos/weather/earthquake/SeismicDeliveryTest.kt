@@ -97,6 +97,8 @@ class SeismicDeliveryTest {
         assertNull(SeismicAlertDelivery.resolve(ctx,intent.getStringExtra("ticket")))
     }
     @Test fun notificationWithoutFullscreenGrantRetainsUsableContentIntent(){
+        // Full-screen warnings are on by default; this checks the path after a user turns them off.
+        ctx.getSharedPreferences("thinn_seismic_v15",0).edit().putBoolean("allow_seismic_full_screen",false).commit()
         assertTrue(SeismicAlertNotifier.deliver(ctx,quake(),SeismicAlertPolicy.Scenario.EEW_FIRST))
         val note=shadowOf(ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).getNotification(29200)
         assertNull(note.fullScreenIntent);assertNotNull(note.contentIntent)

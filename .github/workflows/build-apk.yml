@@ -110,6 +110,26 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Verify scroll, glass clipping and settings on Android
+        id: ui_first
+        continue-on-error: true
+        timeout-minutes: 12
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          emulator-boot-timeout: 120
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 2048M
+          disk-size: 4096M
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
+          script: bash android-project/tools/run_rendering_regression.sh
+      # The SwiftShader emulator occasionally disappears mid-run ("device 'emulator-5554' not found").
+      # One fresh emulator retries the whole suite; a real UI regression fails both runs.
+      - name: Retry Android UI regression on a fresh emulator
+        if: steps.ui_first.outcome == 'failure'
         timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:

@@ -16,6 +16,8 @@
     <!-- Alarm feature only; Android can revoke exact alarm and full-screen notification grants. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Opens the earthquake warning window over other apps (Settings › 顯示在其他應用程式上層). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Wi-Fi tablets can use network location or choose a city without a GPS chip. -->

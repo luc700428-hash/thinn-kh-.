@@ -35,7 +35,7 @@ class SeismicForegroundRenderingTest:WeatherInformationRenderingFixture(){
                 val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
                 for(label in listOf("緊急地震速報","3 級","M 6.2","18 km")){
                     val node=nodes(sheet).filter{text(it,label)}.minBy{it.boundsInRoot.top};assertFalse("Clipped $label at $scale",layout(node).hasVisualOverflow)
-                    contrast(node,if(label in listOf("3 級","M 6.2","18 km"))p.surface else p.background)
+                    contrast(node,if(label=="3 級")io.atmos.weather.earthquake.SeismicIntensityColors.color("3") else if(label in listOf("M 6.2","18 km"))p.surface else p.background)
                 }
                 assertTrue(nodes(sheet).any{text(it,"本機估算抵達")})
                 assertTrue(nodes(sheet).any{text(it,"花蓮縣近海")})

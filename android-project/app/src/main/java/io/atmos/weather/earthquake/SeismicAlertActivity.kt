@@ -23,6 +23,8 @@ class SeismicAlertActivity:ComponentActivity() {
             ticket?.let{t->SeismicWarningOverlay(t.incident,false,SeismicUserLocation.current(this)?.name,{close(t)})}
         }}
     }
+    override fun onResume(){super.onResume();SeismicPopup.shownKey=current?.key;SeismicPopup.dismissCard()}
+    override fun onPause(){super.onPause();if(SeismicPopup.shownKey==current?.key)SeismicPopup.shownKey=null}
     override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);load(intent)}
     private fun load(intent:Intent):Boolean {
         val t=SeismicAlertDelivery.resolve(this,intent.getStringExtra("ticket"))

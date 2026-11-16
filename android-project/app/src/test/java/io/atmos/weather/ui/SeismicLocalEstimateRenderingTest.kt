@@ -63,7 +63,7 @@ class SeismicLocalEstimateRenderingTest:WeatherInformationRenderingFixture() {
         render(true,1.5f,"high-pga-host",{SeismicWarningOverlay(strong,false,"嘉義市",{})}){_,p->
             val sheet=ShadowDialog.getLatestDialog().window!!.decorView;pump(sheet).recycle()
             val range=nodes(sheet).single{text(it,"4 級以上")}
-            assertTrue(range.boundsInRoot.height>0);assertFalse(layout(range).hasVisualOverflow);contrast(range,p.surface)
+            assertTrue(range.boundsInRoot.height>0);assertFalse(layout(range).hasVisualOverflow);contrast(range,io.atmos.weather.earthquake.SeismicIntensityColors.color("4"))
             assertTrue(nodes(sheet).any{text(it,"本機預估震度")})
             save(sheet,"high-pga-range-150")
         }
