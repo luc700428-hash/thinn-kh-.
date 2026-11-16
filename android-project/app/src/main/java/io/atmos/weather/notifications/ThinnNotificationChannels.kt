@@ -17,20 +17,38 @@ import io.atmos.weather.MainActivity
  */
 object ThinnNotificationChannels {
     const val PREF_TONE = "notification_tone_id"
-    const val DEFAULT_TONE = "clear_bell"
+    /** New installs (and anyone who never picked) get the r18 clear chime. */
+    const val DEFAULT_TONE = "bright_1"
+    /** The V11.2 default keeps its original channel IDs so user channel tweaks survive. */
+    private const val LEGACY_TONE = "clear_bell"
 
-    enum class Type { WARNINGS, UPDATES, DEMO, EARTHQUAKES, BRIEFINGS }
-    data class Tone(val id: String, val title: String, val description: String, val resource: String)
+    enum class Type { WARNINGS, UPDATES, DEMO, EARTHQUAKES, BRIEFINGS, SMART, COMMUTE }
+    data class Tone(val id: String, val title: String, val description: String, val resource: String, val style: String = "classic")
+
+    /** Style tabs in the picker. */
+    val styles = listOf("bright" to "清亮", "warm" to "溫暖", "modern" to "電子", "classic" to "經典")
 
     val tones = listOf(
-        Tone("clear_bell", "清鈴", "兩聲清亮，乾淨俐落", "thinn_notify_clear_bell"),
-        Tone("crystal", "水晶", "單聲通透，極簡", "thinn_notify_crystal"),
-        Tone("morning", "晨光", "輕巧雙聲，溫暖清晰", "thinn_notify_morning"),
-        Tone("raindrop", "雨滴", "兩顆晶亮的水滴聲", "thinn_notify_raindrop"),
-        Tone("starlight", "星點", "短促三連，細緻閃亮", "thinn_notify_starlight"),
-        Tone("breeze", "微風", "溫柔上行，安靜耐聽", "thinn_notify_breeze"),
-        Tone("clear_sky", "晴空", "明快雙聲，清爽有朝氣", "thinn_notify_clear_sky"),
-        Tone("ripple", "漣漪", "低高交錯，清透水感", "thinn_notify_ripple")
+        Tone("bright_1", "清鈴", "鐘琴雙音，乾淨俐落", "thinn_tone_bright_1", "bright"),
+        Tone("bright_2", "水滴", "馬林巴三連，晶亮輕快", "thinn_tone_bright_2", "bright"),
+        Tone("bright_3", "晨光", "水晶上行三音", "thinn_tone_bright_3", "bright"),
+        Tone("bright_4", "漣漪", "高低交錯的鐘琴", "thinn_tone_bright_4", "bright"),
+        Tone("warm_1", "木鈴", "拇指琴雙音，溫潤", "thinn_tone_warm_1", "warm"),
+        Tone("warm_2", "琴音", "柔和鋼琴三和弦", "thinn_tone_warm_2", "warm"),
+        Tone("warm_3", "撥弦", "尼龍吉他琶音", "thinn_tone_warm_3", "warm"),
+        Tone("warm_4", "微風", "拇指琴下行，安靜耐聽", "thinn_tone_warm_4", "warm"),
+        Tone("modern_1", "光點", "FM 鐘音雙聲", "thinn_tone_modern_1", "modern"),
+        Tone("modern_2", "脈衝", "俐落電子三連", "thinn_tone_modern_2", "modern"),
+        Tone("modern_3", "霓虹", "明亮電子跳音", "thinn_tone_modern_3", "modern"),
+        Tone("modern_4", "星環", "上行電子和弦", "thinn_tone_modern_4", "modern"),
+        Tone("clear_bell", "清鈴（經典）", "兩聲清亮，乾淨俐落", "thinn_notify_clear_bell"),
+        Tone("crystal", "水晶（經典）", "單聲通透，極簡", "thinn_notify_crystal"),
+        Tone("morning", "晨光（經典）", "輕巧雙聲，溫暖清晰", "thinn_notify_morning"),
+        Tone("raindrop", "雨滴（經典）", "兩顆晶亮的水滴聲", "thinn_notify_raindrop"),
+        Tone("starlight", "星點（經典）", "短促三連，細緻閃亮", "thinn_notify_starlight"),
+        Tone("breeze", "微風（經典）", "溫柔上行，安靜耐聽", "thinn_notify_breeze"),
+        Tone("clear_sky", "晴空（經典）", "明快雙聲，清爽有朝氣", "thinn_notify_clear_sky"),
+        Tone("ripple", "漣漪（經典）", "低高交錯，清透水感", "thinn_notify_ripple")
     )
 
     fun selectedToneId(context: Context): String {
@@ -46,12 +64,13 @@ object ThinnNotificationChannels {
     fun channelId(context: Context, type: Type): String {
         val id = selectedToneId(context)
         // Preserve V11.2 channels, including any Android-level sound/mute preferences.
-        if (id == DEFAULT_TONE) return when (type) {
-            Type.WARNINGS -> "thinn_cwa_clear_bell_v2"
-            Type.UPDATES -> "thinn_release_clear_bell_v2"
-            Type.DEMO -> "thinn_test_clear_bell_v2"
-            Type.EARTHQUAKES -> "thinn_cwa_earthquake_report_clear_bell_v15"
-            Type.BRIEFINGS -> "thinn_briefing_clear_bell_v154"
+        if (id == LEGACY_TONE) when (type) {
+            Type.WARNINGS -> return "thinn_cwa_clear_bell_v2"
+            Type.UPDATES -> return "thinn_release_clear_bell_v2"
+            Type.DEMO -> return "thinn_test_clear_bell_v2"
+            Type.EARTHQUAKES -> return "thinn_cwa_earthquake_report_clear_bell_v15"
+            Type.BRIEFINGS -> return "thinn_briefing_clear_bell_v154"
+            else -> {}
         }
         return "thinn_${type.name.lowercase()}_tone_v3_$id"
     }
@@ -81,7 +100,9 @@ object ThinnNotificationChannels {
             Triple(Type.UPDATES, "版本更新", NotificationManager.IMPORTANCE_DEFAULT),
             Triple(Type.DEMO, "通知測試", NotificationManager.IMPORTANCE_DEFAULT),
             Triple(Type.EARTHQUAKES, "地震報告（非預警）", NotificationManager.IMPORTANCE_DEFAULT),
-            Triple(Type.BRIEFINGS, "定時智慧天氣提醒", NotificationManager.IMPORTANCE_DEFAULT)
+            Triple(Type.BRIEFINGS, "每日天氣早晚報", NotificationManager.IMPORTANCE_DEFAULT),
+            Triple(Type.SMART, "智慧天氣提醒", NotificationManager.IMPORTANCE_DEFAULT),
+            Triple(Type.COMMUTE, "通勤天氣", NotificationManager.IMPORTANCE_DEFAULT)
         ).forEach { (type, name, importance) ->
             val id = channelId(context, type)
             if (manager.getNotificationChannel(id) == null) {

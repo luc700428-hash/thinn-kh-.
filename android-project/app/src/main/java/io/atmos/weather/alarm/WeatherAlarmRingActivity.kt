@@ -38,6 +38,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
 import io.atmos.weather.ui.thinnSpecularEdge
 import io.atmos.weather.ui.AppleMotion
+import io.atmos.weather.ui.iosAppear
+import io.atmos.weather.ui.glassTouchTracker
+import io.atmos.weather.ui.liquidGlassSurface
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -102,13 +105,15 @@ class WeatherAlarmRingActivity : ComponentActivity() {
             val timeText=String.format(Locale.TAIWAN,"%02d:%02d",displayHour,clock.minute)
             // AndroidX handles both gesture navigation and physical Back keys.
             androidx.activity.compose.BackHandler(enabled=true) { /* Keep explicit stop/snooze controls. */ }
+            val reading = remember { WeatherAlarmSpeechCache.load(this@WeatherAlarmRingActivity) }
             AlarmFullScreen(
                 timeText = timeText,
                 label = info.title.ifBlank {"鬧鐘"},
                 allowSnooze = info.snooze,
                 reduceMotion = reduceMotion,
                 onSnooze = { close(true) },
-                onStop = { close(false) }
+                onStop = { close(false) },
+                weatherLine = alarmWeatherLine(reading)
             )
         }
     }
@@ -136,13 +141,32 @@ internal fun AlarmFullScreen(
     allowSnooze: Boolean,
     reduceMotion: Boolean,
     onSnooze: () -> Unit,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    weatherLine: String? = null
 ) {
     io.atmos.weather.ui.DevicePostureProvider { io.atmos.weather.ui.FoldSafeContent {
     val haptics = LocalHapticFeedback.current
+    // iOS 27 entrance: the clock settles in on a soft spring, the controls rise after it.
+    val enter = remember { androidx.compose.animation.core.Animatable(if (reduceMotion) 1f else 0f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, spring(dampingRatio = .74f, stiffness = 170f)) }
+    // Ambient light breathing behind the clock, like the lock-screen glow of a ringing alarm.
+    val breath = if (reduceMotion) .5f else {
+        val b by rememberInfiniteTransition(label = "鬧鐘光暈").animateFloat(0f, 1f,
+            infiniteRepeatable(tween(3600, easing = AppleMotion.fluid), androidx.compose.animation.core.RepeatMode.Reverse), label = "呼吸")
+        b
+    }
     BoxWithConstraints(
         Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()
     ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height * .30f)
+            val radius = size.minDimension * (.70f + .08f * breath)
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFFF9F0A).copy(alpha = .10f + .10f * breath * enter.value),
+                Color(0xFFFF6A00).copy(alpha = .04f * enter.value), Color.Transparent), center, radius), radius, center)
+            val low = Offset(size.width / 2f, size.height * 1.05f)
+            drawCircle(Brush.radialGradient(listOf(Color(0xFF5AC8FA).copy(alpha = .06f + .04f * (1f - breath)), Color.Transparent), low, size.width),
+                size.width, low)
+        }
         val compact = maxHeight < 620.dp
         val shortWide = maxWidth >= 600.dp && maxHeight < 420.dp
         val titleTop = maxHeight * (if (compact) .12f else .20f)
@@ -162,7 +186,12 @@ internal fun AlarmFullScreen(
         // Pure-black background and uncluttered clock face, matching the reference hierarchy.
         Column(
             (if(shortWide)Modifier.align(Alignment.CenterStart).fillMaxWidth(.44f).padding(horizontal=16.dp)
-                else Modifier.align(Alignment.TopCenter).widthIn(max=600.dp).fillMaxWidth(.90f).offset(y = titleTop)),
+                else Modifier.align(Alignment.TopCenter).widthIn(max=600.dp).fillMaxWidth(.90f).offset(y = titleTop))
+                .graphicsLayer {
+                    val e = enter.value
+                    alpha = e.coerceIn(0f, 1f); val sc = .9f + .1f * e; scaleX = sc; scaleY = sc
+                    translationY = (1f - e) * 28.dp.toPx()
+                },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -182,6 +211,11 @@ internal fun AlarmFullScreen(
                 maxLines = 1,
                 textAlign = TextAlign.Center
             )
+            if (weatherLine != null) {
+                Spacer(Modifier.height(6.dp))
+                io.atmos.weather.ui.AppText(weatherLine, fontSize = labelSize * .85f, color = Color(0xFFD1D1D6),
+                    maxLines = 2, textAlign = TextAlign.Center)
+            }
         }
 
         Column(
@@ -190,22 +224,28 @@ internal fun AlarmFullScreen(
             verticalArrangement = Arrangement.spacedBy(controlsGap),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val glassLight = io.atmos.weather.ui.GlassLight.current(follow = true)
             if (allowSnooze) {
                 val presses = remember { MutableInteractionSource() }
                 val pressed by presses.collectIsPressedAsState()
+                val touch = remember { io.atmos.weather.ui.GlassTouch() }
+                // iOS interactive glass: squash on contact, rebound with a little overshoot on release.
                 val scale by animateFloatAsState(
-                    targetValue = if (pressed) .96f else 1f,
-                    animationSpec = if (reduceMotion) snap() else if(pressed) tween(90) else tween(350,easing=AppleMotion.snap),
+                    targetValue = if (pressed) .955f else 1f,
+                    animationSpec = if (reduceMotion) snap() else if (pressed) spring(.9f, 1400f) else spring(.52f, 520f),
                     label = "snooze press"
                 )
+                val glow by animateFloatAsState(if (pressed && !reduceMotion) 1f else 0f,
+                    if (reduceMotion) snap() else spring(.7f, 600f), label = "snooze glow")
                 Box(
-                    Modifier.fillMaxWidth().height(buttonHeight)
-                        .graphicsLayer { scaleX = scale; scaleY = scale;alpha=if(pressed).92f else 1f }
+                    Modifier.fillMaxWidth().height(buttonHeight).iosAppear(1)
+                        .graphicsLayer { scaleX = scale; scaleY = scale }
                         .clip(RoundedCornerShape(9999.dp))
                         .background(Brush.verticalGradient(listOf(
                             Color(0xFFFF9500), Color(0xFFFF9500))))
                         .border(.7.dp, Color(0xFFFFC876).copy(alpha = .62f), RoundedCornerShape(9999.dp))
-                        .thinnSpecularEdge(trackHeight/2)
+                        .glassTouchTracker(touch)
+                        .liquidGlassSurface(9999.dp, { glow }, touch, true, glassLight)
                         .clickable(interactionSource = presses, indication = null) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSnooze()
@@ -225,12 +265,17 @@ internal fun AlarmFullScreen(
             var fingerDown by remember { mutableStateOf(false) }
             var thresholdReached by remember { mutableStateOf(false) }
             // Finger movement is unfiltered; the spring runs only when an incomplete drag is released.
+            // Released early, the thumb springs home with a small iOS-style bounce.
             val offset by animateFloatAsState(
                 targetValue = dragPx,
                 animationSpec = if (fingerDown || reduceMotion) snap()
-                    else tween(380,easing=AppleMotion.snap),
+                    else spring(dampingRatio = .58f, stiffness = 360f),
                 label = "stop thumb return"
             )
+            // The thumb stretches a little along the track while it is moving fast.
+            var lastDrag by remember { mutableFloatStateOf(0f) }
+            val stretch by animateFloatAsState(if (fingerDown && !reduceMotion) (kotlin.math.abs(lastDrag) / 60f).coerceIn(0f, .18f) else 0f,
+                if (reduceMotion) snap() else spring(.6f, 700f), label = "thumb stretch")
             val latestOffset by rememberUpdatedState(offset)
             val progress = (offset / maxDrag).coerceIn(0f, 1f)
             val shimmer=if(reduceMotion) .5f else {
@@ -239,7 +284,7 @@ internal fun AlarmFullScreen(
                 phase
             }
             Box(
-                Modifier.fillMaxWidth().height(trackHeight)
+                Modifier.fillMaxWidth().height(trackHeight).iosAppear(2)
                     .onSizeChanged { trackWidth = it.width }
                     .clip(RoundedCornerShape(9999.dp))
                     .background(brandColor(0xFF1B1D1C))
@@ -253,6 +298,13 @@ internal fun AlarmFullScreen(
                     },
                 contentAlignment = Alignment.Center
             ) {
+                // Light fills the track behind the thumb as it travels.
+                Canvas(Modifier.matchParentSize()) {
+                    val reach = 6.dp.toPx() + offset + thumbPx / 2f
+                    if (progress > .001f) drawRoundRect(Brush.horizontalGradient(listOf(Color.White.copy(alpha = .02f),
+                        Color.White.copy(alpha = .10f + .16f * progress)), 0f, reach),
+                        size = Size(reach + thumbPx / 2f, size.height), cornerRadius = CornerRadius(size.height / 2f))
+                }
                 io.atmos.weather.ui.AppText(
                     "滑動來停止",
                     fontSize = 20.sp,
@@ -266,6 +318,8 @@ internal fun AlarmFullScreen(
                 Box(
                     Modifier.align(Alignment.CenterStart).padding(6.dp)
                         .offset { IntOffset(offset.roundToInt(), 0) }
+                        .graphicsLayer { scaleX = 1f + stretch; scaleY = 1f - stretch * .35f
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, .5f) }
                         .size(thumbSize)
                         .clip(CircleShape)
                         .background(Brush.verticalGradient(listOf(
@@ -281,6 +335,7 @@ internal fun AlarmFullScreen(
                             },
                             onHorizontalDrag = { change, amount ->
                                 change.consume()
+                                lastDrag = amount
                                 dragPx = (dragPx + amount).coerceIn(0f, maxDrag)
                                 if (!thresholdReached && dragPx >= maxDrag * .75f) {
                                     thresholdReached = true
@@ -290,6 +345,7 @@ internal fun AlarmFullScreen(
                                 }
                             },
                             onDragEnd = {
+                                lastDrag = 0f
                                 fingerDown = false
                                 if (!thresholdReached) dragPx = 0f
                             },
@@ -336,4 +392,16 @@ private fun AlarmOutlineIcon(modifier:Modifier=Modifier.size(23.dp)) {
         drawLine(tint, Offset(u * .69f, u * .81f), Offset(u * .77f, u * .96f),
             strokeWidth = u * .075f, cap = StrokeCap.Round)
     }
+}
+
+/** One calm line of today's weather under the alarm clock, only from fresh cached data. */
+internal fun alarmWeatherLine(reading: AlarmWeatherReading?, now: Long = System.currentTimeMillis()): String? {
+    val r = reading?.takeIf { it.fetchedEpochMs > 0 && now - it.fetchedEpochMs in 0L..WeatherAlarmNarration.MAX_WEATHER_AGE_MS } ?: return null
+    val condition = when (r.condition) {
+        "CLEAR", "SUNNY", "MOSTLY_CLEAR" -> "晴"; "PARTLY_CLOUDY", "FAIR" -> "多雲時晴"; "CLOUDY" -> "多雲"
+        "RAIN", "DRIZZLE", "HEAVY_RAIN" -> "下雨"; "THUNDERSTORM" -> "雷雨"; "FOG" -> "有霧"; "SNOW" -> "下雪"; else -> null
+    }
+    val range = if (r.lowC != null && r.highC != null) " · ${r.lowC.roundToInt()}–${r.highC.roundToInt()}°" else ""
+    val rain = r.hours.mapNotNull { it.rainChancePct }.maxOrNull()?.takeIf { it >= 40 }?.let { " · 記得帶傘" }.orEmpty()
+    return listOfNotNull(r.city.takeIf { it.isNotBlank() }, "${r.temperatureC.roundToInt()}°" + (condition?.let { " $it" } ?: "")).joinToString(" · ") + range + rain
 }

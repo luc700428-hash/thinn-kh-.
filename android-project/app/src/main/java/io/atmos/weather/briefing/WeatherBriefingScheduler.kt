@@ -34,6 +34,8 @@ object WeatherBriefingScheduler {
                 .setInputData(input).build()
             manager.enqueueUniqueWork(name(id),ExistingWorkPolicy.REPLACE,req)
         }
+        // r18 morning/evening briefing, smart alerts and commute ride on the same triggers.
+        io.atmos.weather.comfort.ComfortScheduler.reschedule(app)
     }
     /** Called only from the currently running worker to avoid self-cancelling while processing. */
     fun scheduleNext(ctx:Context,slot:WeatherBriefingSlot) {

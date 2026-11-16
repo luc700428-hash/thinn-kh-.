@@ -31,7 +31,7 @@ object SeismicContinuousWarning {
         runCatching {
             val attributes=AudioAttributes.Builder().setUsage(route.usage)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
-            player=MediaPlayer.create(ctx.applicationContext,scenario.sound,attributes,AudioManager.AUDIO_SESSION_ID_GENERATE)?.apply {
+            player=MediaPlayer.create(ctx.applicationContext,SeismicAlertPolicy.sound(ctx,scenario),attributes,AudioManager.AUDIO_SESSION_ID_GENERATE)?.apply {
                 isLooping=true
                 setVolume(.45f,.45f)
                 start()

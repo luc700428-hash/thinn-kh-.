@@ -36,17 +36,19 @@ fun ThinnAtmospherePanel(
     val shape = RoundedCornerShape(ThinnDesignTokens.radiusCard)
     val cards=LocalWeatherCardPalette.current
     val glow=cards?.accent?:accent
+    val light=GlassLight.current(follow=!reduceTransparency)
     Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnBackdrop(reduceTransparency,ThinnDesignTokens.radiusCard)
         .background(cards?.brush ?: if(reduceTransparency) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
         .border(1.dp, ThinnOpticalMaterial.rim, shape)) {
         if(!reduceTransparency) Canvas(Modifier.matchParentSize()) {
-            val center=Offset(size.width * .84f, size.height * .04f)
+            // The soft glow sits on the side the sun (or moon) is shining from.
+            val center=Offset(size.width*(.5f+.36f*light.x), size.height*(.04f+.1f*(1f+light.y)))
             val radius=size.width * .76f
             drawCircle(Brush.radialGradient(listOf(glow.copy(alpha=.11f),glow.copy(alpha=.035f),Color.Transparent),
                 center=center,radius=radius),radius=radius,center=center)
             for(i in 0..2) {
                 drawCircle(Color.White.copy(alpha=.065f-i*.014f),
-                    radius=size.width*(.27f+i*.12f),center=Offset(size.width*.82f,size.height*.15f),
+                    radius=size.width*(.27f+i*.12f),center=Offset(center.x,size.height*.15f),
                     style=Stroke(.8.dp.toPx()))
             }
         }

@@ -1,0 +1,188 @@
+{
+ "rings": {
+  "thinn_ring_bright_1": {
+   "title": "晨露",
+   "bytes": 148936,
+   "sha256": "9e6eda074d3dea9b8db8840d13945c43eb2dfcda47037e4c38b70e9a37d896b4"
+  },
+  "thinn_ring_bright_2": {
+   "title": "晴光",
+   "bytes": 107481,
+   "sha256": "2436d4a159f81a9e3366704f43a5c7786c04d54cfb85e6af010331b9148e0a2f"
+  },
+  "thinn_ring_bright_3": {
+   "title": "水晶",
+   "bytes": 96173,
+   "sha256": "f4ac1fa7e07a17ced8ab19a60f22d333a5097d72e7580defb7f4b828973ad3a5"
+  },
+  "thinn_ring_bright_4": {
+   "title": "雷達",
+   "bytes": 138854,
+   "sha256": "7569ac979fe720d5b6054284bdb02b702e921259bca8733374585ffb0f4f2d7a"
+  },
+  "thinn_ring_warm_1": {
+   "title": "日出鋼琴",
+   "bytes": 143796,
+   "sha256": "e3330d64c13d5eb74ac86afb95d26f22e314cd11163f01a6e9aa1a76087df222"
+  },
+  "thinn_ring_warm_2": {
+   "title": "木屋拇指琴",
+   "bytes": 164497,
+   "sha256": "046ff0cd3f7226eb522ca078726595ad2f34cb49771b6fee0b35c5aeb12e933d"
+  },
+  "thinn_ring_warm_3": {
+   "title": "午後吉他",
+   "bytes": 184806,
+   "sha256": "3b69ead587624c1bda612cd569f4aa8e42cf71d0ffdceb42c089c9430d12245f"
+  },
+  "thinn_ring_warm_4": {
+   "title": "森林晨光",
+   "bytes": 171009,
+   "sha256": "88238b23aa2f94bd2c4ed143223496df4fabe75b5ae0070a0f3d68b4193e56af"
+  },
+  "thinn_ring_modern_1": {
+   "title": "極光",
+   "bytes": 149624,
+   "sha256": "16493b41f4b4ee1c46bf9e8d4c7e2bf90e8a8cfc32fc2f62c9d5ff4bc1929fad"
+  },
+  "thinn_ring_modern_2": {
+   "title": "霓虹城市",
+   "bytes": 159060,
+   "sha256": "c1385b1db5a33078f436cf3a7dff05be8563a619d5f7b4992cc8abacaab3dc94"
+  },
+  "thinn_ring_modern_3": {
+   "title": "脈衝",
+   "bytes": 141895,
+   "sha256": "c67eca054c6146a0323620ceb250b3bd3fa6107286b13592bb4c9e8d8622cdd2"
+  },
+  "thinn_ring_modern_4": {
+   "title": "星際",
+   "bytes": 169114,
+   "sha256": "ac686c503ec7a7ecc1f5c62a473e732cd0a91ce0d65eea861b39b39fd7fd86f4"
+  }
+ },
+ "tones": {
+  "thinn_tone_bright_1": {
+   "title": "清鈴",
+   "bytes": 16045,
+   "sha256": "27484bdfbf01f609b5747575c15e78daf0456d3f8f709753bb99201d3ccd2b1c"
+  },
+  "thinn_tone_bright_2": {
+   "title": "水滴",
+   "bytes": 15350,
+   "sha256": "0df91ddb51d6cbc90e6e31c0eb1f00fb85ea934f288dc1ef01304ffc0359b913"
+  },
+  "thinn_tone_bright_3": {
+   "title": "晨光",
+   "bytes": 16481,
+   "sha256": "ffd4f53f30ebc5b79d1bb89f92ff526ae863faa7f897b9c5d0b1f5e29a7c0cdd"
+  },
+  "thinn_tone_bright_4": {
+   "title": "漣漪",
+   "bytes": 16120,
+   "sha256": "5349a9a630fa28d22c35a164de6e715f8a70dcd65a2c83531080d70f4febc9c0"
+  },
+  "thinn_tone_warm_1": {
+   "title": "木鈴",
+   "bytes": 12552,
+   "sha256": "4debd3e0350965fa93dde3fefb755e59256aacb20cd8d296467a85683fbd93a0"
+  },
+  "thinn_tone_warm_2": {
+   "title": "琴音",
+   "bytes": 14846,
+   "sha256": "668aba7a4a5ef9ef56a9249910a33a3bbaf5111cc2c34cd5f65ac644e80b663b"
+  },
+  "thinn_tone_warm_3": {
+   "title": "撥弦",
+   "bytes": 19874,
+   "sha256": "27174ea331c3aff3e0d14b34962649028609bcb1942ef591da718e06e4a6364f"
+  },
+  "thinn_tone_warm_4": {
+   "title": "微風",
+   "bytes": 12509,
+   "sha256": "73c66c602640e811a36034239e2a4bc96bccd2d9a73e9dda124d4db74b60380e"
+  },
+  "thinn_tone_modern_1": {
+   "title": "光點",
+   "bytes": 18150,
+   "sha256": "ede3f8c93c23c0e5910c98956e03b39a499205dd40564942eddec4fde8f06ca1"
+  },
+  "thinn_tone_modern_2": {
+   "title": "脈衝",
+   "bytes": 19188,
+   "sha256": "1371fd485d4438089b3b572fdca7e058c7f169d3a3a16a163d1ab2684efdf416"
+  },
+  "thinn_tone_modern_3": {
+   "title": "霓虹",
+   "bytes": 20839,
+   "sha256": "065e1c988f0318ae09f8301968bdb9d5204a4140d65dd80e518494ceb2db1f12"
+  },
+  "thinn_tone_modern_4": {
+   "title": "星環",
+   "bytes": 20812,
+   "sha256": "f3d41291a8b7b7358fe0b28852ebf3a67080802e3b53bb9fbf576fed389853a2"
+  }
+ },
+ "quake": {
+  "thinn_quake_bright_first": {
+   "title": "first",
+   "bytes": 30970,
+   "sha256": "4dd74bf3473a38a8228c0043fcf62c94b663c57cc828343d4b33f966df5af922"
+  },
+  "thinn_quake_bright_urgent": {
+   "title": "urgent",
+   "bytes": 38212,
+   "sha256": "e61cb9cc52cd4887ba28939bdfff85e06d7881be481978385df7b56d59d51954"
+  },
+  "thinn_quake_bright_update": {
+   "title": "update",
+   "bytes": 18009,
+   "sha256": "6653107a7901105934a63195c3f9d46dd3b362140a81e09c96122f20216acc08"
+  },
+  "thinn_quake_bright_report": {
+   "title": "report",
+   "bytes": 18852,
+   "sha256": "80cafeeb7b166211890b661dd829e3090ad60b1eb685ee3a02d0c7061f01f013"
+  },
+  "thinn_quake_warm_first": {
+   "title": "first",
+   "bytes": 28649,
+   "sha256": "324b259d6a508e7f4365a8d330338900d9279c8501216a1b99dfc0f8cae22b2e"
+  },
+  "thinn_quake_warm_urgent": {
+   "title": "urgent",
+   "bytes": 36271,
+   "sha256": "fed11a083944864746942e88eb9e18b17d19949fe67d655e89ae457b4ba207e3"
+  },
+  "thinn_quake_warm_update": {
+   "title": "update",
+   "bytes": 16543,
+   "sha256": "83ec48f00d9cc3c8fcdaf84d5bcca9acfb00a656699b0d044e75500d2d98c9c5"
+  },
+  "thinn_quake_warm_report": {
+   "title": "report",
+   "bytes": 17663,
+   "sha256": "33f249bd0bc480d44809284c7679c2c1cd1865c7e0f9334dc27545bb2f98636a"
+  },
+  "thinn_quake_modern_first": {
+   "title": "first",
+   "bytes": 35725,
+   "sha256": "1a95dfce223cb0fe441042b187175095c4d4ccd11728e3e1e02b139195965030"
+  },
+  "thinn_quake_modern_urgent": {
+   "title": "urgent",
+   "bytes": 40684,
+   "sha256": "e462a50b078c35106594b211793aae04b75dba7b29a611f5ea3ef81eeb00a063"
+  },
+  "thinn_quake_modern_update": {
+   "title": "update",
+   "bytes": 19762,
+   "sha256": "f186ff7c24ae4f32b6c2e77980f84321a3355164653b2a9ec946ec3329b1f90d"
+  },
+  "thinn_quake_modern_report": {
+   "title": "report",
+   "bytes": 22253,
+   "sha256": "47bb034c04f2015649d82912d171950a1440a45936a061488016128786567a05"
+  }
+ }
+}

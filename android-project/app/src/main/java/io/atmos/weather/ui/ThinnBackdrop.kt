@@ -56,9 +56,10 @@ private val LocalBackdropAncestors=staticCompositionLocalOf<Set<ThinnBackdrop>> 
 @Composable fun ThinnBackdropCapture(source:ThinnBackdrop,modifier:Modifier=Modifier,
     enabled:Boolean=true,content:@Composable BoxScope.()->Unit) {
     val ancestors=LocalBackdropAncestors.current
-    val protectedAncestors=remember(ancestors,source,enabled){if(enabled)ancestors+source else ancestors}
+    val capture=enabled&&!LiquidGlassKit.softwareRenderedDevice
+    val protectedAncestors=remember(ancestors,source,capture){if(capture)ancestors+source else ancestors}
     CompositionLocalProvider(LocalBackdropAncestors provides protectedAncestors) {
-        Box(if(enabled)modifier.thinnBackdropSource(source) else modifier,content=content)
+        Box(if(capture)modifier.thinnBackdropSource(source) else modifier,content=content)
     }
 }
 
@@ -97,7 +98,10 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
 @Composable
 fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f,frostScale:Float=1f,refract:Boolean=true,materialDark:Boolean?=null):Modifier {
     val source=LocalThinnBackdrop.current
-    if(reduceTransparency || source==null || source in LocalBackdropAncestors.current) return this
+    // Emulators render in software (SwiftShader): re-recording a sampled layer for every glass
+    // piece on every frame exhausts its GPU buffers and takes the virtual device down. They get
+    // the same translucent material without sampling; real phones keep the full backdrop.
+    if(reduceTransparency || source==null || source in LocalBackdropAncestors.current || LiquidGlassKit.softwareRenderedDevice) return this
     val view=LocalView.current.rootView
     val context=LocalContext.current
     val glass=rememberGraphicsLayer()

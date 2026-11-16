@@ -23,6 +23,8 @@ object WeatherNotificationDispatcher {
         kind: XiaomiFocusBridge.Kind
     ): Boolean {
         if (!PermissionGuide.canNotify(context)) return false
+        // Kept for the in-app notification center (iOS-style history), on this phone only.
+        runCatching { NotificationHistory.record(context, title, detail, kind) }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         // Vendor failure must never prevent a real weather alert from reaching Android.
         val vendorAttached = runCatching {

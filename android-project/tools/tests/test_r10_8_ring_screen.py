@@ -16,14 +16,17 @@ class R108RingingScreen(unittest.TestCase):
             'onSnooze = { close(true) }', 'onStop = { close(false) }'
         ):
             self.assertIn(token, src)
-        self.assertNotIn('Brush.radialGradient', src)
+        # r18: iOS 27 ambient light breathes behind the clock; Reduce Motion keeps it still.
+        self.assertIn('鬧鐘光暈', src)
+        self.assertIn('if (reduceMotion) .5f', src)
         self.assertNotIn('Spacer(Modifier.weight(1f))', src)
 
     def test_os_alarm_audio_and_touch_physics(self):
         src = SOURCE.read_text(encoding="utf-8")
         self.assertIn('setVolumeControlStream(AudioManager.STREAM_ALARM)', src)
         self.assertIn('fingerDown || reduceMotion', src)
-        self.assertIn('tween(380,easing=AppleMotion.snap)', src)
+        # r18: an early release springs home with a small bounce.
+        self.assertIn('spring(dampingRatio = .58f, stiffness = 360f)', src)
         self.assertIn('dragPx >= maxDrag * .75f', src)
         self.assertIn('setShowWhenLocked(true)', src)
         self.assertIn('setTurnScreenOn(true)', src)

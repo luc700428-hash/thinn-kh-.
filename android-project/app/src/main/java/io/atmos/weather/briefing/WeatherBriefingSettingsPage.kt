@@ -52,10 +52,13 @@ fun WeatherBriefingSettingsPage(onClose:()->Unit) {
     var showAdd by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<WeatherBriefingSlot?>(null) }
     fun change(next:List<WeatherBriefingSlot>) { WeatherBriefingStore.save(context,next);slots=next }
+    var centerOpen by remember { mutableStateOf(false) }
     io.atmos.weather.ui.WorkspacePageSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=ink) {
         Column(Modifier.fillMaxWidth().heightIn(max=750.dp).appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=22.dp).padding(bottom=36.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            io.atmos.weather.ui.IOSSettingsHeader("天氣定時通知",onClose)
+            io.atmos.weather.ui.IOSSettingsHeader("天氣提醒與通知",onClose)
+            io.atmos.weather.comfort.ComfortSections(onOpenCenter={centerOpen=true})
+            Text("自訂定時通知",color=muted,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(start=6.dp,top=10.dp))
             Text("最多設定 5 組星期與時分。每次只分析從這次提醒到下一次提醒間的天氣，提供降雨、穿搭、溫差及外出建議。",
                 fontSize=14.sp,color=muted)
             Text("使用上下滾輪選擇時間。背景通知可能因 Android 省電策略延遲，不能保證精確分鐘。",
@@ -86,12 +89,13 @@ fun WeatherBriefingSettingsPage(onClose:()->Unit) {
             Button(onClick={editing=null;showAdd=true},modifier=Modifier.fillMaxWidth(),enabled=slots.size<WeatherBriefingPlan.MAX_SLOTS) {
                 Text(if(slots.size<5)"＋ 新增定時通知（${slots.size}/5）" else "已達 5 組通知上限")
             }
-            Text("通知會使用你選擇的 8 款 thinn-khì 專屬音效，並嘗試相容裝置的焦點通知；無法保證顯示在超級島。",
+            Text("通知會使用你在設定 › 通知選的通知音（20 款），並嘗試相容裝置的焦點通知；無法保證顯示在超級島。",
                 color=muted,fontSize=14.sp)
             Text("資料來源為 Open-Meteo 預報。若下一次提醒超出目前預報範圍，會明確標示資料尚未涵蓋，不會虛構。",
                 color=muted,fontSize=14.sp)
         }
     }
+    if(centerOpen) io.atmos.weather.comfort.NotificationCenterPage(onClose={centerOpen=false})
     if(showAdd) {
         var selectedHour by remember(editing) { mutableIntStateOf(editing?.hour ?: 8) }
         var selectedMinute by remember(editing) { mutableIntStateOf(editing?.minute ?: 0) }

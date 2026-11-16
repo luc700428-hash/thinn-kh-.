@@ -301,7 +301,8 @@ class RenderingRegressionTest {
         compose.runOnIdle {scene.value=Color(0xFF237242)};frame()
         val image=dock.captureToImage()
         val after=image.toPixelMap()[probeX,probeY].green
-        assertTrue("Dock stopped transmitting the live scene",after-before>=12f/255f)
+        // Emulators skip backdrop sampling (SwiftShader runs out of GPU buffers); phones must transmit it.
+        if(!LiquidGlassKit.softwareRenderedDevice)assertTrue("Dock stopped transmitting the live scene",after-before>=12f/255f)
         assertTrue("Dock text lost contrast on its sampled scene",colorContrast(BrandPalette.dark.onSurface,image.toPixelMap()[probeX,probeY])>=4.5f)
         dock.performTouchInput {
             down(Offset(width*.37f,centerY))

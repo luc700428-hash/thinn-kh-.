@@ -4,6 +4,7 @@ import io.atmos.weather.ui.lightningScreenEffect
 
 import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.iosAppear
+import io.atmos.weather.ui.iosJellyPress
 import io.atmos.weather.ui.BrandPalette
 import io.atmos.weather.ui.WeatherSkyPalette
 import io.atmos.weather.ui.WeatherDayPhase
@@ -576,7 +577,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     }
     val workspaceDetailTitle=when {
         marineOpen->"海象與浪況";skyOpen->"日月與月相";alertsOpen->"中央氣象署警特報";insightsOpen->"氣象詳解與外出時段"
-        typhoonPageOpen->"颱風動向";tasksOpen->"我的事項";briefingOpen->"天氣定時通知";weatherAlarmOpen->"天氣鬧鐘"
+        typhoonPageOpen->"颱風動向";tasksOpen->"我的事項";briefingOpen->"天氣提醒與通知";weatherAlarmOpen->"天氣鬧鐘"
         diagnosticsOpen->"權限與系統健康";pushSettingsOpen->"地震警報與通知";lifestyleSettingsOpen->"穿搭與生活偏好"
         updatePageOpen->"軟體更新";settingsOpen->when(advancedCategory){"外觀"->"字體與閱讀";"聲音"->"聲音與觸覺";"資料"->"資料更新頻率";else->"通知音效與背景提醒"}
         else->null
@@ -973,38 +974,41 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
 
                     },trailing={
                 if (snapshot != null) {
+                    // Cards follow the user's own order (編輯首頁), each settling in on the iOS curve.
+                    val layoutRevision by HomeCardLayout.revision
+                    val cardOrder = remember(layoutRevision) { HomeCardLayout.order(context) }
+                    val cardHidden = remember(layoutRevision) { HomeCardLayout.hidden(context) }
+                    Spacer(Modifier.height(16.dp))
+                    cardOrder.filterNot { it in cardHidden }.forEachIndexed { cardIndex, cardId ->
+                        androidx.compose.runtime.key(cardId) { Column(Modifier.fillMaxWidth().iosAppear(cardIndex)) { when (cardId) {
                     // Weather always takes precedence over decor: show real six-hour facts
                     // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.
-                    Spacer(Modifier.height(16.dp))
-                    HomeKeyWeatherCard(snapshot, state.stale)
-                }
-                Spacer(Modifier.height(13.dp))
-                // Official alerts and the six-hour forecast are visible before outfit advice.
-                if(snapshot != null) {
-                    DailyGuidanceCard(snapshot,state.stale) { showLifestyleDetails=true }
-                }
+                    "key" -> { HomeKeyWeatherCard(snapshot, state.stale); Spacer(Modifier.height(13.dp)) }
+                    // Official alerts and the six-hour forecast are visible before outfit advice.
+                    "outing" -> { DailyGuidanceCard(snapshot,state.stale) { showLifestyleDetails=true }; Spacer(Modifier.height(15.dp)) }
+                    "commute" -> { HomeCommuteCard(snapshot.fetchedAt); if (io.atmos.weather.comfort.ComfortStore.place(context,"home")!=null && io.atmos.weather.comfort.ComfortStore.place(context,"work")!=null) Spacer(Modifier.height(15.dp)) }
                 // Atmospheric light and live data replace all 2D landmark galleries and
                 // non-verifiable landmark imagery. This content never claims to be a photo.
-                if(snapshot != null) {
-                    Spacer(Modifier.height(15.dp))
+                    "scene" -> {
                     io.atmos.weather.ui.ThinnAtmosphereFocus(
                         snapshot=snapshot,
                         location=io.atmos.weather.location.LocationLabels.display(state.city.name),
                         reducedMotion=reduceCityMotion||!weatherSceneActive
                     )
                     Spacer(Modifier.height(14.dp))
-                }
-                if(snapshot != null) {
+                    }
+                    "forecast" -> {
                     GlassCard {
                         // Horizontally draggable curve with a synchronized selected-hour readout.
                         InteractiveForecast(snapshot.nextHours.take(24),snapshot.timeZoneId, sunrise=snapshot.sunrise, sunset=snapshot.sunset)
                     }
                     Spacer(Modifier.height(15.dp))
+                    }
                     // Restore the existing native CWA radar card to the weather home.
                     // When imagery is unavailable, the original card shows an honest
                     // unavailable/coverage status instead of silently removing the map.
-                    RadarThreeHourCard(weather=snapshot)
-                    Spacer(Modifier.height(15.dp))
+                    "radar" -> { RadarThreeHourCard(weather=snapshot); Spacer(Modifier.height(15.dp)) }
+                    "indicators" -> {
                     WeatherIndicatorGrid(snapshot)
                     if(snapshot.temperatureC <= 6.0 && snapshot.condition in
                         setOf(WeatherCondition.SNOW, WeatherCondition.SLEET, WeatherCondition.FREEZING_RAIN)) {
@@ -1017,9 +1021,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(12.dp))
+                    }
                     // All six weather indicators (including pressure and sunrise/sunset)
                     // are now members of the same long-press sortable card grid.
                     // Air-quality card deliberately remains the last metric section.
+                    "air" -> {
                     GlassCard {
                         Text("空氣品質與能見度",color=White,fontWeight=FontWeight.SemiBold,fontSize=15.sp)
                         Spacer(Modifier.height(10.dp))
@@ -1029,6 +1035,19 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Spacer(Modifier.height(10.dp))
                         Text("空氣品質為模型推估，非環境部官方 AQI。",color=TextSoft,fontSize=15.sp)
                     }
+                    Spacer(Modifier.height(12.dp))
+                    }
+                    } } }
+                    }
+                    // iOS-style "Edit" pill at the end of the cards.
+                    var editingHome by remember { mutableStateOf(false) }
+                    Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
+                        Text("編輯首頁",color=White,fontSize=15.sp,fontWeight=FontWeight.SemiBold,
+                            modifier=Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp)).background(White.copy(alpha=.14f))
+                                .border(.7.dp,White.copy(alpha=.22f),RoundedCornerShape(999.dp))
+                                .clickable{editingHome=true}.padding(horizontal=18.dp,vertical=9.dp))
+                    }
+                    if(editingHome) HomeCardEditor{editingHome=false}
                 }
                 if(state.loading && snapshot!=null) {
                     Spacer(Modifier.height(14.dp)); LinearProgressIndicator(Modifier.fillMaxWidth(),color=White)
@@ -1130,16 +1149,21 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Text("APP 通知統一優先使用焦點通知／超級島；是否上島仍由系統授權與小米核准情境決定。未獲支援時以一般通知呈現，避免漏接警特報。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(13.dp))
                 var selectedNotificationTone by remember { mutableStateOf(ThinnNotificationChannels.selectedToneId(context)) }
-                Text("專屬通知音 · 8 款任選",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
-                Text("選擇你喜歡的清脆提示音。天氣警特報、版本更新與測試通知會一起套用，並記住你的選擇。",color=TextSoft,fontSize=14.sp)
+                Text("通知音 · 20 款任選",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                Text("清亮、溫暖、電子三種全新風格，以及經典音色。警特報、早晚報、智慧提醒與通勤通知會一起套用。",color=TextSoft,fontSize=14.sp)
+                Spacer(Modifier.height(9.dp))
+                var toneStyle by remember { mutableStateOf(ThinnNotificationChannels.tone(selectedNotificationTone).style) }
+                io.atmos.weather.ui.GlassChoiceGroup(ThinnNotificationChannels.styles.map{it.second},
+                    ThinnNotificationChannels.styles.indexOfFirst{it.first==toneStyle},{toneStyle=ThinnNotificationChannels.styles[it].first})
                 Spacer(Modifier.height(9.dp))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
                     .background(White.copy(alpha=.075f))
                     .border(1.dp,White.copy(alpha=.13f),RoundedCornerShape(22.dp))
                     .padding(vertical=4.dp)) {
-                    ThinnNotificationChannels.tones.forEach { tone ->
+                    androidx.compose.runtime.key(toneStyle) {
+                    ThinnNotificationChannels.tones.filter{it.style==toneStyle}.forEachIndexed { toneIndex, tone ->
                         val selected = selectedNotificationTone == tone.id
-                        Row(Modifier.fillMaxWidth()
+                        Row(Modifier.fillMaxWidth().iosAppear(toneIndex)
                             .clickable {
                                 hapticEngine.play(HapticEngine.Event.TAP)
                                 selectedNotificationTone = tone.id
@@ -1166,6 +1190,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                 Text("▶",color=MaterialTheme.colorScheme.primary,fontSize=18.sp)
                             }
                         }
+                    }
                     }
                 }
                 Spacer(Modifier.height(9.dp))

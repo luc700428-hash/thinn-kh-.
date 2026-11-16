@@ -34,6 +34,6 @@ class SeismicDeliveryV27(unittest.TestCase):
             self.assertAlmostEqual(crossings/(len(tone)/rate),1000,delta=12)
         policy=(JAVA/'earthquake/SeismicSettings.kt').read_text()
         self.assertIn('R.raw.thinn_eq_report_signal',policy)
-        self.assertIn('/raw/${ctx.resources.getResourceEntryName(s.sound)}',policy)
+        self.assertIn('/raw/${ctx.resources.getResourceEntryName(sound(ctx,s))}',policy)
         self.assertIn('legacy?.importance',policy)
 if __name__=='__main__':unittest.main()

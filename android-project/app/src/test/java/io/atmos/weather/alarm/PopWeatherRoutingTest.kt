@@ -7,6 +7,11 @@ class PopWeatherRoutingTest {
     @Test fun catalogueAndPcmResolverUseTheSameTwentyIdentities() {
         assertEquals(20,R10AlarmTones.choices.size)
         assertEquals(WeatherWakePolicy.themes,R10AlarmTones.choices.map{it.id}.toSet())
+        // The r18 library: three styles x four loops, each with its own bundled resource.
+        assertEquals(12,R10AlarmTones.library.size)
+        assertEquals(setOf("bright","warm","modern"),R10AlarmTones.library.map{it.style}.toSet())
+        assertEquals(12,R10AlarmTones.library.mapNotNull{R10AlarmTones.resource("thinn://alarm/${it.id}",null,1000000)}.toSet().size)
+        assertNull(WeatherWakePolicy.theme("thinn://alarm/ring_bright_1"))
         for(id in WeatherWakePolicy.popThemes)for(scene in WeatherScene.entries) {
             assertEquals(id,WeatherWakePolicy.theme("thinn://alarm/$id"))
             assertEquals("next_weather/music/$id/${WeatherWakePolicy.paletteArrangement(scene)}.wav",WeatherScenes.musicAsset(id,scene))

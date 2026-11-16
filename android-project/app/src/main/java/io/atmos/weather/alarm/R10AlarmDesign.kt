@@ -1,5 +1,7 @@
 package io.atmos.weather.alarm
 
+import io.atmos.weather.ui.iosAppear
+
 import io.atmos.weather.ui.brandColor
 
 import android.content.Context
@@ -79,7 +81,25 @@ private val weekdays=listOf("一","二","三","四","五","六","日")
 
 object R10AlarmTones {
     const val prefix="thinn://alarm/"
-    data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color)
+    data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color,val style:String="weather")
+    /** Style groups shown as tabs in the picker; "weather" holds the weather-adaptive pop suite. */
+    val styles=listOf("bright" to "清亮","warm" to "溫暖","modern" to "電子","weather" to "天氣流行")
+    /** r18 library: four seamless loops per style, original synthesis. */
+    val library get()=listOf(
+        Choice("ring_bright_1","晨露","清亮 · 馬林巴琶音 · 112 BPM",Color(0xFF8FD3FF),Color(0xFF2F6FA8),"bright"),
+        Choice("ring_bright_2","晴光","清亮 · 鐘琴旋律 · 118 BPM",Color(0xFFA6E3FF),Color(0xFF3A7FB0),"bright"),
+        Choice("ring_bright_3","水晶","清亮 · 水晶撥音 · 104 BPM",Color(0xFFB7E9FF),Color(0xFF4A89B8),"bright"),
+        Choice("ring_bright_4","雷達","清亮 · 明快琶音 · 124 BPM",Color(0xFF7FC8FF),Color(0xFF2B5F96),"bright"),
+        Choice("ring_warm_1","日出鋼琴","溫暖 · 鋼琴與柔和和聲 · 86 BPM",Color(0xFFFFD29A),Color(0xFF9A5E2A),"warm"),
+        Choice("ring_warm_2","木屋拇指琴","溫暖 · 拇指琴與沙鈴 · 100 BPM",Color(0xFFFFC98A),Color(0xFF8E5527),"warm"),
+        Choice("ring_warm_3","午後吉他","溫暖 · 尼龍吉他撥弦 · 92 BPM",Color(0xFFF6C08F),Color(0xFF85502A),"warm"),
+        Choice("ring_warm_4","森林晨光","溫暖 · 拇指琴與暖墊 · 96 BPM",Color(0xFFFFDDA8),Color(0xFFA06A33),"warm"),
+        Choice("ring_modern_1","極光","電子 · FM 鐘音與合成器 · 120 BPM",Color(0xFFC3A4FF),Color(0xFF5530A8),"modern"),
+        Choice("ring_modern_2","霓虹城市","電子 · 律動合成器 · 116 BPM",Color(0xFFB79BFF),Color(0xFF4B2B99),"modern"),
+        Choice("ring_modern_3","脈衝","電子 · 明亮脈衝 · 126 BPM",Color(0xFFD0B4FF),Color(0xFF6236B5),"modern"),
+        Choice("ring_modern_4","星際","電子 · 太空和聲 · 108 BPM",Color(0xFFA894FF),Color(0xFF41298F),"modern"),
+    )
+    val all get()=library+choices
     val choices get() =listOf(
         Choice("citypop","城市晨光","City Pop · 電鋼琴與彈跳貝斯 · 104 BPM",brandColor(0xFF8CD6C1),brandColor(0xFF3A6C5E)),
         Choice("tropical","海風假期","Tropical Pop · 木琴與熱帶節拍 · 110 BPM",brandColor(0xFF92D9C5),brandColor(0xFF2C7E67)),
@@ -102,10 +122,19 @@ object R10AlarmTones {
         Choice("fire","晴日躍動","溫暖撥弦與輕節奏 · 天氣自適應",brandColor(0xFF89D5C0),brandColor(0xFF36997D)),
         Choice("metal","霜光鈴奏","柔亮鐘琴與旋律回應 · 天氣自適應",brandColor(0xFF76CFB6),brandColor(0xFF3B7061))
     )
-    fun isBuiltIn(uri:String?):Boolean=uri?.startsWith(prefix)==true && choices.any { prefix+it.id==uri }
+    fun isBuiltIn(uri:String?):Boolean=uri?.startsWith(prefix)==true && all.any { prefix+it.id==uri }
+    fun label(uri:String?):String?=all.firstOrNull{prefix+it.id==uri}?.label
     fun resource(uri:String?, weather:AlarmWeatherReading?, nowMs:Long):Int? {
         if(!isBuiltIn(uri)) return null
         val id=uri!!.removePrefix(prefix)
+        when(id) {
+            "ring_bright_1"->return R.raw.thinn_ring_bright_1;"ring_bright_2"->return R.raw.thinn_ring_bright_2
+            "ring_bright_3"->return R.raw.thinn_ring_bright_3;"ring_bright_4"->return R.raw.thinn_ring_bright_4
+            "ring_warm_1"->return R.raw.thinn_ring_warm_1;"ring_warm_2"->return R.raw.thinn_ring_warm_2
+            "ring_warm_3"->return R.raw.thinn_ring_warm_3;"ring_warm_4"->return R.raw.thinn_ring_warm_4
+            "ring_modern_1"->return R.raw.thinn_ring_modern_1;"ring_modern_2"->return R.raw.thinn_ring_modern_2
+            "ring_modern_3"->return R.raw.thinn_ring_modern_3;"ring_modern_4"->return R.raw.thinn_ring_modern_4
+        }
         val reliable=weather?.takeIf {
             it.fetchedEpochMs > 0 && nowMs-it.fetchedEpochMs in 0L..WeatherAlarmNarration.MAX_WEATHER_AGE_MS
         }
@@ -189,7 +218,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
     var snoozeMinutes by rememberSaveable(initial?.id) { mutableIntStateOf(initial?.snoozeMinutes?:9) }
     var chooseSnoozeMinutes by remember {mutableStateOf(false)}
     val focusManager=androidx.compose.ui.platform.LocalFocusManager.current
-    var uri by rememberSaveable(initial?.id) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+(if(initial==null)"citypop" else "dawn")) }
+    var uri by rememberSaveable(initial?.id) { mutableStateOf(initial?.ringtoneUri?:R10AlarmTones.prefix+(if(initial==null)"ring_bright_1" else "dawn")) }
     var choosing by remember { mutableStateOf(false) }
     var sheetShown by remember {mutableStateOf(false)}
     var closingSheet by remember {mutableStateOf(false)}
@@ -251,7 +280,7 @@ fun R10AlarmEditor(initial:WeatherAlarm?,onClose:()->Unit,onDelete:(WeatherAlarm
                                 modifier=Modifier.fillMaxWidth().semantics {contentDescription="鬧鐘標籤"})
                         }
                     });Line()
-                    GlassSetting("鈴聲",detail=(R10AlarmTones.choices.firstOrNull {R10AlarmTones.prefix+it.id==uri}?.label?:"系統鈴聲"),chevron=true,click={choosing=true});Line()
+                    GlassSetting("鈴聲",detail=(R10AlarmTones.label(uri)?:"系統鈴聲"),chevron=true,click={choosing=true});Line()
                     GlassSetting("延遲響鬧",trailing={R10Switch(snooze){snooze=it}})
                     Line()
                     GlassSetting("延遲響鬧時長",detail="$snoozeMinutes 分鐘",
@@ -360,18 +389,22 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                 io.atmos.weather.ui.IOS27RoundControl("✓",onClick={preview?.release();preview=null;weatherPreview?.close();onChoose(active)},fill=amber,foreground=Color.Black)
             }
             // Weather speech remains removed; the rebuilt suite uses melody and nature.
-            Text("天氣流行音樂館",color=ink,fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text("新增 6 首原創流行短曲，共 20 款風格。主歌、旋律、副歌與天氣聲景分層編曲。點選試聽，按右上角勾號套用。",
+            Text("鈴聲館",color=ink,fontSize=25.sp,fontWeight=FontWeight.Bold)
+            Text("清亮、溫暖、電子三種風格各 4 首全新原創鈴聲，加上 20 首會隨天氣變化的流行曲。點選試聽，按右上角勾號套用。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
             // Every tile has exactly the same size: a fixed height (scaled with the text size),
             // one-line titles and two-line descriptions, and the press feedback scales uniformly.
             val tileHeight=(150f+48f*androidx.compose.ui.platform.LocalDensity.current.fontScale).dp
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                R10AlarmTones.choices.chunked(2).forEach {row ->
+                var styleTab by remember { mutableStateOf(R10AlarmTones.all.firstOrNull{R10AlarmTones.prefix+it.id==active}?.style?:"bright") }
+                io.atmos.weather.ui.GlassChoiceGroup(R10AlarmTones.styles.map{it.second},R10AlarmTones.styles.indexOfFirst{it.first==styleTab},
+                    {styleTab=R10AlarmTones.styles[it].first})
+                androidx.compose.runtime.key(styleTab) {
+                R10AlarmTones.all.filter{it.style==styleTab}.chunked(2).forEachIndexed {rowIndex,row ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         row.forEach {choice->
                             val chosen=active==R10AlarmTones.prefix+choice.id
-                            Column(Modifier.weight(1f).height(tileHeight).alarmTilePress().clip(RoundedCornerShape(22.dp))
+                            Column(Modifier.weight(1f).height(tileHeight).iosAppear(rowIndex*2+row.indexOf(choice)).alarmTilePress().clip(RoundedCornerShape(22.dp))
                                 .background(Brush.linearGradient(listOf(choice.upper,choice.lower)))
                                 .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.45f),Color.Black.copy(alpha=.72f))))
                                 .border(if(chosen) 2.dp else 1.dp,if(chosen) brandColor(0xFF7ED2BA) else Color.White.copy(alpha=.18f),RoundedCornerShape(22.dp))
@@ -403,6 +436,7 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
                         }
                         if(row.size<2)Spacer(Modifier.weight(1f))
                     }
+                }
                 }
                 Spacer(Modifier.height(4.dp))
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
@@ -447,6 +481,24 @@ private fun ToneArtwork(id:String,modifier:Modifier=Modifier) {
                 for(i in 0..4){val path=Path();for(j in 0..40){val x=c.x-r+j*r/20;val y=c.y+(i-2)*r*.30f+kotlin.math.sin(j*.16f+i*.5f)*r*.28f
                     if(j==0)path.moveTo(x,y) else path.lineTo(x,y)}
                     drawPath(path,Color.White.copy(alpha=.38f+i*.11f),style=Stroke(1.6.dp.toPx()))}
+            }
+            "ring_bright_1","ring_bright_2","ring_bright_3","ring_bright_4" -> {
+                // Clear style: concentric ripples of light.
+                for(i in 0..3)drawCircle(Color.White.copy(alpha=.78f-i*.16f),r*(.28f+i*.24f),c,style=Stroke((2.2f-i*.35f).dp.toPx()))
+                drawCircle(Color.White.copy(alpha=.9f),r*.12f,c)
+            }
+            "ring_warm_1","ring_warm_2","ring_warm_3","ring_warm_4" -> {
+                // Warm style: a low sun with soft rays.
+                drawCircle(Color(0xFFFFF0C8).copy(alpha=.85f),r*.42f,c+Offset(0f,r*.25f))
+                for(i in 0..6){val a=Math.PI+i*Math.PI/6;val from=c+Offset(0f,r*.25f)+Offset(kotlin.math.cos(a).toFloat()*r*.58f,kotlin.math.sin(a).toFloat()*r*.58f)
+                    val to=c+Offset(0f,r*.25f)+Offset(kotlin.math.cos(a).toFloat()*r*.9f,kotlin.math.sin(a).toFloat()*r*.9f)
+                    drawLine(Color.White.copy(alpha=.7f),from,to,2.dp.toPx(),androidx.compose.ui.graphics.StrokeCap.Round)}
+                drawLine(Color.White.copy(alpha=.55f),c+Offset(-r,r*.68f),c+Offset(r,r*.68f),1.4.dp.toPx())
+            }
+            "ring_modern_1","ring_modern_2","ring_modern_3","ring_modern_4" -> {
+                // Electronic style: an equaliser.
+                for(i in 0..8){val h=r*(.3f+((i*5)%7)*.18f);val x=c.x-r+i*r*.24f
+                    drawRoundRect(Color.White.copy(alpha=.85f),Offset(x,c.y-h/2),androidx.compose.ui.geometry.Size(r*.13f,h),androidx.compose.ui.geometry.CornerRadius(r*.065f))}
             }
             "musicbox" -> {
                 for(i in 0..7){val a=i*Math.PI/4;val point=c+Offset(kotlin.math.cos(a).toFloat()*r,kotlin.math.sin(a).toFloat()*r)

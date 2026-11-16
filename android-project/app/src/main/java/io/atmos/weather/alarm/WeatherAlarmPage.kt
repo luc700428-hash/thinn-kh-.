@@ -107,6 +107,18 @@ fun WeatherAlarmPage(onClose:()->Unit) {
                 }
             }) { Text("設定全螢幕鬧鐘",color=accent) }
         }
+        // The ringing screen pops over other apps only with this permission (as on iOS).
+        var overlayRevision by remember{mutableIntStateOf(0)}
+        val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current
+        DisposableEffect(lifecycle){val o=androidx.lifecycle.LifecycleEventObserver{_,e->if(e==androidx.lifecycle.Lifecycle.Event.ON_RESUME)overlayRevision++}
+            lifecycle.lifecycle.addObserver(o);onDispose{lifecycle.lifecycle.removeObserver(o)}}
+        val overlay=remember(overlayRevision){runCatching{Settings.canDrawOverlays(ctx)}.getOrDefault(false)}
+        if(!overlay&&alarms.isNotEmpty()) {
+            Text("使用其他 App 時，鬧鐘只會跳出通知。允許「顯示在其他應用程式上層」後會直接開啟響鈴畫面。",color=MaterialTheme.colorScheme.error,fontSize=15.sp)
+            TextButton(onClick={
+                runCatching{ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,android.net.Uri.parse("package:${ctx.packageName}")))}
+            }) { Text("允許直接跳出響鈴畫面",color=accent) }
+        }
         Spacer(Modifier.height(18.dp))
         if(alarms.isEmpty()) {
             Text("還沒有鬧鐘。按右上角＋新增起床提醒。",color=ink,fontSize=17.sp,

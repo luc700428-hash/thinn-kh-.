@@ -163,6 +163,12 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                     return START_NOT_STICKY
                 }
                 beginAudio(alarm)
+                // Like the iOS alarm: the ringing screen appears even over another app. Android only
+                // shows a heads-up for a full-screen intent on an unlocked phone, so with the
+                // "display over other apps" permission open the ringing screen directly.
+                if(runCatching{android.provider.Settings.canDrawOverlays(this)}.getOrDefault(false))
+                    runCatching{startActivity(Intent(this,WeatherAlarmRingActivity::class.java).putExtra("alarm_id",id)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))}
                 return START_NOT_STICKY
             }
         }

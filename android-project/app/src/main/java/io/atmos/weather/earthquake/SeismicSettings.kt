@@ -65,6 +65,21 @@ object SeismicAlertPolicy {
         REPORT("report", "震後地震報告", "震後報告通知；不是提前預警", R.raw.thinn_eq_report_signal)
     }
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("thinn_seismic_v15", Context.MODE_PRIVATE)
+    /** Sound style for warnings and reports: classic (original set) or one of the r18 styles. */
+    val soundStyles = listOf("classic" to "經典", "bright" to "清亮", "warm" to "溫暖", "modern" to "電子")
+    fun soundStyle(ctx: Context) = prefs(ctx).getString("seismic_sound_style", "classic")?.takeIf { s -> soundStyles.any { it.first == s } } ?: "classic"
+    fun setSoundStyle(ctx: Context, style: String) { prefs(ctx).edit().putString("seismic_sound_style", style).apply(); ensureChannels(ctx) }
+    /** The resource actually played for [s]; detection tones keep their dedicated sounds. */
+    fun sound(ctx: Context, s: Scenario): Int = when (soundStyle(ctx) to s) {
+        "bright" to Scenario.EEW_FIRST -> R.raw.thinn_quake_bright_first; "bright" to Scenario.EEW_URGENT -> R.raw.thinn_quake_bright_urgent
+        "bright" to Scenario.EEW_UPDATE -> R.raw.thinn_quake_bright_update; "bright" to Scenario.REPORT -> R.raw.thinn_quake_bright_report
+        "warm" to Scenario.EEW_FIRST -> R.raw.thinn_quake_warm_first; "warm" to Scenario.EEW_URGENT -> R.raw.thinn_quake_warm_urgent
+        "warm" to Scenario.EEW_UPDATE -> R.raw.thinn_quake_warm_update; "warm" to Scenario.REPORT -> R.raw.thinn_quake_warm_report
+        "modern" to Scenario.EEW_FIRST -> R.raw.thinn_quake_modern_first; "modern" to Scenario.EEW_URGENT -> R.raw.thinn_quake_modern_urgent
+        "modern" to Scenario.EEW_UPDATE -> R.raw.thinn_quake_modern_update; "modern" to Scenario.REPORT -> R.raw.thinn_quake_modern_report
+        else -> s.sound
+    }
+    private fun styleSuffix(ctx: Context, s: Scenario) = if (sound(ctx, s) == s.sound) "" else "_${soundStyle(ctx)}"
     fun soundEnabled(ctx: Context, s: Scenario) = prefs(ctx).getBoolean("scenario_sound_${s.key}", true)
     fun setSoundEnabled(ctx: Context, s: Scenario, enabled: Boolean) {
         prefs(ctx).edit().putBoolean("scenario_sound_${s.key}", enabled).apply()
@@ -77,8 +92,8 @@ object SeismicAlertPolicy {
     fun setAlertEnabled(ctx: Context, s: Scenario, enabled: Boolean) =
         prefs(ctx).edit().putBoolean("scenario_alert_${s.key}", enabled).apply()
     fun channelId(ctx: Context, s: Scenario): String =
-        if(SeismicCriticalMode.applies(ctx,s))"thinn_eq_${s.key}_v28_critical_${if(soundEnabled(ctx,s))"audio" else "silent"}"
-        else "thinn_eq_${s.key}_v27_${if (soundEnabled(ctx,s)) "audio" else "silent"}"
+        if(SeismicCriticalMode.applies(ctx,s))"thinn_eq_${s.key}_v28_critical_${if(soundEnabled(ctx,s))"audio" else "silent"}"+styleSuffix(ctx,s)
+        else "thinn_eq_${s.key}_v27_${if (soundEnabled(ctx,s)) "audio" else "silent"}"+styleSuffix(ctx,s)
 
     /** Channel sound is immutable on Android O+. We select a distinct ID for on/off. */
     fun ensureChannels(ctx: Context) {
@@ -100,9 +115,10 @@ object SeismicAlertPolicy {
                 val channel = NotificationChannel(id, "地震 · ${s.title}"+(if(critical)" · 緊急模式" else ""), importance).apply {
                     description = "第三方地震資料；警報並不保證送達，演練與實際事件須明確區分。可於 Android 通知設定修改。"
                     if (soundEnabled(ctx,s)) {
-                        val stable=Uri.parse("android.resource://${ctx.packageName}/raw/${ctx.resources.getResourceEntryName(s.sound)}")
+                        val stable=Uri.parse("android.resource://${ctx.packageName}/raw/${ctx.resources.getResourceEntryName(sound(ctx,s))}")
                         val attributes=if(critical)AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build() else attr
-                        setSound(if(standardLegacy!=null)standardLegacy.sound else if(legacy?.hasUserSetSound()==true)legacy.sound else stable, attributes)
+                        // A newly picked style always uses its own sound; only the classic set inherits older channel sounds.
+                        setSound(if(styleSuffix(ctx,s).isNotEmpty())stable else if(standardLegacy!=null)standardLegacy.sound else if(legacy?.hasUserSetSound()==true)legacy.sound else stable, attributes)
                         enableVibration(legacy?.shouldVibrate()?:true)
                         vibrationPattern = legacy?.vibrationPattern ?: longArrayOf(0,230,140,310)
                     } else {
@@ -132,7 +148,7 @@ object SeismicPreviewPlayer {
     @Synchronized fun play(ctx: Context, scenario: SeismicAlertPolicy.Scenario): Boolean {
         stop()
         return runCatching {
-            val next=MediaPlayer.create(ctx.applicationContext,scenario.sound) ?: return@runCatching false
+            val next=MediaPlayer.create(ctx.applicationContext,SeismicAlertPolicy.sound(ctx,scenario)) ?: return@runCatching false
             next.setOnCompletionListener { p ->
                 synchronized(SeismicPreviewPlayer) { if (player === p) player = null }
                 p.release()
@@ -299,6 +315,14 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             }
                         }
                         SettingsPanel("速報種類與提示音") {
+                            var quakeStyle by remember{mutableStateOf(SeismicAlertPolicy.soundStyle(ctx))}
+                            Text("提示音風格",color=MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.Medium)
+                            Spacer(Modifier.height(8.dp))
+                            io.atmos.weather.ui.GlassChoiceGroup(SeismicAlertPolicy.soundStyles.map{it.second},SeismicAlertPolicy.soundStyles.indexOfFirst{it.first==quakeStyle},
+                                {i->quakeStyle=SeismicAlertPolicy.soundStyles[i].first;SeismicAlertPolicy.setSoundStyle(ctx,quakeStyle)
+                                    SeismicPreviewPlayer.play(ctx,SeismicAlertPolicy.Scenario.EEW_FIRST)})
+                            Text("速報、緊急速報、更新與地震報告會一起換成這個風格；點選即試聽。",color=pale,fontSize=14.sp,lineHeight=20.sp,modifier=Modifier.padding(top=8.dp))
+                            HorizontalDivider(color=divider,modifier=Modifier.padding(vertical=12.dp))
                             val eew=listOf(SeismicAlertPolicy.Scenario.EEW_FIRST,SeismicAlertPolicy.Scenario.EEW_URGENT,SeismicAlertPolicy.Scenario.EEW_UPDATE)
                             eew.forEachIndexed { i,scenario ->
                                 AlertRow(scenario)
