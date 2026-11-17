@@ -56,6 +56,10 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     testOptions {
+        // Each device UI test runs in its own process, so the graphics buffers one test creates are
+        // released before the next starts. On the SwiftShader CI emulator they otherwise piled up
+        // over the run until the emulator itself disappeared mid-test.
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
         unitTests.isReturnDefaultValues = true
         unitTests.isIncludeAndroidResources = true
         // Native Compose tests recreate Android Loopers; isolate their static dispatcher/render state.
@@ -103,5 +107,7 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestUtil("androidx.test:orchestrator:1.5.1")
+    androidTestUtil("androidx.test.services:test-services:1.5.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
