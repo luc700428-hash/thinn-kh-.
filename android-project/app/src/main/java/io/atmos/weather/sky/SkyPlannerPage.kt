@@ -1,5 +1,7 @@
 package io.atmos.weather.sky
 
+import io.atmos.weather.ui.iosAppearNext
+
 import io.atmos.weather.ui.brandColor
 
 import androidx.compose.animation.AnimatedContent
@@ -151,7 +153,7 @@ import kotlin.math.*
 @Composable private fun SkySurface(content:@Composable ColumnScope.()->Unit) {
     val p=MaterialTheme.colorScheme
     CompositionLocalProvider(LocalContentColor provides p.onSurface) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.surface)
+        Column(Modifier.fillMaxWidth().iosAppearNext().clip(RoundedCornerShape(24.dp)).background(p.surface)
             .thinnSpecularEdge(24.dp).padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp),content=content)
     }
 }

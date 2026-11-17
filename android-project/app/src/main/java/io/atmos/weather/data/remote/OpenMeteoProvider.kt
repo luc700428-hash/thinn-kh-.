@@ -90,9 +90,14 @@ class OpenMeteoProvider(
             isDay = current.isDay == 1,
             sunrise = response.daily?.sunrise?.firstOrNull()?.asInstant(zone),
             sunset = response.daily?.sunset?.firstOrNull()?.asInstant(zone),
-            hourly = series,
+            hourly = series.take(72), // hours as before; days beyond come from [daily]
             maxTempC = response.daily?.highs?.firstOrNull(),
             minTempC = response.daily?.lows?.firstOrNull(),
+            daily = response.daily?.time.orEmpty().mapIndexedNotNull { i, d ->
+                val date = runCatching { java.time.LocalDate.parse(d) }.getOrNull() ?: return@mapIndexedNotNull null
+                io.atmos.weather.domain.model.DailyWeather(date, response.daily?.highs?.getOrNull(i), response.daily?.lows?.getOrNull(i),
+                    response.daily?.rainMax?.getOrNull(i)?.takeIf { it in 0..100 }, response.daily?.codes?.getOrNull(i))
+            },
             currentUv = current.uv,
             weatherCode = if(observedCondition!=null)observedCode else current.code,
             windDirectionDeg = observed?.direction ?: current.windDirection,

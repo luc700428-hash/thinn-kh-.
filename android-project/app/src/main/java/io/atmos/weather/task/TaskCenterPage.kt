@@ -1,4 +1,6 @@
 package io.atmos.weather.task
+
+import io.atmos.weather.ui.iosAppearNext
 import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +64,7 @@ fun TaskCenterPage(onClose:()->Unit) {
             Spacer(Modifier.height(17.dp))
             if(error.isNotBlank())Text(error,color=ThinnDesignTokens.critical)
             if(tasks.isEmpty()) {
-                GlassSurface(Modifier.fillMaxWidth()) {
+                GlassSurface(Modifier.fillMaxWidth().iosAppearNext()) {
                     Text("還沒有事項",fontSize=21.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                     Text("點選右上角的 ＋，新增你的第一個事項。",fontSize=16.sp,
                         color=MaterialTheme.colorScheme.onSurfaceVariant)

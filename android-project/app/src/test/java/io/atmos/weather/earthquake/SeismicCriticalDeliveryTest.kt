@@ -36,7 +36,8 @@ class SeismicCriticalDeliveryTest {
     }
     @After fun stop() {SeismicCriticalTest.cancel(ctx);SeismicContinuousWarning.stop();SeismicSpeech.stop();SeismicAlertDelivery.active.value=null}
     @Test fun modeIsExplicitAndOnlyChangesEewAudioChannels() {
-        assertFalse(SeismicCriticalMode.enabled(ctx));SeismicAlertPolicy.ensureChannels(ctx)
+        // r19: on by default, so a warning is heard under Do Not Disturb.
+        assertTrue(SeismicCriticalMode.enabled(ctx));SeismicCriticalMode.setEnabled(ctx,false);SeismicAlertPolicy.ensureChannels(ctx)
         val reportId=SeismicAlertPolicy.channelId(ctx,SeismicAlertPolicy.Scenario.REPORT)
         SeismicCriticalMode.setEnabled(ctx,true)
         assertTrue(ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean("allow_seismic_full_screen",false))

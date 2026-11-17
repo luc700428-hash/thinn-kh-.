@@ -58,6 +58,7 @@ object RecentCityStore {
         (0 until j.length()).mapNotNull {i->val p=j.getJSONObject(i);val lat=p.optDouble("lat",Double.NaN);val lon=p.optDouble("lon",Double.NaN)
             if(lat !in -90.0..90.0||lon !in -180.0..180.0)null else LocationLabels.city(WeatherCity(p.getString("id"),p.getString("name"),GeoPoint(lat,lon)))}.take(8)
     }.getOrDefault(emptyList())
+    fun clear(context:Context)=context.getSharedPreferences("thinn_settings",0).edit().remove(key).apply()
     fun record(context:Context,city:WeatherCity) {
         if(city.id=="gps")return
         val list=CitySearchRules.distinct(listOf(city)+read(context)).take(8);val j=JSONArray()

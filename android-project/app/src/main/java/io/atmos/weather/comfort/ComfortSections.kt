@@ -88,6 +88,7 @@ private fun hm(h: Int, m: Int) = "%02d:%02d".format(h, m)
     var editing by remember { mutableStateOf<String?>(null) }
     var choosingPlace by remember { mutableStateOf<String?>(null) }
     var previewNote by remember { mutableStateOf("") }
+    var voiceOpen by remember { mutableStateOf(false) }
 
     fun preview(kind: String) {
         scope.launch {
@@ -168,8 +169,12 @@ private fun hm(h: Int, m: Int) = "%02d:%02d".format(h, m)
             }
         } }
 
-        Header("通知", 6)
+        Header("通知與語音", 6)
         Box(Modifier.iosAppear(7)) { IOSV25SettingsGroup {
+            Row2(Icons.Rounded.RecordVoiceOver, Color(0xFFAF52DE), "播報聲音", "選擇最自然的中文語音並試聽", { voiceOpen = true }) {
+                Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Divider()
             val count = remember { NotificationHistory.all(ctx).size }
             Row2(Icons.Rounded.Inbox, Color(0xFFFF3B30), "通知中心", if (count == 0) "還沒有通知" else "最近 $count 則通知", onOpenCenter) {
                 Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -177,6 +182,7 @@ private fun hm(h: Int, m: Int) = "%02d:%02d".format(h, m)
         } }
     }
 
+    if (voiceOpen) io.atmos.weather.voice.VoicePickerSheet { voiceOpen = false }
     // Time pickers share the iOS form sheet and drum wheels.
     editing?.let { which ->
         var h by remember(which) { mutableIntStateOf(when (which) { "morning" -> morning.hour; "evening" -> evening.hour; "out" -> commute.outHour; "back" -> commute.backHour; else -> quiet.first.hour }) }

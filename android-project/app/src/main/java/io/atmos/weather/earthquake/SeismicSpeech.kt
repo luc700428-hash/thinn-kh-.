@@ -48,10 +48,47 @@ object SeismicSpeech {
         val critical=SeismicCriticalMode.applies(ctx,scenario)
         val route=if(critical)SeismicCriticalMode.route(ctx,scenario,forVoice=true) else null
         if(critical&&route==null)return
-        speakInternal(ctx,warning(incident,place),route){
+        val permitted={
             ExpTechRealtimeParser.isFresh(incident)&&SeismicAlertNotifier.mayAnnounce(ctx,incident)&&enabled(ctx,"eew_voice_enabled")&&
                 (!critical||SeismicCriticalMode.route(ctx,scenario,forVoice=true)!=null)
         }
+        // When the shaking is close, there is no time for a long sentence: say the essentials,
+        // then count down the last seconds out loud (as KNY / DPIP do).
+        val arrival=SeismicLocalPrediction.resolve(incident,place).arrivalAtMs
+        val left=arrival?.let{it-System.currentTimeMillis()}
+        val local=SeismicLocalPrediction.resolve(incident,place).intensity
+        val text=if(left!=null&&left in 1..20_000)"地震！"+(local?.let{"${place?.name?:"這裡"}預估${SeismicDisplayFormat.symbol(it).replace("−","弱").replace("+","強")}級，"}?:"")+"趴下、掩護、穩住！"
+            else warning(incident,place)
+        speakInternal(ctx,text,route,permitted)
+        if(arrival!=null)countdown(ctx,arrival,route,permitted)
+    }
+    private var countdownTask:Runnable?=null
+    /** Speaks 10…1 before the estimated arrival, then "搖晃抵達". Stopped by [stop]. */
+    private fun countdown(ctx:Context,arrival:Long,route:SeismicAudioRoute?,permitted:()->Boolean) {
+        countdownTask?.let{main.removeCallbacks(it)}
+        val app=ctx.applicationContext
+        val task=object:Runnable{
+            var last=Int.MAX_VALUE
+            override fun run() {
+                val left=kotlin.math.ceil((arrival-System.currentTimeMillis())/1000.0).toInt()
+                if(left<=-1||!permitted()){countdownTask=null;return}
+                if(left in 0..10&&left<last){
+                    last=left
+                    speakNow(app,if(left==0)"搖晃抵達，穩住！" else "$left",route)
+                }
+                main.postDelayed(this,200)
+            }
+        }
+        countdownTask=task
+        val startIn=(arrival-10_500-System.currentTimeMillis()).coerceAtLeast(0)
+        main.postDelayed(task,startIn)
+    }
+    /** Interrupts whatever is being said: used for the countdown digits. */
+    private fun speakNow(app:Context,text:String,route:SeismicAudioRoute?) {
+        val tts=engine?:return
+        tts.setAudioAttributes(AudioAttributes.Builder().setUsage(route?.usage?:AudioAttributes.USAGE_NOTIFICATION_EVENT)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+        tts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"thinn_eq_count_${System.nanoTime()}")
     }
     fun speak(ctx:Context,message:String)=speakInternal(ctx,message,null){true}
     private fun speakInternal(ctx:Context,message:String,route:SeismicAudioRoute?,permitted:()->Boolean) {
@@ -74,6 +111,7 @@ object SeismicSpeech {
                     starting=false
                     val prepared=pendingEngine
                     if(status==TextToSpeech.SUCCESS && prepared!=null) {
+                        io.atmos.weather.voice.V25TaiwanVoice.load(app)
                         io.atmos.weather.voice.V25TaiwanVoice.configure(prepared)
                         prepared.setAudioAttributes(AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
@@ -85,7 +123,7 @@ object SeismicSpeech {
             }
         }
     }
-    fun stop() {main.post{queued=null;engine?.stop()}}
+    fun stop() {main.post{queued=null;countdownTask?.let{main.removeCallbacks(it)};countdownTask=null;engine?.stop()}}
     private fun speakQueued(tts:TextToSpeech) {
         val request=queued ?: return
         queued=null
@@ -94,6 +132,6 @@ object SeismicSpeech {
         lastSpoken=message
         lastAt=System.currentTimeMillis()
         tts.setAudioAttributes(AudioAttributes.Builder().setUsage(request.usage).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-        tts.speak(message,TextToSpeech.QUEUE_FLUSH,null,"thinn_eq_${System.nanoTime()}")
+        tts.speak(io.atmos.weather.voice.V25TaiwanVoice.humanize(message),TextToSpeech.QUEUE_FLUSH,null,"thinn_eq_${System.nanoTime()}")
     }
 }

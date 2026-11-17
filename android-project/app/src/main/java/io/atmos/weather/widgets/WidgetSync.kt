@@ -36,14 +36,7 @@ object WidgetSync {
     }
     suspend fun refreshAll(context:Context) {
         io.atmos.weather.ui.AppThemeColors.initialize(context)
-        val widgets=listOf(
-            AtmosWidget00(), AtmosWidget01(), AtmosWidget02(), AtmosWidget03(), AtmosWidget04(),
-            AtmosWidget05(), AtmosWidget06(), AtmosWidget07(), AtmosWidget08(), AtmosWidget09(),
-            AtmosWidget10(), AtmosWidget11(), AtmosWidget12(), AtmosWidget13(), AtmosWidget14(),
-            AtmosWidget15(), AtmosWidget16(), AtmosWidget17(), AtmosWidget18(), AtmosWidget19(),
-            AtmosWidget20(), AtmosWidget21(), AtmosWidget22(), AtmosWidget23(), AtmosWidget24(),
-            SafetyWidget(),PrecisionClockWidget(),WeatherBuddyWidget(),BuddyClockWidget()
-        )
+        val widgets=listOf(WeatherBuddyWidget(),BuddyClockWidget(),BuddyForecastWidget(),BuddyOutingWidget(),BuddyQuakeWidget())
         val manager=GlanceAppWidgetManager(context)
         var failure:Exception?=null
         for(widget in widgets) {

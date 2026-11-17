@@ -18,6 +18,26 @@ data class HourlyWeather(
     val weatherCode: Int? = null,
     val feelsLikeC: Double? = null
 )
+/** One calendar day of the multi-day forecast (in the forecast location's zone). */
+data class DailyWeather(
+    val date: java.time.LocalDate,
+    val highC: Double?,
+    val lowC: Double?,
+    val precipitationProbabilityPct: Int?,
+    val weatherCode: Int?
+) {
+    companion object {
+        /** Fallback when a source only has hourly data: complete days only, nothing invented. */
+        fun fromHourly(hours: List<HourlyWeather>, zone: java.time.ZoneId): List<DailyWeather> =
+            hours.groupBy { it.at.atZone(zone).toLocalDate() }.filter { (_, h) -> h.size >= 18 }.map { (date, h) ->
+                val temps = h.mapNotNull { it.temperatureC }
+                val codes = h.filter { it.at.atZone(zone).hour in 8..18 }.mapNotNull { it.weatherCode }
+                DailyWeather(date, temps.maxOrNull(), temps.minOrNull(), h.mapNotNull { it.precipitationProbabilityPct }.maxOrNull(),
+                    codes.maxOrNull())
+            }.sortedBy { it.date }
+    }
+}
+
 data class WeatherSnapshot(
     val city: WeatherCity,
     val observedAt: Instant,
@@ -56,7 +76,8 @@ data class WeatherSnapshot(
     val observationDistanceKm: Double? = null,
     val observationDescription: String? = null,
     val feelsLikeMethod: String? = null,
-    val forecastReferenceAt: Instant? = null
+    val forecastReferenceAt: Instant? = null,
+    val daily: List<DailyWeather> = emptyList()
 ) {
     val nextHourRainProbabilityPct: Int?
         get() = hourly.firstOrNull { !it.at.isBefore(forecastReferenceAt ?: observedAt) }?.precipitationProbabilityPct

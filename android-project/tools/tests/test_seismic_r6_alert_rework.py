@@ -40,7 +40,7 @@ class SeismicR6Tests(unittest.TestCase):
                      'currentInterruptionFilter','AudioAttributes.USAGE_NOTIFICATION_EVENT','AudioAttributes.USAGE_ALARM'):
             self.assertIn(term,bridge)
         policy=src('earthquake/SeismicCriticalAudioPolicy.kt')
-        for term in ('SeismicInterruption.NONE','notificationVolume>0','alarmVolume>0','policyAccess&&channelBypass'):
+        for term in ('SeismicInterruption.NONE','notificationVolume>0','alarmVolume>0','filter==SeismicInterruption.PRIORITY'):
             self.assertIn(term,policy)
         ui=src('earthquake/SeismicWarningOverlay.kt')
         self.assertIn('if(!replay && !simulation && SeismicAlertDelivery.active.value==null) SeismicContinuousWarning.stop()',ui)

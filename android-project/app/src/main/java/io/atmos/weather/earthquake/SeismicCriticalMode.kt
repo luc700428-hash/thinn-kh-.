@@ -7,10 +7,10 @@ import android.media.AudioAttributes
 
 internal data class SeismicAudioRoute(val usage:Int,val stream:Int)
 
-/** Explicit opt-in; never changes global ringer, volume or interruption policy. */
+/** On by default since r19 (warnings must sound under DND); never changes global ringer, volume or DND. */
 internal object SeismicCriticalMode {
     const val KEY="eew_critical_mode_v1"
-    fun enabled(ctx:Context)=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean(KEY,false)
+    fun enabled(ctx:Context)=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean(KEY,true)
     fun setEnabled(ctx:Context,enabled:Boolean) {
         ctx.getSharedPreferences("thinn_seismic_v15",0).edit().putBoolean(KEY,enabled).apply{
             if(enabled)putBoolean("allow_seismic_full_screen",true)

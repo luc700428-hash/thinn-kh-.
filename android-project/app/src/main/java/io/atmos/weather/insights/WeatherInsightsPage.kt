@@ -115,6 +115,29 @@ import kotlin.math.roundToInt
                 Tile("氣壓",number(weather.pressureHpa,"hPa"),weather.pressureHpa?.let{if(it<1000)"偏低，天氣可能不穩" else if(it>1020)"偏高，天氣較穩定" else "正常範圍"}?:"未提供"),
                 Tile("能見度",number(weather.visibilityM?.div(1000),"km"),weather.visibilityM?.let{if(it<1000)"很差，開車留意" else if(it<5000)"稍差" else "良好"}?:"未提供"),
             ))
+            // 3. Everyday indices.
+            val life=remember(weather,now){LifeIndex.build(weather,now)}
+            if(life.isNotEmpty()) {
+                Text("生活指數",color=p.onSurface,fontSize=21.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=6.dp))
+                Column(Modifier.testTag("insights-life"),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    life.chunked(2).forEachIndexed{rowIndex,row->
+                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            row.forEachIndexed{i,item->
+                                val tint=when(item.level){LifeIndex.Level.GOOD->goodColor;LifeIndex.Level.FAIR->fairColor;LifeIndex.Level.POOR->poorColor}
+                                GlassSurface(Modifier.weight(1f).fillMaxHeight().iosAppear(rowIndex*2+i)) {
+                                    Row(verticalAlignment=Alignment.CenterVertically) {
+                                        Text(item.title,color=p.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.weight(1f))
+                                        Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(tint))
+                                    }
+                                    Text(item.level.word,color=p.onSurface,fontSize=21.sp,fontWeight=FontWeight.Bold)
+                                    Text(item.reason,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=19.sp)
+                                }
+                            }
+                            if(row.size==1)Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
             GlassSurface(Modifier.testTag("insights-air")) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {

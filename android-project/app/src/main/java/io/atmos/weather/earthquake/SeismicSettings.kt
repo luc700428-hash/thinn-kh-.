@@ -298,7 +298,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                             SettingsSwitch("震度未知時也提醒","來源沒有你這裡的震度時，仍顯示速報並標示未知",unknown){unknown=it;pref.edit().putBoolean("eew_notify_unknown_local",it).apply()}
                         }
                         SettingsPanel("提醒方式") {
-                            SettingsSwitch("緊急速報模式","以鬧鐘音量響起；勿擾例外需另外授權",critical) {
+                            SettingsSwitch("勿擾時也響","速報以鬧鐘音量播放警報音與語音；手機開勿擾也聽得到（完全靜音除外）",critical) {
                                 critical=it;SeismicCriticalMode.setEnabled(ctx,it);if(it)fullscreen=true
                             }
                             HorizontalDivider(modifier=Modifier.padding(vertical=12.dp),color=divider)

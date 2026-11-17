@@ -25,6 +25,7 @@ class SeismicTrainingVoice(context: Context, incident: EewIncident, place:Seismi
                 if(!active.get()) { tts?.shutdown() }
                 else if(status==TextToSpeech.SUCCESS && tts!=null) {
                     engine=tts
+                    io.atmos.weather.voice.V25TaiwanVoice.load(context)
                     io.atmos.weather.voice.V25TaiwanVoice.configure(tts)
                     tts.setAudioAttributes(AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
@@ -32,7 +33,7 @@ class SeismicTrainingVoice(context: Context, incident: EewIncident, place:Seismi
                     val narration=if(ChiChi921.isScenario(incident))ChiChi921.trainingNarration(incident,place)
                         else "收到地震速報！慎防強烈搖晃！這是本機虛構模擬演練，並非真實地震。"+
                             SeismicSpeech.warning(incident,place).substringAfter("趴下、掩護、穩住！")
-                    tts.speak(narration,
+                    tts.speak(io.atmos.weather.voice.V25TaiwanVoice.humanize(narration),
                         TextToSpeech.QUEUE_FLUSH,null,"thinn_practice_only")
                 } else tts?.shutdown()
             }

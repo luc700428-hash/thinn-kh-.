@@ -1,5 +1,7 @@
 package io.atmos.weather.ocean
 
+import io.atmos.weather.ui.iosAppearNext
+
 import io.atmos.weather.ui.brandColor
 
 import androidx.compose.animation.core.*
@@ -150,7 +152,7 @@ import kotlin.math.*
 @Composable private fun MarineSurface(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
     val p=MaterialTheme.colorScheme
     CompositionLocalProvider(LocalContentColor provides p.onSurface) {
-        Column(modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.surface)
+        Column(modifier.fillMaxWidth().iosAppearNext().clip(RoundedCornerShape(24.dp)).background(p.surface)
             .thinnSpecularEdge(24.dp).padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp),content=content)
     }
 }
@@ -167,7 +169,7 @@ private fun Double?.unit(unit:String)=this?.takeIf{it.isFinite()}?.let{"%.1f".fo
     val reduce=rememberAppleReduceMotion()
     val phase=if(reduce)null else rememberInfiniteTransition(label="ocean highlight")
         .animateFloat(0f,1f,infiniteRepeatable(tween(8000,easing=LinearEasing)),label="ocean swell")
-    Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(brandColor(0xFF1B4E40),brandColor(0xFF2C7E67))))) {
+    Box(Modifier.fillMaxWidth().height(210.dp).iosAppearNext().clip(RoundedCornerShape(28.dp)).background(Brush.verticalGradient(listOf(brandColor(0xFF1B4E40),brandColor(0xFF2C7E67))))) {
         Canvas(Modifier.matchParentSize()) {
             val t=phase?.value?:0f
             repeat(3){layer->

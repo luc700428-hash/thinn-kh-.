@@ -44,6 +44,7 @@ object SeismicAlertNotifier {
         SeismicSound.stop() // Stop a local drill/replay before the real event tone.
         SeismicContinuousWarning.start(ctx,e,scenario)
         SeismicTorch.start(ctx,local)
+        SeismicCare.vibrate(ctx,local)
         io.atmos.weather.voice.NaturalVoiceHub.interruptForEarthquake()
         if(SeismicSpeech.enabled(ctx,"eew_voice_enabled"))SeismicSpeech.speakWarning(ctx,e,SeismicUserLocation.current(ctx))
         return true

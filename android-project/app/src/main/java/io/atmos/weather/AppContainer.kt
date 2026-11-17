@@ -24,6 +24,8 @@ object AppContainer {
         .addConverterFactory(GsonConverterFactory.create()).build()
     private val airQuality = retrofit("https://air-quality-api.open-meteo.com/").create(OpenMeteoAirQualityApi::class.java)
     private val meteo = retrofit("https://api.open-meteo.com/").create(OpenMeteoApi::class.java)
+    /** Shared client for small JSON lookups (place search). */
+    val httpClient: OkHttpClient get() = http
     val geoApi: GeoSearchApi by lazy {
         retrofit("https://geocoding-api.open-meteo.com/").create(GeoSearchApi::class.java)
     }

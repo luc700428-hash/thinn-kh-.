@@ -159,7 +159,7 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             Entry("我的事項","待辦清單與個人提醒",Icons.Rounded.Checklist,onTasks),
             Entry("天氣提醒與通知","早晚報、智慧提醒、通勤與通知中心",SettingsSymbols.notification,onBriefings))),
         EntryGroup("天氣與防災",BrandPalette.selection,listOf(Entry("中央氣象署警特報","App 內閱讀完整公告與警戒地區",Icons.Rounded.WarningAmber,onAlerts),
-            Entry("氣象詳解與外出時段","最佳出門時段與白話天氣細節",Icons.Rounded.Air,onInsights),
+            Entry("氣象詳解與外出時段","最佳出門時段、生活指數與天氣細節",Icons.Rounded.Air,onInsights),
             Entry("颱風動向","官方警報、路徑與預報時間軸",SettingsSymbols.cyclone,onTyphoons),
             Entry("地震監測","測站、震後報告與演練",Icons.Rounded.Waves,onSeismic),
             Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,onRadar))),

@@ -43,6 +43,12 @@ class WeatherDiskCache(context: Context) {
             put("observation_station",value.observationStation);put("observation_distance",value.observationDistanceKm)
             put("observation_description",value.observationDescription);put("feels_method",value.feelsLikeMethod)
             put("forecast_reference",value.forecastReferenceAt?.toEpochMilli())
+            put("daily", JSONArray().also { items ->
+                value.daily.take(10).forEach { d ->
+                    items.put(JSONObject().put("date", d.date.toString()).put("high", d.highC).put("low", d.lowC)
+                        .put("rain", d.precipitationProbabilityPct).put("wmo", d.weatherCode))
+                }
+            })
             put("hourly", JSONArray().also { items ->
                 value.hourly.take(72).forEach { hour ->
                     items.put(JSONObject().apply {
@@ -106,7 +112,12 @@ class WeatherDiskCache(context: Context) {
             observationDistanceKm=o.doubleOrNull("observation_distance"),
             observationDescription=o.optString("observation_description","").takeUnless{it.isBlank()||it=="null"},
             feelsLikeMethod=o.optString("feels_method","").takeUnless{it.isBlank()||it=="null"},
-            forecastReferenceAt=o.longOrNull("forecast_reference")?.let(Instant::ofEpochMilli)
+            forecastReferenceAt=o.longOrNull("forecast_reference")?.let(Instant::ofEpochMilli),
+            daily=(o.optJSONArray("daily") ?: JSONArray()).let { arr -> (0 until arr.length()).mapNotNull { i ->
+                val d = arr.getJSONObject(i)
+                runCatching { io.atmos.weather.domain.model.DailyWeather(java.time.LocalDate.parse(d.getString("date")),
+                    d.doubleOrNull("high"), d.doubleOrNull("low"), d.intOrNull("rain"), d.intOrNull("wmo")) }.getOrNull()
+            } }
         )
     }.getOrNull()
     }

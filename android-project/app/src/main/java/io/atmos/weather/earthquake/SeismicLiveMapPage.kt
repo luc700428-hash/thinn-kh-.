@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.platform.testTag
@@ -283,7 +284,22 @@ fun SeismicLiveMapPage(
                 IconButton(onClick=onSettings) {Icon(Icons.Rounded.Tune,"地震設定",tint=light)}
             }
             SeismicSectionPicker(section,{section=it},Modifier.padding(horizontal=16.dp).padding(bottom=10.dp))
-            SeismicAdaptivePanels(Modifier.weight(1f).navigationBarsPadding(),showLeading=section=="監測"||inReplay,
+            // Like iOS paged tabs: a horizontal swipe on the page moves to the next / previous section.
+            // The map handles its own pan first, so dragging the map never flips the page.
+            val sections=listOf("監測","報告","工具")
+            val swipeThreshold=with(androidx.compose.ui.platform.LocalDensity.current){72.dp.toPx()}
+            SeismicAdaptivePanels(Modifier.weight(1f).navigationBarsPadding()
+                .pointerInput(section){
+                    var total=0f
+                    detectHorizontalDragGestures(
+                        onDragStart={total=0f},
+                        onHorizontalDrag={change,amount->total+=amount;if(kotlin.math.abs(total)>12f)change.consume()},
+                        onDragEnd={
+                            val i=sections.indexOf(section)
+                            if(total<-swipeThreshold&&i<sections.lastIndex)section=sections[i+1]
+                            else if(total>swipeThreshold&&i>0)section=sections[i-1]
+                        })
+                },showLeading=section=="監測"||inReplay,
                 overview={Column{if(section=="監測"&&missingSetup.isNotEmpty())Box(Modifier.padding(bottom=10.dp)){SeismicSetupReminder(missingSetup,onSettings)}
                     if(section=="監測")SeismicObservationSummary(if(hasObservedFrame)currentStations.size.toString() else "—",
                     maxI?.let {"%.1f".format(Locale.US,it)}?:"—",maxPga?.let {"%.1f".format(Locale.US,it)}?:"—",readingLabel)}},
@@ -631,7 +647,17 @@ private fun formatted(ms:Long):String = SimpleDateFormat("HH:mm:ss",Locale.TAIWA
     val touch=remember{io.atmos.weather.ui.GlassTouch()}
     val light=io.atmos.weather.ui.GlassLight.current(follow=!opaque)
     val capsule=RoundedCornerShape(999.dp)
+    var pickerWidth by remember{mutableIntStateOf(1)}
+    val latestSelect by rememberUpdatedState(onSelect)
     BoxWithConstraints(modifier.fillMaxWidth().height(46.dp).testTag("seismic-section-picker")
+        .onSizeChanged{pickerWidth=it.width.coerceAtLeast(1)}
+        // Drag across the control to scrub between sections, as with iOS segmented controls.
+        .pointerInput(Unit){
+            fun at(x:Float)=names[(x/(pickerWidth.toFloat()/names.size)).toInt().coerceIn(0,names.lastIndex)]
+            detectHorizontalDragGestures(
+                onDragStart={o->latestSelect(at(o.x))},
+                onHorizontalDrag={change,_->change.consume();latestSelect(at(change.position.x))})
+        }
         .shadow(10.dp,capsule,ambientColor=Color.Black.copy(alpha=.08f),spotColor=Color.Black.copy(alpha=.08f))
         .clip(capsule).thinnBackdrop(opaque,999.dp)
         .background(if(opaque)palette.surface else palette.surface.copy(alpha=if(dark).42f else .58f))

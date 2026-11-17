@@ -173,6 +173,10 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                             }
                             if(!shortLandscape)facts(Modifier.fillMaxWidth())
                             Text(SeismicDisplayFormat.location(incident.epicenter),fontSize=14.sp,lineHeight=19.sp,fontWeight=FontWeight.Medium,color=palette.onSurface,modifier=Modifier.fillMaxWidth())
+                            // Shaking at the user's own places (家 / 公司), when they are set.
+                            val placesLine=remember(incident,now/1000){if(simulation||replay)null else SeismicCare.placesLine(context,incident,now)}
+                            if(placesLine!=null&&!tight)Text(placesLine,fontSize=14.sp,lineHeight=19.sp,fontWeight=FontWeight.SemiBold,
+                                color=palette.primary,maxLines=2,modifier=Modifier.fillMaxWidth().testTag("seismic-warning-places"))
                             if(!shortLandscape)Text(issued+if(historical)" · 舊制" else " · 第 ${incident.serial} 報",fontSize=14.sp,lineHeight=18.sp,color=palette.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
                         }
                     }

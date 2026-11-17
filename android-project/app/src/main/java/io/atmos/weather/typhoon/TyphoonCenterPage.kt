@@ -1,5 +1,7 @@
 package io.atmos.weather.typhoon
 
+import io.atmos.weather.ui.iosAppearNext
+
 import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.animatedBrandArgb
 
@@ -96,9 +98,9 @@ import androidx.compose.ui.graphics.graphicsLayer
                 val points=fixes.filter{focused==null||it.stormId==focused}
                 OfficialTrackPlot(points)
                 timelines.filter{focused==null||it.stormId==focused}.forEach {storm->
-                    GlassSurface {GlassAction("${storm.name} · 預報時間軸","拖曳時間檢視中心位置、風速與暴風圈"){selectedTimeline=storm}}
+                    GlassSurface(Modifier.iosAppearNext()) {GlassAction("${storm.name} · 預報時間軸","拖曳時間檢視中心位置、風速與暴風圈"){selectedTimeline=storm}}
                 }
-                GlassSurface {
+                GlassSurface(Modifier.iosAppearNext()) {
                     Text("七級風暴風圈侵襲機率",color=palette.onSurface,fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
                     Text("未來 120 小時 · 氣象署主要城市／離島參考點",color=palette.onSurfaceVariant,fontSize=14.sp)
@@ -135,7 +137,7 @@ import androidx.compose.ui.graphics.graphicsLayer
                     }
                 }
                 warnings.filter{it.title.contains("颱風")||it.summary.contains("颱風警報")}.forEach {warning->
-                    GlassSurface {GlassAction(warning.title,warning.summary.take(120)){selectedWarning=warning}}
+                    GlassSurface(Modifier.iosAppearNext()) {GlassAction(warning.title,warning.summary.take(120)){selectedWarning=warning}}
                 }
                 Text("路徑、時間與警報以中央氣象署公告為準；地圖可離線縮放，不另開網站。",color=palette.onSurfaceVariant,fontSize=14.sp)
             }

@@ -169,7 +169,7 @@ fun GlassDropdownMenu(expanded:Boolean,onDismissRequest:()->Unit,
 @Composable
 fun GlassDropdownMenuItem(text:@Composable ()->Unit,onClick:()->Unit) {
     val haptic=io.atmos.weather.haptics.LocalHapticEngine.current
-    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight=48.dp).iosJellyPress()
+    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight=48.dp).iosAppear().iosJellyPress()
         .clip(RoundedCornerShape(14.dp)).clickable {
             haptic?.play(io.atmos.weather.haptics.HapticEngine.Event.TAP)
             onClick()

@@ -1,5 +1,7 @@
 package io.atmos.weather.alerts
 
+import io.atmos.weather.ui.iosAppearNext
+
 import android.annotation.SuppressLint
 import android.os.Build
 import android.view.ContextThemeWrapper
@@ -92,7 +94,7 @@ import java.time.format.DateTimeFormatter
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp)
             .padding(top=12.dp,bottom=132.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
             if(loading)Text("正在更新中央氣象署公告…",color=p.onSurfaceVariant,fontSize=14.sp)
-            if(result?.failed==true) GlassSurface {
+            if(result?.failed==true) GlassSurface(Modifier.iosAppearNext()) {
                 Text(if(result.cached)"更新未完成，顯示先前取得的公告；請核對有效時間。" else "官方公告尚未載入，請重試。未載入不代表沒有警報。",color=p.onSurface)
                 GlassTextButton(onRetry,enabled=!loading){Text("重新取得公告")}
             }
@@ -100,20 +102,20 @@ import java.time.format.DateTimeFormatter
                 CwaWarningMapCard(mapState,null)
                 result?.checkedAt?.let{Text("最後查詢 ${date.format(it)} · 臺灣時間",color=p.onSurfaceVariant,fontSize=14.sp)}
                 result?.bulletins.orEmpty().forEach {b->
-                    GlassSurface {
+                    GlassSurface(Modifier.iosAppearNext()) {
                         Text(when{b.cancelled->"已解除／取消";b.upcoming(now)->"已發布 · 預告時段";b.active(now)->"目前生效";else->"公告資訊 · 請核對有效時間"},color=p.primary,fontSize=14.sp)
                         GlassAction(b.title,b.areas.joinToString("、")){onSelect(b.title)}
                         Text("${date.format(b.issuedAt)} 發布",color=p.onSurfaceVariant,fontSize=14.sp)
                     }
                 }
                 val missing=hazards.filter{h->result?.bulletins.orEmpty().none{it.title.contains(h.phenomenon)}}
-                missing.distinctBy{it.title}.forEach{h->GlassSurface{GlassAction(h.title,h.county){onSelect(h.title)}}}
+                missing.distinctBy{it.title}.forEach{h->GlassSurface(Modifier.iosAppearNext()) {GlassAction(h.title,h.county){onSelect(h.title)}}}
                 if(!loading && result?.failed==false && result.bulletins.isEmpty())
                     Text("本次特報內容資料未列出公告；其他種類警報可在下方官方圖表中查看。",color=p.onSurfaceVariant)
                 if(weatherNotices.isNotEmpty()) {
                     Text("近期官方公告",color=p.onSurface,fontSize=20.sp,fontWeight=FontWeight.SemiBold)
                     Text("近期公告可能包含更新或解除訊息，請核對原文。",color=p.onSurfaceVariant,fontSize=14.sp)
-                    weatherNotices.forEach{n->GlassSurface{GlassAction(n.title,date.format(n.issuedAt)){onSelect(n.title)}}}
+                    weatherNotices.forEach{n->GlassSurface(Modifier.iosAppearNext()) {GlassAction(n.title,date.format(n.issuedAt)){onSelect(n.title)}}}
                 }
                 GlassOutlinedButton({onOfficial("")},modifier=Modifier.fillMaxWidth()){Text("在 App 內查看官方警報總覽")}
             } else {
@@ -124,7 +126,7 @@ import java.time.format.DateTimeFormatter
                 val expires=bulletin?.expiresAt?:header?.expiresAt
                 val cancelled=bulletin?.cancelled==true || notice?.let{n->listOf("解除","取消").any{it in n.title} &&
                     (bulletin==null||!n.issuedAt.isBefore(bulletin.updatedAt))}==true
-                GlassSurface {
+                GlassSurface(Modifier.iosAppearNext()) {
                     Text(title,modifier=Modifier.fillMaxWidth(),color=p.onSurface,fontSize=24.sp,lineHeight=34.sp,fontWeight=FontWeight.Bold)
                     issued?.let{Text("官方發布 ${date.format(it)}",modifier=Modifier.fillMaxWidth(),color=p.onSurfaceVariant,fontSize=15.sp,lineHeight=23.sp)}
                     if(bulletin==null&&header!=null)Text("以下時段為 ${CwaWarningGeography.county(header.county)} 的縣市資料",color=p.onSurfaceVariant,fontSize=14.sp)
@@ -151,7 +153,7 @@ import java.time.format.DateTimeFormatter
                         if(cancelled)mapState.copy(titles=emptyMap(),upcoming=emptyMap(),expiredSelection=true) else mapState,title)
                     else Text("警戒範圍資料暫未取得；下方保留已載入的官方文字。",color=p.onSurfaceVariant,fontSize=15.sp)
                 }
-                GlassSurface {
+                GlassSurface(Modifier.iosAppearNext()) {
                     Text(if(bulletin!=null)"官方公告全文" else "官方公告摘要",color=p.onSurface,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
                     if(bulletin!=null) SelectionContainer {

@@ -17,9 +17,10 @@ class SeismicCriticalAudioPolicyTest {
     @Test fun criticalModeUsesAlarmsWhenRingerIsSilent() {
         for(normal in listOf(false,true))assertEquals(SeismicSoundRoute.ALARM,route(normal=normal,notification=0))
     }
-    @Test fun priorityDndNeedsBothPolicyGrantAndActualChannelException() {
+    @Test fun priorityDndStillHearsTheWarningAsAnAlarm() {
+        // r19: warnings play as alarms, which priority-only DND lets through.
         for(granted in listOf(false,true))for(bypass in listOf(false,true))assertEquals(
-            if(granted&&bypass)SeismicSoundRoute.ALARM else null,route(filter=SeismicInterruption.PRIORITY,granted=granted,bypass=bypass))
+            SeismicSoundRoute.ALARM,route(filter=SeismicInterruption.PRIORITY,granted=granted,bypass=bypass))
     }
     @Test fun totalSilenceAndUnknownModesRemainSystemVetoes() {
         for(filter in listOf(SeismicInterruption.NONE,SeismicInterruption.UNKNOWN))assertNull(route(filter=filter,granted=true,bypass=true))

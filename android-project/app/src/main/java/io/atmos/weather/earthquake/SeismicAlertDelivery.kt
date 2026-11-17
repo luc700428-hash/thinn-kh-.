@@ -70,7 +70,12 @@ object SeismicAlertDelivery {
             (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(29200)
             routing.edit().remove("latest_notification_ticket").apply()
         }
-        if(active.value?.key==key){active.value=null;SeismicContinuousWarning.stop();SeismicSpeech.stop();SeismicTorch.stop();SeismicPopup.dismissCard()}
+        if(active.value?.key==key){
+            val ended=active.value?.incident
+            active.value=null;SeismicContinuousWarning.stop();SeismicSpeech.stop();SeismicTorch.stop();SeismicPopup.dismissCard();SeismicCare.stopVibration()
+            // A real warning the user closed: offer the safety checklist and 報平安.
+            ended?.let{SeismicCare.afterQuake(ctx,it)}
+        }
     }
     fun cancel(ctx:Context,e:EewIncident,now:Long=System.currentTimeMillis()):Boolean {
         if(!e.cancelled||e.test||now-e.issuedAtMs !in -15_000L..120_000L)return false

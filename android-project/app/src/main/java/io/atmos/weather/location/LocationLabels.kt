@@ -4,7 +4,7 @@ import io.atmos.weather.domain.model.GeoPoint
 
 /** Presentation policy: always use「台灣」, never the spurious province suffix. */
 object LocationLabels {
-    private val unwanted = Regex("(?i)(Taiwan\\s*[,，(（]?\\s*(?:(?:Province|Republic)\\s*(?:of\\s*)?)?China(?:\\s*[)）])?|China\\s*[,，/-]?\\s*Taiwan|Chinese\\s+Taipei|Taiwan\\s+Province|Province\\s+of\\s+Taiwan|中[國国]\\s*[,，·/（(-]?\\s*台[灣湾](?:省)?(?:\\s*[)）])?|台[灣湾]\\s*[,，(（]\\s*中[國国](?:\\s*[)）])?|中[華华]\\s*[台臺]北|台[灣湾]省|\\bTaiwan\\b)")
+    private val unwanted = Regex("(?i)(Taiwan\\s*[,，(（]?\\s*(?:(?:Province|Republic)\\s*(?:of\\s*)?)?China(?:\\s*[)）])?|Republic\\s+of\\s+China(?:\\s*[(（]?\\s*Taiwan\\s*[)）]?)?|China\\s*[,，/-]?\\s*Taiwan|Chinese\\s+Taipei|Taiwan\\s+Province|Province\\s+of\\s+Taiwan|中[國国]\\s*[,，·/（(-]?\\s*[台臺][灣湾](?:省|地[區区])?(?:\\s*[)）])?|[台臺][灣湾]\\s*[,，(（]\\s*中[國国](?:\\s*[)）])?|中[華华]\\s*[台臺]北|中[華华]民[國国]\\s*[(（]?\\s*[台臺][灣湾]?\\s*[)）]?|中[華华]民[國国]|[台臺][灣湾]省|中[國国][台臺]北|\\bTaiwan\\b)")
     fun isTaiwan(countryCode: String?, countryName: String?): Boolean =
         countryCode?.uppercase(java.util.Locale.ROOT) in setOf("TW","TWN","TPE") ||
             countryName?.trim()?.uppercase(java.util.Locale.ROOT) in setOf("TW","TWN","TPE") ||

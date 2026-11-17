@@ -1,4 +1,7 @@
 package io.atmos.weather.alarm
+
+import io.atmos.weather.ui.iosAppear
+import io.atmos.weather.ui.iosJellyPress
 import io.atmos.weather.ui.appleBouncingScroll
 
 import android.Manifest
@@ -124,8 +127,8 @@ fun WeatherAlarmPage(onClose:()->Unit) {
             Text("還沒有鬧鐘。按右上角＋新增起床提醒。",color=ink,fontSize=17.sp,
                 modifier=Modifier.padding(vertical=28.dp))
         }
-        alarms.forEach { a ->
-            Row(Modifier.fillMaxWidth().padding(bottom=12.dp).background(MaterialTheme.colorScheme.surface,RoundedCornerShape(22.dp))
+        alarms.forEachIndexed { alarmIndex,a ->
+            Row(Modifier.fillMaxWidth().padding(bottom=12.dp).iosAppear(alarmIndex).iosJellyPress().background(MaterialTheme.colorScheme.surface,RoundedCornerShape(22.dp))
                 .clickable {editing=a;showEditor=true}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(String.format(Locale.TAIWAN,"%02d:%02d",a.hour,a.minute),fontSize=39.sp,color=ink,

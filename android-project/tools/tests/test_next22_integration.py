@@ -10,9 +10,9 @@ GATE=ROOT/'tools/next_release_gate.json'
 class NextIntegratedSafety(unittest.TestCase):
     def test_neutral_typhoon_entry_and_verified_only_alert(self):
         s=HOME.read_text(encoding='utf-8')
-        self.assertTrue('NEXT_INTEGRATED_TYPOON_NEUTRAL_ENTRY' in s or
-                        'NEXT_PHASE1_PERMANENT_TYPHOON_ENTRY' in s)
-        self.assertIn('Text("颱風資訊",',s)
+        # r19: the typhoon card appears only while a storm is relevant; no permanent neutral entry.
+        self.assertNotIn('NEXT_INTEGRATED_TYPOON_NEUTRAL_ENTRY',s)
+        self.assertNotIn('目前未顯示臺灣相關有效颱風警報',s)
         self.assertIn('if (officialStormActive || verifiedTyphoonWarning!=null) {',s)
         self.assertIn('verifiedTyphoonWarning?.let { official ->',s)
         self.assertIn('TaiwanStormRelevance.isMovingTowardTaiwan',s)

@@ -425,8 +425,8 @@ class RenderingRegressionTest {
             compose.onNodeWithContentDescription("工具").performClick()
             compose.onNodeWithContentDescription("天氣").performClick()
             frame()
-            centerWeatherText("現在最重要的天氣")
-            assertPaintedText("現在最重要的天氣")
+            centerWeatherText("今日概況")
+            assertPaintedText("今日概況")
         }
         checkpoint("weather: capture final screen")
         val image=compose.onRoot().captureToImage().asAndroidBitmap()

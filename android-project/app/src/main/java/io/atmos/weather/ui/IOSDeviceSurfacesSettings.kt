@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
     GlassToggle("顯示資料時間","保留快取及過期狀態",stamp){stamp=it;changed("widget_show_updated",it)};GlassDivider()
     GlassToggle("顯示即將到來的事項","天氣時鐘版面中的下一個私人事項",agenda){agenda=it;changed("widget_show_agenda",it)}
    }
-   Text("長按桌面加入小工具，可選即時天氣、逐時預報、天氣時鐘、氣象數據與安心資訊，以及五種配色與 Q 版天氣夥伴。調整大小會改變資訊密度。",color=palette.onSurfaceVariant,fontSize=14.sp)
+   Text("長按桌面加入小工具，共有五款 Q 版夥伴：天氣、時鐘、一週預報、出門小幫手、地震安心。可從 2×2 拉到 10×10，放得越大顯示越多資訊。",color=palette.onSurfaceVariant,fontSize=14.sp)
    Text("天氣夥伴會隨日夜變換角色，搭配自然漂浮、眨眼、視線與雨滴水花。動畫會配合桌面與省電設定。",color=palette.onSurfaceVariant,fontSize=14.sp)
    GlassButton(onClick={WidgetSync.refreshCached(ctx)},modifier=Modifier.fillMaxWidth()){Text("讓天氣夥伴換個表情")}
    GlassButton(onClick={WidgetSync.request(ctx)},modifier=Modifier.fillMaxWidth()){Text("同步桌面天氣")}

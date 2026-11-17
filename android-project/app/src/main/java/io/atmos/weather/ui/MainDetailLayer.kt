@@ -45,7 +45,7 @@ fun MainDetailLayer(visible:Boolean,onBack:()->Unit,inset:Dp=LocalWorkspaceDetai
                 // The outer background still fills the page behind its clear glass.
                 val bottom=LocalWorkspaceBottomClearance.current
                 CompositionLocalProvider(LocalWorkspaceBottomClearance provides 0.dp) {
-                    AdaptivePageFrame(Modifier.padding(bottom=bottom)){content()}
+                    AdaptivePageFrame(Modifier.padding(bottom=bottom)){AppearSequenceScope{content()}}
                 }
             }
         }

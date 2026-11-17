@@ -13,12 +13,14 @@ import java.time.format.DateTimeFormatter
 /** Actual launcher dp; independent text regions reflow rather than stretching one screenshot. */
 internal data class WidgetRegion(val kind:Kind,val x:Float,val y:Float,val width:Float,val height:Float,
     val text:String="",val font:Float=0f,val soft:Boolean=false,val lines:Int=1,val bold:Boolean=false,val index:Int=0){
-    enum class Kind{TEXT,TEMPERATURE,TIME,DATE,ART,ANALOG,HOUR_ART,COUNTDOWN}
+    enum class Kind{TEXT,TEMPERATURE,TIME,DATE,ART,ANALOG,HOUR_ART,COUNTDOWN,DAY_ART}
 }
 internal object AdaptiveWidgetLayout{
     private const val LINE=1.65f
     private fun units(s:String)=s.sumOf{if(it.code>=0x2e80)1.0 else .64}.toFloat().coerceAtLeast(1f)
     fun create(p:WidgetLayoutPlan,family:Int,d:OpticalWidgetData,hour24:Boolean,showUpdated:Boolean=true,showAgenda:Boolean=true):List<WidgetRegion>{
+        // The Q-version widgets (7 and up) use the r20 block layout at every size.
+        if(family>=7)return QBuddyLayout.create(p,family,d,hour24,showUpdated,showAgenda)
         val out=mutableListOf<WidgetRegion>();val w=p.innerWidth;val h=p.innerHeight;val gap=if(h<180)3f else 6f
         var y=0f
         fun add(kind:WidgetRegion.Kind,x:Float,top:Float,width:Float,height:Float,text:String="",font:Float=0f,soft:Boolean=false,lines:Int=1,bold:Boolean=false,index:Int=0){
@@ -34,7 +36,7 @@ internal object AdaptiveWidgetLayout{
         fun fit(desired:Float,text:String,width:Float,maxHeight:Float=h)=minOf(desired/p.textScale,
             width/(units(text)*WidgetTypography.MAX),maxHeight/(LINE*WidgetTypography.MAX))*p.textScale
         val city=io.atmos.weather.location.LocationLabels.microcity(d.city).ifBlank{d.city}
-        val clocks=family in listOf(2,6,8);val safety=family in listOf(4,5)
+        val clocks=family in listOf(2,6,8);val safety=family in listOf(4,5,11)
         val timeSample=if(hour24)"00:00" else "00:00 PM"
         val range=d.highLow.replace("最高 ","高 ").replace("最低 ","低 ")
         val artKind=if(family==6)WidgetRegion.Kind.ANALOG else WidgetRegion.Kind.ART
@@ -228,10 +230,11 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
     AdaptiveWidgetLayout.create(p,family,d,android.text.format.DateFormat.is24HourFormat(context),showUpdated,showAgenda).forEach{r->
         var id=R.id.widget_adaptive_text
         val remote=when(r.kind){
-            WidgetRegion.Kind.ART->if(family in listOf(7,8)){id=R.id.buddy_root;buddyRemote(context,d,motion,seed,r.width)}else{
+            WidgetRegion.Kind.ART->if(family>=7){id=R.id.buddy_root;buddyRemote(context,d,motion,seed,r.width)}else{
                 id=R.id.widget_glyph_root;weatherRemote(context,d.condition,d.day,r.width,motion)
             }
             WidgetRegion.Kind.ANALOG->{id=R.id.widget_analog;RemoteViews(context.packageName,R.layout.widget_analog_clock)}
+            WidgetRegion.Kind.DAY_ART->{id=R.id.widget_glyph_root;weatherRemote(context,WidgetWeatherArt.condition(d.days[r.index].code),true,r.width,false)}
             WidgetRegion.Kind.HOUR_ART->{id=R.id.widget_glyph_root;val hour=d.hours[r.index];weatherRemote(context,WidgetWeatherArt.condition(hour.code),hour.day,r.width,false)}
             WidgetRegion.Kind.TIME,WidgetRegion.Kind.DATE->{
                 val date=r.kind==WidgetRegion.Kind.DATE

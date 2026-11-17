@@ -159,7 +159,9 @@ class WeatherViewModel(
             var succeeded=false
             val remote=supervisorScope {
                 val requests=listOf(async {withTimeoutOrNull(6500){runCatching{AppContainer.geoApi.search(q,count=40).results.orEmpty().mapNotNull{runCatching{it.asCity()}.getOrNull()}}.getOrNull()}},
-                    async {withTimeoutOrNull(6500){runCatching{AppContainer.geoApi.search(q.replace('臺','台'),count=30,countryCode="TW").results.orEmpty().mapNotNull{runCatching{it.asCity()}.getOrNull()}}.getOrNull()}})
+                    async {withTimeoutOrNull(6500){runCatching{AppContainer.geoApi.search(q.replace('臺','台'),count=30,countryCode="TW").results.orEmpty().mapNotNull{runCatching{it.asCity()}.getOrNull()}}.getOrNull()}},
+                    // Landmarks, scenic spots and villages (OpenStreetMap) beyond city names.
+                    async {withTimeoutOrNull(6500){runCatching{io.atmos.weather.location.PlaceSearch.search(AppContainer.httpClient,q)}.getOrNull()}})
                 requests.flatMap {it.await()?.also{succeeded=true}.orEmpty()}
             }
             if(generation==searchGeneration)mutableState.update{it.copy(searching=false,

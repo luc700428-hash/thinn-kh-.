@@ -55,3 +55,23 @@ fun Modifier.iosHeartbeat(key:Any?,strong:Boolean=false):Modifier=composed{
     }
     graphicsLayer{scaleX=beat.value;scaleY=beat.value}
 }
+
+/** Hands out 0, 1, 2… to the cards of one page so they settle in one after another. */
+class AppearSequence { private var next = 0; fun take(): Int = next++ }
+val LocalAppearSequence = staticCompositionLocalOf<AppearSequence?> { null }
+
+/**
+ * [iosAppear] with the position taken from the page's [AppearSequence]: the first card rises
+ * first, the next 40 ms later, and so on. Outside a sequence everything appears together.
+ */
+fun Modifier.iosAppearNext(): Modifier = composed {
+    val sequence = LocalAppearSequence.current
+    val index = remember { sequence?.take() ?: 0 }
+    iosAppear(index)
+}
+
+/** Starts a fresh sequence for one page or sheet. */
+@Composable fun AppearSequenceScope(content: @Composable () -> Unit) {
+    val sequence = remember { AppearSequence() }
+    CompositionLocalProvider(LocalAppearSequence provides sequence, content = content)
+}

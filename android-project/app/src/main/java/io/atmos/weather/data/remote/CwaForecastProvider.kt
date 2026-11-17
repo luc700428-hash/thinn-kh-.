@@ -51,7 +51,7 @@ class CwaForecastProvider(
         return coroutineScope {
             val shortRange=async(Dispatchers.IO){fetch(town.dataset,town.name,authorization)}
             val week=async(Dispatchers.IO){
-                try{fetch("F-D0047-$weekId",town.name,authorization,"最高溫度,最低溫度,紫外線指數")}
+                try{fetch("F-D0047-$weekId",town.name,authorization,"最高溫度,最低溫度,紫外線指數,12小時降雨機率,天氣現象")}
                 catch(cancel:CancellationException){throw cancel}catch(_:Exception){null}
             }
             val station=async{
@@ -136,6 +136,19 @@ class CwaForecastProvider(
         val highs=todays("最高溫度","MaxTemperature");val lows=todays("最低溫度","MinTemperature")
         val dayTemps=temps.filter{it.first.atZone(zone).toLocalDate()==today}.map{it.second}
         val uv=covering(spans(weekly,"紫外線指數"),now)?.value?.optString("UVIndex")?.toDoubleOrNull()
+        // 1-week township forecast: 12-hour periods folded into calendar days.
+        val weekHigh=spans(weekly,"最高溫度");val weekLow=spans(weekly,"最低溫度")
+        val weekRain=spans(weekly,"12小時降雨機率");val weekSky=spans(weekly,"天氣現象")
+        val days=(weekHigh.map{it.start}+weekLow.map{it.start}).map{it.atZone(zone).toLocalDate()}.distinct().sorted()
+        val daily=days.map{d->
+            fun on(list:List<Span>)=list.filter{it.start.atZone(zone).toLocalDate()==d}
+            val dayTime=on(weekSky).firstOrNull{it.start.atZone(zone).hour in 6..12}?:on(weekSky).firstOrNull()
+            io.atmos.weather.domain.model.DailyWeather(d,
+                on(weekHigh).mapNotNull{it.value.optString("MaxTemperature").toDoubleOrNull()}.maxOrNull(),
+                on(weekLow).mapNotNull{it.value.optString("MinTemperature").toDoubleOrNull()}.minOrNull(),
+                on(weekRain).mapNotNull{it.value.optString("ProbabilityOfPrecipitation").toIntOrNull()}.maxOrNull(),
+                cwaTextToWmo(dayTime?.value?.optString("Weather")))
+        }.filter{it.highC!=null||it.lowC!=null}
         val lat=city.coordinate.latitude;val lon=city.coordinate.longitude
         val sun=runCatching{SunTimes.compute().on(today).at(lat,lon).timezone(zone).execute()}.getOrNull()
         val sunrise=sun?.rise?.toInstant();val sunset=sun?.set?.toInstant()
@@ -155,7 +168,8 @@ class CwaForecastProvider(
             observationStation=observed?.name,observationDistanceKm=observed?.distanceKm,
             observationDescription=observed?.description?:forecastText,
             feelsLikeMethod=if(observed!=null)"氣象署體感公式 · 附近測站實測溫濕度與風速" else "中央氣象署鄉鎮預報體感溫度",
-            forecastReferenceAt=forecastHour
+            forecastReferenceAt=forecastHour,
+            daily=daily
         )
     }
 

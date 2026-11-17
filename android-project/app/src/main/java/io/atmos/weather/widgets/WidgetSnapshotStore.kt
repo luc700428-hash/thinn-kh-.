@@ -50,6 +50,16 @@ object WidgetSnapshotStore {
             val local=h.at.atZone(zone).toLocalTime()
             put("day",if(rise!=null&&set!=null&&rise<set)local>=rise&&local<set else weather.isDay)
         })}}
+        // r20 buddy widgets: the coming days, the plain-words outlook and what to bring.
+        val now=java.time.Instant.now()
+        val days=org.json.JSONArray().apply{io.atmos.weather.presentation.home.forecastDays(weather,now.atZone(zone).toLocalDate()).forEach{d->
+            put(org.json.JSONObject().put("day",d.date.toEpochDay()).put("high",kotlin.math.round(d.highC!!).toInt()).put("low",kotlin.math.round(d.lowC!!).toInt())
+                .put("rain",d.precipitationProbabilityPct?:-1).put("code",d.weatherCode?:-1))}}
+        val outlook=io.atmos.weather.presentation.home.HomeOutlook.build(weather,now)
+        val pop=weather.nextHours.take(12).mapNotNull{it.precipitationProbabilityPct}.maxOrNull()
+        val temps=weather.nextHours.take(12).mapNotNull{it.temperatureC}+weather.temperatureC
+        val bring=listOfNotNull(io.atmos.weather.comfort.ComfortMessages.umbrella(pop),
+            io.atmos.weather.comfort.ComfortMessages.outfit((temps+listOfNotNull(weather.feelsLikeC)).min(),temps.max())).joinToString(" · ")
         context.getSharedPreferences("weather_cache",Context.MODE_PRIVATE).edit()
             .putString("widget_city",io.atmos.weather.location.LocationLabels.city(weather.city).name)
             .putString("widget_city_id",weather.city.id)
@@ -65,6 +75,8 @@ object WidgetSnapshotStore {
             .putString("widget_locality",scene.locality)
             .putInt("widget_weather_code",weather.weatherCode ?: -1)
             .putString("widget_hours",hours.toString())
+            .putString("widget_days",days.toString()).putString("widget_outlook",outlook.rain)
+            .putString("widget_tomorrow",outlook.tomorrow.orEmpty()).putString("widget_bring",bring)
             .putString("widget_zone",weather.timeZoneId?:java.time.ZoneId.systemDefault().id)
             .putInt("widget_humidity",weather.humidityPct?:-1)
             .putFloat("widget_wind",weather.windKmh?.div(3.6)?.toFloat()?:-1f)

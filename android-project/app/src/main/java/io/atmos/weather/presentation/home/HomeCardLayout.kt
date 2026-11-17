@@ -46,18 +46,22 @@ import kotlin.math.roundToInt
 /** Which home cards show, and in what order. Edited like the iOS widget stack. */
 object HomeCardLayout {
     val titles = linkedMapOf(
-        "key" to "現在最重要的天氣", "outing" to "今天出門", "commute" to "通勤天氣", "scene" to "天氣光影",
-        "forecast" to "24 小時預報", "radar" to "降雨雷達", "indicators" to "天氣指標", "air" to "空氣品質與能見度")
+        "outlook" to "接下來", "outing" to "今日概況", "forecast" to "24 小時預報", "daily" to "7 天預報", "radar" to "降雨雷達",
+        "details" to "天氣細節與空氣品質", "commute" to "通勤天氣", "scene" to "天氣光影", "key" to "未來 6 小時重點")
     val defaultOrder = titles.keys.toList()
+    /** r19 keeps the home calm: the six-hour facts overlap 今日概況, so they start hidden. */
+    private val defaultHidden = setOf("key")
     private fun p(ctx: Context) = ctx.getSharedPreferences("thinn_settings", Context.MODE_PRIVATE)
     fun order(ctx: Context): List<String> {
-        val saved = runCatching { JSONArray(p(ctx).getString("home_card_order_v18", "[]")) }.getOrNull()
+        val saved = runCatching { JSONArray(p(ctx).getString("home_card_order_v19", "[]")) }.getOrNull()
             ?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty().filter { it in titles }
         return (saved + defaultOrder.filterNot { it in saved }).distinct()
     }
-    fun hidden(ctx: Context): Set<String> = p(ctx).getStringSet("home_card_hidden_v18", emptySet()).orEmpty().filter { it in titles }.toSet()
+    fun hidden(ctx: Context): Set<String> =
+        if (!p(ctx).contains("home_card_hidden_v19")) defaultHidden
+        else p(ctx).getStringSet("home_card_hidden_v19", emptySet()).orEmpty().filter { it in titles }.toSet()
     fun save(ctx: Context, order: List<String>, hidden: Set<String>) {
-        p(ctx).edit().putString("home_card_order_v18", JSONArray(order).toString()).putStringSet("home_card_hidden_v18", hidden).apply()
+        p(ctx).edit().putString("home_card_order_v19", JSONArray(order).toString()).putStringSet("home_card_hidden_v19", hidden).apply()
         revision.intValue++
     }
     /** Bumped on every save so the home screen recomposes with the new layout. */
@@ -119,7 +123,7 @@ object HomeCardLayout {
             }
         }
         Text("恢復預設", color = MaterialTheme.colorScheme.primary, fontSize = 17.sp,
-            modifier = Modifier.clickable { order = HomeCardLayout.defaultOrder; hidden = emptySet() }.padding(vertical = 8.dp))
+            modifier = Modifier.clickable { order = HomeCardLayout.defaultOrder; hidden = setOf("key") }.padding(vertical = 8.dp))
     }
 }
 

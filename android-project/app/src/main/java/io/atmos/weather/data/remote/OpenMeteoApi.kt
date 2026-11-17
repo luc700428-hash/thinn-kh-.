@@ -11,9 +11,9 @@ interface OpenMeteoApi {
         @Query("longitude") longitude: Double,
         @Query("current") current: String = "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m,surface_pressure,uv_index,wind_direction_10m,visibility,wind_gusts_10m,snowfall,snow_depth",
         @Query("hourly") hourly: String = "temperature_2m,apparent_temperature,precipitation_probability,uv_index,relative_humidity_2m,wind_speed_10m,weather_code,snowfall,snowfall_probability,freezing_rain_probability,wind_gusts_10m",
-        @Query("daily") daily: String = "sunrise,sunset,temperature_2m_max,temperature_2m_min",
+        @Query("daily") daily: String = "sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max",
         @Query("timezone") timezone: String = "auto",
-        @Query("forecast_days") forecastDays: Int = 3,
+        @Query("forecast_days") forecastDays: Int = 7,
         @Query("temperature_unit") temperatureUnit:String="celsius",
         @Query("wind_speed_unit") windSpeedUnit:String="kmh"
 
@@ -58,5 +58,8 @@ data class DailyDto(
     val sunrise: List<String>?,
     val sunset: List<String>?,
     @SerializedName("temperature_2m_max") val highs: List<Double?>?,
-    @SerializedName("temperature_2m_min") val lows: List<Double?>?
+    @SerializedName("temperature_2m_min") val lows: List<Double?>?,
+    val time: List<String>? = null,
+    @SerializedName("weather_code") val codes: List<Int?>? = null,
+    @SerializedName("precipitation_probability_max") val rainMax: List<Int?>? = null
 )

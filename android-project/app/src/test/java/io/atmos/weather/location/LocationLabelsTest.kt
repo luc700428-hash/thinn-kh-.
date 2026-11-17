@@ -44,4 +44,12 @@ class LocationLabelsTest {
         assertEquals(c.id,LocationLabels.city(c).id);assertEquals(p,LocationLabels.city(c).coordinate)
         assertEquals("台灣 · 台北市",LocationLabels.city(c).name)
     }
+    @Test fun r19NeverShowsChinaTaiwanStyleLabels() {
+        for (raw in listOf("中國台灣 · 台北市", "中华台北", "中華台北 · 新北市", "Taiwan, Province of China", "Republic of China (Taiwan)",
+                "台灣省 · 台中市", "中國 台灣省", "中華民國 · 高雄市", "中国台北")) {
+            val shown = LocationLabels.display(raw)
+            for (bad in listOf("中國", "中国", "中華台北", "中华台北", "台灣省", "Province", "Republic", "China")) assertFalse("$raw -> $shown", shown.contains(bad))
+        }
+        assertEquals("台灣 · 新北市", LocationLabels.display("中華台北 · 新北市"))
+    }
 }

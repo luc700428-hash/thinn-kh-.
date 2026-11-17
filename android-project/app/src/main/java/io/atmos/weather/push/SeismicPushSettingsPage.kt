@@ -1,4 +1,6 @@
 package io.atmos.weather.push
+
+import io.atmos.weather.ui.iosAppearNext
 import io.atmos.weather.ui.appleBouncingScroll
 
 import androidx.compose.foundation.background
@@ -34,7 +36,7 @@ fun SeismicPushSettingsPage(onClose: () -> Unit) {
         Text("需主動同意；僅涵蓋台灣本島與離島，不冒充官方災防細胞廣播。",
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(18.dp))
-        GlassSurface {
+        GlassSurface(Modifier.iosAppearNext()) {
             Text("FCM ${if (SeismicPushRegistration.configured()) "已配置" else "尚未配置"}", color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(10.dp))
             GlassToggle(

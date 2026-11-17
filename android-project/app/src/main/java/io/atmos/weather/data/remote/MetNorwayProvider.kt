@@ -81,6 +81,13 @@ class MetNorwayProvider(
                 weatherCode=metSymbolToWmo(s.symbol))
         }
         val todays=steps.filter{it.at.atZone(zone).toLocalDate()==today}.mapNotNull{it.instant.num("air_temperature")}
+        // MET Norway covers about nine days; fold every step into calendar days.
+        val daily=steps.groupBy{it.at.atZone(zone).toLocalDate()}.filter{(_,s)->s.size>=4}.map{(d,s)->
+            val t=s.mapNotNull{it.instant.num("air_temperature")}
+            io.atmos.weather.domain.model.DailyWeather(d,t.maxOrNull(),t.minOrNull(),
+                s.mapNotNull{it.next?.optJSONObject("details")?.num("probability_of_precipitation")?.toInt()}.maxOrNull()?.coerceIn(0,100),
+                s.filter{it.at.atZone(zone).hour in 8..18}.mapNotNull{metSymbolToWmo(it.symbol)}.maxOrNull())
+        }.sortedBy{it.date}
         return WeatherSnapshot(
             city=city,observedAt=current.at,fetchedAt=now,sourceId=id,
             temperatureC=temp,feelsLikeC=details.num("apparent_air_temperature")?.takeIf{it in -150.0..100.0},humidityPct=humidity,windKmh=windMs?.times(3.6),
@@ -89,7 +96,7 @@ class MetNorwayProvider(
             maxTempC=todays.maxOrNull(),minTempC=todays.minOrNull(),
             currentUv=details.num("ultraviolet_index_clear_sky"),weatherCode=code,
             windDirectionDeg=details.num("wind_from_direction")?.toInt(),
-            timeZoneId=zone.id,forecastReferenceAt=current.at
+            timeZoneId=zone.id,forecastReferenceAt=current.at,daily=daily
         )
     }
 }
