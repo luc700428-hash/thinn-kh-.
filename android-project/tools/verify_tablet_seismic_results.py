@@ -15,7 +15,7 @@ EXPECTED = {'io.atmos.weather.ui.WeatherSurfacePhysicsTest': {'scrollingEitherWa
                                                                 'criticalModeUsesAlarmsWhenRingerIsSilent',
                                                                 'ordinaryModeRespectsSilentAndDnd',
                                                                 'ordinaryModeUsesNotificationAudioOnly',
-                                                                'priorityDndNeedsBothPolicyGrantAndActualChannelException',
+                                                                'priorityDndStillHearsTheWarningAsAnAlarm',
                                                                 'totalSilenceAndUnknownModesRemainSystemVetoes'},
  'io.atmos.weather.earthquake.SeismicCriticalDeliveryTest': {'aPrivateExpiringDrillNeverBecomesALiveIncident',
                                                              'aRealAcceptedWarningPreemptsThePendingDrill',
