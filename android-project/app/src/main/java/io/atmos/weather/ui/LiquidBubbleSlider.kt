@@ -113,8 +113,12 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
                 drawLine(inactive.copy(alpha=.60f),Offset(start,k.y),Offset(end,k.y),thickness,StrokeCap.Round)
                 drawLine(active,Offset(start,k.y),Offset(fill,k.y),thickness,StrokeCap.Round)
             }
+            // SwiftShader emulators crash in their host renderer when a path clip is rebuilt at a
+            // new size every frame (the knob grows as it lifts). There the track simply runs under
+            // the glass; real GPUs cut it out and show it magnified, as in iOS 27.
+            val simple=LiquidGlassKit.softwareRenderedDevice
             // The track runs under the glass, so the knob cuts it out and shows it magnified.
-            clipPath(knob,ClipOp.Difference) {track()}
+            if(simple)track() else clipPath(knob,ClipOp.Difference) {track()}
             // Soft shadow from a few widening translucent capsules. No mask-filter blur: the knob
             // changes size every frame while it lifts, and a blurred mask would be re-rendered and
             // cached for every size (GPU memory churn that took down the CI emulator).
@@ -124,7 +128,8 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
                 drawRoundRect(Color.Black.copy(alpha=shade*.22f),Offset(rect.left-spread*.6f,rect.top+2.dp.toPx()-spread*.3f),
                     Size(rect.width+spread*1.2f,rect.height+spread),CornerRadius((rect.height+spread)/2))
             }
-            clipPath(knob) {
+            if(simple)drawPath(knob,if(opaque)solid else Color.White.copy(alpha=if(dark).05f else .08f))
+            else clipPath(knob) {
                 drawPath(knob,if(opaque)solid else Color.White.copy(alpha=if(dark).05f else .08f))
                 val zoom=1f+(LiquidGlassKit.MAGNIFY-1f)*clear
                 withTransform({scale(zoom,zoom*1.15f,rect.center)}) {track()}
