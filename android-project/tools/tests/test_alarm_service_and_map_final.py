@@ -45,8 +45,11 @@ class AlarmServiceAndMapTests(unittest.TestCase):
         self.assertIn('snapshot.temperatureC <= 6.0 && snapshot.condition',screen)
     def test_metric_cards_fixed_pair_dimensions(self):
         source=(APP/'presentation/home/WeatherGauges.kt').read_text()
-        self.assertIn('Row(Modifier.fillMaxWidth().height(136.dp)',source)
-        self.assertIn('modifier.fillMaxSize()',source)
+        # r22: equal tiles; each row shares one height and every tile fills it.
+        tiles=(APP/'presentation/home/HomeTiles.kt').read_text()
+        self.assertIn('HomeTileRow {',source)
+        self.assertIn('height(IntrinsicSize.Min)',tiles)
+        self.assertIn('modifier.fillMaxHeight().heightIn(min',tiles)
     def test_typhoon_projection_equal_distance_and_no_fake_cones(self):
         viewport=(APP/'typhoon/TyphoonViewport.kt').read_text()
         center=(APP/'typhoon/TyphoonCenterPage.kt').read_text()

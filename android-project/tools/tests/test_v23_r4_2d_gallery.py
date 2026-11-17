@@ -21,7 +21,7 @@ class No2DLandmarkGallery(unittest.TestCase):
   for obsolete in ('landmarkGalleryOpen','LandmarkGalleryPage(','LandmarkCanvas(','2D 地標'):
    self.assertNotIn(obsolete,src)
   self.assertFalse((JAVA/'presentation/home/LandmarkGalleryPage.kt').exists())
-  self.assertIn('ThinnAtmosphereFocus(',src)
+  self.assertNotIn('ThinnAtmosphereFocus(',src)
  def test_3d_assets_preserved(self):
   self.assertTrue((ASSETS/'landmarks/individual/chiayi_fountain.glb').exists())
  def test_aerosol_evidence_bound(self):

@@ -39,7 +39,7 @@ class WidgetResizeRenderingTest {
  }
  private fun descendants(v:View):List<View> =listOf(v)+if(v is ViewGroup)(0 until v.childCount).flatMap{descendants(v.getChildAt(it))} else emptyList()
  private fun assertDatePainted(view:View,date:TextClock,label:String) {
-  assertTrue("$label has no month/day",date.text.toString().matches(Regex("[0-9]{1,2}月[0-9]{1,2}日")))
+  assertTrue("$label has no month/day",date.text.toString().matches(Regex("[0-9]{1,2}月[0-9]{1,2}日( \\S{1,4})?")))
   val bounds=Rect(0,0,date.width,date.height);(view as ViewGroup).offsetDescendantRectToMyCoords(date,bounds)
   assertTrue("$label has no visible date bounds: $bounds",bounds.width()>0&&bounds.height()>0&&Rect(0,0,view.width,view.height).contains(bounds))
   val rendered=android.graphics.Bitmap.createBitmap(view.width,view.height,android.graphics.Bitmap.Config.ARGB_8888)

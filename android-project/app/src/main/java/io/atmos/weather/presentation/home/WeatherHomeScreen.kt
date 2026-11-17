@@ -682,8 +682,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 val rainIntensity=physicsStyle.rain
                 val county=io.atmos.weather.typhoon.TyphoonWarningStore.county(state.city.name)
                 val windWarning=state.officialHazards.any {hazard->
+                    // A published 強風特報 brings the wind and leaves in up to 12 h before it takes
+                    // effect (預告), so the sky matches the red card the user is reading.
                     hazard.phenomenon.contains("強風")&&(county==null||hazard.county==county)&&
-                    !java.time.Instant.now().isBefore(hazard.startsAt)&&java.time.Instant.now().isBefore(hazard.expiresAt)}
+                    !java.time.Instant.now().isBefore(hazard.startsAt.minusSeconds(12*3600L))&&java.time.Instant.now().isBefore(hazard.expiresAt)}
                 val strongWind=windWarning||(snapshot?.windKmh?:0.0)>=39.0||(snapshot?.windGustKmh?:0.0)>=50.0
                 val windSpeed=maxOf((snapshot?.windKmh?:0.0),(snapshot?.windGustKmh?:0.0)*.72,
                     if(windWarning)45.0 else 0.0).takeIf{it.isFinite()}?.toFloat()?:0f
@@ -972,16 +974,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     "outlook" -> { HomeOutlookCard(snapshot,io.atmos.weather.location.LocationLabels.display(state.city.name)){insightsOpen=true}; Spacer(Modifier.height(15.dp)) }
                     "outing" -> { DailyGuidanceCard(snapshot,state.stale) { showLifestyleDetails=true }; Spacer(Modifier.height(15.dp)) }
                     "commute" -> { HomeCommuteCard(snapshot.fetchedAt); if (io.atmos.weather.comfort.ComfortStore.place(context,"home")!=null && io.atmos.weather.comfort.ComfortStore.place(context,"work")!=null) Spacer(Modifier.height(15.dp)) }
-                // Atmospheric light and live data replace all 2D landmark galleries and
-                // non-verifiable landmark imagery. This content never claims to be a photo.
-                    "scene" -> {
-                    io.atmos.weather.ui.ThinnAtmosphereFocus(
-                        snapshot=snapshot,
-                        location=io.atmos.weather.location.LocationLabels.display(state.city.name),
-                        reducedMotion=reduceCityMotion||!weatherSceneActive
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    }
                     "forecast" -> {
                     GlassCard {
                         // Horizontally draggable curve with a synchronized selected-hour readout.
@@ -1008,39 +1000,27 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    // All six weather indicators (including pressure and sunrise/sunset)
-                    // are now members of the same long-press sortable card grid.
-                    // Air-quality card deliberately remains the last metric section.
-                    GlassCard {
-                        Text("空氣品質與能見度",color=White,fontWeight=FontWeight.SemiBold,fontSize=15.sp)
-                        Spacer(Modifier.height(10.dp))
-                        AirQualityInsightCard(snapshot)
-                        Spacer(Modifier.height(12.dp))
-                        VisibilityInsightCard(snapshot, hazy)
-                        Spacer(Modifier.height(10.dp))
-                        Text("空氣品質為模型推估，非環境部官方 AQI。",color=TextSoft,fontSize=15.sp)
-                    }
-                    Spacer(Modifier.height(12.dp))
                     }
                     } } }
                     }
                     // iOS-style "Edit" pill at the end of the cards.
                     var editingHome by remember { mutableStateOf(false) }
                     Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
-                        Text("編輯首頁",color=White,fontSize=15.sp,fontWeight=FontWeight.SemiBold,
-                            modifier=Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp)).background(White.copy(alpha=.14f))
-                                .border(.7.dp,White.copy(alpha=.22f),RoundedCornerShape(999.dp))
+                        // The pill sits on the sky, not on a card, so it takes the sky's ink.
+                        Text("編輯首頁",color=weatherSky.ink,fontSize=15.sp,fontWeight=FontWeight.SemiBold,
+                            modifier=Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp)).background(weatherSky.ink.copy(alpha=.12f))
+                                .border(.7.dp,weatherSky.ink.copy(alpha=.28f),RoundedCornerShape(999.dp))
                                 .clickable{editingHome=true}.padding(horizontal=18.dp,vertical=9.dp))
                     }
                     if(editingHome) HomeCardEditor{editingHome=false}
                 }
                 if(state.loading && snapshot!=null) {
-                    Spacer(Modifier.height(14.dp)); LinearProgressIndicator(Modifier.fillMaxWidth(),color=White)
+                    Spacer(Modifier.height(14.dp)); LinearProgressIndicator(Modifier.fillMaxWidth(),color=weatherSky.ink,trackColor=weatherSky.ink.copy(alpha=.2f))
                 }
                 if(state.stale || state.error != null) {
                     Spacer(Modifier.height(13.dp))
                     Text(if(state.stale) "目前顯示離線快取，可能已過時" else "更新失敗：${state.error}",
-                        color=Color(0xFFFFE4C6),fontSize=15.sp,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
+                        color=weatherSky.ink,fontSize=15.sp,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                 }
                 Spacer(Modifier.height(22.dp))
                 Text(if(snapshot?.sourceId?.endsWith("cwa")==true)(if(snapshot.observationStation!=null)"觀測與預報：中央氣象署開放資料平台" else "預報：中央氣象署開放資料平台") else if(snapshot?.sourceId=="met-norway")"預報：挪威氣象局 MET Norway · CC BY 4.0（備援來源）" else if(snapshot?.observationStation!=null)"觀測：中央氣象署 · 預報：Open-Meteo" else "預報：Open-Meteo.com · 依其授權條款使用",color=weatherSky.secondary,fontSize=14.sp,
@@ -1135,7 +1115,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Spacer(Modifier.height(13.dp))
                 var selectedNotificationTone by remember { mutableStateOf(ThinnNotificationChannels.selectedToneId(context)) }
                 Text("通知音 · 20 款任選",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
-                Text("清亮、溫暖、電子三種全新風格，以及經典音色。警特報、早晚報、智慧提醒與通勤通知會一起套用。",color=TextSoft,fontSize=14.sp)
+                Text("輕柔、溫暖、空靈三種柔和風格，以及經典音色。警特報、早晚報、智慧提醒與通勤通知會一起套用。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(9.dp))
                 var toneStyle by remember { mutableStateOf(ThinnNotificationChannels.tone(selectedNotificationTone).style) }
                 io.atmos.weather.ui.GlassChoiceGroup(ThinnNotificationChannels.styles.map{it.second},
@@ -1768,7 +1748,7 @@ private fun SkyParticles(condition: WeatherCondition, phase:Float, heavyRain:Boo
 }
 
 @Composable
-private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->Unit) {
+internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->Unit) {
     val ctx=LocalContext.current
     var localWarning by remember { mutableStateOf(io.atmos.weather.typhoon.TyphoonWarningStore.current(ctx)) }
     LaunchedEffect(ctx) {
@@ -1790,149 +1770,91 @@ private fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->U
     val critical=remember(weather){
         io.atmos.weather.domain.model.WeatherAdviceEngine.suggest(weather).firstOrNull{it.priority>=8}
     }
-    io.atmos.weather.ui.ThinnAtmospherePanel(accent=Color(0xFFFFD69B)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=20.dp)) {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Lightbulb,contentDescription=null,tint=Color(0xFFFFD690),modifier=Modifier.size(23.dp))
-            Spacer(Modifier.width(10.dp))
-            Text("今日概況",color=White,fontSize=19.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(when {
-            landHere -> "${localWarning?.name ?: "颱風"} · 所在地已列入陸上颱風警報"
-            localWarning?.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND -> "中央氣象署已發布陸上颱風警報"
-            localWarning!=null -> "中央氣象署已發布海上颱風警報"
-            stale -> "天氣資料待更新"
-            else -> critical?.heading ?: plan.headline
-        },color=White,fontSize=21.sp,lineHeight=29.sp,fontWeight=FontWeight.SemiBold,maxLines=3)
-        Spacer(Modifier.height(5.dp))
-        Text(when {
-            landHere -> "今日受颱風影響，${ownCounty}已列入陸上警戒。請盡量避免非必要外出，關好門窗、固定陽台物品並做好防颱準備；如須出門，請留意強風、豪雨與道路安全。"
-            localWarning?.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND ->
-                "部分縣市已列入陸上警戒，但尚無足夠官方區域資料可確認您的所在地是否列入。出門前請查閱中央氣象署及地方政府最新公告。"
-            localWarning!=null -> "已發布海上颱風警報。避免海邊、港口與海上活動，持續關注氣象署是否升級陸警。"
-            stale -> "目前顯示舊資料，請重新整理後再確認外出安排。"
-            else -> critical?.detail ?: plan.reminder
-        },color=TextSoft,fontSize=15.sp,lineHeight=22.sp,maxLines=4)
-        if(localWarning!=null) {
-            Spacer(Modifier.height(6.dp))
-            Text("依中央氣象署已核對公告產生的規則式安全提醒；非 AI 推測警戒範圍。",
-                color=Color(0xFFFFDECE),fontSize=14.sp)
-        }
-        Spacer(Modifier.height(14.dp))
-        // At-a-glance numbers first (today's range, rain chance, UV), then what to bring, then
-        // the next 12 hours, and only then the wording; the old card was a wall of sentences.
-        if(!stale) OutingGlance(weather)
-        Spacer(Modifier.height(14.dp))
-        Text(if(stale)"資料較舊，請先更新再決定穿搭" else if(plan.bring.isEmpty())"不用特別帶東西" else "記得帶",color=TextSoft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-        if(!stale&&plan.bring.isNotEmpty()) {
+    val glance=remember(weather,plan){TodayGlance.build(weather,plan)}
+    val ink=HomeInk.primary;val soft=HomeInk.secondary
+    val warningTone=landHere||localWarning!=null||critical!=null
+    io.atmos.weather.ui.ThinnAtmospherePanel(Modifier.testTag("home-today"),accent=Color(0xFFFFD69B)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Text("今日概況",color=soft,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
+                Text(if(stale)"待更新" else glance.mood,color=if(warningTone)Color(0xFFE5554F) else ink,fontSize=14.sp,fontWeight=FontWeight.SemiBold,
+                    modifier=Modifier.clip(RoundedCornerShape(999.dp)).background(HomeInk.tile).padding(horizontal=10.dp,vertical=4.dp))
+            }
             Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                plan.bring.forEach{item->
-                    Text(item,color=White,fontSize=15.sp,fontWeight=FontWeight.SemiBold,
-                        modifier=Modifier.iosAppear(plan.bring.indexOf(item)+3).clip(RoundedCornerShape(999.dp)).background(Color.White.copy(alpha=.14f))
-                            .padding(horizontal=12.dp,vertical=7.dp))
-                }
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha=.14f)))
-        Spacer(Modifier.height(14.dp))
-        // These are not optional fine print: clothing and rain decisions are always visible.
-        HomeAdviceRow("穿著建議",if(stale) "待更新" else "${plan.top}；${plan.bottoms}")
-        Spacer(Modifier.height(9.dp))
-        HomeAdviceRow("雨具建議",if(stale) "待更新" else plan.umbrella)
-        // Everything else folds away like an iOS disclosure row, springing open on tap.
-        var more by rememberSaveable { mutableStateOf(false) }
-        val chevron by animateFloatAsState(if(more)180f else 0f,spring(.62f,420f),label="更多建議箭頭")
-        Row(Modifier.fillMaxWidth().padding(top=10.dp).iosJellyPress().clip(RoundedCornerShape(14.dp))
-            .clickable{more=!more}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text(if(more)"收合" else "外套、出門時機與出門方式",color=TextSoft,fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.weight(1f))
-            Icon(Icons.Rounded.ExpandMore,null,tint=TextSoft,modifier=Modifier.graphicsLayer{rotationZ=chevron})
-        }
-        androidx.compose.animation.AnimatedVisibility(more,
-            enter=androidx.compose.animation.expandVertically(spring(.78f,380f))+androidx.compose.animation.fadeIn(),
-            exit=androidx.compose.animation.shrinkVertically(spring(.9f,500f))+androidx.compose.animation.fadeOut()) {
-            Column {
-                Spacer(Modifier.height(6.dp))
-                HomeAdviceRow("外套要帶嗎",if(stale) "待更新" else plan.coatDecision)
-                if(!stale) {
-                    Spacer(Modifier.height(9.dp))
-                    HomeAdviceRow("出門時機",plan.timeAdvice)
-                }
-                Spacer(Modifier.height(12.dp))
-                Text("出門方式",color=TextSoft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-                Spacer(Modifier.height(8.dp))
-                io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
-                    {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
+            Text(when {
+                landHere -> "${localWarning?.name ?: "颱風"}：所在地已列入陸上警戒"
+                localWarning?.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND -> "中央氣象署已發布陸上颱風警報"
+                localWarning!=null -> "中央氣象署已發布海上颱風警報"
+                stale -> "天氣資料待更新"
+                else -> critical?.heading ?: plan.headline
+            },color=ink,fontSize=21.sp,lineHeight=28.sp,fontWeight=FontWeight.SemiBold,maxLines=2)
+            Spacer(Modifier.height(4.dp))
+            Text(when {
+                landHere -> "盡量避免非必要外出，關好門窗、固定陽台物品；如須出門，留意強風豪雨與道路安全。"
+                localWarning?.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND -> "部分縣市已列入陸上警戒，出門前請查閱中央氣象署與地方政府公告。"
+                localWarning!=null -> "避免海邊、港口與海上活動，持續關注是否升級陸上警報。"
+                stale -> "目前顯示舊資料，請重新整理後再確認外出安排。"
+                else -> critical?.detail ?: plan.reminder
+            },color=soft,fontSize=15.sp,lineHeight=22.sp,maxLines=3)
+            if(localWarning!=null) {
                 Spacer(Modifier.height(4.dp))
-                TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
-                    Text("完整穿搭清單與個人偏好",color=TextSoft,fontSize=15.sp,fontWeight=FontWeight.Medium)
-                }
+                Text("依中央氣象署公告產生的規則式提醒，非 AI 推測警戒範圍。",color=soft,fontSize=14.sp)
             }
-        }
-        }
-    }
-}
-
-/** Today's range, the highest rain chance and UV in the next 12 hours, and a 12-hour strip. */
-@Composable
-private fun OutingGlance(weather:WeatherSnapshot) {
-    val zone=remember(weather.timeZoneId){runCatching{java.time.ZoneId.of(weather.timeZoneId?:"Asia/Taipei")}.getOrDefault(java.time.ZoneId.of("Asia/Taipei"))}
-    val now=remember(weather.fetchedAt){java.time.Instant.now().minusSeconds(3600)}
-    val next=remember(weather,now){weather.hourly.filter{it.at.isAfter(now)}.sortedBy{it.at}.take(13)}
-    val temps=next.mapNotNull{it.temperatureC?.takeIf{t->t.isFinite()}}+weather.temperatureC
-    val low=weather.minTempC?.takeIf{it.isFinite()}?:temps.minOrNull()
-    val high=weather.maxTempC?.takeIf{it.isFinite()}?:temps.maxOrNull()
-    val rain=next.mapNotNull{it.precipitationProbabilityPct?.takeIf{p->p in 0..100}}.maxOrNull()
-    val uv=(next.mapNotNull{it.uvIndex?.takeIf{u->u.isFinite()&&u>=0}}+listOfNotNull(weather.currentUv)).maxOrNull()
-    val uvWord=uv?.let{when{it<3->"低";it<6->"中";it<8->"高";it<11->"過量";else->"危險"}}
-    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-        GlanceTile("今日溫度",if(low!=null&&high!=null)"${low.roundToInt()}–${high.roundToInt()}°" else "—",
-            weather.feelsLikeC?.takeIf{it.isFinite()}?.let{"體感 ${it.roundToInt()}°"}?:"",Modifier.weight(1f).iosAppear(0))
-        GlanceTile("降雨機率",rain?.let{"$it%"}?:"—",if(rain==null)"未提供" else if(rain>=50)"帶傘" else if(rain>=30)"可能下雨" else "機會低",Modifier.weight(1f).iosAppear(1))
-        GlanceTile("紫外線",uv?.let{String.format(java.util.Locale.US,"%.0f",it)}?:"—",uvWord?.let{"${it}量級"}?:"未提供",Modifier.weight(1f).iosAppear(2))
-    }
-    val slots=next.filterIndexed{i,_->i%3==0}.take(5)
-    if(slots.size>=3) {
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha=.07f)).padding(vertical=10.dp)) {
-            val hh=java.time.format.DateTimeFormatter.ofPattern("H時").withZone(zone)
-            slots.forEach{h->
-                val pop=h.precipitationProbabilityPct?.takeIf{it in 0..100}
-                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                    Text(hh.format(h.at),color=TextSoft,fontSize=14.sp)
-                    Text(h.temperatureC?.takeIf{it.isFinite()}?.let{"${it.roundToInt()}°"}?:"—",color=White,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-                    Box(Modifier.width(26.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha=.14f))) {
-                        // Rain bars fill from empty, left to right, when the card first appears.
-                        val reduceBars=io.atmos.weather.ui.rememberAppleReduceMotion()
-                        val fillTo=remember{androidx.compose.animation.core.Animatable(if(reduceBars)1f else 0f)}
-                        LaunchedEffect(pop){fillTo.animateTo(1f,androidx.compose.animation.core.tween(520,delayMillis=slots.indexOf(h)*60,easing=io.atmos.weather.ui.AppleMotion.fluid))}
-                        Box(Modifier.fillMaxHeight().fillMaxWidth((((pop?:0)/100f)*fillTo.value).coerceIn(0f,1f)).background(Color(0xFF8CCBFF)))
+            Spacer(Modifier.height(14.dp))
+            HomeTileRow {
+                HomeTile("穿什麼",if(stale)"—" else glance.wear,glance.wearNote,Modifier.weight(1f).iosAppear(0),icon=Icons.Rounded.Checkroom,tint=Color(0xFFE58A5B))
+                HomeTile("外套",if(stale)"—" else glance.coat,glance.coatNote,Modifier.weight(1f).iosAppear(1),icon=Icons.Rounded.Layers,tint=Color(0xFF7C8FD0))
+                HomeTile("雨具",if(stale)"—" else glance.rain,glance.rainNote,Modifier.weight(1f).iosAppear(2),icon=Icons.Rounded.Umbrella,tint=Color(0xFF4F95E0))
+            }
+            if(!stale&&plan.bring.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Text("記得帶",color=soft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+                    plan.bring.forEachIndexed{i,item->
+                        Text(item,color=ink,fontSize=14.sp,fontWeight=FontWeight.SemiBold,
+                            modifier=Modifier.iosAppear(i+3).clip(RoundedCornerShape(999.dp)).background(HomeInk.tile)
+                                .padding(horizontal=11.dp,vertical=6.dp))
                     }
-                    Text(pop?.let{"$it%"}?:"—",color=if((pop?:0)>=50)Color(0xFF9DD3FF) else TextSoft,fontSize=14.sp)
+                }
+            }
+            // Everything else folds away like an iOS disclosure row, springing open on tap.
+            var more by rememberSaveable { mutableStateOf(false) }
+            val chevron by animateFloatAsState(if(more)180f else 0f,spring(.62f,420f),label="更多建議箭頭")
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth().height(.5.dp).background(HomeInk.hairline))
+            Row(Modifier.fillMaxWidth().padding(top=4.dp).iosJellyPress().clip(RoundedCornerShape(14.dp))
+                .clickable{more=!more}.padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically) {
+                Text(if(more)"收合" else "穿搭細節、出門時機與方式",color=ink,fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.weight(1f))
+                Icon(Icons.Rounded.ExpandMore,null,tint=soft,modifier=Modifier.graphicsLayer{rotationZ=chevron})
+            }
+            androidx.compose.animation.AnimatedVisibility(more,
+                enter=androidx.compose.animation.expandVertically(spring(.78f,380f))+androidx.compose.animation.fadeIn(),
+                exit=androidx.compose.animation.shrinkVertically(spring(.9f,500f))+androidx.compose.animation.fadeOut()) {
+                Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
+                    Spacer(Modifier.height(2.dp))
+                    HomeAdviceRow("上衣下著",if(stale) "待更新" else "${plan.top}；${plan.bottoms}")
+                    HomeAdviceRow("外套",if(stale) "待更新" else plan.coatDecision)
+                    HomeAdviceRow("雨具",if(stale) "待更新" else plan.umbrella)
+                    if(!stale) HomeAdviceRow("出門時機",plan.timeAdvice)
+                    Text("出門方式",color=soft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+                    io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
+                        {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
+                    TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
+                        Text("完整穿搭清單與個人偏好",color=ink,fontSize=15.sp,fontWeight=FontWeight.Medium)
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun GlanceTile(label:String,value:String,caption:String,modifier:Modifier) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha=.09f)).padding(horizontal=10.dp,vertical=10.dp),
-        verticalArrangement=Arrangement.spacedBy(2.dp)) {
-        Text(label,color=TextSoft,fontSize=14.sp,maxLines=1)
-        Text(value,color=White,fontSize=22.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
-        if(caption.isNotEmpty())Text(caption,color=TextSoft,fontSize=14.sp,maxLines=1)
     }
 }
 
 @Composable
 private fun HomeAdviceRow(label:String,value:String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.Top) {
-        Text(label,color=TextSoft,fontSize=16.sp,fontWeight=FontWeight.SemiBold,
-            modifier=Modifier.width((84*LocalDensity.current.fontScale).dp))
-        Text(value,color=White,fontSize=16.sp,lineHeight=24.sp,modifier=Modifier.weight(1f))
+        Text(label,color=HomeInk.secondary,fontSize=15.sp,fontWeight=FontWeight.SemiBold,
+            modifier=Modifier.width((80*LocalDensity.current.fontScale).dp))
+        Text(value,color=HomeInk.primary,fontSize=15.sp,lineHeight=22.sp,modifier=Modifier.weight(1f))
     }
 }
 
@@ -1990,141 +1912,4 @@ private fun LandmarkId.label()=when(this){
     LandmarkId.EIFFEL_TOWER -> "艾菲爾鐵塔 · 微縮城市"
     LandmarkId.WEATHER_COTTAGE -> "微縮氣象小屋"
     LandmarkId.TAIWAN_COUNTY -> "縣市微縮景觀"
-}
-
-
-private data class StatusBadge(val valueText:String, val label:String, val advice:String, val accent:Color)
-
-@Composable
-private fun AirQualityInsightCard(snapshot: WeatherSnapshot) {
-    val status = remember(snapshot.usAqi, snapshot.pm25) { airQualityBadge(snapshot.usAqi, snapshot.pm25) }
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .background(if(LocalWeatherCardPalette.current!=null)Color.Transparent else Color.White.copy(alpha = .10f))
-            .border(1.dp, Color.White.copy(alpha = .18f), RoundedCornerShape(24.dp))
-            .padding(16.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                Text("空氣品質", color = White, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                Text(snapshot.city.name.substringAfterLast("·", snapshot.city.name).trim().ifBlank { snapshot.city.name }, color = TextSoft, fontSize=14.sp)
-            }
-            Text("Open-Meteo", color = TextSoft, fontSize=14.sp)
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(status.valueText, color = status.accent, fontSize = 58.sp, fontWeight = FontWeight.Bold, lineHeight = 56.sp)
-            Spacer(Modifier.width(8.dp))
-            Text(status.label, color = status.accent, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(status.advice, color = TextSoft, fontSize=15.sp, lineHeight = 19.sp)
-        Spacer(Modifier.height(14.dp))
-        PollutantRow(
-            listOf(
-                "PM2.5" to pollutantText(snapshot.pm25),
-                "PM10" to pollutantText(snapshot.pm10),
-                "SO₂" to pollutantText(snapshot.sulfurDioxide),
-                "NO₂" to pollutantText(snapshot.nitrogenDioxide),
-                "O₃" to pollutantText(snapshot.ozone),
-                "CO" to pollutantText(snapshot.carbonMonoxide)
-            )
-        )
-    }
-}
-
-@Composable
-private fun VisibilityInsightCard(snapshot: WeatherSnapshot, hazy: Boolean) {
-    val status = remember(snapshot.visibilityM, snapshot.condition, hazy) { visibilityBadge(snapshot.visibilityM, snapshot.condition, hazy) }
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .background(if(LocalWeatherCardPalette.current!=null)Color.Transparent else Color.White.copy(alpha = .10f))
-            .border(1.dp, Color.White.copy(alpha = .18f), RoundedCornerShape(24.dp))
-            .padding(16.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                Text("能見度建議", color = White, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                Text("即時路況請以實際目視與官方資訊為準", color = TextSoft, fontSize=14.sp)
-            }
-            Icon(Icons.Rounded.Visibility, null, tint = status.accent, modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(status.valueText, color = status.accent, fontSize = 54.sp, fontWeight = FontWeight.Bold, lineHeight = 52.sp)
-            Spacer(Modifier.width(8.dp))
-            Text(status.label, color = status.accent, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(status.advice, color = TextSoft, fontSize=15.sp, lineHeight = 19.sp)
-        Spacer(Modifier.height(14.dp))
-        PollutantRow(
-            listOf(
-                "濕度" to (snapshot.humidityPct?.let { "$it%" } ?: "—"),
-                "風速" to (snapshot.windKmh?.let { "${it.roundToInt()} km/h" } ?: "—"),
-                "UV" to (snapshot.currentUv?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "—"),
-                "氣壓" to (snapshot.pressureHpa?.let { "${it.roundToInt()}" } ?: "—"),
-                "體感" to (snapshot.feelsLikeC?.let { "${it.roundToInt()}°" } ?: "—"),
-                "天氣" to weatherShortLabel(snapshot.condition)
-            )
-        )
-    }
-}
-
-@Composable
-private fun PollutantRow(items: List<Pair<String, String>>) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        items.forEach { (label, value) ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                Text(value, color = White.copy(alpha = .92f), fontSize=14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(2.dp))
-                Text(label, color = TextSoft, fontSize=14.sp, textAlign = TextAlign.Center)
-            }
-        }
-    }
-}
-
-private fun pollutantText(value: Double?): String = value?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "—"
-
-private fun airQualityBadge(usAqi: Int?, pm25: Double?): StatusBadge {
-    val score = usAqi ?: pm25?.roundToInt()
-    val display = score?.toString() ?: "--"
-    return when {
-        score == null -> StatusBadge(display, "待更新", "目前尚未取得空氣品質資料，稍後將自動再同步。", Color(0xFFB8DFFF))
-        score <= 50 -> StatusBadge(display, "良", "目前空氣品質大致良好，適合一般戶外活動。", Color(0xFF6FE3A7))
-        score <= 100 -> StatusBadge(display, "普通", "空氣品質尚可，敏感族群外出可留意身體反應。", Color(0xFFF7C85A))
-        score <= 150 -> StatusBadge(display, "不佳", "敏感族群建議減少長時間戶外活動，外出可佩戴口罩。", Color(0xFFFF9E57))
-        score <= 200 -> StatusBadge(display, "差", "空氣品質偏差，建議減少戶外停留時間並加強防護。", Color(0xFFFF7B7B))
-        else -> StatusBadge(display, "很差", "空氣品質明顯不佳，建議儘量留在室內並減少劇烈活動。", Color(0xFFC78BFF))
-    }
-}
-
-private fun visibilityBadge(visibilityM: Double?, condition: WeatherCondition, hazy: Boolean): StatusBadge {
-    val km = visibilityM?.div(1000.0)
-    val display = km?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "--"
-    return when {
-        km == null -> StatusBadge(display, "待更新", "目前尚未取得能見度資料，請稍後再查看。", Color(0xFFB8DFFF))
-        condition == WeatherCondition.FOG || km < 1.0 -> StatusBadge(display, "低", "目前可能有霧或低雲，行車請減速慢行並保持安全距離。", Color(0xFFFF9E57))
-        km < 3.0 -> StatusBadge(display, "偏低", "能見度偏低，外出與行車請留意路況，必要時開啟車燈。", Color(0xFFF7C85A))
-        hazy -> StatusBadge(display, "普通", "視線大致可接受，但空氣中懸浮微粒較多，遠景可能略顯灰霧。", Color(0xFFF7C85A))
-        km < 8.0 -> StatusBadge(display, "尚可", "能見度普通，戶外活動基本不受影響，請仍留意現場狀況。", Color(0xFF7FD7F7))
-        else -> StatusBadge(display, "良好", "目前能見度良好，戶外活動與行車視線大致清楚。", Color(0xFF6FE3A7))
-    }
-}
-
-private fun weatherShortLabel(condition: WeatherCondition): String = when (condition) {
-    WeatherCondition.CLEAR -> "晴"
-    WeatherCondition.PARTLY_CLOUDY -> "多雲"
-    WeatherCondition.CLOUDY -> "陰"
-    WeatherCondition.FOG -> "霧"
-    WeatherCondition.HAZE -> "霾"
-    WeatherCondition.DUST -> "揚塵"
-    WeatherCondition.DUST_STORM -> "強烈揚塵"
-    WeatherCondition.SLEET -> "雨夾雪"
-    WeatherCondition.FREEZING_RAIN -> "凍雨"
-    WeatherCondition.HAIL -> "冰雹"
-    WeatherCondition.RAIN -> "雨"
-    WeatherCondition.SNOW -> "雪"
-    WeatherCondition.THUNDERSTORM -> "雷雨"
-    else -> "未知"
 }

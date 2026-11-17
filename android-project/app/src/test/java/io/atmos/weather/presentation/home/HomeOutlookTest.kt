@@ -32,6 +32,14 @@ class HomeOutlookTest {
         assertTrue(cooler, cooler.startsWith("明天 ") && cooler.contains("比今天涼"))
         assertNull(HomeOutlook.build(weather().copy(hourly = weather().hourly.take(6)), now).tomorrow)
     }
+    @Test fun bestTimeToGoOutIsNeverInTheMiddleOfTheNight() {
+        val night = ZonedDateTime.of(2026, 11, 17, 23, 0, 0, 0, zone).toInstant()
+        val w = weather().copy(hourly = (0 until 72).map { HourlyWeather(night.plusSeconds(it * 3600L), 22.0, 0, 0.0, humidityPct = 60, windKmh = 6.0, weatherCode = 1, feelsLikeC = 22.0) })
+        HomeOutlook.build(w, night).tiles.firstOrNull { it.label == "最佳出門" }?.let { tile ->
+            val hour = tile.value.substringBefore(':').toInt()
+            assertTrue(tile.value, hour in 6..20)
+        }
+    }
     @Test fun shareTextNeverContainsForbiddenLabels() {
         val text = HomeOutlook.shareText(weather(), "臺北", now)
         assertTrue(text.startsWith("臺北 現在 22°"))

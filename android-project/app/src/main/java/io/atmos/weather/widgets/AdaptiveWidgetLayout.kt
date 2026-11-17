@@ -241,7 +241,8 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
                 id=if(family==8)if(date)R.id.buddy_clock_date else R.id.buddy_clock_time else if(date)R.id.widget_clock_date else R.id.widget_clock
                 val layout=if(family==8)if(date)R.layout.widget_adaptive_buddy_date else R.layout.widget_adaptive_buddy_time else if(date)R.layout.widget_adaptive_date else R.layout.widget_adaptive_time
                 RemoteViews(context.packageName,layout).apply{
-                    setCharSequence(id,"setFormat12Hour",if(date)"M月d日" else "h:mm a");setCharSequence(id,"setFormat24Hour",if(date)"M月d日" else "HH:mm")
+                    val dateFormat=r.text.ifBlank{"M月d日"}
+                    setCharSequence(id,"setFormat12Hour",if(date)dateFormat else "h:mm a");setCharSequence(id,"setFormat24Hour",if(date)dateFormat else "HH:mm")
                     setTextViewTextSize(id,dip,r.font);setTextColor(id,if(date)colors.secondary else colors.ink)
                     setContentDescription(id,if(date)"今天日期" else "目前時間，依手機時鐘自動更新")
                 }

@@ -84,11 +84,11 @@ fun V25HomeHero(
                     fontWeight=FontWeight.SemiBold,color=heroInk)
             }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal=18.dp),
             horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             V25HeroStat("最高",high?.let {"$it°"}?:"—",Modifier.weight(1f))
             V25HeroStat("最低",low?.let {"$it°"}?:"—",Modifier.weight(1f))
-            V25HeroStat("體感估算",feelsLike?.let {"$it°"}?:"—",Modifier.weight(1f))
+            V25HeroStat("體感",feelsLike?.let {"$it°"}?:"—",Modifier.weight(1f))
         }
         Text(scene.advice,color=heroInk.copy(alpha=.85f),fontSize=14.sp,
             textAlign=TextAlign.Center,
@@ -98,10 +98,11 @@ fun V25HomeHero(
 
 @Composable
 private fun V25HeroStat(title:String,value:String,modifier:Modifier=Modifier) {
-    Column(modifier.weatherCollisionSurface(18.dp).clip(RoundedCornerShape(18.dp))
+    // Same corner, padding and type as the home tiles below, so every square lines up.
+    Column(modifier.fillMaxHeight().weatherCollisionSurface(18.dp).clip(RoundedCornerShape(18.dp))
         .background(WeatherCardPalettes.current.brush)
-        .padding(vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-        Text(title,color=WeatherCardPalettes.current.secondary,fontSize=14.sp)
-        Text(value,color=WeatherCardPalettes.current.ink,fontSize=20.sp,fontWeight=FontWeight.Medium)
+        .padding(horizontal=12.dp,vertical=11.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+        Text(title,color=WeatherCardPalettes.current.secondary,fontSize=14.sp,fontWeight=FontWeight.Medium,maxLines=1)
+        Text(value,color=WeatherCardPalettes.current.ink,fontSize=24.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
     }
 }

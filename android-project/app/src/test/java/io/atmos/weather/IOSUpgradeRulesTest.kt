@@ -16,12 +16,13 @@ class IOSUpgradeRulesTest {
  @Test fun noonAndMidnightAreCorrect(){assertEquals(0,DrumWheelRules.hour24(12,false));assertEquals(12,DrumWheelRules.hour24(12,true));assertEquals(13,DrumWheelRules.hour24(1,true))}
  @Test fun everyThemeResolvesAllWeatherArrangements(){
   assertEquals(20,WeatherWakePolicy.themes.size)
-  for(t in WeatherWakePolicy.originalThemes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${s.name.lowercase()}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}
-  for(t in WeatherWakePolicy.paletteThemes+WeatherWakePolicy.popThemes){for(s in WeatherScene.entries)assertEquals("next_weather/music/$t/${WeatherWakePolicy.paletteArrangement(s)}.wav",WeatherScenes.musicAsset(t,s));assertEquals("next_weather/music/$t/neutral.wav",WeatherScenes.musicAsset(t,null))}
+  // r22: every theme plays its own soft Ogg loop, with a separate arrangement for each weather mood.
+  for(t in WeatherWakePolicy.themes)assertNotNull(t,NextWeatherAlarmPlayer.musicResource(t,null))
+  assertEquals(20,WeatherWakePolicy.themes.map{NextWeatherAlarmPlayer.musicResource(it,null)}.toSet().size)
   assertEquals("snow",WeatherWakePolicy.paletteArrangement(WeatherScene.HEAVY_SNOW))
   assertEquals("rain",WeatherWakePolicy.paletteArrangement(WeatherScene.SEVERE_THUNDERSTORM))
   assertEquals("neutral",WeatherWakePolicy.paletteArrangement(null))
-  assertNull(WeatherScenes.musicAsset("../../invalid",WeatherScene.SUNNY))
+  assertNull(NextWeatherAlarmPlayer.musicResource("../../invalid",null))
  }
 
  @Test fun denseFogSurvivesCachedClassification(){assertEquals(WeatherScene.DENSE_FOG,WeatherScenes.fromCachedName("FOG",45,100.0));assertEquals(WeatherScene.FOG,WeatherScenes.fromCachedName("FOG",45,null))}

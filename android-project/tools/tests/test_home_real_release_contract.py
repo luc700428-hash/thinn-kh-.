@@ -16,9 +16,10 @@ class ReleaseContractTests(unittest.TestCase):
         src=HOME.read_text()
         self.assertIn('HomeKeyWeatherCard(snapshot, state.stale)',src)
         self.assertIn('現在最重要的天氣',src)
-        self.assertIn('HomeAdviceRow("穿著建議"',src)
-        self.assertIn('HomeAdviceRow("雨具建議"',src)
-        self.assertIn('模型推估，非環境部官方 AQI',src)
+        self.assertIn('HomeTile("穿什麼"',src)
+        self.assertIn('HomeTile("雨具"',src)
+        grid=(HOME.parent/'WeatherGauges.kt').read_text()
+        self.assertIn('模型推估，非環境部官方 AQI',grid)
     def test_workflow_builds_tracked_source_not_old_pinned_archive(self):
         src=WORKFLOW.read_text()
         self.assertIn('project=android-project',src)

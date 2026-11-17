@@ -16,8 +16,9 @@ SCENES = ('sunny','drizzle','light_rain','moderate_rain','heavy_rain',
           'dust_storm','light_snow','moderate_snow','heavy_snow')
 
 class NextIntegrationReleaseContract(unittest.TestCase):
-    def test_all_42_real_weather_audio_files(self):
-        for folder in ('ambience','music/dawn','music/rain'):
+    def test_all_14_real_weather_ambience_files(self):
+        # r22: alarm music lives in the soft Ogg library; the 14 weather ambiences stay WAV.
+        for folder in ('ambience',):
             hashes=set()
             for scene in SCENES:
                 path=APP/'assets/next_weather'/folder/f'{scene}.wav'

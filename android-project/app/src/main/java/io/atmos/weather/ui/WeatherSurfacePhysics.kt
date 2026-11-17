@@ -81,7 +81,7 @@ internal class WeatherSurfacePhysics(seed:Int=97123) {
      24f+random.nextFloat()*35f+style.snow*25f,.7f+random.nextFloat()*1.6f,random.nextFloat()*360,random.nextFloat()*90-45,.22f+random.nextFloat()*.4f)
    }
   }
-  if(strong){leafBudget+=dt*.25f*(w/400).coerceIn(.5f,2f)
+  if(strong){leafBudget+=dt*.6f*(w/400).coerceIn(.5f,2f)
    while(leafBudget>=1){leafBudget--
     if(bodies.count{it.kind==Kind.LEAF}<18&&bodies.size<180)bodies+=Body(Kind.LEAF,
      if(wind>=0)-20f else w+20,random.nextFloat()*h*.8f,wind,20f+random.nextFloat()*55f,

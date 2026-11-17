@@ -33,7 +33,8 @@ class NaturalAmbience(unittest.TestCase):
   new=json.loads((ASSETS/'next_weather/nature_ambience_manifest.json').read_text())
   by_path={a['path']:a for a in new['assets']}
   old=json.loads((ASSETS/'next_weather/wake_suite_manifest.json').read_text())
-  self.assertEqual(90,len([a for a in old['assets'] if a['category']=='alarm']))
+  # r22: alarm music moved to the soft Ogg loops; the suite manifest keeps only ambience.
+  self.assertEqual(0,len([a for a in old['assets'] if a['category']=='alarm']))
   for entry in old['assets']:
    if entry['category']=='ambience':self.assertEqual(by_path[entry['path']],entry)
 

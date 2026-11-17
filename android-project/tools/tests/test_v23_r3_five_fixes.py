@@ -24,7 +24,7 @@ class R3FiveUserReports(unittest.TestCase):
         s=source('presentation/home/WeatherHomeScreen.kt')
         self.assertNotIn('FilamentLandmark(',s)
         self.assertNotIn('LandmarkGalleryPage(',s)
-        self.assertIn('reducedMotion=reduceCityMotion',s)
+        self.assertIn('skyGlow(!snapshot.isDay,reduceCityMotion||!weatherSceneActive)',s)
         self.assertIn('beyondViewportPageCount = 0',s)
 
     def test_crash_diagnostics_from_weather_screen(self):

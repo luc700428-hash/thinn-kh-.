@@ -626,69 +626,27 @@ private fun formatted(ms:Long):String = SimpleDateFormat("HH:mm:ss",Locale.TAIWA
 
 
 /**
- * iOS 27 segmented control in liquid glass: the selection is a clear glass capsule that glides
- * between sections with the glass-morph spring, stretches as it travels, swells and lights up
- * under the finger, and carries the same sun-lit specular rim as the Dock.
+ * 即時監測／地震報告／回放與演練 use the Dock itself: the same liquid-glass lens that follows the
+ * finger, scrubs across tabs with a tick per tab, swells under the touch and settles with the
+ * Dock's spring. One component, so the two can never drift apart.
  */
 @Composable internal fun SeismicSectionPicker(selected:String,onSelect:(String)->Unit,modifier:Modifier=Modifier) {
-    val palette=MaterialTheme.colorScheme
-    val names=listOf("監測","報告","工具")
-    val labels=mapOf("監測" to "即時監測","報告" to "地震報告","工具" to "回放與演練")
-    val index=names.indexOf(selected).coerceAtLeast(0)
-    val reduce=io.atmos.weather.ui.rememberAppleReduceMotion()
-    val opaque=io.atmos.weather.ui.rememberAppleReduceTransparency()
-    val dark=palette.background.red<.5f
-    var pressed by remember{mutableStateOf(false)}
-    val position by animateFloatAsState(index.toFloat(),if(reduce)androidx.compose.animation.core.snap() else io.atmos.weather.ui.AppleMotion.glassMorph(),label="segment-lens")
-    val tail by animateFloatAsState(position,if(reduce)androidx.compose.animation.core.snap() else
-        androidx.compose.animation.core.spring(io.atmos.weather.ui.FluidGlassStyle.TAIL_DAMPING,io.atmos.weather.ui.FluidGlassStyle.TAIL_STIFFNESS),label="segment-tail")
-    val lift by animateFloatAsState(if(pressed&&!reduce)1f else 0f,if(reduce)androidx.compose.animation.core.snap() else
-        androidx.compose.animation.core.spring(io.atmos.weather.ui.FluidGlassStyle.CONTACT_DAMPING,io.atmos.weather.ui.FluidGlassStyle.CONTACT_STIFFNESS),label="segment-lift")
-    val touch=remember{io.atmos.weather.ui.GlassTouch()}
-    val light=io.atmos.weather.ui.GlassLight.current(follow=!opaque)
-    val capsule=RoundedCornerShape(999.dp)
-    var pickerWidth by remember{mutableIntStateOf(1)}
-    val latestSelect by rememberUpdatedState(onSelect)
-    BoxWithConstraints(modifier.fillMaxWidth().height(46.dp).testTag("seismic-section-picker")
-        .onSizeChanged{pickerWidth=it.width.coerceAtLeast(1)}
-        // Drag across the control to scrub between sections, as with iOS segmented controls.
-        .pointerInput(Unit){
-            fun at(x:Float)=names[(x/(pickerWidth.toFloat()/names.size)).toInt().coerceIn(0,names.lastIndex)]
-            detectHorizontalDragGestures(
-                onDragStart={o->latestSelect(at(o.x))},
-                onHorizontalDrag={change,_->change.consume();latestSelect(at(change.position.x))})
+    val p=MaterialTheme.colorScheme
+    val scene=io.atmos.weather.ui.rememberThinnBackdrop()
+    Box(modifier.fillMaxWidth().clip(RoundedCornerShape(999.dp)).testTag("seismic-section-picker")) {
+        io.atmos.weather.ui.ThinnBackdropCapture(scene,Modifier.matchParentSize()) {
+            Box(Modifier.fillMaxSize().background(p.surface))
         }
-        .shadow(10.dp,capsule,ambientColor=Color.Black.copy(alpha=.08f),spotColor=Color.Black.copy(alpha=.08f))
-        .clip(capsule).thinnBackdrop(opaque,999.dp)
-        .background(if(opaque)palette.surface else palette.surface.copy(alpha=if(dark).42f else .58f))
-        .border(.75.dp,Color.White.copy(alpha=if(dark).18f else .55f),capsule)
-        .pointerInput(Unit){awaitEachGesture{
-            awaitFirstDown(requireUnconsumed=false,pass=androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-            pressed=true
-            try{do{val e=awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)}while(e.changes.any{it.pressed})}finally{pressed=false}
-        }}) {
-        val segment=maxWidth/names.size
-        // The glass lens, drawn under the labels.
-        Box(Modifier.offset{IntOffset((position*segment.toPx()).roundToInt(),0)}.width(segment).fillMaxHeight().padding(3.dp)
-            .graphicsLayer {
-                val stretch=io.atmos.weather.ui.LiquidGlassKit.stretch(position-tail)
-                scaleX=(1f+.07f*lift)*(1f+stretch);scaleY=(1f+.12f*lift)*(1f-stretch*.4f)
-            }
-            .glassTouchTracker(touch)
-            .clip(capsule).thinnBackdrop(opaque,999.dp,frostScale=.35f)
-            .background(if(opaque)palette.primaryContainer else Color.White.copy(alpha=if(dark).16f else .72f))
-            .liquidGlassSurface(999.dp,{lift},touch,dark,light))
-        Row(Modifier.fillMaxSize()) {
-            names.forEach{name->
-                val on=name==selected
-                Box(Modifier.weight(1f).fillMaxHeight().clip(capsule)
-                    .clickable(interactionSource=remember{androidx.compose.foundation.interaction.MutableInteractionSource()},indication=null,
-                        role=androidx.compose.ui.semantics.Role.Tab){onSelect(name)}
-                    .semantics{this.selected=on;contentDescription="地震$name"},contentAlignment=Alignment.Center) {
-                    Text(labels.getValue(name),color=if(on)palette.onSurface else palette.onSurfaceVariant,fontSize=15.sp,
-                        fontWeight=if(on)FontWeight.SemiBold else FontWeight.Medium)
-                }
-            }
+        CompositionLocalProvider(io.atmos.weather.ui.LocalThinnBackdrop provides scene) {
+            io.atmos.weather.next.NextReorderableToolDock(
+                actions=listOf(
+                    io.atmos.weather.next.NextToolAction("監測","即時監測",Icons.Rounded.Sensors),
+                    io.atmos.weather.next.NextToolAction("報告","地震報告",Icons.Rounded.Article),
+                    io.atmos.weather.next.NextToolAction("工具","回放與演練",Icons.Rounded.PlayCircle)),
+                selectedId=selected,onSelected=onSelect,onOrderChanged={},modifier=Modifier.fillMaxWidth(),maxVisible=3,
+                darkBackdrop=p.background.red<.5f,
+                reduceMotion=io.atmos.weather.ui.rememberAppleReduceMotion(),
+                reduceTransparency=io.atmos.weather.ui.rememberAppleReduceTransparency())
         }
     }
 }

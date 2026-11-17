@@ -63,13 +63,13 @@ internal fun forecastDays(w: WeatherSnapshot, today: LocalDate): List<DailyWeath
     io.atmos.weather.ui.ThinnAtmospherePanel(modifier.testTag("daily-forecast"), accent = Color(0xFF9CC9FF)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.CalendarMonth, null, tint = Color.White.copy(alpha = .7f), modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.CalendarMonth, null, tint = HomeInk.secondary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("${days.size} 天預報", color = Color.White.copy(alpha = .7f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("${days.size} 天預報", color = HomeInk.secondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.height(6.dp))
             days.forEachIndexed { i, d ->
-                Box(Modifier.fillMaxWidth().height(.5.dp).background(Color.White.copy(alpha = .14f)))
+                Box(Modifier.fillMaxWidth().height(.5.dp).background(HomeInk.tile))
                 val label = when (d.date) { today -> "今天"; today.plusDays(1) -> "明天"; else -> weekNames[d.date.dayOfWeek.value - 1] }
                 val pop = d.precipitationProbabilityPct?.takeIf { it >= 20 }
                 val lo = d.lowC!!; val hi = d.highC!!
@@ -78,27 +78,27 @@ internal fun forecastDays(w: WeatherSnapshot, today: LocalDate): List<DailyWeath
                     .semantics { contentDescription = "$label ${hourlyWeatherName(d.weatherCode, 12)} 最低 ${lo.roundToInt()} 度 最高 ${hi.roundToInt()} 度" + (pop?.let { " 降雨機率 $it%" } ?: "") }
                     .padding(vertical = 10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(label, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Medium, modifier = Modifier.width(52.dp))
+                        Text(label, color = HomeInk.primary, fontSize = 17.sp, fontWeight = FontWeight.Medium, modifier = Modifier.width(52.dp))
                         Column(Modifier.width(44.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(weatherVector(d.weatherCode, 12), null, tint = Color(0xFFFFDB92), modifier = Modifier.size(22.dp))
                             if (pop != null) Text("$pop%", color = Color(0xFF8FD0FF), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                         }
-                        Text("${lo.roundToInt()}°", color = Color.White.copy(alpha = .6f), fontSize = 17.sp, textAlign = TextAlign.End, modifier = Modifier.width(40.dp))
+                        Text("${lo.roundToInt()}°", color = HomeInk.secondary, fontSize = 17.sp, textAlign = TextAlign.End, modifier = Modifier.width(40.dp))
                         // Range bar on the week's scale; warm colours on the hot end like iOS.
                         val now = if (d.date == today) weather.temperatureC else null
                         Canvas(Modifier.weight(1f).height(6.dp).padding(horizontal = 10.dp)) {
                             val span = (weekHigh - weekLow).coerceAtLeast(1.0)
                             fun x(t: Double) = (((t - weekLow) / span).toFloat().coerceIn(0f, 1f)) * size.width
-                            drawRoundRect(Color.White.copy(alpha = .14f), cornerRadius = CornerRadius(size.height / 2))
+                            drawRoundRect(HomeInk.tile, cornerRadius = CornerRadius(size.height / 2))
                             val a = x(lo); val b = x(hi); val mid = (a + b) / 2f; val half = (b - a) / 2f * grow.value
                             drawRoundRect(Brush.horizontalGradient(listOf(tempColor(lo), tempColor(hi)), mid - half, mid + half),
                                 Offset(mid - half, 0f), Size((half * 2).coerceAtLeast(size.height), size.height), CornerRadius(size.height / 2))
                             if (now != null) {
                                 drawCircle(Color.Black.copy(alpha = .35f), size.height * .95f, Offset(x(now), size.height / 2))
-                                drawCircle(Color.White, size.height * .7f, Offset(x(now), size.height / 2))
+                                drawCircle(HomeInk.primary, size.height * .7f, Offset(x(now), size.height / 2))
                             }
                         }
-                        Text("${hi.roundToInt()}°", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(40.dp))
+                        Text("${hi.roundToInt()}°", color = HomeInk.primary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(40.dp))
                     }
                     androidx.compose.animation.AnimatedVisibility(open == d.date,
                         enter = androidx.compose.animation.expandVertically(androidx.compose.animation.core.spring(.78f, 380f)) + androidx.compose.animation.fadeIn(),
@@ -107,7 +107,7 @@ internal fun forecastDays(w: WeatherSnapshot, today: LocalDate): List<DailyWeath
                             d.precipitationProbabilityPct?.let { "降雨機率 $it%" },
                             "溫差 ${(hi - lo).roundToInt()}°",
                             io.atmos.weather.comfort.ComfortMessages.umbrella(d.precipitationProbabilityPct)).joinToString(" · "),
-                            color = Color.White.copy(alpha = .78f), fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp, start = 52.dp))
+                            color = HomeInk.secondary, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp, start = 52.dp))
                     }
                 }
             }

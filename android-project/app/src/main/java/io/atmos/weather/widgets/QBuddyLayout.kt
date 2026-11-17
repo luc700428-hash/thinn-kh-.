@@ -64,15 +64,28 @@ internal object QBuddyLayout {
                 val line = when (family) { 9 -> d.days.getOrNull(1)?.let { "${it.label} ${it.range}" } ?: d.description(); 10 -> d.bring.ifBlank { d.description() }
                     11 -> d.alert; else -> d.description() }
                 val font = minOf(p.caption, lower / LINE)
-                if (twoLines && line.isNotBlank()) add(WidgetRegion.Kind.TEXT, 0f, h - lower, main, font * LINE, line, font, soft = true)
+                if (twoLines && !extra) {
+                    // Narrow strip: the second line is the time and date (the side column has them when wide).
+                    val timeW = minOf(main * .45f, (units(timeSample) + .4f) * font * WidgetTypography.MAX)
+                    add(WidgetRegion.Kind.TIME, 0f, h - lower, timeW, font * LINE, font = font)
+                    add(WidgetRegion.Kind.DATE, timeW + gap, h - lower, main - timeW - gap, font * LINE, "M月d日 EEE", font, soft = true)
+                } else if (twoLines && line.isNotBlank()) add(WidgetRegion.Kind.TEXT, 0f, h - lower, main, font * LINE, line, font, soft = true)
             }
             if (extra) {
                 val x = main + gap * 2; val cw = pw - x
                 val font = minOf(p.body, (h - gap) / 2f / LINE)
                 val first = when (family) { 10 -> d.outlook.ifBlank { city }; 11 -> d.alertDetail.ifBlank { city }; else -> city }
                 val second = when (family) { 8 -> d.alarm; 9 -> d.days.getOrNull(2)?.let { "${it.label} ${it.range}" } ?: range; else -> range }
-                add(WidgetRegion.Kind.TEXT, x, 0f, cw, font * LINE, first, font, bold = true)
-                add(WidgetRegion.Kind.TEXT, x, h - font * LINE, cw, font * LINE, second, font, soft = true)
+                if (clock) {
+                    add(WidgetRegion.Kind.TEXT, x, 0f, cw, font * LINE, first, font, bold = true)
+                    add(WidgetRegion.Kind.TEXT, x, h - font * LINE, cw, font * LINE, second, font, soft = true)
+                } else {
+                    // Time and date lead the side column; the city (or the widget's own line) follows.
+                    val timeW = minOf(cw * .45f, (units(timeSample) + .4f) * font * WidgetTypography.MAX)
+                    add(WidgetRegion.Kind.TIME, x, 0f, timeW, font * LINE, font = font)
+                    add(WidgetRegion.Kind.DATE, x + timeW + gap, 0f, cw - timeW - gap, font * LINE, "M月d日 EEE", font, soft = true)
+                    add(WidgetRegion.Kind.TEXT, x, h - font * LINE, cw, font * LINE, first, font, bold = true)
+                }
             }
             return out
         }
@@ -88,10 +101,35 @@ internal object QBuddyLayout {
             minOf(p.caption / p.textScale, width / (4.5f * WidgetTypography.MAX), maxHeight / (LINE * WidgetTypography.MAX)) * p.textScale
         val headerH = (usable * .13f).coerceIn(18f, 70f)
         val minimumHero = if (heroBeside) 44f else 24f + gap + 13f * LINE * WidgetTypography.MAX + (if (clock) gap + 13f * LINE * WidgetTypography.MAX else 0f)
-        // A 2×2 clock spends its little height on the time and the buddy instead of the city line.
-        if (usable - headerH - gap >= minimumHero && !(clock && !heroBeside && usable < 170f)) {
-            val cityFont = minOf(p.city, headerH / LINE)
-            add(WidgetRegion.Kind.TEXT, 0f, 0f, w, cityFont * LINE, if (family == 11 && d.alertRecent) "最新地震 · $city" else city, cityFont, bold = true)
+        val cityLabel = if (family == 11 && d.alertRecent) "最新地震 · $city" else city
+        if (clock) {
+            // The clock widget shows the time big in its hero; its header is the city.
+            // A 2×2 clock spends its little height on the time and the buddy instead of the city line.
+            if (usable - headerH - gap >= minimumHero && !(!heroBeside && usable < 170f)) {
+                val cityFont = minOf(p.city, headerH / LINE)
+                add(WidgetRegion.Kind.TEXT, 0f, 0f, w, cityFont * LINE, cityLabel, cityFont, bold = true)
+                y = headerH + gap
+            }
+        } else {
+            // Every other Q widget opens with the time and date (live TextClocks), then the city
+            // when the row has room for it. Even a 2×2 keeps this line.
+            val headerH = (usable * .155f).coerceIn(20f, 78f)
+            val font = minOf(p.city, headerH / LINE)
+            val timeUnits = units(timeSample) + .4f
+            val timeFont = minOf(font * 1.25f, headerH / LINE, w * .46f / (timeUnits * WidgetTypography.MAX))
+            val timeW = timeUnits * timeFont * WidgetTypography.MAX
+            val dateFont = minOf(font * .94f, headerH / LINE)
+            val longDate = "11月17日 週二"; val shortDate = "11月17日"
+            val roomAfterTime = w - timeW - gap
+            val dateText = if (units(longDate) * dateFont * WidgetTypography.MAX <= roomAfterTime) "M月d日 EEE" else "M月d日"
+            val dateW = minOf(roomAfterTime, units(if (dateText.length > 5) longDate else shortDate) * dateFont * WidgetTypography.MAX + 2f)
+            val top = (headerH - maxOf(timeFont, dateFont) * LINE).coerceAtLeast(0f) / 2f
+            add(WidgetRegion.Kind.TIME, 0f, top, timeW, timeFont * LINE, font = timeFont)
+            if (dateW >= dateFont * 2.5f) add(WidgetRegion.Kind.DATE, timeW + gap, top, dateW, dateFont * LINE, dateText, dateFont, soft = true)
+            val cityX = timeW + gap + dateW + gap * 2
+            val cityW = w - cityX
+            if (cityW >= units(cityLabel).coerceAtMost(6f) * font * WidgetTypography.MAX)
+                add(WidgetRegion.Kind.TEXT, cityX, top, cityW, font * LINE, cityLabel, font, bold = true)
             y = headerH + gap
         }
         if (heroBeside) {
@@ -152,18 +190,6 @@ internal object QBuddyLayout {
             val a = text(d.description(), p.body, soft = true)
             val b = text(range, p.caption, soft = true)
             return a || b
-        }
-        /** The weather buddy also tells the time and date once there is room, as it always has. */
-        fun Column.clockRow(): Boolean {
-            val inline = this.w >= 230f
-            val timeW = if (inline) this.w * .60f else this.w; val dateW = if (inline) this.w - timeW - gap else this.w
-            val timeFont = fit(p.body * 1.5f, timeSample, timeW, 60f * p.typeGrowth)
-            val dateFont = dateRowFont(dateW)
-            val height = if (inline) maxOf(timeFont, dateFont) * LINE else (timeFont + dateFont) * LINE
-            if (h < 230f || this.y + height > bottom + .1f) return false
-            add(WidgetRegion.Kind.TIME, x, this.y, timeW, timeFont * LINE, font = timeFont)
-            add(WidgetRegion.Kind.DATE, if (inline) x + timeW + gap else x, if (inline) this.y else this.y + timeFont * LINE, dateW, dateFont * LINE, font = dateFont, soft = true)
-            this.y += height + gap; return true
         }
         fun Column.hours(): Boolean {
             if (d.hours.isEmpty()) return false
@@ -244,7 +270,7 @@ internal object QBuddyLayout {
             9 -> listOf({ days() }, { hours() }, { metrics(weather) }, { description() })
             10 -> listOf({ outing() }, { metrics(outdoor) }, { hours() }, { days() })
             11 -> listOf({ quake() }, { description() }, { metrics(weather) }, { hours() })
-            else -> listOf({ clockRow() }, { description() }, { hours() }, { metrics(weather) }, { days() }, { outing() })
+            else -> listOf({ description() }, { hours() }, { metrics(weather) }, { days() }, { outing() })
         }
         // Wide and tall enough: two columns, blocks dealt left / right by whichever is shorter.
         val twoColumns = w >= 520f && usable - y >= p.body * LINE * 5

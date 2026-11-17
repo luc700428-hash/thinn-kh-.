@@ -44,7 +44,7 @@ class MajorV23Contract(unittest.TestCase):
         self.assertIn('BackHandler(enabled=',home)
         self.assertIn('WeatherAlarmPage(onClose=',home)
         self.assertIn('TyphoonCenterPage(',home)
-        self.assertIn('ThinnAtmosphereFocus(',home)
+        self.assertNotIn('ThinnAtmosphereFocus(',home)
         self.assertNotIn('2D 地標',home)
         self.assertNotIn('RadarThreeHourCard(snapshot)',home)
         # Keep the official typhoon route, but remove the broad RSS home summary.

@@ -74,20 +74,27 @@ internal object HomeOutlook {
             } + (t1.precipitationProbabilityPct?.takeIf { it >= 50 }?.let { "，可能下雨" } ?: "")
         }
         val tiles = buildList {
-            WeatherInsightMath.windows(w, OutdoorMode.WALK, now).firstOrNull { !it.caution }?.let { best ->
-                add(Tile("最佳出門", hm.format(best.hours.first().at.atZone(zone)), "到 ${hm.format(best.hours.last().at.plusSeconds(3600).atZone(zone))} · 降雨 ${best.rain}%"))
+            // Only waking hours count as a "best time to go out"; 02:00 is never a useful answer.
+            WeatherInsightMath.windows(w, OutdoorMode.WALK, now).firstOrNull { win ->
+                !win.caution && win.hours.first().at.atZone(zone).hour in 6..20
+            }?.let { best ->
+                add(Tile("最佳出門", hm.format(best.hours.first().at.atZone(zone)), "至 ${hm.format(best.hours.last().at.plusSeconds(3600).atZone(zone))}"))
             }
             val rise = w.sunrise; val set = w.sunset
             if (set != null && now.isBefore(set) && (rise == null || now.isAfter(rise))) add(Tile("日落", hm.format(set.atZone(zone)), minutesLeft(now, set)))
             else if (rise != null && now.isBefore(rise)) add(Tile("日出", hm.format(rise.atZone(zone)), minutesLeft(now, rise)))
             w.usAqi?.let { add(Tile("空氣品質", it.toString(), ComfortMessages.aqiWord(it))) }
-            if (size < 3) (next.mapNotNull { it.uvIndex }.maxOrNull() ?: w.currentUv)?.let { add(Tile("紫外線", it.roundToInt().toString(), ComfortMessages.uvWord(it) + "量級")) }
+            if (size < 3) (next.mapNotNull { it.uvIndex }.maxOrNull() ?: w.currentUv)?.takeIf { it >= 1 }?.let { add(Tile("紫外線", it.roundToInt().toString(), ComfortMessages.uvWord(it) + "量級")) }
+            if (size < 3) next.mapNotNull { h -> h.temperatureC?.takeIf { it.isFinite() }?.let { h to it } }.minByOrNull { it.second }?.let { (h, t) ->
+                add(Tile("最低溫", "${t.roundToInt()}°", "約 ${hm.format(h.at.atZone(zone))}"))
+            }
         }.take(3)
         return Outlook(rain, tomorrow, tiles)
     }
     private fun minutesLeft(now: Instant, then: Instant): String {
         val m = ((then.epochSecond - now.epochSecond) / 60).coerceAtLeast(0)
-        return if (m >= 60) "還有 ${m / 60} 小時 ${m % 60} 分" else "還有 $m 分鐘"
+        // Short enough for a third-width tile on a phone.
+        return if (m >= 60) "約 ${(m + 30) / 60} 小時後" else "$m 分鐘後"
     }
 
     /** Text for the system share sheet. */
@@ -103,39 +110,34 @@ internal object HomeOutlook {
     val ctx = LocalContext.current
     val now = remember(weather.fetchedAt) { Instant.now() }
     val outlook = remember(weather, now) { HomeOutlook.build(weather, now) }
+    val ink = HomeInk.primary; val soft = HomeInk.secondary
     io.atmos.weather.ui.ThinnAtmospherePanel(Modifier.testTag("home-outlook"), accent = Color(0xFFBFE3FF)) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("接下來", color = Color.White.copy(alpha = .7f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Box(Modifier.size(36.dp).iosJellyPress().clip(RoundedCornerShape(999.dp)).background(Color.White.copy(alpha = .12f))
+                Text("接下來", color = soft, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Box(Modifier.size(36.dp).iosJellyPress().clip(RoundedCornerShape(999.dp)).background(HomeInk.tile)
                     .clickable(role = Role.Button, onClickLabel = "分享天氣") {
                         runCatching {
                             ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
                                 .putExtra(Intent.EXTRA_TEXT, HomeOutlook.shareText(weather, place, Instant.now())), "分享天氣").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         }
                     }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.IosShare, "分享天氣", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.IosShare, "分享天氣", tint = ink, modifier = Modifier.size(18.dp))
                 }
             }
-            Text(outlook.rain, color = Color.White, fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold)
-            outlook.tomorrow?.let { Text(it, color = Color.White.copy(alpha = .8f), fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 2.dp)) }
+            Text(outlook.rain, color = ink, fontSize = 20.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold)
+            outlook.tomorrow?.let { Text(it, color = soft, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 2.dp)) }
             if (outlook.tiles.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    outlook.tiles.forEachIndexed { i, t ->
-                        Column(Modifier.weight(1f).iosAppear(i).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .09f)).padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(t.label, color = Color.White.copy(alpha = .7f), fontSize = 14.sp, maxLines = 1)
-                            Text(t.value, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            Text(t.caption, color = Color.White.copy(alpha = .7f), fontSize = 14.sp, maxLines = 2, lineHeight = 18.sp)
-                        }
-                    }
+                HomeTileRow {
+                    outlook.tiles.forEachIndexed { i, t -> HomeTile(t.label, t.value, t.caption, Modifier.weight(1f).iosAppear(i)) }
+                    repeat(3 - outlook.tiles.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp).iosJellyPress().clip(RoundedCornerShape(14.dp))
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp).iosJellyPress().clip(RoundedCornerShape(14.dp))
                 .clickable(role = Role.Button, onClick = onDetails).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("最佳出門時段與天氣細節", color = Color.White.copy(alpha = .8f), fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                Icon(Icons.Rounded.ChevronRight, null, tint = Color.White.copy(alpha = .7f))
+                Text("最佳出門時段與天氣細節", color = ink, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                Icon(Icons.Rounded.ChevronRight, null, tint = soft)
             }
         }
     }

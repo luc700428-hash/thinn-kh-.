@@ -76,10 +76,4 @@ object WeatherScenes {
     }
 
     fun ambienceAsset(scene: WeatherScene) = "next_weather/ambience/${scene.name.lowercase()}.wav"
-    fun musicAsset(theme: String, scene: WeatherScene?): String? =
-        when(theme) {
-            in WeatherWakePolicy.paletteThemes, in WeatherWakePolicy.popThemes -> "next_weather/music/$theme/${WeatherWakePolicy.paletteArrangement(scene)}.wav"
-            in WeatherWakePolicy.originalThemes -> "next_weather/music/$theme/${scene?.name?.lowercase() ?: "neutral"}.wav"
-            else -> null
-        }
 }

@@ -21,12 +21,14 @@ class HomeReadabilityTests(unittest.TestCase):
         # In the weather page itself (before any modal), the critical weather
         # values and both actionable clothing/rain rows remain visible.
         self.assertIn('HomeKeyWeatherCard(snapshot, state.stale)',home)
-        self.assertIn('HomeAdviceRow("穿著建議"',home)
-        self.assertIn('HomeAdviceRow("雨具建議"',home)
+        # r22: what to wear, coat and rain gear are three always-visible tiles.
+        self.assertIn('HomeTile("穿什麼"',home)
+        self.assertIn('HomeTile("外套"',home)
+        self.assertIn('HomeTile("雨具"',home)
         self.assertNotIn('查看詳情  →',home)
         # V23 R8: the requested homepage RSS alert summary is removed.
         # Real emergency weather advisories remain available via workers / notices.
-        visible=home.split('// 依本次需求，首頁不再顯示中央氣象署 RSS 特報摘要區塊')[1].split('// Atmospheric light and live data')[0]
+        visible=home.split('// 依本次需求，首頁不再顯示中央氣象署 RSS 特報摘要區塊')[1].split('"forecast" -> {')[0]
         self.assertNotIn('state.cwaWarnings.isNotEmpty()',visible)
         self.assertLess(visible.index('HomeKeyWeatherCard('),visible.index('DailyGuidanceCard('))
         self.assertIn('未來六小時降雨',model)
@@ -36,11 +38,13 @@ class HomeReadabilityTests(unittest.TestCase):
 
     def test_optical_live_weather_replaces_2d_landmarks(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        light=(JAVA/'ui/ThinnAtmosphereFocus.kt').read_text()
-        self.assertIn('ThinnAtmosphereFocus(',home)
+        # r22: the 現在的天氣光景 card was removed at the user's request; its facts live in 天氣細節.
+        self.assertNotIn('ThinnAtmosphereFocus(',home)
+        self.assertFalse((JAVA/'ui/ThinnAtmosphereFocus.kt').exists())
         self.assertNotIn('LandmarkCanvas(',home)
-        self.assertIn('snapshot.windKmh',light)
-        self.assertIn('snapshot.humidityPct',light)
+        grid=(JAVA/'presentation/home/WeatherGauges.kt').read_text()
+        self.assertIn('w.windKmh',grid)
+        self.assertIn('w.humidityPct',grid)
     def test_chiayi_county_now_has_separate_place_models(self):
         c=json.loads((ASSETS/'catalog_v2.json').read_text())
         expected=['阿里山森林鐵道','北回歸線太陽館','故宮南院','奮起湖車站','中央噴水圓環']

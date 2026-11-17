@@ -47,7 +47,7 @@ import kotlin.math.roundToInt
 object HomeCardLayout {
     val titles = linkedMapOf(
         "outlook" to "接下來", "outing" to "今日概況", "forecast" to "24 小時預報", "daily" to "7 天預報", "radar" to "降雨雷達",
-        "details" to "天氣細節與空氣品質", "commute" to "通勤天氣", "scene" to "天氣光影", "key" to "未來 6 小時重點")
+        "details" to "天氣細節與空氣品質", "commute" to "通勤天氣", "key" to "未來 6 小時重點")
     val defaultOrder = titles.keys.toList()
     /** r19 keeps the home calm: the six-hour facts overlap 今日概況, so they start hidden. */
     private val defaultHidden = setOf("key")
@@ -140,22 +140,22 @@ object HomeCardLayout {
     val (a, b) = weather
     io.atmos.weather.ui.ThinnAtmospherePanel(accent = Color(0xFFFF8FA3)) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
-            Text("通勤天氣", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            Text("通勤天氣", color = HomeInk.primary, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf(home to a, work to b).forEachIndexed { i, (place, w) ->
-                    Column(Modifier.weight(1f).iosAppear(i).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .09f)).padding(12.dp)) {
-                        Text(if (i == 0) "家 · ${place.name}" else "公司 · ${place.name}", color = Color.White.copy(alpha = .78f), fontSize = 14.sp, maxLines = 1)
-                        Text(w?.let { "${it.temperatureC.roundToInt()}°" } ?: "—", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                    Column(Modifier.weight(1f).iosAppear(i).clip(RoundedCornerShape(16.dp)).background(HomeInk.tile).padding(12.dp)) {
+                        Text(if (i == 0) "家 · ${place.name}" else "公司 · ${place.name}", color = HomeInk.secondary, fontSize = 14.sp, maxLines = 1)
+                        Text(w?.let { "${it.temperatureC.roundToInt()}°" } ?: "—", color = HomeInk.primary, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
                         val pop = w?.hourly?.take(4)?.mapNotNull { it.precipitationProbabilityPct }?.maxOrNull()
                         Text(w?.let { ComfortMessages.conditionWord(it.condition) + (pop?.let { p -> " · 降雨 $p%" } ?: "") } ?: "載入中",
-                            color = Color.White.copy(alpha = .78f), fontSize = 14.sp, maxLines = 1)
+                            color = HomeInk.secondary, fontSize = 14.sp, maxLines = 1)
                     }
                 }
             }
             val pops = listOfNotNull(a, b).flatMap { it.hourly.take(4).mapNotNull { h -> h.precipitationProbabilityPct } }
             ComfortMessages.umbrella(pops.maxOrNull())?.let {
-                Spacer(Modifier.height(10.dp)); Text("雨具：$it", color = Color.White, fontSize = 15.sp)
+                Spacer(Modifier.height(10.dp)); Text("雨具：$it", color = HomeInk.primary, fontSize = 15.sp)
             }
         }
     }

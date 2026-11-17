@@ -26,29 +26,29 @@ object ThinnNotificationChannels {
     data class Tone(val id: String, val title: String, val description: String, val resource: String, val style: String = "classic")
 
     /** Style tabs in the picker. */
-    val styles = listOf("bright" to "清亮", "warm" to "溫暖", "modern" to "電子", "classic" to "經典")
+    val styles = listOf("bright" to "輕柔", "warm" to "溫暖", "modern" to "空靈", "classic" to "經典")
 
     val tones = listOf(
-        Tone("bright_1", "清鈴", "鐘琴雙音，乾淨俐落", "thinn_tone_bright_1", "bright"),
-        Tone("bright_2", "水滴", "馬林巴三連，晶亮輕快", "thinn_tone_bright_2", "bright"),
-        Tone("bright_3", "晨光", "水晶上行三音", "thinn_tone_bright_3", "bright"),
-        Tone("bright_4", "漣漪", "高低交錯的鐘琴", "thinn_tone_bright_4", "bright"),
+        Tone("bright_1", "清鈴", "鋼片琴下行雙音，柔和清楚", "thinn_tone_bright_1", "bright"),
+        Tone("bright_2", "水滴", "木琴三連，圓潤輕快", "thinn_tone_bright_2", "bright"),
+        Tone("bright_3", "晨光", "顫音琴上行三音", "thinn_tone_bright_3", "bright"),
+        Tone("bright_4", "漣漪", "鋼片琴輕輕回落", "thinn_tone_bright_4", "bright"),
         Tone("warm_1", "木鈴", "拇指琴雙音，溫潤", "thinn_tone_warm_1", "warm"),
-        Tone("warm_2", "琴音", "柔和鋼琴三和弦", "thinn_tone_warm_2", "warm"),
-        Tone("warm_3", "撥弦", "尼龍吉他琶音", "thinn_tone_warm_3", "warm"),
+        Tone("warm_2", "琴音", "絨布鋼琴三和弦", "thinn_tone_warm_2", "warm"),
+        Tone("warm_3", "撥弦", "豎琴琶音", "thinn_tone_warm_3", "warm"),
         Tone("warm_4", "微風", "拇指琴下行，安靜耐聽", "thinn_tone_warm_4", "warm"),
-        Tone("modern_1", "光點", "FM 鐘音雙聲", "thinn_tone_modern_1", "modern"),
-        Tone("modern_2", "脈衝", "俐落電子三連", "thinn_tone_modern_2", "modern"),
-        Tone("modern_3", "霓虹", "明亮電子跳音", "thinn_tone_modern_3", "modern"),
-        Tone("modern_4", "星環", "上行電子和弦", "thinn_tone_modern_4", "modern"),
-        Tone("clear_bell", "清鈴（經典）", "兩聲清亮，乾淨俐落", "thinn_notify_clear_bell"),
+        Tone("modern_1", "光點", "玻璃音雙聲，輕盈", "thinn_tone_modern_1", "modern"),
+        Tone("modern_2", "脈衝", "電鋼琴三連，柔和", "thinn_tone_modern_2", "modern"),
+        Tone("modern_3", "霓虹", "玻璃音起伏三聲", "thinn_tone_modern_3", "modern"),
+        Tone("modern_4", "星環", "電鋼琴上行和弦", "thinn_tone_modern_4", "modern"),
+        Tone("clear_bell", "清鈴（經典）", "兩聲柔和，乾淨俐落", "thinn_notify_clear_bell"),
         Tone("crystal", "水晶（經典）", "單聲通透，極簡", "thinn_notify_crystal"),
         Tone("morning", "晨光（經典）", "輕巧雙聲，溫暖清晰", "thinn_notify_morning"),
-        Tone("raindrop", "雨滴（經典）", "兩顆晶亮的水滴聲", "thinn_notify_raindrop"),
-        Tone("starlight", "星點（經典）", "短促三連，細緻閃亮", "thinn_notify_starlight"),
+        Tone("raindrop", "雨滴（經典）", "兩顆圓潤的水滴聲", "thinn_notify_raindrop"),
+        Tone("starlight", "星點（經典）", "輕巧三連，細緻溫柔", "thinn_notify_starlight"),
         Tone("breeze", "微風（經典）", "溫柔上行，安靜耐聽", "thinn_notify_breeze"),
-        Tone("clear_sky", "晴空（經典）", "明快雙聲，清爽有朝氣", "thinn_notify_clear_sky"),
-        Tone("ripple", "漣漪（經典）", "低高交錯，清透水感", "thinn_notify_ripple")
+        Tone("clear_sky", "晴空（經典）", "雙聲上行，清爽不刺耳", "thinn_notify_clear_sky"),
+        Tone("ripple", "漣漪（經典）", "低高交錯，柔和水感", "thinn_notify_ripple")
     )
 
     fun selectedToneId(context: Context): String {

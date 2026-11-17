@@ -39,7 +39,7 @@ class MiniatureCityTests(unittest.TestCase):
                 self.assertIsNone(x['preview'])
     def test_live_weather_replaces_2d_landmarks_without_erasing_geo(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        self.assertIn('ThinnAtmosphereFocus(',home)
+        self.assertNotIn('ThinnAtmosphereFocus(',home)
         self.assertNotIn('LandmarkGalleryPage(',home)
         model=(JAVA/'domain/visual/LandmarkRegistry.kt').read_text()
         self.assertIn('LandmarkGeo.closestIsland',model)
@@ -61,10 +61,8 @@ class MiniatureCityTests(unittest.TestCase):
                                 str(path)+':'+str(m.start()))
     def test_atmosphere_reduced_motion_and_accessibility(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        light=(JAVA/'ui/ThinnAtmosphereFocus.kt').read_text()
-        self.assertIn('reducedMotion=reduceCityMotion',home)
-        self.assertIn('if (reducedMotion) phase.snapTo',light)
-        self.assertIn('contentDescription =',light)
+        # The sky glow and scene stop moving under reduced motion.
+        self.assertIn('skyGlow(!snapshot.isDay,reduceCityMotion||!weatherSceneActive)',home)
     def test_workflow_builds_tracked_source_not_old_zip(self):
         wf=(ROOT.parent/'.github/workflows/build-apk.yml').read_text()
         self.assertIn('project=android-project',wf)

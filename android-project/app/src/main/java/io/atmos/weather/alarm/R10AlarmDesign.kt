@@ -83,21 +83,21 @@ object R10AlarmTones {
     const val prefix="thinn://alarm/"
     data class Choice(val id:String,val label:String,val description:String,val upper:Color,val lower:Color,val style:String="weather")
     /** Style groups shown as tabs in the picker; "weather" holds the weather-adaptive pop suite. */
-    val styles=listOf("bright" to "清亮","warm" to "溫暖","modern" to "電子","weather" to "天氣流行")
+    val styles=listOf("bright" to "輕柔","warm" to "溫暖","modern" to "空靈","weather" to "天氣流行")
     /** r18 library: four seamless loops per style, original synthesis. */
     val library get()=listOf(
-        Choice("ring_bright_1","晨露","清亮 · 馬林巴琶音 · 112 BPM",Color(0xFF8FD3FF),Color(0xFF2F6FA8),"bright"),
-        Choice("ring_bright_2","晴光","清亮 · 鐘琴旋律 · 118 BPM",Color(0xFFA6E3FF),Color(0xFF3A7FB0),"bright"),
-        Choice("ring_bright_3","水晶","清亮 · 水晶撥音 · 104 BPM",Color(0xFFB7E9FF),Color(0xFF4A89B8),"bright"),
-        Choice("ring_bright_4","雷達","清亮 · 明快琶音 · 124 BPM",Color(0xFF7FC8FF),Color(0xFF2B5F96),"bright"),
-        Choice("ring_warm_1","日出鋼琴","溫暖 · 鋼琴與柔和和聲 · 86 BPM",Color(0xFFFFD29A),Color(0xFF9A5E2A),"warm"),
-        Choice("ring_warm_2","木屋拇指琴","溫暖 · 拇指琴與沙鈴 · 100 BPM",Color(0xFFFFC98A),Color(0xFF8E5527),"warm"),
-        Choice("ring_warm_3","午後吉他","溫暖 · 尼龍吉他撥弦 · 92 BPM",Color(0xFFF6C08F),Color(0xFF85502A),"warm"),
-        Choice("ring_warm_4","森林晨光","溫暖 · 拇指琴與暖墊 · 96 BPM",Color(0xFFFFDDA8),Color(0xFFA06A33),"warm"),
-        Choice("ring_modern_1","極光","電子 · FM 鐘音與合成器 · 120 BPM",Color(0xFFC3A4FF),Color(0xFF5530A8),"modern"),
-        Choice("ring_modern_2","霓虹城市","電子 · 律動合成器 · 116 BPM",Color(0xFFB79BFF),Color(0xFF4B2B99),"modern"),
-        Choice("ring_modern_3","脈衝","電子 · 明亮脈衝 · 126 BPM",Color(0xFFD0B4FF),Color(0xFF6236B5),"modern"),
-        Choice("ring_modern_4","星際","電子 · 太空和聲 · 108 BPM",Color(0xFFA894FF),Color(0xFF41298F),"modern"),
+        Choice("ring_bright_1","晨露","輕柔 · 鋼片琴琶音 · 96 BPM",Color(0xFF8FD3FF),Color(0xFF2F6FA8),"bright"),
+        Choice("ring_bright_2","晴光","輕柔 · 顫音琴旋律 · 100 BPM",Color(0xFFA6E3FF),Color(0xFF3A7FB0),"bright"),
+        Choice("ring_bright_3","水晶","輕柔 · 木琴撥音 · 92 BPM",Color(0xFFB7E9FF),Color(0xFF4A89B8),"bright"),
+        Choice("ring_bright_4","雷達","輕柔 · 木琴琶音 · 104 BPM",Color(0xFF7FC8FF),Color(0xFF2B5F96),"bright"),
+        Choice("ring_warm_1","日出鋼琴","溫暖 · 絨布鋼琴與和聲 · 80 BPM",Color(0xFFFFD29A),Color(0xFF9A5E2A),"warm"),
+        Choice("ring_warm_2","木屋拇指琴","溫暖 · 拇指琴與刷鼓 · 90 BPM",Color(0xFFFFC98A),Color(0xFF8E5527),"warm"),
+        Choice("ring_warm_3","午後吉他","溫暖 · 豎琴撥弦 · 84 BPM",Color(0xFFF6C08F),Color(0xFF85502A),"warm"),
+        Choice("ring_warm_4","森林晨光","溫暖 · 拇指琴與暖墊 · 88 BPM",Color(0xFFFFDDA8),Color(0xFFA06A33),"warm"),
+        Choice("ring_modern_1","極光","空靈 · 電鋼琴與輕鼓 · 96 BPM",Color(0xFFC3A4FF),Color(0xFF5530A8),"modern"),
+        Choice("ring_modern_2","霓虹城市","空靈 · 電鋼琴律動 · 100 BPM",Color(0xFFB79BFF),Color(0xFF4B2B99),"modern"),
+        Choice("ring_modern_3","脈衝","空靈 · 玻璃音脈動 · 104 BPM",Color(0xFFD0B4FF),Color(0xFF6236B5),"modern"),
+        Choice("ring_modern_4","星際","空靈 · 玻璃音與弦樂 · 90 BPM",Color(0xFFA894FF),Color(0xFF41298F),"modern"),
     )
     val all get()=library+choices
     val choices get() =listOf(
@@ -390,7 +390,7 @@ private fun R10RingtonePicker(selected:String?,onChoose:(String)->Unit,onClose:(
             }
             // Weather speech remains removed; the rebuilt suite uses melody and nature.
             Text("鈴聲館",color=ink,fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text("清亮、溫暖、電子三種風格各 4 首全新原創鈴聲，加上 20 首會隨天氣變化的流行曲。點選試聽，按右上角勾號套用。",
+            Text("輕柔、溫暖、空靈三種風格各 4 首柔和原創鈴聲，加上 20 首會隨天氣變化的流行曲。點選試聽，按右上角勾號套用。",
                 color=secondary,fontSize=14.sp,modifier=Modifier.padding(top=8.dp,bottom=18.dp))
             // Every tile has exactly the same size: a fixed height (scaled with the text size),
             // one-line titles and two-line descriptions, and the press feedback scales uniformly.

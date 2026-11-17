@@ -14,7 +14,7 @@ class PopWeatherRoutingTest {
         assertNull(WeatherWakePolicy.theme("thinn://alarm/ring_bright_1"))
         for(id in WeatherWakePolicy.popThemes)for(scene in WeatherScene.entries) {
             assertEquals(id,WeatherWakePolicy.theme("thinn://alarm/$id"))
-            assertEquals("next_weather/music/$id/${WeatherWakePolicy.paletteArrangement(scene)}.wav",WeatherScenes.musicAsset(id,scene))
+            assertEquals(R10AlarmTones.resource("thinn://alarm/$id",null,1000000),NextWeatherAlarmPlayer.musicResource(id,null))
         }
     }
     @Test fun invalidUrisCannotTurnIntoAnAssetPath() {

@@ -38,8 +38,9 @@ class VisualAlarmTyphoonV23R1(unittest.TestCase):
         self.assertNotIn('TextOverflow.Ellipsis',summary)
     def test_weather_metric_tiles_share_adaptive_height(self):
         ui=(JAVA/'presentation/home/WeatherGauges.kt').read_text()
-        self.assertIn('height(136.dp)',ui)
-        self.assertIn('modifier.fillMaxSize()',ui)
+        tiles=(JAVA/'presentation/home/HomeTiles.kt').read_text()
+        self.assertIn('HomeTileRow {',ui)
+        self.assertIn('height(IntrinsicSize.Min)',tiles)
     def test_typhoon_discoverable_from_weather(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
         self.assertIn('颱風動向與官方路徑',home)

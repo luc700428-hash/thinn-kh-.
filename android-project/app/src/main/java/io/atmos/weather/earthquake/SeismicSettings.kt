@@ -66,7 +66,7 @@ object SeismicAlertPolicy {
     }
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("thinn_seismic_v15", Context.MODE_PRIVATE)
     /** Sound style for warnings and reports: classic (original set) or one of the r18 styles. */
-    val soundStyles = listOf("classic" to "經典", "bright" to "清亮", "warm" to "溫暖", "modern" to "電子")
+    val soundStyles = listOf("classic" to "經典", "bright" to "輕柔", "warm" to "溫暖", "modern" to "空靈")
     fun soundStyle(ctx: Context) = prefs(ctx).getString("seismic_sound_style", "classic")?.takeIf { s -> soundStyles.any { it.first == s } } ?: "classic"
     fun setSoundStyle(ctx: Context, style: String) { prefs(ctx).edit().putString("seismic_sound_style", style).apply(); ensureChannels(ctx) }
     /** The resource actually played for [s]; detection tones keep their dedicated sounds. */

@@ -32,6 +32,63 @@ object LiveUpdates {
             .getOrDefault(false)
     }
 
+    /** Where this device stands, in the order the user has to fix things. */
+    enum class Status { NOTIFICATIONS_OFF, ON, OFF, ONGOING_ONLY }
+
+    fun status(ctx:Context):Status {
+        val manager=ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if(!runCatching{manager.areNotificationsEnabled()}.getOrDefault(true))return Status.NOTIFICATIONS_OFF
+        if(Build.VERSION.SDK_INT<36)return Status.ONGOING_ONLY
+        // Some Android 16 tablets and vendor ROMs ship without the promotion API wired up.
+        return runCatching{if(manager.canPostPromotedNotifications())Status.ON else Status.OFF}.getOrDefault(Status.ONGOING_ONLY)
+    }
+
+    /**
+     * Opens the best settings page this device really has: the Live Updates switch, then the
+     * app's notification page, then the app's info page. Many vendor ROMs and tablets lack the
+     * first one, which used to make the button do nothing. Returns false only if none opened.
+     */
+    fun openSettings(ctx:Context):Boolean {
+        val pkg=ctx.packageName
+        val candidates=buildList {
+            if(Build.VERSION.SDK_INT>=36)add(Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,pkg))
+            add(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,pkg))
+            add(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.fromParts("package",pkg,null)))
+        }
+        for(intent in candidates) {
+            val opened=runCatching{ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));true}.getOrDefault(false)
+            if(opened)return true
+        }
+        return false
+    }
+
+    const val TEST_ID=740990
+
+    /**
+     * A one-minute sample Live Update, so the user can see what the chip and lock-screen card look
+     * like on this device. Without promotion support it still appears as an ongoing notification.
+     */
+    fun sendTest(ctx:Context):Boolean {
+        ThinnNotificationChannels.ensure(ctx)
+        val end=System.currentTimeMillis()+60_000L
+        val open=PendingIntent.getActivity(ctx,TEST_ID,Intent(ctx,io.atmos.weather.MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val b=NotificationCompat.Builder(ctx,ThinnNotificationChannels.channelId(ctx,ThinnNotificationChannels.Type.BRIEFINGS))
+            .setSmallIcon(R.drawable.ic_stat_weather)
+            .setContentTitle("即時動態測試")
+            .setContentText("這是一分鐘的示範倒數，結束後自動消失")
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(open)
+            .setTimeoutAfter(61_000L)
+        progress(b,0,60,0xFF328E74.toInt(),indeterminate=true)
+        promote(b,null,end)
+        return runCatching {
+            (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(TEST_ID,b.build());true
+        }.getOrDefault(false)
+    }
+
     /** Opens the system page where the user turns Live Updates on for this app. */
     fun settingsIntent(ctx:Context):Intent =
         if(Build.VERSION.SDK_INT>=36) Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
