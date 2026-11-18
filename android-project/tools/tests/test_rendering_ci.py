@@ -140,6 +140,7 @@ if mode=='success':
         self.assertTrue(ran)
         self.assertEqual(process.returncode, 7, process.stderr)
         self.assertEqual(evidence['exit-code.txt'], b'7\n')
+        self.assertNotIn('verified', evidence)
         self.assertIn('logcat -d', trace)
         self.assertIn('dumpsys activity top', trace)
         self.assertIn('screens', ' '.join(evidence) + trace)
@@ -153,15 +154,18 @@ if mode=='success':
         self.assertIn('logcat -d', trace)
 
     def test_empty_success_cannot_open_the_candidate_gate(self):
-        process, _, _, _ = self.run_fixture('empty')
+        process, _, _, evidence = self.run_fixture('empty')
         self.assertNotEqual(process.returncode, 0)
         self.assertIn('Missing completed', process.stderr)
+        self.assertNotIn('verified', evidence)
 
     def test_completed_success_keeps_evidence_and_passes(self):
         process, _, _, evidence = self.run_fixture('success')
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(evidence['exit-code.txt'], b'0\n')
         self.assertIn(f'{len(results.EXPECTED)}/{len(results.EXPECTED)} passed', process.stdout)
+        # The workflow gate trusts this marker even if the emulator later hangs while shutting down.
+        self.assertIn('verified', evidence)
 
     def test_physical_device_is_refused_before_test_or_log_clear(self):
         process, trace, ran, _ = self.run_fixture('success', qemu='0')
@@ -183,10 +187,11 @@ if mode=='success':
     def test_retry_refuses_to_rerun_a_real_assertion_failure(self):
         names = sorted(results.EXPECTED)
         first = report(names[:1], AttemptTests.REAL)
-        process, _, ran, _ = self.run_fixture('success', attempt='2', seed={'1': first})
+        process, _, ran, evidence = self.run_fixture('success', attempt='2', seed={'1': first})
         self.assertNotEqual(process.returncode, 0)
         self.assertFalse(ran)
         self.assertIn('did not pass', process.stderr)
+        self.assertNotIn('verified', evidence)
 
     def test_invalid_attempt_number_is_refused(self):
         process, _, ran, _ = self.run_fixture('success', attempt='4')

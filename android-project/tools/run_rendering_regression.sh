@@ -22,7 +22,7 @@ attempts="$evidence/attempts"
 results="$project/app/build/outputs/androidTest-results/connected"
 verifier="$project/tools/verify_rendering_results.py"
 if (( attempt == 1 )); then
-  rm -rf "$attempts"
+  rm -rf "$attempts" "$evidence/verified"
   selection='io.atmos.weather.ui.RenderingRegressionTest'
 else
   # A fresh emulator only reruns what an earlier emulator never finished. Real assertion
@@ -31,6 +31,7 @@ else
   selection="$(python3 "$verifier" --remaining "${earlier[@]}")"
   if [[ -z "$selection" ]]; then
     python3 "$verifier" "${earlier[@]}"
+    touch "$evidence/verified"
     exit 0
   fi
   echo "第 $attempt 次嘗試：模擬器先前中斷，改在新模擬器重跑尚未完成的測試：$selection"
@@ -77,3 +78,6 @@ if (( result != 0 )); then
 fi
 mapfile -t completed < <(find "$attempts" -mindepth 1 -maxdepth 1 -type d | sort)
 python3 "$verifier" "${completed[@]}"
+# Every test passed and was verified. The workflow trusts this marker, not the step outcome: the
+# emulator sometimes never exits after "emu kill", which times the step out after the work is done.
+touch "$evidence/verified"

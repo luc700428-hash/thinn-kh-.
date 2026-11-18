@@ -131,7 +131,8 @@ jobs:
       # an assertion failure, error or skip in any attempt still fails the job (see the verifier).
       - name: Retry unfinished Android UI tests on a fresh emulator
         id: ui_second
-        if: steps.ui_first.outcome == 'failure'
+        # Not when the first emulator verified every test and only hung while shutting down.
+        if: steps.ui_first.outcome == 'failure' && hashFiles('android-project/build/ui-regression/verified') == ''
         continue-on-error: true
         timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
@@ -148,7 +149,8 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
           script: THINN_UI_ATTEMPT=2 bash android-project/tools/run_rendering_regression.sh
       - name: Last retry of unfinished Android UI tests
-        if: steps.ui_first.outcome == 'failure' && steps.ui_second.outcome == 'failure'
+        if: steps.ui_first.outcome == 'failure' && steps.ui_second.outcome == 'failure' && hashFiles('android-project/build/ui-regression/verified') == ''
+        continue-on-error: true
         timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
@@ -163,6 +165,12 @@ jobs:
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
           script: THINN_UI_ATTEMPT=3 bash android-project/tools/run_rendering_regression.sh
+      # The gate: every Android UI test passed and was verified in one of the attempts.
+      - name: Require verified Android UI results
+        run: |
+          test -f android-project/build/ui-regression/verified || {
+            echo '::error::Android UI tests did not all pass; stopping the candidate APK build.'; exit 1; }
+          echo 'Android UI tests verified.'
       - name: Retain Android UI regression evidence
         if: always()
         uses: actions/upload-artifact@v4
