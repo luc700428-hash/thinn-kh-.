@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -71,7 +72,7 @@ internal object LiquidGlassKit {
  * the lens content. [energy] is 0 at rest and 1 while held; springs may overshoot it.
  */
 internal fun DrawScope.liquidGlassEdge(path:Path,light:GlassLight.Light,energy:Float,dark:Boolean,
-    touch:Offset?=null,bounds:Rect=Rect(Offset.Zero,size)) {
+    touch:Offset?=null,bounds:Rect=Rect(Offset.Zero,size),corner:Float=min(bounds.width,bounds.height)/2f) {
     val e=if(energy.isFinite())energy.coerceIn(0f,1.25f) else 0f
     val c=bounds.center
     val reach=max(bounds.width,bounds.height)*.5f
@@ -88,17 +89,61 @@ internal fun DrawScope.liquidGlassEdge(path:Path,light:GlassLight.Light,energy:F
                 touch,max(bounds.width,bounds.height)*.75f))
         }
     }
+    // Rim light computed from the glass's own shape (Android 13+), the same as every glass card;
+    // older phones and emulators keep the painted bloom below.
+    val shaded=GlassRim.draw(this,path,bounds,corner,light,.82f+.18f*min(e,1f))
     // Soft bloom along the rim, then the crisp specular line.
-    drawPath(path,Brush.linearGradient(0f to Color.White.copy(alpha=.30f+.18f*e),.38f to Color.White.copy(alpha=.04f),
+    if(!shaded)drawPath(path,Brush.linearGradient(0f to Color.White.copy(alpha=.30f+.18f*e),.38f to Color.White.copy(alpha=.04f),
         .62f to Color.White.copy(alpha=.03f),1f to Color.White.copy(alpha=.16f+.10f*e),start=toward,end=away),style=Stroke(2.6f*density))
     // iOS interactive glass: the rim nearest the finger catches the light while it is held.
     if(touch!=null&&touch.isSpecified&&e>.01f) {
         drawPath(path,Brush.radialGradient(listOf(Color.White.copy(alpha=.85f*min(e,1f)),Color.White.copy(alpha=.25f*min(e,1f)),Color.Transparent),
             touch,max(bounds.width,bounds.height)*.55f),style=Stroke(2.2f*density))
     }
-    drawPath(path,Brush.linearGradient(0f to Color.White.copy(alpha=.96f),.30f to Color.White.copy(alpha=.24f),
+    if(!shaded)drawPath(path,Brush.linearGradient(0f to Color.White.copy(alpha=.96f),.30f to Color.White.copy(alpha=.24f),
         .50f to Color.White.copy(alpha=.07f),.70f to Color.White.copy(alpha=.18f),1f to Color.White.copy(alpha=.66f),
         start=toward,end=away),style=Stroke(1.1f*density))
+}
+
+/**
+ * The liquid-glass rim light of the Backdrop engine (com.kyant.backdrop), for glass drawn by hand
+ * (knobs, the Dock lens): brightest where the edge faces the sun or moon, fading around the shape.
+ * One shader is shared; each draw records its own copy of the uniforms.
+ */
+internal object GlassRim {
+    private var shader:android.graphics.RuntimeShader?=null
+    private var broken=false
+    private val matrix=android.graphics.Matrix()
+
+    private fun obtain():android.graphics.RuntimeShader? {
+        if(broken||android.os.Build.VERSION.SDK_INT<33||LiquidGlassKit.softwareRenderedDevice)return null
+        shader?.let{return it}
+        return try {android.graphics.RuntimeShader(com.kyant.backdrop.DefaultHighlightShaderString).also{shader=it}}
+            catch(_:RuntimeException) {broken=true;null}
+    }
+
+    /** False when the painted fallback should be used instead. */
+    fun draw(scope:DrawScope,path:Path,bounds:Rect,corner:Float,light:GlassLight.Light,alpha:Float):Boolean = with(scope) {
+        if(android.os.Build.VERSION.SDK_INT<33||bounds.width<2f||bounds.height<2f)return false
+        // Software canvases (bitmap snapshots) cannot draw RuntimeShaders; they get the painted rim.
+        if(!drawContext.canvas.nativeCanvas.isHardwareAccelerated)return false
+        val s=obtain()?:return false
+        return try {
+            val r=corner.coerceIn(0f,bounds.minDimension/2f)
+            s.setFloatUniform("size",bounds.width,bounds.height)
+            s.setFloatUniform("cornerRadii",r,r,r,r)
+            s.setColorUniform("color",android.graphics.Color.WHITE)
+            s.setFloatUniform("angle",kotlin.math.atan2(light.y,light.x))
+            s.setFloatUniform("falloff",1.6f)
+            matrix.setTranslate(bounds.left,bounds.top);s.setLocalMatrix(matrix)
+            val brush=androidx.compose.ui.graphics.ShaderBrush(s)
+            val a=alpha.coerceIn(0f,1f)
+            // A soft glow under a crisp line, both added onto what is behind (like real light).
+            drawPath(path,brush,alpha=a*.32f,style=Stroke(3.2f*density),blendMode=androidx.compose.ui.graphics.BlendMode.Plus)
+            drawPath(path,brush,alpha=a,style=Stroke(1.1f*density),blendMode=androidx.compose.ui.graphics.BlendMode.Plus)
+            true
+        } catch(_:RuntimeException) {broken=true;false}
+    }
 }
 
 /**
@@ -147,7 +192,7 @@ internal fun Modifier.liquidGlassSurface(corner:Dp,energy:()->Float,touch:GlassT
         drawContent()
         val p=touch?.point
         if(p!=null&&p.isSpecified)last=p
-        liquidGlassEdge(path,light,energy(),dark,last)
+        liquidGlassEdge(path,light,energy(),dark,last,corner=r)
     }
 }
 
@@ -179,8 +224,9 @@ internal class LiquidLensEffect {
         shader.setFloatUniform("size",width,height)
         shader.setFloatUniform("lens",lens.left,lens.top,lens.right,lens.bottom)
         shader.setFloatUniform("corner",corner.coerceIn(0f,minor/2))
-        shader.setFloatUniform("band",minOf(10f*density,minor*.42f).coerceAtLeast(1f))
-        shader.setFloatUniform("amount",minOf(9f*density,minor*.30f)*l)
+        // A thick dome: the band reaches most of the way in and bends hard at the rim.
+        shader.setFloatUniform("band",minOf(16f*density,minor*.5f).coerceAtLeast(1f))
+        shader.setFloatUniform("amount",minOf(16f*density,minor*.46f)*l)
         shader.setFloatUniform("zoom",1f+(zoom-1f)*l.coerceAtMost(1f))
         return android.graphics.RenderEffect.createRuntimeShaderEffect(shader,"content").asComposeRenderEffect()
     }
@@ -213,7 +259,7 @@ internal class LiquidLensEffect {
                 float2 hi=size-float2(1.0);
                 uv=clamp(uv,float2(0.0),hi);
                 half4 col=content.eval(uv);
-                float disp=bend*amount*0.08;
+                float disp=bend*amount*0.14;
                 col.r=content.eval(clamp(uv+n*disp,float2(0.0),hi)).r;
                 col.b=content.eval(clamp(uv-n*disp,float2(0.0),hi)).b;
                 return col;

@@ -92,7 +92,7 @@ private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
         .glassTouchTracker(touch)
         .clip(corner)
         .thinnBackdrop(opaque,ThinnDesignTokens.radiusControl)
-        .background(Brush.linearGradient(fill.map{it.copy(alpha=it.alpha*(if(opaque)1f else if(!outlined&&colors==null).92f else if(pressed).80f else .93f))}))
+        .background(Brush.linearGradient(fill.map{glassTint(it,opaque,if(!outlined&&colors==null).78f else if(pressed).30f else .36f)}))
         .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
         .liquidGlassSurface(ThinnDesignTokens.radiusControl,{glow},touch,palette.background.red<.5f,light)
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=androidx.compose.ui.semantics.Role.Button,onClick={
@@ -151,7 +151,9 @@ fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
         .glassTouchTracker(touch)
         .clip(CircleShape)
         .thinnBackdrop(opaque,24.dp)
-        .background(if(opaque)ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.subtlePill)
+        .background(if(opaque)ThinnOpticalMaterial.opaque else Brush.linearGradient(listOf(
+            glassTint(androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,opaque,.30f),
+            glassTint(androidx.compose.material3.MaterialTheme.colorScheme.surface,opaque,.34f))))
         .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)
         .liquidGlassSurface(24.dp,{glow},touch,androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f,light)
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,onClick={

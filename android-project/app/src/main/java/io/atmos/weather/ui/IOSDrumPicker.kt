@@ -71,7 +71,7 @@ fun IOSDrumColumn(value:Int,count:Int,onValue:(Int)->Unit,modifier:Modifier=Modi
 @Composable fun IOSWheelRow(modifier:Modifier=Modifier,content:@Composable RowScope.()->Unit){
  val row=drumRow
  Box(modifier.fillMaxWidth().height(row*5.6f),contentAlignment=Alignment.Center){
-  Box(Modifier.fillMaxWidth().height(row).clip(RoundedCornerShape(9999.dp)).thinnBackdrop(rememberAppleReduceTransparency(),9999.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=if(rememberAppleReduceTransparency())1f else .88f)).thinnSpecularEdge(9999.dp))
+  Box(Modifier.fillMaxWidth().height(row).clip(RoundedCornerShape(9999.dp)).thinnGlass(rememberAppleReduceTransparency(),9999.dp,MaterialTheme.colorScheme.surfaceVariant,clear=.45f).thinnSpecularEdge(9999.dp))
   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,content=content)
  }
 }

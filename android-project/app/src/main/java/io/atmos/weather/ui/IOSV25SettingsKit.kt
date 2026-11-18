@@ -41,8 +41,7 @@ import androidx.compose.ui.graphics.StrokeCap
 fun IOSV25SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
     val opaque=rememberAppleReduceTransparency()
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-        .thinnBackdrop(opaque,16.dp,refract=false)
-        .background(MaterialTheme.colorScheme.surface.copy(alpha=if(opaque)1f else .94f))
+        .thinnGlass(opaque,16.dp,MaterialTheme.colorScheme.surface,clear=.58f,refract=false,frostScale=1.5f)
         .thinnSpecularEdge(16.dp),content=content)
 }
 

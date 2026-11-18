@@ -1,5 +1,6 @@
 package io.atmos.weather.ui
 
+import androidx.compose.material3.MaterialTheme
 import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -39,8 +40,8 @@ fun ThinnAtmospherePanel(
     val cards=LocalWeatherCardPalette.current
     val glow=cards?.accent?:accent
     val light=GlassLight.current(follow=!reduceTransparency)
-    Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnBackdrop(reduceTransparency,ThinnDesignTokens.radiusCard,refract=false)
-        .background(cards?.brush ?: if(reduceTransparency) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
+    Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnGlass(reduceTransparency,ThinnDesignTokens.radiusCard,
+            cards?.fill ?: if(reduceTransparency) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,refract=false,frostScale=1.5f)
         .border(1.dp, ThinnOpticalMaterial.rim, shape)) {
         if(!reduceTransparency) Canvas(Modifier.matchParentSize()) {
             // The soft glow sits on the side the sun (or moon) is shining from.

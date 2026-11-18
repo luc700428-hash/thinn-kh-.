@@ -48,6 +48,6 @@ internal val LocalOpticalFormDark=compositionLocalOf {false}
 }
 @Composable fun IOSDurationSetting(label:String,value:Int,onValue:(Int)->Unit,min:Int=1,max:Int=120,unit:String="分鐘"){
  var open by remember{mutableStateOf(false)};var draft by remember(value){mutableIntStateOf(value)}
- Row(Modifier.fillMaxWidth().iosJellyPress().clip(RoundedCornerShape(16.dp)).thinnBackdrop(rememberAppleReduceTransparency(),16.dp).background(MaterialTheme.colorScheme.surface.copy(alpha=if(rememberAppleReduceTransparency())1f else .94f)).thinnSpecularEdge(16.dp).clickable{draft=value;open=true}.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Text(label,color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,modifier=Modifier.weight(1f));Text("$value $unit",color=MaterialTheme.colorScheme.primary,fontSize=17.sp);Spacer(Modifier.width(9.dp));SettingsChevron()}
+ Row(Modifier.fillMaxWidth().iosJellyPress().clip(RoundedCornerShape(16.dp)).thinnGlass(rememberAppleReduceTransparency(),16.dp,MaterialTheme.colorScheme.surface,clear=.58f).thinnSpecularEdge(16.dp).clickable{draft=value;open=true}.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Text(label,color=MaterialTheme.colorScheme.onSurface,fontSize=17.sp,modifier=Modifier.weight(1f));Text("$value $unit",color=MaterialTheme.colorScheme.primary,fontSize=17.sp);Spacer(Modifier.width(9.dp));SettingsChevron()}
  if(open)IOSFormSheet(label,onDismiss={open=false},onDone={onValue(draft);open=false}){IOSDurationDrums(draft,{draft=it},min,max,unit)}
 }

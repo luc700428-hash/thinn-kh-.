@@ -1,5 +1,6 @@
 package io.atmos.weather.next
 
+import io.atmos.weather.ui.thinnGlass
 import io.atmos.weather.ui.brandColor
 import io.atmos.weather.ui.WeatherCardPalettes
 import io.atmos.weather.ui.LocalWeatherSceneInk
@@ -100,7 +101,7 @@ fun V25HomeHero(
 private fun V25HeroStat(title:String,value:String,modifier:Modifier=Modifier) {
     // Same corner, padding and type as the home tiles below, so every square lines up.
     Column(modifier.fillMaxHeight().weatherCollisionSurface(18.dp).clip(RoundedCornerShape(18.dp))
-        .background(WeatherCardPalettes.current.brush)
+        .thinnGlass(io.atmos.weather.ui.rememberAppleReduceTransparency(),18.dp,WeatherCardPalettes.current.fill)
         .padding(horizontal=12.dp,vertical=11.dp),horizontalAlignment=Alignment.CenterHorizontally) {
         Text(title,color=WeatherCardPalettes.current.secondary,fontSize=14.sp,fontWeight=FontWeight.Medium,maxLines=1)
         Text(value,color=WeatherCardPalettes.current.ink,fontSize=24.sp,fontWeight=FontWeight.SemiBold,maxLines=1)

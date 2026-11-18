@@ -1,41 +1,66 @@
 package io.atmos.weather.ui
 
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.RenderEffect
-import android.graphics.Shader
 import android.os.Build
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.highlight.HighlightStyle
+import kotlin.math.atan2
 
+/**
+ * The scene behind a group of glass pieces. [ThinnBackdropCapture] records it once per frame;
+ * every [thinnBackdrop] reads that recording through the Backdrop liquid-glass engine
+ * (com.kyant.backdrop, Apache 2.0), which bends it at the rim like a thick lens, brightens its
+ * colours and lights the edge.
+ */
 @Stable
-class ThinnBackdrop internal constructor(internal val layer:GraphicsLayer) {
+class ThinnBackdrop internal constructor(internal val layer:GraphicsLayer):Backdrop {
     internal var origin by mutableStateOf(Offset.Zero)
+    internal var coordinates:LayoutCoordinates?=null
     internal var pixels=IntSize.Zero
     internal var ready=false
     internal var active=true
     internal var failed=false
+
+    override val isCoordinatesDependent:Boolean=true
+
+    override fun DrawScope.drawBackdrop(density:Density,coordinates:LayoutCoordinates?,layerBlock:(GraphicsLayerScope.()->Unit)?) {
+        if(!active||!ready||failed)return
+        val glass=coordinates?.takeIf{it.isAttached}?:return
+        val scene=this@ThinnBackdrop.coordinates?.takeIf{it.isAttached}?:return
+        val offset=try {scene.localPositionOf(glass,Offset.Zero)} catch(_:Exception) {
+            glass.positionInWindow()-scene.positionInWindow()
+        }
+        translate(-offset.x,-offset.y) {drawLayer(layer)}
+    }
 }
 
 val LocalThinnBackdrop=staticCompositionLocalOf<ThinnBackdrop?> {null}
@@ -47,7 +72,7 @@ private val LocalBackdropAncestors=staticCompositionLocalOf<Set<ThinnBackdrop>> 
     val source=remember(layer) {ThinnBackdrop(layer)}
     DisposableEffect(source) {
         source.active=true
-        onDispose {source.active=false;source.ready=false;source.pixels=IntSize.Zero}
+        onDispose {source.active=false;source.ready=false;source.pixels=IntSize.Zero;source.coordinates=null}
     }
     return source
 }
@@ -70,6 +95,7 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
     return onGloballyPositioned {
         val xy=IntArray(2);view.getLocationOnScreen(xy)
         source.origin=it.positionInWindow()+Offset(xy[0].toFloat(),xy[1].toFloat())
+        source.coordinates=it
     }.drawWithContent {
         val pixels=IntSize(size.width.toInt(),size.height.toInt())
         var recorded=false
@@ -91,10 +117,18 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
 /** True when [thinnBackdrop] here would really paint the scene behind (not a no-op). */
 @Composable fun thinnBackdropAvailable(reduceTransparency:Boolean):Boolean {
     val source=LocalThinnBackdrop.current
-    return !reduceTransparency && source!=null && source !in LocalBackdropAncestors.current
+    return !reduceTransparency && source!=null && source !in LocalBackdropAncestors.current && !LiquidGlassKit.softwareRenderedDevice
 }
 
-/** Crop before filtering AND when painting; sampled pixels cannot cover siblings. */
+/** iOS-style tint over glass: see-through where real glass is drawn, solid where it is not. */
+@Composable fun glassTint(color:Color,reduceTransparency:Boolean,clear:Float):Color =
+    if(thinnBackdropAvailable(reduceTransparency))color.copy(alpha=minOf(color.alpha,clear)) else color
+
+/**
+ * Real liquid glass under whatever this modifier wraps: the scene behind, lightly blurred and made
+ * more vivid, bent toward the centre along the rim (Android 13+), with a rim highlight facing the
+ * sun or moon. [refract] = false keeps the lens shallower for large, scrolling surfaces.
+ */
 @Composable
 fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f,frostScale:Float=1f,refract:Boolean=true,materialDark:Boolean?=null):Modifier {
     val source=LocalThinnBackdrop.current
@@ -102,63 +136,55 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     // piece on every frame exhausts its GPU buffers and takes the virtual device down. They get
     // the same translucent material without sampling; real phones keep the full backdrop.
     if(reduceTransparency || source==null || source in LocalBackdropAncestors.current || LiquidGlassKit.softwareRenderedDevice) return this
-    val view=LocalView.current.rootView
-    val context=LocalContext.current
-    val glass=rememberGraphicsLayer()
-    var origin by remember {mutableStateOf(Offset.Zero)}
-    var visible by remember {mutableStateOf(Rect.Zero)}
-    var failed by remember(source) {mutableStateOf(false)}
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
     val frost=appearance.glassFrost.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
-    val optics=remember(refract) {if(refract&&Build.VERSION.SDK_INT>=33)try {LiquidOpticsEngine()} catch(_:RuntimeException) {null} else null}
-    // iOS 27 glass is clear, not frosted: a little blur, with most of the effect at the lensing rim.
-    val radius=with(LocalDensity.current) {((2.5f+6.5f*frost)*frostScale.coerceIn(.1f,1f)).dp.toPx()}
-    val density=LocalDensity.current.density
-    // One fixed light from the upper-left for every piece of glass.
-    // Highlights sit on the edge facing the real sun, or the moon at night.
-    val light=GlassLight.current(follow=optics!=null)
-    val lightX=light.x;val lightY=light.y
-    val corner=with(LocalDensity.current) {cornerRadius.toPx()}
-    val effect=remember(radius,materialDark) {
-        val blur=RenderEffect.createBlurEffect(radius,radius,Shader.TileMode.CLAMP)
-        val saturation=ColorMatrixColorFilter(ColorMatrix().apply {setSaturation(1.5f)})
-        val filtered=RenderEffect.createColorFilterEffect(saturation,blur)
-        if(materialDark==null)filtered else GlassToneEffect.apply(filtered,materialDark)
-    }
-    return onGloballyPositioned {
-        val xy=IntArray(2);view.getLocationOnScreen(xy)
-        val position=it.positionInWindow()
-        origin=position+Offset(xy[0].toFloat(),xy[1].toFloat())
-        val bounds=it.boundsInWindow()
-        visible=Rect(bounds.left-position.x,bounds.top-position.y,bounds.right-position.x,bounds.bottom-position.y)
-    }.drawWithContent {
-        val dx=source.origin.x-origin.x;val dy=source.origin.y-origin.y
-        val sample=if(source.active && source.ready && !failed) BackdropSampling.plan(
-            source.pixels.width,source.pixels.height,size.width,size.height,dx,dy,
-            visible.left,visible.top,visible.right,visible.bottom) else null
-        if(sample!=null) {
-            try {
-                glass.clip=true
-                // RenderEffect is ignored by Android software Canvas (including bitmap snapshots).
-                // Apply the same material brightness bounds without recoloring foreground content.
-                glass.colorFilter=if(materialDark!=null&&!drawContext.canvas.nativeCanvas.isHardwareAccelerated)
-                    GlassToneEffect.softwareColorFilter(materialDark) else null
-                glass.renderEffect=if(Build.VERSION.SDK_INT>=33 && optics!=null)
-                    optics.effect(sample.width.toFloat(),sample.height.toFloat(),corner,focusX,appearance.edgeLight,effect,lightX,lightY,density).asComposeRenderEffect()
-                    else effect.asComposeRenderEffect()
-                glass.record(size=IntSize(sample.width,sample.height)) {
-                    clipRect {
-                        translate(dx-sample.left,dy-sample.top) {drawLayer(source.layer)}
-                    }
-                }
-                clipRect(sample.left,sample.top,sample.right,sample.bottom) {
-                    translate(sample.left,sample.top) {drawLayer(glass)}
-                }
-            } catch(error:RuntimeException) {
-                failed=true
-                io.atmos.weather.CrashDiagnostics.graphicsFailure(context,"backdrop-sample",error)
+    val edge=appearance.edgeLight.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
+    val scale=frostScale.takeIf{it.isFinite()}?.coerceIn(.1f,2f)?:1f
+    val light=GlassLight.current(follow=true)
+    val angle=Math.toDegrees(atan2(light.y,light.x).toDouble()).toFloat()
+    val shape=remember(cornerRadius) {RoundedCornerShape(cornerRadius)}
+    val shapeOf=remember(shape) {{shape}}
+    val effects=remember(frost,scale,refract,materialDark) {
+        val blurDp=(2f+6f*frost)*scale
+        val block:com.kyant.backdrop.BackdropEffectScope.()->Unit={
+            vibrancy()
+            blur(blurDp.dp.toPx())
+            val minor=size.minDimension
+            if(minor>4f) {
+                // iOS glass is thick at the rim: a band about a fifth of the short side bends the
+                // scene inward; small controls also split colour a little where it bends most.
+                val band=minOf((if(refract)22f else 14f).dp.toPx(),minor*(if(refract).34f else .22f))
+                val amount=minOf((if(refract)44f else 26f).dp.toPx(),minor*(if(refract).62f else .4f))
+                lens(band,amount,depthEffect=refract,chromaticAberration=refract&&minor<140.dp.toPx())
             }
+            if(materialDark!=null&&Build.VERSION.SDK_INT>=31) renderEffect?.let{renderEffect=GlassToneEffect.apply(it,materialDark)}
         }
-        drawContent()
+        block
     }
+    val highlight=remember(angle,edge) {
+        val h=Highlight(width=(.6f+.5f*edge).dp,alpha=.55f+.45f*edge,style=HighlightStyle.Default(angle=angle,falloff=1.6f))
+        val f:()->Highlight?={h}
+        f
+    }
+    // RenderEffects are ignored on software canvases (bitmap snapshots); keep the material's
+    // brightness bounds there with a colour filter so labels stay readable over any scene.
+    val onDrawBackdrop=remember(materialDark) {
+        val f:DrawScope.(DrawScope.()->Unit)->Unit={draw->
+            val canvas=drawContext.canvas
+            if(materialDark!=null&&!canvas.nativeCanvas.isHardwareAccelerated) {
+                canvas.saveLayer(androidx.compose.ui.geometry.Rect(Offset.Zero,size),
+                    androidx.compose.ui.graphics.Paint().apply{colorFilter=GlassToneEffect.softwareColorFilter(materialDark)})
+                draw();canvas.restore()
+            } else draw()
+        }
+        f
+    }
+    return drawBackdrop(backdrop=source,shape=shapeOf,effects=effects,highlight=highlight,shadow=null,onDrawBackdrop=onDrawBackdrop)
 }
+
+/** A glass card or control: the glass, then a tint that stays light enough to see through. */
+@Composable
+fun Modifier.thinnGlass(reduceTransparency:Boolean,cornerRadius:Dp,tint:Color,clear:Float=.42f,
+    refract:Boolean=true,frostScale:Float=1f):Modifier =
+    thinnBackdrop(reduceTransparency,cornerRadius,frostScale=frostScale,refract=refract)
+        .background(glassTint(tint,reduceTransparency,clear),RoundedCornerShape(cornerRadius))

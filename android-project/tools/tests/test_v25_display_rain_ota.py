@@ -36,15 +36,15 @@ class LatestPhysicsContract(unittest.TestCase):
         for ink,bg in [('000000','FFFFFF'),('4B5563','D4E4ED'),('FFFFFF','1C1C1E'),('C7D4E0','1C1C1E'),('8A4300','D4E4ED')]:
             self.assertGreaterEqual(contrast(ink,bg),4.5,(ink,bg))
     def test_liquid_effect_samples_background_with_safe_fallback(self):
-        s=src('ui/LiquidOpticsEngine.kt');host=src('ui/ThinnBackdrop.kt')
-        for term in ('RuntimeShader','scene.eval(uv)','createRuntimeShaderEffect','focus','strength'):self.assertIn(term,s)
-        self.assertIn('Build.VERSION.SDK_INT>=33',host)
+        host=src('ui/ThinnBackdrop.kt')
+        lens=(ROOT/'app/src/main/java/com/kyant/backdrop/effects/Lens.kt').read_text()
+        for term in ('RuntimeShader','createRuntimeShaderEffect','refractionHeight','refractionAmount'):self.assertIn(term,lens)
+        for term in ('drawBackdrop(backdrop=source','vibrancy()','lens(band,amount','HighlightStyle.Default(angle=angle'):self.assertIn(term,host)
         self.assertIn('source in LocalBackdropAncestors.current',host)
         self.assertIn('ancestors+source',host)
-        self.assertIn('clipRect(sample.left,sample.top,sample.right,sample.bottom)',host)
-        self.assertIn('glass.clip=true',host)
+        self.assertIn('LiquidGlassKit.softwareRenderedDevice',host)
         self.assertIn('appearance.glassFrost',host);self.assertIn('appearance.edgeLight',host)
-        self.assertIn('input!==lastInput',s)
+        self.assertTrue((ROOT/'app/src/main/java/com/kyant/backdrop/NOTICE.md').exists())
     def test_storms_have_direction_timestamps_and_separate_id(self):
         s=src('typhoon/TyphoonCenterPage.kt')
         for term in ('focusStorm','it.stormId==focused','drawDirectedTrack','drawTrackTime'):self.assertIn(term,s)

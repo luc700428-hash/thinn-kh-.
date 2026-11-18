@@ -71,7 +71,7 @@ fun IOS27RoundControl(label: String, onClick: () -> Unit, modifier: Modifier = M
     val feedback=LocalHapticFeedback.current
     Box(modifier.size(42.dp).graphicsLayer {
             scaleX=scale;scaleY=scale;alpha=if(pressed) .92f else 1f
-        }.semantics { contentDescription=when(label) { "‹" -> "返回"; "×" -> "關閉"; "✓" -> "確認";else -> label } }.shadow(5.dp,CircleShape,ambientColor=Color.Black.copy(alpha=.08f),spotColor=Color.Black.copy(alpha=.08f)).clip(CircleShape).thinnBackdrop(rememberAppleReduceTransparency(),21.dp).background(fill.copy(alpha=if(rememberAppleReduceTransparency())1f else .87f))
+        }.semantics { contentDescription=when(label) { "‹" -> "返回"; "×" -> "關閉"; "✓" -> "確認";else -> label } }.shadow(5.dp,CircleShape,ambientColor=Color.Black.copy(alpha=.08f),spotColor=Color.Black.copy(alpha=.08f)).clip(CircleShape).thinnGlass(rememberAppleReduceTransparency(),21.dp,fill,clear=.32f)
         .border(0.8.dp, Brush.linearGradient(listOf(Color.White.copy(alpha=.62f),
             Color.White.copy(alpha=.18f), Color.Transparent)), CircleShape)
         .thinnSpecularEdge(21.dp)

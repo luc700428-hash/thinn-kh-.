@@ -1,5 +1,6 @@
 package io.atmos.weather.presentation.home
 
+import io.atmos.weather.ui.thinnGlass
 import io.atmos.weather.ui.lightningScreenEffect
 
 import io.atmos.weather.ui.brandColor
@@ -737,7 +738,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 ) {
                     Column(Modifier.fillMaxWidth().padding(top=12.dp)
                         .weatherCollisionSurface(19.dp).clip(RoundedCornerShape(19.dp))
-                        .background(weatherCards.brush)
+                        .thinnGlass(io.atmos.weather.ui.rememberAppleReduceTransparency(),19.dp,weatherCards.fill)
                         .border(1.dp,White.copy(alpha=.36f),RoundedCornerShape(19.dp))
                         .padding(13.dp)) {
                         Text(if(demoRemaining > 0) "模擬天氣演示中 · 剩餘 $demoRemaining 秒" else "10 秒天氣示範已結束",
@@ -843,7 +844,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 if (officialStormActive || verifiedTyphoonWarning!=null) {
                     Spacer(Modifier.height(20.dp))
                     Row(Modifier.fillMaxWidth().weatherCollisionSurface(22.dp).clip(RoundedCornerShape(22.dp))
-                        .background(weatherCards.brush)
+                        .thinnGlass(io.atmos.weather.ui.rememberAppleReduceTransparency(),22.dp,weatherCards.fill)
                         .border(1.dp, brandColor(0xFF97DAC7).copy(alpha=.56f), RoundedCornerShape(22.dp))
                         .clickable { typhoonPageOpen = true }
                         .padding(horizontal=17.dp, vertical=18.dp), verticalAlignment=Alignment.CenterVertically) {
@@ -1451,8 +1452,8 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
             }
         } else Modifier)
         .clip(shape)
-        .thinnBackdrop(io.atmos.weather.ui.rememberAppleReduceTransparency(),io.atmos.weather.ui.ThinnDesignTokens.radiusCard,refract=false)
-        .background(LocalWeatherCardPalette.current?.brush?:io.atmos.weather.ui.ThinnOpticalMaterial.surface,shape)
+        .thinnGlass(io.atmos.weather.ui.rememberAppleReduceTransparency(),io.atmos.weather.ui.ThinnDesignTokens.radiusCard,
+            LocalWeatherCardPalette.current?.fill?:MaterialTheme.colorScheme.surface,refract=false,frostScale=1.5f)
         .border(1.dp,Color.White.copy(alpha=.27f),shape)
     ) {
         // Specular sheen follows the direction of a drag; it is not a false claim of live wallpaper blur.
@@ -1476,7 +1477,9 @@ private fun MetricCard(title: String, value: String, subtitle: String,
                        modifier: Modifier=Modifier, onClick:()->Unit) {
     val appearance=LocalAppearance.current
     Box(modifier.weatherCollisionSurface(io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
-        .background(LocalWeatherCardPalette.current?.brush?:io.atmos.weather.ui.ThinnOpticalMaterial.surface,RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
+        .clip(RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
+        .thinnGlass(io.atmos.weather.ui.rememberAppleReduceTransparency(),io.atmos.weather.ui.ThinnDesignTokens.radiusCard,
+            LocalWeatherCardPalette.current?.fill?:MaterialTheme.colorScheme.surface,refract=false,frostScale=1.5f)
         .border(1.dp,White.copy(alpha=.19f+appearance.edgeLight*.26f),RoundedCornerShape(io.atmos.weather.ui.ThinnDesignTokens.radiusCard))
         .clickable(onClick=onClick)) {
         Column(Modifier.padding(17.dp)) {

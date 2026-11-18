@@ -61,7 +61,7 @@ class HomeReadabilityTests(unittest.TestCase):
         forecast=(JAVA/'presentation/home/InteractiveForecast.kt').read_text()
         self.assertIn('Text("24 小時預報",fontSize=21.sp',forecast)
         glass=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        self.assertIn('ThinnOpticalMaterial.surface',glass)
+        self.assertIn('.thinnGlass(',glass)
         self.assertIn('val rim:',(JAVA/'ui/ThinnOpticalMaterial.kt').read_text())
     def test_release_notes_reflect_real_limited_progress(self):
         notes=(ROOT/'app/src/main/assets/current_release_notes.md').read_text()

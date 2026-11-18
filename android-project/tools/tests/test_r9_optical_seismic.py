@@ -14,7 +14,7 @@ class R9Contracts(unittest.TestCase):
 
     def test_home_panels_share_atmospheric_material(self):
         self.assertGreaterEqual(self.home.count('ThinnAtmospherePanel('), 2)
-        self.assertIn('ThinnOpticalMaterial.surface', self.panel)
+        self.assertIn('.thinnGlass(', self.panel)
 
     def test_service_cards_adapt_to_text_and_keep_observation_status(self):
         self.assertIn('heightIn(min=72.dp)',self.map)

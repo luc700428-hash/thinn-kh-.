@@ -1,5 +1,6 @@
 package io.atmos.weather.ui
 
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -79,11 +80,11 @@ fun AppleGlassCard(
             Box(Modifier.matchParentSize().blur(blurSigma), content = backdrop)
         }
         Box(Modifier.matchParentSize().background(
-            LocalWeatherCardPalette.current?.brush ?: if (!darkSurface) Brush.linearGradient(listOf(
-                if(opaque) Color.White else Color.White.copy(alpha=.68f),
-                if(opaque) Color.White else Color.White.copy(alpha=.68f)))
+            LocalWeatherCardPalette.current?.fill?.let{SolidColor(glassTint(it,opaque,.42f))} ?: if (!darkSurface) Brush.linearGradient(listOf(
+                if(opaque) Color.White else glassTint(Color.White,opaque,.42f),
+                if(opaque) Color.White else glassTint(Color.White,opaque,.42f)))
             else if (opaque) Brush.linearGradient(listOf(brandColor(0xFF1B1D1C), brandColor(0xFF1B1D1C)))
-            else Brush.linearGradient(listOf(brandColor(0x82373D3B), brandColor(0x991B1D1C)))
+            else Brush.linearGradient(listOf(glassTint(brandColor(0x82373D3B),opaque,.36f), glassTint(brandColor(0x991B1D1C),opaque,.44f)))
         ))
         Column(Modifier.fillMaxWidth().border(BorderStroke(.75.dp, rim), shape)
             .padding(contentPadding), content = content)
