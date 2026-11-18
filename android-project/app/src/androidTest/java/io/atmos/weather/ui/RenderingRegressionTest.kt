@@ -389,6 +389,10 @@ class RenderingRegressionTest {
         val repository=object:WeatherDataRepository {
             override suspend fun load(city:WeatherCity,forceRefresh:Boolean)=WeatherLoadResult.Success(fixture,false,false)
         }
+        // This test checks scrolling, navigation and visible text. With the live sky animating, the
+        // full page re-entered four times repeatedly crashed the CI emulator's software renderer
+        // (r17, r22.2, r24); the animated sky has its own coverage in the Dock and motion tests.
+        context.getSharedPreferences("thinn_settings",Context.MODE_PRIVATE).edit().putBoolean("reduce_motion",true).commit()
         checkpoint("weather: set content")
         compose.setContent {
             val ctx=LocalContext.current
