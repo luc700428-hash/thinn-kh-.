@@ -38,6 +38,9 @@ class SponsorRenderingTest {
         val w = 400; val h = 1500
         for (mode in listOf("light", "dark")) {
             IOS27AppearanceMode.update(ctx, mode)
+            // Still frames: the breathing buddy, drifting hearts and button sweep are endless
+            // animations, and each frame is a full native render (that made this test take 27 min).
+            ctx.getSharedPreferences("thinn_settings", 0).edit().putBoolean("reduce_motion", true).commit()
             val c = Robolectric.buildActivity(ComponentActivity::class.java).setup(); val a = c.get(); val view = ComposeView(a)
             try {
                 view.setContent {
@@ -49,7 +52,7 @@ class SponsorRenderingTest {
                     }
                 }
                 val parent = FrameLayout(a).apply { addView(view, ViewGroup.LayoutParams(w, h)) }; a.setContentView(parent)
-                repeat(8) {
+                repeat(3) {
                     shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(250))
                     parent.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY)); parent.layout(0, 0, w, h)
                 }
