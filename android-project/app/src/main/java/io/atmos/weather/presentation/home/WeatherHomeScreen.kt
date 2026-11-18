@@ -1451,7 +1451,7 @@ private fun GlassCard(enableDrag:Boolean=false, content: @Composable ColumnScope
             }
         } else Modifier)
         .clip(shape)
-        .thinnBackdrop(io.atmos.weather.ui.rememberAppleReduceTransparency(),io.atmos.weather.ui.ThinnDesignTokens.radiusCard)
+        .thinnBackdrop(io.atmos.weather.ui.rememberAppleReduceTransparency(),io.atmos.weather.ui.ThinnDesignTokens.radiusCard,refract=false)
         .background(LocalWeatherCardPalette.current?.brush?:io.atmos.weather.ui.ThinnOpticalMaterial.surface,shape)
         .border(1.dp,Color.White.copy(alpha=.27f),shape)
     ) {

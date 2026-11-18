@@ -32,6 +32,9 @@ import io.atmos.weather.ui.AppText as Text
 import io.atmos.weather.ui.iosAppear
 import io.atmos.weather.ui.iosJellyPress
 import java.time.Instant
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
@@ -111,15 +114,28 @@ internal object HomeOutlook {
     val now = remember(weather.fetchedAt) { Instant.now() }
     val outlook = remember(weather, now) { HomeOutlook.build(weather, now) }
     val ink = HomeInk.primary; val soft = HomeInk.secondary
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var sharing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     io.atmos.weather.ui.ThinnAtmospherePanel(Modifier.testTag("home-outlook"), accent = Color(0xFFBFE3FF)) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("接下來", color = soft, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Box(Modifier.size(36.dp).iosJellyPress().clip(RoundedCornerShape(999.dp)).background(HomeInk.tile)
-                    .clickable(role = Role.Button, onClickLabel = "分享天氣") {
-                        runCatching {
-                            ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                                .putExtra(Intent.EXTRA_TEXT, HomeOutlook.shareText(weather, place, Instant.now())), "分享天氣").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    .clickable(role = Role.Button, onClickLabel = "分享今日天氣卡片") {
+                        if (sharing) return@clickable
+                        sharing = true
+                        scope.launch {
+                            val caption = HomeOutlook.shareText(weather, place, Instant.now())
+                            // The picture is drawn off the main thread; plain text if that fails.
+                            val card = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                runCatching { WeatherShareCard.render(ctx, weather, place) }.getOrNull()
+                            }
+                            val shared = card != null && WeatherShareCard.share(ctx, card, caption)
+                            if (!shared) runCatching {
+                                ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
+                                    .putExtra(Intent.EXTRA_TEXT, caption), "分享天氣").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            }
+                            sharing = false
                         }
                     }, contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.IosShare, "分享天氣", tint = ink, modifier = Modifier.size(18.dp))
@@ -150,17 +166,19 @@ internal object HomeOutlook {
 @Composable internal fun Modifier.skyGlow(night: Boolean, still: Boolean): Modifier {
     val light = io.atmos.weather.ui.GlassLight.current(follow = true)
     val reduce = io.atmos.weather.ui.rememberAppleReduceMotion()
-    val breath = if (still || reduce) .5f else {
-        val b = androidx.compose.animation.core.rememberInfiniteTransition(label = "天光").animateFloat(0f, 1f,
+    // Kept as State and read only while drawing: reading it here would recompose the whole hero
+    // (temperature, texts, tiles) on every frame of the breathing light.
+    val breath: androidx.compose.runtime.State<Float> = if (still || reduce) androidx.compose.runtime.rememberUpdatedState(.5f) else
+        androidx.compose.animation.core.rememberInfiniteTransition(label = "天光").animateFloat(0f, 1f,
             androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(5200, easing = io.atmos.weather.ui.AppleMotion.fluid),
                 androidx.compose.animation.core.RepeatMode.Reverse), label = "天光呼吸")
-        b.value
-    }
     val tint = if (night) Color(0xFFBFD4FF) else Color(0xFFFFE7A8)
-    return this.then(Modifier.drawBehindGlow(tint, light.x, light.y, breath))
-}
-private fun Modifier.drawBehindGlow(tint: Color, lx: Float, ly: Float, breath: Float) = this.drawBehind {
+    val lx = light.x; val ly = light.y
+    return this.then(Modifier.drawBehind {
+        val b = breath.value
         val center = androidx.compose.ui.geometry.Offset(size.width * (.5f + .42f * lx), size.height * (.45f + .5f * ly))
-        val radius = size.maxDimension * (.62f + .06f * breath)
-        drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(tint.copy(alpha = .20f + .08f * breath), tint.copy(alpha = .06f), Color.Transparent), center, radius), radius, center)
-    }
+        val radius = size.maxDimension * (.62f + .06f * b)
+        drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(tint.copy(alpha = .20f + .08f * b), tint.copy(alpha = .06f), Color.Transparent), center, radius), radius, center)
+    })
+}
+

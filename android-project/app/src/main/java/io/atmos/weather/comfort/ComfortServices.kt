@@ -44,12 +44,21 @@ object ComfortStore {
     fun setMorning(ctx: Context, d: Daily) { p(ctx).edit().putBoolean("morning_on", d.enabled).putInt("morning_h", d.hour).putInt("morning_m", d.minute).apply(); ComfortScheduler.reschedule(ctx) }
     fun setEvening(ctx: Context, d: Daily) { p(ctx).edit().putBoolean("evening_on", d.enabled).putInt("evening_h", d.hour).putInt("evening_m", d.minute).apply(); ComfortScheduler.reschedule(ctx) }
 
-    fun smart(ctx: Context): Set<ComfortMessages.Smart> = ComfortMessages.Smart.entries.filter { p(ctx).getBoolean("smart_${it.name}", false) }.toSet()
+    /** r24: 雨來了 and 空氣品質 are on unless the user turned them off. */
+    private val defaultOn = setOf(ComfortMessages.Smart.RAIN_SOON, ComfortMessages.Smart.AIR_BAD)
+    fun smart(ctx: Context): Set<ComfortMessages.Smart> = ComfortMessages.Smart.entries.filter { p(ctx).getBoolean("smart_${it.name}", it in defaultOn) }.toSet()
     fun setSmart(ctx: Context, s: ComfortMessages.Smart, on: Boolean) { p(ctx).edit().putBoolean("smart_${s.name}", on).apply(); ComfortScheduler.reschedule(ctx) }
     fun quiet(ctx: Context): Pair<LocalTime, LocalTime> =
         LocalTime.of(p(ctx).getInt("quiet_from_h", 22), 0) to LocalTime.of(p(ctx).getInt("quiet_to_h", 7), 0)
     fun setQuiet(ctx: Context, fromHour: Int, toHour: Int) = p(ctx).edit().putInt("quiet_from_h", fromHour).putInt("quiet_to_h", toHour).apply()
     /** One alert of each kind per day, so nothing nags. */
+    /** Rain can come and go several times a day: at most one 雨來了 every three hours. */
+    fun claimRain(ctx: Context, now: Long = System.currentTimeMillis()): Boolean {
+        val last = p(ctx).getLong("rain_soon_at", 0L)
+        if (last in 1..now && now - last < 3 * 3600_000L) return false
+        p(ctx).edit().putLong("rain_soon_at", now).putString("smart_sent_RAIN_SOON", LocalDate.now().toString()).apply(); return true
+    }
+
     fun claimSmart(ctx: Context, s: ComfortMessages.Smart, day: LocalDate): Boolean {
         val key = "smart_sent_${s.name}"
         if (p(ctx).getString(key, "") == day.toString()) return false
@@ -118,8 +127,9 @@ object ComfortScheduler {
             once(app, "thinn_comfort_commute_back", "commute_back", if (ready) next(now.plusMinutes(15), c.backHour, c.backMinute, c.weekdays)?.minusMinutes(15) else null)
             val wm = WorkManager.getInstance(app)
             if (ComfortStore.smart(app).isEmpty()) wm.cancelUniqueWork(SMART)
-            else wm.enqueueUniquePeriodicWork(SMART, ExistingPeriodicWorkPolicy.KEEP,
-                PeriodicWorkRequestBuilder<ComfortWorker>(30, TimeUnit.MINUTES).setInputData(Data.Builder().putString("kind", "smart").build()).build())
+            // Every 15 minutes (Android's shortest), so 雨來了 arrives before the rain does.
+            else wm.enqueueUniquePeriodicWork(SMART, ExistingPeriodicWorkPolicy.UPDATE,
+                PeriodicWorkRequestBuilder<ComfortWorker>(15, TimeUnit.MINUTES).setInputData(Data.Builder().putString("kind", "smart").build()).build())
         }
     }
 }
@@ -149,7 +159,18 @@ class ComfortWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                     val city = ComfortStore.current(ctx) ?: return Result.success()
                     val w = load(ctx, city) ?: return Result.success()
                     val day = now.atZone(zone).toLocalDate()
-                    ComfortMessages.smart(w, now, zone, enabled).firstOrNull { ComfortStore.claimSmart(ctx, it.first, day) }?.let { (type, text) ->
+                    // 雨來了 from the 15-minute forecast first; the hourly check below is the fallback.
+                    if (ComfortMessages.Smart.RAIN_SOON in enabled) {
+                        val slots = RainSoon.fetch(city.coordinate.latitude, city.coordinate.longitude)
+                        val alert = slots?.let { RainSoon.decide(it, now) }
+                        if (alert != null && ComfortStore.claimRain(ctx)) {
+                            post(ctx, 39100 + ComfortMessages.Smart.RAIN_SOON.ordinal, ThinnNotificationChannels.Type.SMART, alert.text(), XiaomiFocusBridge.Kind.WEATHER_BRIEFING)
+                            return Result.success()
+                        }
+                    }
+                    ComfortMessages.smart(w, now, zone, enabled).firstOrNull { (type, _) ->
+                        if (type == ComfortMessages.Smart.RAIN_SOON) ComfortStore.claimRain(ctx) else ComfortStore.claimSmart(ctx, type, day)
+                    }?.let { (type, text) ->
                         post(ctx, 39100 + type.ordinal, ThinnNotificationChannels.Type.SMART, text, XiaomiFocusBridge.Kind.WEATHER_BRIEFING)
                     }
                 }

@@ -19,23 +19,18 @@ class SeismicTrainingVoice(context: Context, incident: EewIncident, place:Seismi
         val nm=context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(audio.ringerMode==AudioManager.RINGER_MODE_NORMAL &&
             nm.currentInterruptionFilter==NotificationManager.INTERRUPTION_FILTER_ALL) {
-            var candidate: TextToSpeech? = null
-            candidate=TextToSpeech(context.applicationContext) { status ->
-                val tts=candidate
+            io.atmos.weather.voice.V25TaiwanVoice.open(context,urgent=false) { tts ->
                 if(!active.get()) { tts?.shutdown() }
-                else if(status==TextToSpeech.SUCCESS && tts!=null) {
+                else if(tts!=null) {
                     engine=tts
-                    io.atmos.weather.voice.V25TaiwanVoice.load(context)
-                    io.atmos.weather.voice.V25TaiwanVoice.configure(tts)
                     tts.setAudioAttributes(AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                     val narration=if(ChiChi921.isScenario(incident))ChiChi921.trainingNarration(incident,place)
                         else "收到地震速報！慎防強烈搖晃！這是本機虛構模擬演練，並非真實地震。"+
                             SeismicSpeech.warning(incident,place).substringAfter("趴下、掩護、穩住！")
-                    tts.speak(io.atmos.weather.voice.V25TaiwanVoice.humanize(narration),
-                        TextToSpeech.QUEUE_FLUSH,null,"thinn_practice_only")
-                } else tts?.shutdown()
+                    io.atmos.weather.voice.V25TaiwanVoice.say(tts,narration,TextToSpeech.QUEUE_FLUSH,"thinn_practice_only")
+                }
             }
         }
     }

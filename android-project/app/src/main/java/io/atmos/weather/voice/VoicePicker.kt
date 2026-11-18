@@ -31,17 +31,20 @@ import io.atmos.weather.ui.iosJellyPress
     var chosen by remember { mutableStateOf(ctx.getSharedPreferences("thinn_settings", 0).getString(V25TaiwanVoice.PREF, null)) }
     DisposableEffect(Unit) {
         var tts: TextToSpeech? = null
-        tts = TextToSpeech(ctx.applicationContext) { status ->
-            val t = tts
-            if (status == TextToSpeech.SUCCESS && t != null) { engine = t; voices = V25TaiwanVoice.candidates(t, urgent = false) }
+        var disposed = false
+        // The same engine everyday speech uses, so what is picked here is what is heard later.
+        V25TaiwanVoice.open(ctx, urgent = false) { t ->
+            if (disposed) t?.shutdown()
+            else if (t != null) { tts = t; engine = t; voices = V25TaiwanVoice.candidates(t, urgent = false) }
+            else engine = null
         }
-        onDispose { tts?.stop(); tts?.shutdown() }
+        onDispose { disposed = true; tts?.stop(); tts?.shutdown() }
     }
     fun preview(v: Voice?) {
         val t = engine ?: return
         V25TaiwanVoice.choose(ctx, v?.name); chosen = v?.name
         V25TaiwanVoice.configure(t, urgent = false)
-        t.speak(V25TaiwanVoice.humanize("早安！今天 22–28°C，多雲時晴，降雨機率 20%。出門可以帶把折疊傘。"), TextToSpeech.QUEUE_FLUSH, null, "voice-preview")
+        V25TaiwanVoice.say(t, "早安！今天 22–28°C，多雲時晴，降雨機率 20%。出門可以帶把折疊傘。", TextToSpeech.QUEUE_FLUSH, "voice-preview")
     }
     io.atmos.weather.ui.IOSFormSheet("播報聲音", onDismiss = onClose) {
         Text("選一個聽起來最自然的聲音。標示「線上」的聲音最像真人，需要網路；地震速報一律使用手機內建聲音，確保立刻播出。",

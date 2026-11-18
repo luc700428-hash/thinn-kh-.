@@ -23,8 +23,9 @@ class UnifiedWiringTests(unittest.TestCase):
         self.assertIn('opticalPhase',src)
     def test_taiwan_voice_used_in_both_earthquake_speakers(self):
         for f in ('SeismicSpeech.kt','SeismicTrainingVoice.kt'):
-            self.assertIn('V25TaiwanVoice.configure(',
-                          (SRC/'earthquake'/f).read_text())
+            src=(SRC/'earthquake'/f).read_text()
+            # r24: open() picks the engine and runs configure() on it.
+            self.assertTrue('V25TaiwanVoice.configure(' in src or 'V25TaiwanVoice.open(' in src)
     def test_source_aligned_storm_and_weatherlab(self):
         s=(SRC/'typhoon/TyphoonCenterPage.kt').read_text()
         self.assertNotIn('sameStormConfirmed',s)

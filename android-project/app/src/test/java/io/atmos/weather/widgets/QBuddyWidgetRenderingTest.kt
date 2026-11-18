@@ -25,7 +25,7 @@ class QBuddyWidgetRenderingTest {
             "花蓮縣近海 規模 5.2","最大震度 4 級 · 深度 18 km",true,2,
             listOf("今天","明天","週四","週五","週六","週日","週一").mapIndexed{i,l->WidgetDay(l,"${18+i}–${25+i}°",if(i%2==0)"60%" else "",if(i%2==0)61 else 2)},
             "預計 15:00 前後可能下雨","明天 18–23°，比今天涼 3°","帶把折疊傘比較安心 · 長袖或薄外套")
-        for(variant in 27..31)for((w,h) in listOf(150 to 170,320 to 170,320 to 360,170 to 360,480 to 540,640 to 360,800 to 1000)) {
+        for(variant in 27..30)for((w,h) in listOf(150 to 170,320 to 170,320 to 360,170 to 360,480 to 540,640 to 360,800 to 1000)) {
             renderer.render(variant,w,h,1f,"q_buddy_${variant}_${w}x$h",reading){view->
                 val texts=descendants(view).filterIsInstance<TextView>().filter{it.visibility==View.VISIBLE&&it.width>0}
                 assertTrue("variant $variant ${w}x$h shows no text",texts.isNotEmpty())

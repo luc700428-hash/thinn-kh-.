@@ -9,5 +9,3 @@ class BuddyForecastWidget : AtmosWidget(29)
 class BuddyForecastWidgetReceiver : SyncedWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = BuddyForecastWidget() }
 class BuddyOutingWidget : AtmosWidget(30)
 class BuddyOutingWidgetReceiver : SyncedWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = BuddyOutingWidget() }
-class BuddyQuakeWidget : AtmosWidget(31)
-class BuddyQuakeWidgetReceiver : SyncedWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = BuddyQuakeWidget() }

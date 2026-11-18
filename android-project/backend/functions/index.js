@@ -11,6 +11,7 @@ const store=admin.firestore();
 const secret=defineSecret('ALERT_GATEWAY_HMAC_KEY');
 const cwaSecret=defineSecret('CWA_API_KEY');
 const {datasetRule,requestDataset}=require('./cwa_official.cjs');
+const {validateTestRequest,cooldownLeft,testMessage}=require('./test_alert.cjs');
 const REGION='asia-east1';
 function tokenKey(token){return crypto.createHash('sha256').update(token).digest('hex');}
 function uid(request){
@@ -70,6 +71,34 @@ exports.ingestTrustedEEW = onRequest({region:REGION,secrets:[secret],timeoutSeco
    });
  }
  res.json({accepted,failed,checked:deviceTokens.length,guaranteedDelivery:false});
+});
+
+// Cloud test alert: proves FCM delivery to the requesting phone. Five minutes between requests
+// per device and per signed-in user; Firestore keeps the stamps, with an in-memory fallback.
+const recentTests=new Map();
+exports.requestTestAlert = onCall({region:REGION,timeoutSeconds:30},async request=>{
+ const user=uid(request);
+ let v; try{v=validateTestRequest(request.data);}catch(err){throw new HttpsError('invalid-argument','測試請求格式錯誤');}
+ const now=Date.now(), device=tokenKey(v.token);
+ let wait;
+ try{
+   wait=await store.runTransaction(async tr=>{
+     const a=store.collection('test-alerts').doc('device-'+device), b=store.collection('test-alerts').doc('user-'+user);
+     const [da,db]=await Promise.all([tr.get(a),tr.get(b)]);
+     const left=Math.max(cooldownLeft(da.exists?da.data().at:0,now),cooldownLeft(db.exists?db.data().at:0,now));
+     if(left>0) return left;
+     tr.set(a,{at:now}); tr.set(b,{at:now});
+     return 0;
+   });
+ }catch(_){
+   // Firestore unavailable: still rate-limit within this instance.
+   wait=Math.max(cooldownLeft(recentTests.get(device)||0,now),cooldownLeft(recentTests.get(user)||0,now));
+   if(wait===0){recentTests.set(device,now);recentTests.set(user,now);}
+ }
+ if(wait>0) throw new HttpsError('resource-exhausted','兩次測試之間需間隔 5 分鐘',{retryAfterSeconds:Math.ceil(wait/1000)});
+ try{ await admin.messaging().send(testMessage(v.token,v.nonce,now)); }
+ catch(err){ throw new HttpsError('unavailable','雲端推播服務暫時無法送出：'+(err.code||'error')); }
+ return {ok:true,sentAtMillis:now,cooldownSeconds:300};
 });
 
 // CWA Open Data query proxy. No shared CWA key is included in the APK / public GitHub.

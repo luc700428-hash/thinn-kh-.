@@ -6,8 +6,6 @@
     <string name="widget_buddy_forecast_description">Q 版夥伴與未來幾天的高低溫、降雨機率</string>
     <string name="widget_buddy_outing_name">Q 版出門小幫手</string>
     <string name="widget_buddy_outing_description">Q 版夥伴提醒何時下雨、要帶什麼、紫外線與空氣</string>
-    <string name="widget_buddy_quake_name">Q 版地震安心</string>
-    <string name="widget_buddy_quake_description">Q 版夥伴顯示最新地震報告與目前天氣</string>
     <string name="widget_buddy_clock_name">時光與天氣夥伴</string>
     <string name="widget_buddy_clock_description">即時時鐘、Q 版動態天氣與更新狀態</string>
     <string name="widget_refresh_weather">更新天氣</string>

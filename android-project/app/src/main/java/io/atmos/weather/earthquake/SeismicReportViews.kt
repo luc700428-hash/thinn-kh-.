@@ -1,5 +1,13 @@
 package io.atmos.weather.earthquake
 
+import androidx.compose.runtime.LaunchedEffect
+
+import androidx.compose.runtime.rememberUpdatedState
+
+import androidx.compose.ui.layout.boundsInWindow
+
+import androidx.compose.ui.layout.onGloballyPositioned
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.animation.animateContentSize
@@ -90,8 +98,11 @@ internal fun seismicInkOn(fill:Color):Color {
 }
 
 /** The full report list with DPIP-style filters. */
+/** Paging state of the report list: older pages load when its end scrolls into view. */
+data class SeismicOlderReports(val loading:Boolean,val failed:Boolean,val allLoaded:Boolean,val loadMore:()->Unit)
+
 @Composable internal fun SeismicReportsPanel(reports:List<EarthquakeReport>,loading:Boolean,error:String?,source:String,
-    onRefresh:()->Unit,onOpen:(EarthquakeReport)->Unit) {
+    onRefresh:()->Unit,onOpen:(EarthquakeReport)->Unit,older:SeismicOlderReports?=null) {
     val palette=MaterialTheme.colorScheme
     var filter by rememberSaveable{mutableStateOf("全部")}
     // Reports refresh on their own each time the list is shown; no manual button needed.
@@ -144,7 +155,40 @@ internal fun seismicInkOn(fill:Color):Color {
                 }
             }
         }
+        if(older!=null&&reports.isNotEmpty())SeismicOlderFooter(older,reports.size)
         Text("震後報告為地震發生後的官方紀錄，並非預警。",color=palette.onSurfaceVariant,fontSize=14.sp)
+    }
+}
+
+/**
+ * End of the report list. When it scrolls into view the next older page loads by itself, with a
+ * small spinner; a failed page offers a retry instead of hammering the server.
+ */
+@Composable private fun SeismicOlderFooter(older:SeismicOlderReports,count:Int) {
+    val palette=MaterialTheme.colorScheme
+    val view=androidx.compose.ui.platform.LocalView.current
+    val latest by rememberUpdatedState(older)
+    var visible by remember{mutableStateOf(false)}
+    // Ask for the next page whenever the footer is on screen and the list has grown since.
+    LaunchedEffect(visible,count,older.loading,older.failed,older.allLoaded){
+        if(visible&&!latest.loading&&!latest.failed&&!latest.allLoaded)latest.loadMore()
+    }
+    Box(Modifier.fillMaxWidth().heightIn(min=48.dp).testTag("seismic-report-older")
+        .onGloballyPositioned{c->
+            val top=c.boundsInWindow().top
+            // Start a screen early, so the next page is usually there before the finger is.
+            visible=c.isAttached&&top<view.height*1.6f
+        },contentAlignment=Alignment.Center) {
+        when {
+            older.loading->Row(verticalAlignment=Alignment.CenterVertically) {
+                androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,color=palette.onSurfaceVariant)
+                Spacer(Modifier.width(10.dp))
+                Text("正在載入更早的地震報告…",color=palette.onSurfaceVariant,fontSize=14.sp)
+            }
+            older.failed->io.atmos.weather.ui.GlassTextButton(onClick=older.loadMore){Text("更早的報告載入失敗，點此重試")}
+            older.allLoaded->Text("已顯示全部 $count 筆地震報告",color=palette.onSurfaceVariant,fontSize=14.sp)
+            else->Text("往下滑動載入更早的報告",color=palette.onSurfaceVariant,fontSize=14.sp)
+        }
     }
 }
 

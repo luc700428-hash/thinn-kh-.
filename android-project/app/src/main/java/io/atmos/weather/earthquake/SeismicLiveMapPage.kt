@@ -84,7 +84,8 @@ fun SeismicLiveMapPage(
     reportSource: String = "ExpTech 第三方彙整報告",
     reportsLoading:Boolean=false,
     reportError:String?=null,
-    onRefreshReports: () -> Unit
+    onRefreshReports: () -> Unit,
+    olderReports: SeismicOlderReports? = null
 ) {
     val ctx = LocalContext.current
     val palette=MaterialTheme.colorScheme
@@ -496,7 +497,7 @@ fun SeismicLiveMapPage(
                 SeismicCountyMaxPanel(currentStations)
                 SeismicLatestReportCard(reports.firstOrNull(),reportsLoading,{details=it},{section="報告"})
                 }
-                if(section=="報告") Box(Modifier.iosAppear()){SeismicReportsPanel(reports,reportsLoading,reportError,reportSource,onRefreshReports){details=it}}
+                if(section=="報告") Box(Modifier.iosAppear()){SeismicReportsPanel(reports,reportsLoading,reportError,reportSource,onRefreshReports,onOpen={details=it},older=olderReports)}
                 if(section=="工具") {
                 MapGlass(Modifier.iosAppear(0)) {
                     if(inReplay||replayStatus=="回放完成（非真實預警）"&&replayReport!=null) SeismicReplayPlayer(

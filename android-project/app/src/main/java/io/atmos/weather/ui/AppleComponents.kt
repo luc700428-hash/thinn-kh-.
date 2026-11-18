@@ -142,19 +142,18 @@ fun AppleIntelligenceGlow(
     val reduceMotion = rememberAppleReduceMotion()
     // Accessibility and battery: do not run an infinite transition offscreen
     // or when the user has explicitly requested reduced motion.
-    val actualAngle = if (enabled && !reduceMotion) {
-        val transition = rememberInfiniteTransition(label = "Apple glow")
-        val angle by transition.animateFloat(
+    // State read only inside drawBehind: the glow redraws each frame, the content does not recompose.
+    val angleState: androidx.compose.runtime.State<Float> = if (enabled && !reduceMotion) {
+        rememberInfiniteTransition(label = "Apple glow").animateFloat(
             initialValue = 0f, targetValue = 360f,
             animationSpec = infiniteRepeatable(tween(3200,
                 easing = AppleMotion.fluid)),
             label = "Gradient cycle"
         )
-        angle
-    } else 0f
+    } else androidx.compose.runtime.rememberUpdatedState(0f)
     Box(modifier.drawBehind {
         if (enabled) {
-            val r = Math.toRadians(actualAngle.toDouble())
+            val r = Math.toRadians(angleState.value.toDouble())
             val unit = Offset(cos(r).toFloat(), sin(r).toFloat())
             val c = Offset(size.width / 2f, size.height / 2f)
             val vector = Offset(size.width * unit.x / 2f, size.height * unit.y / 2f)

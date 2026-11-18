@@ -195,6 +195,9 @@ class WeatherViewModel(
                 mutableState.update { it.copy(
                     officialHazards=official.hazards, officialHazardsStatus=official.detail,
                     cwaWarnings=result.warnings, cwaCheckStatus=result.detail) }
+                // The widgets show the same county warnings while they are in effect.
+                if(official.checkSucceeded) io.atmos.weather.widgets.WidgetEvent.warnings(context,
+                    official.hazards.map{h->Triple(h.title,h.startsAt,h.expiresAt)})
             }
         }
     }

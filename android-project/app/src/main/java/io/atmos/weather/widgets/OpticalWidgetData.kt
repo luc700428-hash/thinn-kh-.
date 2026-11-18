@@ -15,7 +15,9 @@ data class WidgetHour(val time:String,val temperature:String,val rain:String,val
 data class OpticalWidgetData(val city:String,val temperature:String,val condition:WeatherCondition,val day:Boolean,val stamp:Long,
  val age:WidgetPresentationRules.Freshness,val rain:String,val highLow:String,val humidity:String,val wind:String,val air:String,val uv:String,
  val hours:List<WidgetHour>,val alarm:String,val alarmAt:Long?,val task:String,val alert:String,val alertDetail:String,val alertRecent:Boolean,val weatherCode:Int?=null,
- val days:List<WidgetDay> = emptyList(),val outlook:String="",val tomorrow:String="",val bring:String=""){
+ val days:List<WidgetDay> = emptyList(),val outlook:String="",val tomorrow:String="",val bring:String="",
+ /** A live warning, a weather warning or a fresh quake report every widget leads with. */
+ val event:WidgetEvent.Event?=null){
  companion object{
   private val week=listOf("週一","週二","週三","週四","週五","週六","週日")
   internal fun days(raw:String?,zone:ZoneId,now:Long):List<WidgetDay> =runCatching{
@@ -39,7 +41,8 @@ data class OpticalWidgetData(val city:String,val temperature:String,val conditio
     alarm?.let{it.first.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))+" · "+it.second.title}?:"尚未設定鬧鐘",alarm?.first?.toEpochMilli(),task?.let{"${it.month}/${it.day} ${"%02d:%02d".format(it.hour,it.minute)} · ${it.title}"}?:"沒有即將到來的事項",
     if(recent)push.getString("title","最近地震報告")?:"最近地震報告" else "尚無近期地震推播",if(recent)push.getString("detail","")?:"" else "請以官方災防告警為準",recent,if(available)p.getInt("widget_weather_code",-1).takeIf{it>=0} else null,
     if(available)days(p.getString("widget_days","[]"),zone,now) else emptyList(),
-    if(available)p.getString("widget_outlook","")?:"" else "",if(available)p.getString("widget_tomorrow","")?:"" else "",if(available)p.getString("widget_bring","")?:"" else "")
+    if(available)p.getString("widget_outlook","")?:"" else "",if(available)p.getString("widget_tomorrow","")?:"" else "",if(available)p.getString("widget_bring","")?:"" else "",
+    runCatching{WidgetEvent.current(context,now)}.getOrNull())
   }
  }
 }

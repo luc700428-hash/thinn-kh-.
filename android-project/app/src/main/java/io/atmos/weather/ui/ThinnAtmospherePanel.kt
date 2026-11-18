@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 /** Calm atmospheric content surface shared by Home and Seismic.
  * Glass-like highlights are decorative only; text remains on an opaque-enough surface.
  * This is original Compose rendering, not Apple's proprietary Liquid Glass shader.
+ * Large panels blur what is behind them but skip the lens shader: on a card-sized surface the
+ * bending is barely visible, while running it for every card on every frame made scrolling stutter.
  */
 @Composable
 fun ThinnAtmospherePanel(
@@ -37,7 +39,7 @@ fun ThinnAtmospherePanel(
     val cards=LocalWeatherCardPalette.current
     val glow=cards?.accent?:accent
     val light=GlassLight.current(follow=!reduceTransparency)
-    Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnBackdrop(reduceTransparency,ThinnDesignTokens.radiusCard)
+    Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnBackdrop(reduceTransparency,ThinnDesignTokens.radiusCard,refract=false)
         .background(cards?.brush ?: if(reduceTransparency) ThinnOpticalMaterial.opaque else ThinnOpticalMaterial.surface)
         .border(1.dp, ThinnOpticalMaterial.rim, shape)) {
         if(!reduceTransparency) Canvas(Modifier.matchParentSize()) {

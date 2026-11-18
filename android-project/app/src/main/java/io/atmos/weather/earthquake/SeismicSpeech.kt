@@ -105,20 +105,17 @@ object SeismicSpeech {
             engine?.let { speakQueued(it);return@post }
             if(starting) return@post
             starting=true
-            var pendingEngine:TextToSpeech?=null
-            pendingEngine=TextToSpeech(app) { status ->
+            // The most natural engine with a Mandarin voice stored on the phone, else the default one.
+            io.atmos.weather.voice.V25TaiwanVoice.open(app,urgent=true) { prepared ->
                 main.post {
                     starting=false
-                    val prepared=pendingEngine
-                    if(status==TextToSpeech.SUCCESS && prepared!=null) {
-                        io.atmos.weather.voice.V25TaiwanVoice.load(app)
-                        io.atmos.weather.voice.V25TaiwanVoice.configure(prepared)
+                    if(prepared!=null) {
                         prepared.setAudioAttributes(AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                         engine=prepared
                         speakQueued(prepared)
-                    } else { prepared?.shutdown();queued=null }
+                    } else queued=null
                 }
             }
         }
@@ -132,6 +129,6 @@ object SeismicSpeech {
         lastSpoken=message
         lastAt=System.currentTimeMillis()
         tts.setAudioAttributes(AudioAttributes.Builder().setUsage(request.usage).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-        tts.speak(io.atmos.weather.voice.V25TaiwanVoice.humanize(message),TextToSpeech.QUEUE_FLUSH,null,"thinn_eq_${System.nanoTime()}")
+        io.atmos.weather.voice.V25TaiwanVoice.say(tts,message,TextToSpeech.QUEUE_FLUSH,"thinn_eq_${System.nanoTime()}")
     }
 }

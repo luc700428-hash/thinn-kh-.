@@ -47,6 +47,13 @@ object SeismicAlertDelivery {
         prefs.all.entries.filter{it.key!=id}.sortedByDescending{runCatching{JSONObject(it.value.toString()).optLong("timestamp")}.getOrDefault(0)}
             .drop(7).forEach{editor.remove(it.key)}
         if(!editor.commit())return null
+        // Every widget switches to this warning until the shaking should be over.
+        if(!e.test)runCatching{
+            io.atmos.weather.widgets.WidgetEvent.eew(ctx,
+                "地震速報"+(e.magnitude?.let{" · 規模 ${"%.1f".format(java.util.Locale.US,it)}"}?:""),
+                SeismicDisplayFormat.location(e.epicenter)+(e.maximumIntensity?.takeIf{it.isNotBlank()}?.let{" · 最大震度 $it"}?:""),
+                maxOf(expires(e),(e.originAtMs?:e.issuedAtMs)+180_000L))
+        }
         return Ticket(id,e).also{active.value=it}
     }
     fun scenario(ctx:Context,e:EewIncident):SeismicAlertPolicy.Scenario {
@@ -82,7 +89,7 @@ object SeismicAlertDelivery {
         val ticketKey=key(identity(e));val raw=ctx.getSharedPreferences(STORE,0).getString(ticketKey,null)?:return false
         val serial=runCatching{JSONObject(raw).optInt("serial",-1)}.getOrDefault(-1)
         if(e.serial<serial)return false
-        dismiss(ctx,ticketKey);return true
+        dismiss(ctx,ticketKey);runCatching{io.atmos.weather.widgets.WidgetEvent.endEew(ctx)};return true
     }
     fun mayUseFullScreen(ctx:Context):Boolean {
         val enabled=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean("allow_seismic_full_screen",true)

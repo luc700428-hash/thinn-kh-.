@@ -37,23 +37,101 @@ object V25TaiwanVoice {
             .thenBy { it.latency })
     }
 
-    fun configure(tts: TextToSpeech, urgent: Boolean = true) {
+    /** Sets the best voice. False when this engine cannot speak Mandarin right now. */
+    fun configure(tts: TextToSpeech, urgent: Boolean = true): Boolean {
         val taiwan = Locale.forLanguageTag("zh-TW")
         val list = candidates(tts, urgent)
         val best = list.firstOrNull { it.name == chosen } ?: list.firstOrNull()
-        if (best != null) {
-            runCatching { tts.voice = best }.onFailure { tts.language = taiwan }
+        val ok = if (best != null) {
+            runCatching { tts.voice = best }.isSuccess || tts.setLanguage(taiwan) >= TextToSpeech.LANG_AVAILABLE
         } else {
-            if (tts.isLanguageAvailable(taiwan) >= TextToSpeech.LANG_AVAILABLE) tts.language = taiwan
-            else tts.language = Locale.CHINESE
+            val result = if (tts.isLanguageAvailable(taiwan) >= TextToSpeech.LANG_AVAILABLE) tts.setLanguage(taiwan)
+                else tts.setLanguage(Locale.CHINESE)
+            result >= TextToSpeech.LANG_AVAILABLE
         }
         // A touch slower and natural pitch for everyday speech; brisk but clear for warnings.
         tts.setSpeechRate(if (urgent) 1.04f else 0.94f)
         tts.setPitch(1.0f)
+        return ok
+    }
+
+    /** Google's speech engine, whose neural Mandarin voices sound most like a person. */
+    const val GOOGLE = "com.google.android.tts"
+
+    fun preferredEngine(ctx: Context): String? = runCatching {
+        ctx.packageManager.getPackageInfo(GOOGLE, 0); GOOGLE
+    }.getOrNull()
+
+    /**
+     * Starts the most natural engine: Google's when it is installed and has a usable Mandarin
+     * voice (for warnings: one stored on the phone), otherwise the phone's default engine.
+     * [onReady] runs on the main thread with a configured engine, or null if none can speak.
+     */
+    fun open(ctx: Context, urgent: Boolean, onReady: (TextToSpeech?) -> Unit) {
+        val app = ctx.applicationContext
+        load(app)
+        fun fallback() {
+            var d: TextToSpeech? = null
+            d = TextToSpeech(app) { status ->
+                val t = d
+                if (status == TextToSpeech.SUCCESS && t != null && configure(t, urgent)) onReady(t)
+                else { t?.shutdown(); onReady(null) }
+            }
+        }
+        val preferred = preferredEngine(app) ?: return fallback()
+        var g: TextToSpeech? = null
+        g = TextToSpeech(app, { status ->
+            val t = g
+            if (status == TextToSpeech.SUCCESS && t != null && configure(t, urgent)) onReady(t)
+            else { t?.shutdown(); fallback() }
+        }, preferred)
+    }
+
+    /**
+     * Speaks [text] the way a person reads aloud: sentence by sentence, with a short breath after
+     * each. The last sentence carries [id], so a listener waiting for [id] hears the end.
+     */
+    fun say(tts: TextToSpeech, text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH, id: String): Int {
+        val parts = phrases(humanize(text)).ifEmpty { return TextToSpeech.SUCCESS }
+        var result = TextToSpeech.SUCCESS
+        parts.forEachIndexed { i, part ->
+            val last = i == parts.lastIndex
+            val r = tts.speak(part, if (i == 0) queueMode else TextToSpeech.QUEUE_ADD, null, if (last) id else "$id#$i")
+            if (r != TextToSpeech.SUCCESS) result = r
+            if (!last) tts.playSilentUtterance(pause(part), TextToSpeech.QUEUE_ADD, "$id#p$i")
+        }
+        return result
+    }
+
+    /** Sentences, each ending with its punctuation; tiny fragments join the next one. */
+    fun phrases(text: String): List<String> {
+        val raw = Regex("""[^。！？!?；;]+[。！？!?；;]*""").findAll(text).map { it.value.trim() }.filter { it.isNotEmpty() }.toList()
+        val out = mutableListOf<String>()
+        var carry = ""
+        for (piece in raw) {
+            val joined = carry + piece
+            if (joined.trimEnd('。', '！', '？', '!', '?', '；', ';').length < 4) carry = joined else { out += joined; carry = "" }
+        }
+        if (carry.isNotEmpty()) { if (out.isEmpty()) out += carry else out[out.lastIndex] = out.last() + carry }
+        return out
+    }
+
+    /** A breath after a sentence: longer after an exclamation or question, short after a semicolon. */
+    fun pause(sentence: String): Long = when (sentence.lastOrNull()) {
+        '！', '!' -> 280L
+        '？', '?' -> 260L
+        '；', ';' -> 160L
+        else -> 220L
     }
 
     /** Text the way people say it: no symbols read out as symbols, natural pauses. */
     fun humanize(text: String): String = text
+        // 11/18 → 11月18日, 05:00 → 5點, 17:30 → 17點30分: how people say dates and times.
+        .replace(Regex("""(?<![\d/])(1[0-2]|0?[1-9])/(3[01]|[12]\d|0?[1-9])(?![\d/])""")) { "${it.groupValues[1].toInt()}月${it.groupValues[2].toInt()}日" }
+        .replace(Regex("""(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])""")) {
+            val h = it.groupValues[1].toInt(); val m = it.groupValues[2]
+            if (m == "00") "${h}點" else "${h}點${m}分"
+        }
         .replace(Regex("""M\s*(\d+(?:\.\d+)?)"""), "規模$1")
         .replace(Regex("""(\d+(?:\.\d+)?)\s*km/h"""), "每小時$1公里")
         .replace(Regex("""(\d+(?:\.\d+)?)\s*km"""), "$1公里")

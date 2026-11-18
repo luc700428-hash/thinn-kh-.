@@ -18,11 +18,11 @@ import java.time.ZoneId
  */
 object ExpTechPublicEarthquakeReports {
     private val hosts = listOf("api.core-tyo1.exptech.dev", "api.core-tnn1.exptech.dev")
-    suspend fun latest(): List<EarthquakeReport> = withContext(Dispatchers.IO) {
+    suspend fun latest(limit: Int = 30): List<EarthquakeReport> = withContext(Dispatchers.IO) {
         var lastError: Exception? = null
         for (host in hosts) {
             try {
-                val connection = URL("https://$host/api/v2/eq/report?limit=30&sort=time&order=desc")
+                val connection = URL("https://$host/api/v2/eq/report?limit=${limit.coerceIn(10, 300)}&sort=time&order=desc")
                     .openConnection() as HttpURLConnection
                 connection.connectTimeout=8000
                 connection.readTimeout=10000
@@ -32,7 +32,7 @@ object ExpTechPublicEarthquakeReports {
                     if(connection.responseCode !in 200..299) error("HTTP ${connection.responseCode}")
                     connection.inputStream.bufferedReader().use { it.readText() }
                 } finally { connection.disconnect() }
-                val reports = parse(response)
+                val reports = parse(response, limit)
                 if (reports.isNotEmpty()) return@withContext reports
                 lastError = IllegalStateException("公開地震報告格式無法辨識")
             } catch (ex: CancellationException) { throw ex }
@@ -41,7 +41,7 @@ object ExpTechPublicEarthquakeReports {
         throw IllegalStateException("公開地震報告暫時不可使用：${lastError?.message ?: "資料為空"}")
     }
 
-    internal fun parse(raw:String):List<EarthquakeReport> {
+    internal fun parse(raw:String, limit:Int = 30):List<EarthquakeReport> {
         val text=raw.trimStart()
         val array=if(text.startsWith("[")) JSONArray(raw) else {
             val root=JSONObject(raw)
@@ -52,11 +52,11 @@ object ExpTechPublicEarthquakeReports {
                 else -> null
             } ?: root.optJSONArray("reports") ?: root.optJSONArray("items") ?: root.optJSONArray("list") ?: JSONArray()
         }
-        val items=(0 until minOf(array.length(),100)).mapNotNull { i ->
+        val items=(0 until minOf(array.length(),300)).mapNotNull { i ->
             val item=array.optJSONObject(i) ?: return@mapNotNull null
             runCatching { toReport(item) }.getOrNull()
         }
-        return items.distinctBy { it.id }.sortedByDescending { it.origin }.take(30)
+        return items.distinctBy { it.id }.sortedByDescending { it.origin }.take(limit.coerceIn(10, 300))
     }
     private fun firstStr(obj: JSONObject, vararg fields:String):String? = fields.firstNotNullOfOrNull { key ->
         obj.optString(key).takeIf { it.isNotBlank() && it != "null" }

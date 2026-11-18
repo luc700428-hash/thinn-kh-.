@@ -45,7 +45,6 @@ import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
-import java.util.Locale
 
 private val navy get() = brandColor(0xFF0B1F19)
 private val ice get() = brandColor(0xFFB5E5D8)
@@ -186,13 +185,11 @@ fun EarthquakeSafetyDrill(onClose: () -> Unit) {
     val ring by pulse.animateFloat(0f,1f,infiniteRepeatable(tween(1450,easing=LinearEasing)),label="wave")
     DisposableEffect(context) {
         var engine: TextToSpeech? = null
-        engine = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                engine?.language = Locale.TAIWAN
-                tts = engine
-            }
+        var disposed = false
+        io.atmos.weather.voice.V25TaiwanVoice.open(context, urgent = false) { ready ->
+            if (disposed) ready?.shutdown() else { engine = ready; tts = ready }
         }
-        onDispose { engine?.stop(); engine?.shutdown(); SeismicSound.stop() }
+        onDispose { disposed = true; engine?.stop(); engine?.shutdown(); SeismicSound.stop() }
     }
     LaunchedEffect(Unit) {
         SeismicSound.play(context,SeismicSound.Kind.DRILL_START)
@@ -207,7 +204,7 @@ fun EarthquakeSafetyDrill(onClose: () -> Unit) {
         if (secondsLeft<=0) return@LaunchedEffect
         if (phase>0) SeismicSound.play(context,SeismicSound.Kind.STEP)
         haptics?.play(HapticEngine.Event.TAP)
-        if(voiceEnabled) tts?.speak(active.name,TextToSpeech.QUEUE_FLUSH,null,"seismic-step-$phase")
+        if(voiceEnabled) tts?.let{io.atmos.weather.voice.V25TaiwanVoice.say(it,active.name,TextToSpeech.QUEUE_FLUSH,"seismic-step-$phase")}
     }
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(navy,brandColor(0xFF184539),navy)))) {

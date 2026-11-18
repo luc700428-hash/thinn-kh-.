@@ -43,6 +43,9 @@ class EarthquakeReportWorker(ctx: Context, params: WorkerParameters): CoroutineW
         // The weather home can surface a recent official report even after the
         // notification is dismissed; newer verified reports replace previous ones.
         RecentEarthquakeNoticeStore.save(ctx,latest,isOfficial)
+        // Every widget shows the new report for half an hour, then returns to the weather.
+        io.atmos.weather.widgets.WidgetEvent.quake(ctx,"M ${"%.1f".format(java.util.Locale.US,latest.magnitude)} · ${SeismicDisplayFormat.location(latest.location)}",
+            "${if(isOfficial) "中央氣象署地震報告" else "第三方地震報告"} · 最大震度 ${latest.maxIntensity?:"—"}")
         SeismicAlertPolicy.ensureChannels(ctx)
         val intent=PendingIntent.getActivity(ctx,18015,
             Intent(ctx,MainActivity::class.java).putExtra("open_earthquake_center",true),

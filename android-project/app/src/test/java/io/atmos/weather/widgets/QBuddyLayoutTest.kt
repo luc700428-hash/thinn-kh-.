@@ -15,10 +15,11 @@ class QBuddyLayoutTest {
     private val sizes=buildList{for(cols in 2..10)for(rows in 2..10)for((cw,ch) in listOf(72f to 84f,88f to 108f))add(cols*cw to rows*ch)}
 
     @Test fun nothingOverlapsOrLeavesTheWidgetAtAnyCellSize(){
-        for((w,h) in sizes)for(family in 7..11)for(system in listOf(1f,1.3f,2f))for(custom in listOf(.8f,1f,1.6f)){
+        val warning=data.copy(event=WidgetEvent.Event(WidgetEvent.Kind.EEW,"地震速報 · 規模 6.1","花蓮縣近海 · 最大震度 5 強",Long.MAX_VALUE))
+        for((w,h) in sizes)for(family in 7..10)for(system in listOf(1f,1.3f,2f))for(custom in listOf(.8f,1f,1.6f))for(d in listOf(data,warning)){
             val p=WidgetLayoutPlan.create(w,h,1f,system,custom)
-            val regions=AdaptiveWidgetLayout.create(p,family,data,true)
-            val tag="family $family ${w}x$h system $system custom $custom"
+            val regions=AdaptiveWidgetLayout.create(p,family,d,true)
+            val tag="family $family ${w}x$h system $system custom $custom event ${d.event!=null}"
             regions.forEach{r->assertTrue("Out of bounds $tag: $r",r.x>=-.1f&&r.y>=-.1f&&r.width>0&&r.height>0&&r.x+r.width<=p.innerWidth+.2f&&r.y+r.height<=p.innerHeight+.2f)}
             regions.forEachIndexed{i,a->regions.drop(i+1).forEach{b->
                 assertFalse("Overlap $tag: $a / $b",a.x<b.x+b.width-.2f&&a.x+a.width>b.x+.2f&&a.y<b.y+b.height-.2f&&a.y+a.height>b.y+.2f)
@@ -36,11 +37,19 @@ class QBuddyLayoutTest {
         for((w,h) in listOf(320f to 360f,400f to 600f,720f to 900f,880f to 1080f)){
             assertTrue("forecast days ${w}x$h",at(9,w,h).count{it.kind==WidgetRegion.Kind.DAY_ART}>=2)
             assertTrue("outing advice ${w}x$h",at(10,w,h).any{it.text==data.outlook})
-            assertTrue("quake message ${w}x$h",at(11,w,h).any{it.text==data.alert})
             assertTrue("clock alarm ${w}x$h",at(8,w,h).any{it.kind==WidgetRegion.Kind.COUNTDOWN})
             assertTrue("weather clock ${w}x$h",at(7,w,h).any{it.kind==WidgetRegion.Kind.DATE})
         }
         for((w,h) in listOf(400f to 600f,720f to 900f))assertTrue("weather hours ${w}x$h",at(7,w,h).any{it.kind==WidgetRegion.Kind.HOUR_ART})
+        // Every widget shows the current condition, and leads with a warning while one is on.
+        val warning=data.copy(event=WidgetEvent.Event(WidgetEvent.Kind.WARNING,"陸上強風特報","有效至 23:00",Long.MAX_VALUE))
+        for(family in 7..10)for((w,h) in listOf(150f to 170f,320f to 170f,320f to 360f,640f to 360f)){
+            val condition=data.description()
+            // The 2×2 clock spends its room on the time, date and temperature.
+            if(family!=8||w>=320f)assertTrue("condition family $family ${w}x$h",at(family,w,h).any{it.text.contains(condition)})
+            val withEvent=AdaptiveWidgetLayout.create(WidgetLayoutPlan.create(w,h),family,warning,true)
+            assertTrue("warning family $family ${w}x$h",withEvent.any{it.text.contains("陸上強風特報")})
+        }
         // The biggest sizes use the room: more days and two columns.
         val huge=at(9,880f,1080f)
         assertEquals(7,huge.count{it.kind==WidgetRegion.Kind.DAY_ART})

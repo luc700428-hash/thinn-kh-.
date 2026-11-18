@@ -9,7 +9,8 @@ package io.atmos.weather.widgets
  *   8 夥伴時鐘   – description, next alarm, hours, days
  *   9 一週預報   – days first, then hours and metrics
  *  10 出門小幫手 – outing advice first, then metrics, hours, days
- *  11 地震安心   – latest earthquake message first, then weather
+ * While a warning or a fresh quake report is on (see [WidgetEvent]), every family leads with it
+ * and switches back by itself when it ends. The current condition (多雲, 晴…) is part of every hero.
  * A block is placed whole or not at all, so nothing is ever cut in half or overlaps, and wide
  * widgets split the blocks into two columns instead of leaving half the widget empty.
  */
@@ -36,6 +37,11 @@ internal object QBuddyLayout {
             width / (units(text) * WidgetTypography.MAX), maxHeight / (LINE * WidgetTypography.MAX)) * p.textScale
 
         val clock = family == 8
+        val ev = d.event
+        // Under the temperature: the condition, or the warning's title while one is on.
+        val condition = ev?.title ?: d.description()
+        /** Whether the warning's full title is already on screen (else the event block repeats it). */
+        var titleShown = false
         val city = io.atmos.weather.location.LocationLabels.microcity(d.city).ifBlank { d.city }
         val range = d.highLow.replace("最高 ", "高 ").replace("最低 ", "低 ")
         val timeSample = if (hour24) "00:00" else "00:00 PM"
@@ -60,9 +66,16 @@ internal object QBuddyLayout {
             } else {
                 val twoLines = h >= 64f
                 val tempFont = fit(p.hero * 1.2f, d.temperature, main, if (twoLines) h - lower - 2f else h)
-                add(WidgetRegion.Kind.TEMPERATURE, 0f, if (twoLines) 0f else (h - tempFont * LINE) / 2f, main, tempFont * LINE, d.temperature, tempFont, bold = true)
+                // The condition sits right after the temperature on the same line.
+                val tempTop = if (twoLines) 0f else (h - tempFont * LINE) / 2f
+                val tempW = (units(d.temperature) + .3f) * tempFont * WidgetTypography.MAX
+                val condFont = minOf(p.body, tempFont * .42f)
+                val side2 = main - tempW - gap >= condFont * 2.2f * WidgetTypography.MAX
+                add(WidgetRegion.Kind.TEMPERATURE, 0f, tempTop, if (side2) tempW else main, tempFont * LINE, d.temperature, tempFont, bold = true)
+                if (side2) { add(WidgetRegion.Kind.TEXT, tempW + gap, tempTop + tempFont * LINE - condFont * LINE * 1.15f,
+                    main - tempW - gap, condFont * LINE, ev?.title ?: condition, condFont, bold = ev != null); titleShown = true }
                 val line = when (family) { 9 -> d.days.getOrNull(1)?.let { "${it.label} ${it.range}" } ?: d.description(); 10 -> d.bring.ifBlank { d.description() }
-                    11 -> d.alert; else -> d.description() }
+                    else -> d.description() }
                 val font = minOf(p.caption, lower / LINE)
                 if (twoLines && !extra) {
                     // Narrow strip: the second line is the time and date (the side column has them when wide).
@@ -74,7 +87,7 @@ internal object QBuddyLayout {
             if (extra) {
                 val x = main + gap * 2; val cw = pw - x
                 val font = minOf(p.body, (h - gap) / 2f / LINE)
-                val first = when (family) { 10 -> d.outlook.ifBlank { city }; 11 -> d.alertDetail.ifBlank { city }; else -> city }
+                val first = ev?.detail?.ifBlank { null } ?: when (family) { 10 -> d.outlook.ifBlank { city }; else -> city }
                 val second = when (family) { 8 -> d.alarm; 9 -> d.days.getOrNull(2)?.let { "${it.label} ${it.range}" } ?: range; else -> range }
                 if (clock) {
                     add(WidgetRegion.Kind.TEXT, x, 0f, cw, font * LINE, first, font, bold = true)
@@ -90,6 +103,30 @@ internal object QBuddyLayout {
             return out
         }
 
+        /** The condition line's text and size: a warning falls back to its short label when the title will not fit. */
+        fun conditionLine(width: Float, height: Float): Pair<String, Float> {
+            val full = fit(p.body, condition, width, height)
+            val short = ev?.kind?.label ?: return condition to full
+            if (full >= 8f || condition == short) { titleShown = true; return condition to full }
+            return short to fit(p.body, short, width, height)
+        }
+
+        /** The clock's row: temperature, then the condition beside it when there is room. */
+        fun reading(x: Float, top: Float, width: Float, rowH: Float) {
+            // The temperature keeps the size it always had; the condition joins only when readable.
+            val font = fit(p.body, d.temperature, width, rowH)
+            val tempW = minOf(width, (units(d.temperature) + .3f) * font * WidgetTypography.MAX)
+            val rest = width - tempW - gap
+            val (text, cf) = if (rest > 0f) conditionLine(rest, rowH) else condition to 0f
+            if (cf >= 8f) {
+                add(WidgetRegion.Kind.TEMPERATURE, x, top, tempW, font * LINE, d.temperature, font, bold = true)
+                add(WidgetRegion.Kind.TEXT, x + tempW + gap, top, rest, minOf(cf, font) * LINE, text, minOf(cf, font), soft = ev == null, bold = ev != null)
+            } else {
+                if (text == condition && ev != null) titleShown = false
+                add(WidgetRegion.Kind.TEMPERATURE, x, top, width, font * LINE, d.temperature, font, bold = true)
+            }
+        }
+
         // ---------- header + hero ----------
         // Every height in this part depends on the widget's size only, never on the text-size
         // preferences: a larger preference enlarges the reading inside the same space, so it can
@@ -101,13 +138,16 @@ internal object QBuddyLayout {
             minOf(p.caption / p.textScale, width / (4.5f * WidgetTypography.MAX), maxHeight / (LINE * WidgetTypography.MAX)) * p.textScale
         val headerH = (usable * .13f).coerceIn(18f, 70f)
         val minimumHero = if (heroBeside) 44f else 24f + gap + 13f * LINE * WidgetTypography.MAX + (if (clock) gap + 13f * LINE * WidgetTypography.MAX else 0f)
-        val cityLabel = if (family == 11 && d.alertRecent) "最新地震 · $city" else city
+        val cityLabel = if (ev != null) "${ev.kind.label} · $city" else city
         if (clock) {
             // The clock widget shows the time big in its hero; its header is the city.
             // A 2×2 clock spends its little height on the time and the buddy instead of the city line.
-            if (usable - headerH - gap >= minimumHero && !(!heroBeside && usable < 170f)) {
+            // During a warning the header always shows, carrying the warning's title.
+            if (ev != null || usable - headerH - gap >= minimumHero && !(!heroBeside && usable < 170f)) {
                 val cityFont = minOf(p.city, headerH / LINE)
-                add(WidgetRegion.Kind.TEXT, 0f, 0f, w, cityFont * LINE, cityLabel, cityFont, bold = true)
+                // The clock's header names the condition first, then the place.
+                add(WidgetRegion.Kind.TEXT, 0f, 0f, w, cityFont * LINE, ev?.title ?: "$condition · $city", cityFont, bold = true)
+                if (ev != null) titleShown = true
                 y = headerH + gap
             }
         } else {
@@ -141,24 +181,34 @@ internal object QBuddyLayout {
                 val heroH = maxOf(side, minOf((usable - y) * .44f, 260f))
                 val rowReserve = heroH * .32f
                 val dateW = pw * .56f; val dateFont = dateRowFont(dateW, rowReserve)
-                val tempFont = fit(p.body, d.temperature, pw - dateW - gap, rowReserve)
                 val timeFont = fit(p.clock * 1.6f, timeSample, pw, (heroH - rowReserve - gap).coerceAtLeast(14f))
                 add(WidgetRegion.Kind.TIME, 0f, y, pw, timeFont * LINE, font = timeFont)
                 val rowTop = y + heroH - rowReserve
                 add(WidgetRegion.Kind.DATE, 0f, rowTop, dateW, dateFont * LINE, font = dateFont, soft = true)
-                add(WidgetRegion.Kind.TEMPERATURE, dateW + gap, rowTop, pw - dateW - gap, tempFont * LINE, d.temperature, tempFont, bold = true)
+                reading(dateW + gap, rowTop, pw - dateW - gap, rowReserve)
                 add(WidgetRegion.Kind.ART, w - side, y + (heroH - side) / 2f, side, side)
                 y += heroH - side
             } else {
-                val tempFont = fit(p.hero * 1.3f, d.temperature, pw, side)
-                add(WidgetRegion.Kind.TEMPERATURE, 0f, y + (side - tempFont * LINE) / 2f, pw, tempFont * LINE, d.temperature, tempFont, bold = true)
-                add(WidgetRegion.Kind.ART, w - side, y, side, side)
+                // The reading: temperature with the condition under it, sized by the widget alone.
+                // A small buddy never squeezes the condition: the reading gets a minimum height.
+                val condH = maxOf(side * .24f, 9f * LINE * WidgetTypography.MAX)
+                val heroH = maxOf(side, condH + 16f * LINE * WidgetTypography.MAX)
+                val tempFont = fit(p.hero * 1.3f, d.temperature, pw, heroH - condH)
+                val (condText, condFont) = conditionLine(pw, condH)
+                val block = tempFont * LINE + condFont * LINE
+                val top = y + (heroH - block).coerceAtLeast(0f) / 2f
+                add(WidgetRegion.Kind.TEMPERATURE, 0f, top, pw, tempFont * LINE, d.temperature, tempFont, bold = true)
+                add(WidgetRegion.Kind.TEXT, 0f, top + tempFont * LINE, pw, condFont * LINE, condText, condFont, soft = ev == null, bold = ev != null)
+                add(WidgetRegion.Kind.ART, w - side, y + (heroH - side) / 2f, side, side)
+                y += heroH - side
             }
             y += side + gap
         } else {
             // Narrow: buddy on top, reading under it.
             val rowReserve = 13f * LINE * WidgetTypography.MAX
-            val readingMin = if (clock) 13f * LINE * WidgetTypography.MAX + gap + rowReserve else 16f * LINE * WidgetTypography.MAX
+            // Non-clock: the temperature plus the condition line under it (readable even at the smallest text size).
+            val conditionMin = 9f * LINE * WidgetTypography.MAX
+            val readingMin = if (clock) 13f * LINE * WidgetTypography.MAX + gap + rowReserve else 16f * LINE * WidgetTypography.MAX + conditionMin
             val clockTime = usable * .30f
             val side = (if (clock) minOf(w * .86f, usable - y - clockTime - minOf(rowReserve, usable * .20f) - gap * 3, 260f)
                 else minOf(w * .86f, (usable - y - readingMin - gap) * (if (usable - y > 320f) .46f else 1f), 260f)).coerceAtLeast(0f)
@@ -169,14 +219,18 @@ internal object QBuddyLayout {
                 val timeFont = fit(p.clock * 1.3f, timeSample, w, timeReserve)
                 add(WidgetRegion.Kind.TIME, 0f, y, w, timeFont * LINE, font = timeFont); y += timeReserve + gap
                 val dateW = w * .58f; val dateFont = dateRowFont(dateW, row)
-                val tempFont = fit(p.body, d.temperature, w - dateW - gap, row)
                 add(WidgetRegion.Kind.DATE, 0f, y, dateW, dateFont * LINE, font = dateFont, soft = true)
-                add(WidgetRegion.Kind.TEMPERATURE, dateW + gap, y, w - dateW - gap, tempFont * LINE, d.temperature, tempFont, bold = true)
+                reading(dateW + gap, y, w - dateW - gap, row)
                 y += row + gap
             } else {
-                val reserve = minOf(usable - y, usable * .34f).coerceAtLeast(14f)
-                val tempFont = fit(p.hero, d.temperature, w, reserve)
-                add(WidgetRegion.Kind.TEMPERATURE, 0f, y, w, tempFont * LINE, d.temperature, tempFont, bold = true); y += reserve + gap
+                val reserve = minOf(usable - y, maxOf(usable * .34f, readingMin)).coerceAtLeast(14f)
+                // Temperature, with the condition on the line under it.
+                val condH = maxOf(reserve * .36f, conditionMin).coerceAtMost(reserve * .5f)
+                val tempFont = fit(p.hero, d.temperature, w, reserve - condH)
+                add(WidgetRegion.Kind.TEMPERATURE, 0f, y, w, tempFont * LINE, d.temperature, tempFont, bold = true)
+                val (condText, condFont) = conditionLine(w, condH)
+                add(WidgetRegion.Kind.TEXT, 0f, y + tempFont * LINE, w, condFont * LINE, condText, condFont, soft = ev == null, bold = ev != null)
+                y += reserve + gap
             }
         }
 
@@ -186,11 +240,7 @@ internal object QBuddyLayout {
             if (value.isBlank() || this.y + height > bottom + .1f) return false
             add(WidgetRegion.Kind.TEXT, x, this.y, this.w, height, value, font, soft, lines, bold); this.y += height + gap; return true
         }
-        fun Column.description(): Boolean {
-            val a = text(d.description(), p.body, soft = true)
-            val b = text(range, p.caption, soft = true)
-            return a || b
-        }
+        fun Column.description(): Boolean = text(range, p.caption, soft = true)
         fun Column.hours(): Boolean {
             if (d.hours.isEmpty()) return false
             val art = 26f * p.typeGrowth
@@ -258,20 +308,24 @@ internal object QBuddyLayout {
             if (showAgenda) text(d.task, p.caption, soft = true)
             return true
         }
-        fun Column.quake(): Boolean {
-            val a = text(d.alert, p.body, bold = true, lines = if (bottom - this.y >= p.body * LINE * 3) 2 else 1)
-            val b = text(d.alertDetail, p.caption, soft = true, lines = if (bottom - this.y >= p.caption * LINE * 2) 2 else 1)
+        fun Column.event(): Boolean {
+            // The details; the title too when the line under the temperature only had room for its label.
+            val e = ev ?: return false
+            val a = if (!titleShown) text(e.title, p.body, bold = true, lines = if (bottom - this.y >= p.body * LINE * 3 && units(e.title) * p.body > this.w) 2 else 1) else false
+            val b = text(e.detail, if (titleShown) p.body else p.caption, bold = titleShown, soft = !titleShown,
+                lines = if (bottom - this.y >= p.body * LINE * 3 && units(e.detail) * p.body > this.w) 2 else 1)
             return a || b
         }
         val weather = listOf("降雨" to d.rain, "風速" to d.wind, "濕度" to d.humidity, "空氣 AQI" to d.air)
         val outdoor = listOf("降雨" to d.rain, "紫外線" to d.uv, "空氣 AQI" to d.air, "風速" to d.wind)
-        val blocks: List<Column.() -> Boolean> = when (family) {
+        val usual: List<Column.() -> Boolean> = when (family) {
             8 -> listOf({ alarm() }, { description() }, { hours() }, { days() })
             9 -> listOf({ days() }, { hours() }, { metrics(weather) }, { description() })
             10 -> listOf({ outing() }, { metrics(outdoor) }, { hours() }, { days() })
-            11 -> listOf({ quake() }, { description() }, { metrics(weather) }, { hours() })
             else -> listOf({ description() }, { hours() }, { metrics(weather) }, { days() }, { outing() })
         }
+        // A warning or fresh quake report comes first in every widget while it lasts.
+        val blocks: List<Column.() -> Boolean> = if (ev != null) listOf<Column.() -> Boolean>({ event() }) + usual else usual
         // Wide and tall enough: two columns, blocks dealt left / right by whichever is shorter.
         val twoColumns = w >= 520f && usable - y >= p.body * LINE * 5
         val columns = if (twoColumns) { val cw = (w - gap * 2) / 2f; listOf(Column(0f, y, cw, usable), Column(cw + gap * 2, y, cw, usable)) }

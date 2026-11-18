@@ -258,6 +258,8 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
         engine.setOnUtteranceProgressListener(object:UtteranceProgressListener() {
             override fun onStart(utteranceId:String?) { }
             override fun onDone(utteranceId:String?) {
+                // Spoken sentence by sentence: only the last one (no '#') ends the narration.
+                if(utteranceId?.contains('#')==true) return
                 uiHandler.post { if(currentId==id) setAlarmVolume(1f) }
             }
             @Deprecated("Deprecated in platform; still invoked by some TTS engines")
@@ -286,13 +288,13 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
                     onFinished={ if(currentId==id) setAlarmVolume(1f) },
                     onFailure={ if(currentId==id) {
                         setAlarmVolume(.18f)
-                        val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
+                        val result=io.atmos.weather.voice.V25TaiwanVoice.say(engine,message,TextToSpeech.QUEUE_FLUSH,"alarm_weather_$id")
                         if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)
                     } }
                 ))
             if(!cloudAccepted) {
                 setAlarmVolume(.18f)
-                val result=engine.speak(message,TextToSpeech.QUEUE_FLUSH,null,"alarm_weather_$id")
+                val result=io.atmos.weather.voice.V25TaiwanVoice.say(engine,message,TextToSpeech.QUEUE_FLUSH,"alarm_weather_$id")
                 if(result != TextToSpeech.SUCCESS) setAlarmVolume(1f)
             }
             // OEM TTS can omit onDone. Never leave the ringing sound quiet indefinitely.
