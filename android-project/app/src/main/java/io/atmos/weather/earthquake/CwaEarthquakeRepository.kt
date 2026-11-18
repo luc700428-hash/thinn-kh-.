@@ -20,15 +20,15 @@ object CwaEarthquakeRepository {
         EarthquakeSecurity.load(context)?.takeIf { it.isNotBlank() }
             ?: io.atmos.weather.BuildConfig.THINN_CWA_API_KEY.takeIf { it.isNotBlank() }
 
-    /** One dataset page. CWA Open Data documents `Authorization`, `limit` and `offset` as query parameters. */
-    private suspend fun fetch(context: Context, id: String, key: String?, offset: Int): JSONObject {
+    /** One dataset query. CWA Open Data documents `Authorization` and `limit` as query parameters. */
+    private suspend fun fetch(context: Context, id: String, key: String?, extra: String = ""): JSONObject {
         if (key.isNullOrBlank()) {
-            // The Firebase proxy only serves the newest page.
-            if (offset > 0) return JSONObject()
+            // The Firebase proxy only serves the newest reports.
+            if (extra.isNotEmpty()) return JSONObject()
             return CwaOfficialGateway.read(context,id)
         }
         val encodedKey = java.net.URLEncoder.encode(key, "UTF-8")
-        val conn = URL("$base$id?Authorization=$encodedKey&format=JSON&limit=$PAGE&offset=$offset")
+        val conn = URL("$base$id?Authorization=$encodedKey&format=JSON&limit=$PAGE$extra")
             .openConnection() as HttpURLConnection
         conn.connectTimeout = 12000; conn.readTimeout = 16000
         conn.setRequestProperty("Accept", "application/json")
@@ -39,31 +39,33 @@ object CwaEarthquakeRepository {
         return JSONObject(raw)
     }
 
-    /** Where paging stands: the next offset of each dataset, or absent once a dataset has no more. */
-    data class Cursor(val next: Map<String, Int>) { val done get() = next.isEmpty() }
-    val start = Cursor(datasets.associate { it.first to 0 })
-
-    /** The page after [cursor] from both datasets, newest first, and the cursor after it. */
-    suspend fun page(context: Context, cursor: Cursor): Pair<List<EarthquakeReport>, Cursor> = withContext(Dispatchers.IO) {
+    private suspend fun query(context: Context, extra: String): List<EarthquakeReport> = withContext(Dispatchers.IO) {
         val key = key(context)
         val all = mutableListOf<EarthquakeReport>()
         val errors = mutableListOf<String>()
-        val next = mutableMapOf<String, Int>()
         for ((id, category) in datasets) {
-            val offset = cursor.next[id] ?: continue
             try {
-                val json = fetch(context, id, key, offset)
+                val json = fetch(context, id, key, extra)
                 if (json.optString("success").equals("false", true)) error("中央氣象署未接受授權或查詢")
-                val got = CwaEarthquakeParser.parse(json, category)
-                all += got
-                // A short page means this dataset has nothing older; the proxy serves one page only.
-                if (got.size >= PAGE && !key.isNullOrBlank()) next[id] = offset + PAGE
+                all += CwaEarthquakeParser.parse(json, category)
             } catch (cancel: CancellationException) { throw cancel }
-              catch (ex: Exception) { errors += "${category}：${ex.message ?: "查詢失敗"}"; next[id] = offset }
+              catch (ex: Exception) { errors += "${category}：${ex.message ?: "查詢失敗"}" }
         }
-        if (all.isEmpty() && errors.isNotEmpty()) error(errors.joinToString("；"))
-        all.distinctBy { it.id }.sortedByDescending { it.origin } to Cursor(next)
+        if (all.isEmpty() && errors.isNotEmpty() && extra.isEmpty()) error(errors.joinToString("；"))
+        all.distinctBy { it.id }.sortedByDescending { it.origin }
     }
 
-    suspend fun latest(context: Context): List<EarthquakeReport> = page(context, start).first.take(30)
+    /** The newest reports from both datasets. */
+    suspend fun latest(context: Context): List<EarthquakeReport> = query(context, "").take(30)
+
+    /**
+     * Reports that happened before [before] (the oldest one already shown), asked for by time
+     * (`timeTo`). Empty when the service has nothing older, ignores the filter, or fails: the
+     * caller then continues with another source instead of repeating the same page.
+     */
+    suspend fun olderThan(context: Context, before: java.time.Instant): List<EarthquakeReport> {
+        val to = java.time.LocalDateTime.ofInstant(before.minusSeconds(1), java.time.ZoneId.of("Asia/Taipei"))
+            .withNano(0).toString().let { if (it.length == 16) "$it:00" else it }
+        return runCatching { query(context, "&timeTo=$to") }.getOrDefault(emptyList()).filter { it.origin.isBefore(before) }
+    }
 }

@@ -11,14 +11,14 @@ class SeismicCriticalTestActivity:ComponentActivity() {
     override fun onCreate(state:Bundle?) {
         super.onCreate(state)
         val token=intent.getStringExtra("test_ticket")
-        if(!SeismicCriticalTest.validAny(this,token)){finish();return}
+        if(!SeismicCriticalTest.valid(this,token)){finish();return}
         val allowed=SeismicAlertDelivery.mayUseFullScreen(this)
         setShowWhenLocked(allowed);setTurnScreenOn(allowed)
         val incident=SeismicSimulation.scenario(System.currentTimeMillis(),true)
         setContent{io.atmos.weather.ui.ThinnAppTheme {
             val live by SeismicAlertDelivery.active.collectAsState()
             LaunchedEffect(live){if(live!=null){SeismicCriticalTest.cancel(this@SeismicCriticalTestActivity);finish()}}
-            LaunchedEffect(token){while(true){delay(1000);if(!SeismicCriticalTest.validAny(this@SeismicCriticalTestActivity,token)){finish();break}}}
+            LaunchedEffect(token){while(true){delay(1000);if(!SeismicCriticalTest.valid(this@SeismicCriticalTestActivity,token)){finish();break}}}
             SeismicWarningOverlay(incident,true,SeismicUserLocation.current(this)?.name,
                 onClose={SeismicCriticalTest.cancel(this);finish()},simulation=true)
         }}

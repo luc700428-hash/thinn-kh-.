@@ -26,7 +26,7 @@ internal object SeismicCriticalTest {
         if(SeismicAlertDelivery.active.value!=null){status(app,"目前有真實速報，已停止演練");return false}
         cancel(app)
         val now=System.currentTimeMillis();val token=UUID.randomUUID().toString()
-        if(!prefs(app).edit().putString("token",token).putLong("created",now).putBoolean("cloud",false)
+        if(!prefs(app).edit().putString("token",token).putLong("created",now)
                 .putString("status","已安排：5 秒後發送演練通知，可先鎖定螢幕").commit())return false
         val handler=Handler(Looper.getMainLooper())
         val task=Runnable{pending=null;publish(app,token)}
@@ -36,29 +36,13 @@ internal object SeismicCriticalTest {
     fun valid(ctx:Context,token:String?,now:Long=System.currentTimeMillis()):Boolean =
         token!=null&&token.matches(Regex("[0-9a-f-]{36}"))&&prefs(ctx).getString("token",null)==token&&
             now-prefs(ctx).getLong("created",0L) in 0..65_000L&&SeismicCriticalMode.enabled(ctx)&&SeismicAlertDelivery.active.value==null
-    fun validAny(ctx:Context,token:String?):Boolean=valid(ctx,token)||validCloud(ctx,token)
-    /** A cloud test ticket: same checks as a drill, minus the 緊急速報模式 requirement. */
-    fun validCloud(ctx:Context,token:String?,now:Long=System.currentTimeMillis()):Boolean =
-        token!=null&&token.matches(Regex("[0-9a-f-]{36}"))&&prefs(ctx).getString("token",null)==token&&prefs(ctx).getBoolean("cloud",false)&&
-            now-prefs(ctx).getLong("created",0L) in 0..65_000L&&SeismicAlertDelivery.active.value==null
     fun cancel(ctx:Context) {
         pending?.let{(handler,task)->handler.removeCallbacks(task)};pending=null
-        prefs(ctx).edit().remove("token").remove("created").remove("status").remove("cloud").apply()
+        prefs(ctx).edit().remove("token").remove("created").remove("status").apply()
         (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION)
     }
-    /**
-     * The cloud test arrived: raise the same alert window at once, worded as a cloud test. Runs
-     * even without 緊急速報模式, because it checks that this phone receives pushes at all.
-     */
-    fun publishCloud(ctx:Context) {
-        val app=ctx.applicationContext
-        if(SeismicAlertDelivery.active.value!=null)return
-        val token=UUID.randomUUID().toString()
-        if(!prefs(app).edit().putString("token",token).putLong("created",System.currentTimeMillis()).putBoolean("cloud",true).commit())return
-        publish(app,token,cloud=true)
-    }
-    private fun publish(ctx:Context,token:String,cloud:Boolean=false) {
-        if(!(if(cloud)validCloud(ctx,token) else valid(ctx,token))){status(ctx,"演練已取消或被真實速報中斷");return}
+    private fun publish(ctx:Context,token:String) {
+        if(!valid(ctx,token)){status(ctx,"演練已取消或被真實速報中斷");return}
         if(!io.atmos.weather.permission.PermissionGuide.canNotify(ctx)){status(ctx,"測試未送出：請先允許通知權限");return}
         SeismicAlertPolicy.ensureChannels(ctx)
         val nm=ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -72,14 +56,13 @@ internal object SeismicCriticalTest {
         }.toBundle() else null
         val action=PendingIntent.getActivity(ctx,NOTIFICATION,intent,PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,options)
         val note=NotificationCompat.Builder(ctx,channel).setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle(if(cloud)"雲端測試警報 · 並非真實地震" else "演練測試 · 並非真實地震")
-            .setContentText(if(cloud)"雲端主機送出的測試已送達這支手機。沒有目前地震事件。" else "本機通知測試：請確認聲音、鎖屏與畫面。沒有目前地震事件。")
+            .setContentTitle("演練測試 · 並非真實地震").setContentText("本機通知測試：請確認聲音、鎖屏與畫面。沒有目前地震事件。")
             .setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setContentIntent(action).setAutoCancel(true).setTimeoutAfter(60_000)
         if(SeismicAlertDelivery.mayUseFullScreen(ctx)&&importance>=NotificationManager.IMPORTANCE_HIGH)note.setFullScreenIntent(action,true)
         runCatching{nm.notify(NOTIFICATION,note.build())}
             .onSuccess{
-                val visible=SeismicForegroundWindow.open(intent){if(cloud)validCloud(ctx,token) else valid(ctx,token)}
+                val visible=SeismicForegroundWindow.open(intent){valid(ctx,token)}
                 status(ctx,if(visible)"演練已開始，並非真實地震" else "演練提醒已送出，請確認鎖定畫面與聲音")
             }
             .onFailure{status(ctx,"測試未送出：通知權限或系統狀態已改變")}

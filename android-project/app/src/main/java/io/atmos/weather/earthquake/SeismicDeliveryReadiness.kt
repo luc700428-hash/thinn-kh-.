@@ -102,7 +102,6 @@ import io.atmos.weather.ui.GlassTextButton
         val testStatus=remember(revision,meter){SeismicCriticalTest.status(ctx)}
         if(testStatus.isNotBlank())Text(testStatus,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=8.dp))
     }
-    SeismicCloudTestRow()
     Text("App 使用中會直接顯示速報；允許「跳出速報視窗」後，使用其他 App 時也會直接跳出。",color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth().padding(top=12.dp))
 }
 

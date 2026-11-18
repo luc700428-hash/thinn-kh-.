@@ -24,11 +24,6 @@ class ThinnFirebaseMessagingService: FirebaseMessagingService() {
         if(SeismicPushRegistration.optedIn(this)) SeismicPushRegistration.register(this, token)
     }
     override fun onMessageReceived(message:RemoteMessage) {
-        // A cloud test this phone asked for (one-time number checked); shown as a clearly marked drill.
-        if(message.data["kind"]=="EEW_TEST") {
-            if(SeismicCloudTest.accept(this,message.data))io.atmos.weather.earthquake.SeismicCriticalTest.publishCloud(this)
-            return
-        }
         if(!SeismicPushRegistration.optedIn(this)) return
         val d=message.data
         if(d["kind"] != "EEW") return // no accidental critical notifications from routine push

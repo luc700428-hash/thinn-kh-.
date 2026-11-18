@@ -4,7 +4,7 @@ import androidx.compose.runtime.LaunchedEffect
 
 import androidx.compose.runtime.rememberUpdatedState
 
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.positionInWindow
 
 import androidx.compose.ui.layout.onGloballyPositioned
 
@@ -175,9 +175,10 @@ data class SeismicOlderReports(val loading:Boolean,val failed:Boolean,val allLoa
     }
     Box(Modifier.fillMaxWidth().heightIn(min=48.dp).testTag("seismic-report-older")
         .onGloballyPositioned{c->
-            val top=c.boundsInWindow().top
-            // Start a screen early, so the next page is usually there before the finger is.
-            visible=c.isAttached&&top<view.height*1.6f
+            // The real (unclipped) position: inside a scrolling list a clipped box would report
+            // itself on screen while still far below. Start half a screen early.
+            val top=c.positionInWindow().y
+            visible=c.isAttached&&top<view.height*1.5f
         },contentAlignment=Alignment.Center) {
         when {
             older.loading->Row(verticalAlignment=Alignment.CenterVertically) {
