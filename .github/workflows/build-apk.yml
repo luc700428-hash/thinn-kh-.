@@ -78,7 +78,7 @@ jobs:
   rendering-regression:
     needs: tablet-seismic-regression
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Java 17
@@ -126,10 +126,13 @@ jobs:
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
           script: bash android-project/tools/run_rendering_regression.sh
-      # The SwiftShader emulator occasionally disappears mid-run ("device 'emulator-5554' not found").
-      # One fresh emulator retries the whole suite; a real UI regression fails both runs.
-      - name: Retry Android UI regression on a fresh emulator
+      # The SwiftShader emulator sometimes crashes mid-run ("device 'emulator-5554' not found"),
+      # at a different test each time. A fresh emulator reruns only the tests that never finished;
+      # an assertion failure, error or skip in any attempt still fails the job (see the verifier).
+      - name: Retry unfinished Android UI tests on a fresh emulator
+        id: ui_second
         if: steps.ui_first.outcome == 'failure'
+        continue-on-error: true
         timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
@@ -143,7 +146,23 @@ jobs:
           disk-size: 4096M
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
-          script: bash android-project/tools/run_rendering_regression.sh
+          script: THINN_UI_ATTEMPT=2 bash android-project/tools/run_rendering_regression.sh
+      - name: Last retry of unfinished Android UI tests
+        if: steps.ui_first.outcome == 'failure' && steps.ui_second.outcome == 'failure'
+        timeout-minutes: 12
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          emulator-boot-timeout: 120
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 2048M
+          disk-size: 4096M
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
+          script: THINN_UI_ATTEMPT=3 bash android-project/tools/run_rendering_regression.sh
       - name: Retain Android UI regression evidence
         if: always()
         uses: actions/upload-artifact@v4

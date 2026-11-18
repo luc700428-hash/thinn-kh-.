@@ -13,6 +13,29 @@ if [[ ! "$limit" =~ ^[0-9]+$ ]] || (( limit < 1 || limit > 480 )); then
   echo 'UI 測試時間上限必須為 1 至 480 秒。' >&2
   exit 2
 fi
+attempt="${THINN_UI_ATTEMPT:-1}"
+if [[ ! "$attempt" =~ ^[1-3]$ ]]; then
+  echo 'UI 測試嘗試次數必須為 1 至 3。' >&2
+  exit 2
+fi
+attempts="$evidence/attempts"
+results="$project/app/build/outputs/androidTest-results/connected"
+verifier="$project/tools/verify_rendering_results.py"
+if (( attempt == 1 )); then
+  rm -rf "$attempts"
+  selection='io.atmos.weather.ui.RenderingRegressionTest'
+else
+  # A fresh emulator only reruns what an earlier emulator never finished. Real assertion
+  # failures stop here: the verifier refuses to retry them.
+  mapfile -t earlier < <(find "$attempts" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+  selection="$(python3 "$verifier" --remaining "${earlier[@]}")"
+  if [[ -z "$selection" ]]; then
+    python3 "$verifier" "${earlier[@]}"
+    exit 0
+  fi
+  echo "第 $attempt 次嘗試：模擬器先前中斷，改在新模擬器重跑尚未完成的測試：$selection"
+fi
+mkdir -p "$attempts"
 collect_evidence() {
   local status=$?
   trap - EXIT
@@ -40,13 +63,17 @@ timeout --signal=TERM --kill-after=20s "${limit}s" \
   '-Dorg.gradle.jvmargs=-Xmx2300m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8' \
   -Pkotlin.compiler.execution.strategy=in-process \
   :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=io.atmos.weather.ui.RenderingRegressionTest \
+  "-Pandroid.testInstrumentationRunnerArguments.class=$selection" \
   -Pandroid.testInstrumentationRunnerArguments.timeout_msec=120000 \
   2>&1 | tee "$evidence/connected-tests.log"
 result=${PIPESTATUS[0]}
 set -e
+rm -rf "$attempts/$attempt"
+mkdir -p "$attempts/$attempt"
+if [[ -d "$results" ]]; then cp -R "$results/." "$attempts/$attempt/"; fi
 if (( result != 0 )); then
   echo "UI 測試失敗或逾時（狀態 $result）；停止候選 APK 建置。" >&2
   exit "$result"
 fi
-python3 "$project/tools/verify_rendering_results.py" "$project/app/build/outputs/androidTest-results/connected"
+mapfile -t completed < <(find "$attempts" -mindepth 1 -maxdepth 1 -type d | sort)
+python3 "$verifier" "${completed[@]}"

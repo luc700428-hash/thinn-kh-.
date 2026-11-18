@@ -30,7 +30,9 @@ fun Modifier.iosJellyPress():Modifier=composed{
  * (40 ms apart, capped) so lists settle like a waterfall. Runs once per composition; Reduce Motion
  * shows content immediately.
  */
-fun Modifier.iosAppear(index:Int=0):Modifier=composed{
+fun Modifier.iosAppear(index:Int=0):Modifier=if(LiquidGlassKit.softwareRenderedDevice)this else composed{
+    // Emulators draw through SwiftShader: twenty tiles fading at once (each faded layer is its own
+    // offscreen buffer per frame) can crash the emulator's host renderer, so they appear at once.
     val reduce=rememberAppleReduceMotion()
     val progress=remember{androidx.compose.animation.core.Animatable(if(reduce)1f else 0f)}
     LaunchedEffect(reduce){

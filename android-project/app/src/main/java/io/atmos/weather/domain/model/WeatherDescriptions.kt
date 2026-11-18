@@ -33,5 +33,15 @@ object WeatherDescriptions {
             WeatherCondition.THUNDERSTORM->"雷雨";else->"天氣資料更新中"
         }
     }
-    fun current(w:WeatherSnapshot)=if(w.condition in setOf(WeatherCondition.DUST_STORM,WeatherCondition.DUST,WeatherCondition.HAZE))label(w.condition,w.weatherCode,w.visibilityM,w.isDay) else w.observationDescription ?: label(w.condition,w.weatherCode,w.visibilityM,w.isDay)
+    fun current(w:WeatherSnapshot)=if(w.condition in setOf(WeatherCondition.DUST_STORM,WeatherCondition.DUST,WeatherCondition.HAZE))label(w.condition,w.weatherCode,w.visibilityM,w.isDay) else w.observationDescription?.let(::plain)?.takeIf{it.isNotBlank()} ?: label(w.condition,w.weatherCode,w.visibilityM,w.isDay)
+
+    /**
+     * CWA station reports use observer terms such as 「晴有靄」. 靄 (light mist) is a word most
+     * people cannot read, so it becomes 薄霧, and the sky and the extra phenomenon are split by a
+     * comma: 晴有靄 → 晴，有薄霧.
+     */
+    fun plain(text:String):String {
+        val t=text.trim().replace("靄","薄霧")
+        return Regex("^(晴|多雲|陰)(有|偶|短暫)").replace(t){"${it.groupValues[1]}，${it.groupValues[2]}"}
+    }
 }

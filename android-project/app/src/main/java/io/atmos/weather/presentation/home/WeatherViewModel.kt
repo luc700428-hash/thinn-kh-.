@@ -67,7 +67,9 @@ data class WeatherUiState(
 )
 class WeatherViewModel(
     private val repository: WeatherDataRepository,
-    private val context: Context
+    private val context: Context,
+    /** Off only for UI tests, so a real warning issued that day cannot change the fixture scene. */
+    private val liveWarnings: Boolean = true
 ) : ViewModel() {
     private val prefs = context.getSharedPreferences("atmos_settings", Context.MODE_PRIVATE)
     private val startCity = run {
@@ -175,6 +177,11 @@ class WeatherViewModel(
     private fun loadWarnings() {
         warningJob?.cancel()
         val city = mutableState.value.city
+        if (!liveWarnings) {
+            mutableState.update { it.copy(cwaWarnings = emptyList(), officialHazards = emptyList(),
+                officialHazardsStatus = "測試資料", cwaCheckStatus = "測試資料") }
+            return
+        }
         if (!io.atmos.weather.location.LocationLabels.probablyTaiwan(city.coordinate) &&
             !city.name.startsWith("台灣") && !city.name.startsWith("臺灣")) {
             mutableState.update { it.copy(cwaWarnings = emptyList(), officialHazards=emptyList(),
@@ -221,11 +228,12 @@ class WeatherViewModel(
             }
         }
     }
-    class Factory(private val repository: WeatherDataRepository, private val context: Context) : ViewModelProvider.Factory {
+    class Factory(private val repository: WeatherDataRepository, private val context: Context,
+                  private val liveWarnings: Boolean = true) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T: ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(WeatherViewModel::class.java))
-            return WeatherViewModel(repository, context.applicationContext) as T
+            return WeatherViewModel(repository, context.applicationContext, liveWarnings) as T
         }
     }
 }

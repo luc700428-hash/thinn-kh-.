@@ -392,7 +392,7 @@ class RenderingRegressionTest {
         checkpoint("weather: set content")
         compose.setContent {
             val ctx=LocalContext.current
-            val vm:WeatherViewModel=viewModel(factory=WeatherViewModel.Factory(repository,ctx))
+            val vm:WeatherViewModel=viewModel(factory=WeatherViewModel.Factory(repository,ctx,liveWarnings=false))
             ThinnAppTheme {WeatherHomeScreen(vm,onLocate={})}
         }
         checkpoint("weather: await fixture")
