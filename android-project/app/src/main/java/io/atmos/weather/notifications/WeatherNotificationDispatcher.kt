@@ -29,7 +29,9 @@ object WeatherNotificationDispatcher {
         runCatching { NotificationHistory.record(context, title, detail, kind) }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         // Vendor failure must never prevent a real weather alert from reaching Android.
-        val vendorAttached = runCatching {
+        // HyperOS draws its own focus template over a decorated notification, hiding the picture
+        // card; only the earthquake countdown and ringing alarms keep the Xiaomi island.
+        val vendorAttached = RichNotification.keepsSystemLook(kind) && runCatching {
             XiaomiFocusBridge.decorate(context, notification, title, detail, kind, id)
         }.getOrDefault(false)
         return try {

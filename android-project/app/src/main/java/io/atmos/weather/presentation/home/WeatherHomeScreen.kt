@@ -512,6 +512,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         if (demoCondition == WeatherCondition.THUNDERSTORM) 95 else if (demoCondition == WeatherCondition.RAIN) 61 else snapshot?.weatherCode,
         snapshot?.visibilityM, thunderCue + demoThunderCue,isNight=snapshot?.isDay==false,retryToken=soundRetryToken)
     var nativeRadarOpen by remember {mutableStateOf(false)}
+    var reportOpen by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf<Pair<String,String>?>(null) }
     var showLifestyleDetails by remember { mutableStateOf(false) }
     val reducedMotion = io.atmos.weather.ui.rememberAppleReduceMotion()
@@ -781,7 +782,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Icon(Icons.Rounded.KeyboardArrowDown,null,tint=weatherSky.ink,modifier=Modifier.size(18.dp))
                 }
                 Spacer(Modifier.height(6.dp))
-                var reportOpen by remember { mutableStateOf(false) }
                 if (snapshot != null) {
                     io.atmos.weather.next.V25HomeHero(
                         temperature=snapshot.temperatureC.roundToInt(),
@@ -792,8 +792,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         feelsLike=snapshot.feelsLikeC?.roundToInt(),
                         isNight=!snapshot.isDay,
                         rainProbability=snapshot.nextHourRainProbabilityPct,
-                        modifier=Modifier.skyGlow(!snapshot.isDay,reduceCityMotion||!weatherSceneActive),
-                        reported=state.report!=null,onReport={reportOpen=true}
+                        modifier=Modifier.skyGlow(!snapshot.isDay,reduceCityMotion||!weatherSceneActive)
                     )
                     if(reportOpen) io.atmos.weather.report.WeatherReportSheet(snapshot,state.report,
                         onReport={viewModel.reportWeather(it)},onWithdraw={viewModel.withdrawReport()},onDismiss={reportOpen=false})
@@ -1016,12 +1015,18 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     }
                     // iOS-style "Edit" pill at the end of the cards.
                     var editingHome by remember { mutableStateOf(false) }
-                    Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
-                        // The pill sits on the sky, not on a card, so it takes the sky's ink.
-                        Text("編輯首頁",color=weatherSky.ink,fontSize=15.sp,fontWeight=FontWeight.SemiBold,
-                            modifier=Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp)).background(weatherSky.ink.copy(alpha=.12f))
+                    // Two matching pills on the sky: report the weather here, and edit the page.
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp,Alignment.CenterHorizontally)) {
+                        @Composable fun pill(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onTap:()->Unit) =
+                            Row(Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp)).background(weatherSky.ink.copy(alpha=.12f))
                                 .border(.7.dp,weatherSky.ink.copy(alpha=.28f),RoundedCornerShape(999.dp))
-                                .clickable{editingHome=true}.padding(horizontal=18.dp,vertical=9.dp))
+                                .clickable(onClick=onTap).padding(horizontal=16.dp,vertical=9.dp),verticalAlignment=Alignment.CenterVertically) {
+                                Icon(icon,null,tint=weatherSky.ink,modifier=Modifier.size(16.dp));Spacer(Modifier.width(6.dp))
+                                Text(label,color=weatherSky.ink,fontSize=15.sp,fontWeight=FontWeight.SemiBold)
+                            }
+                        if(snapshot!=null)pill(if(state.report!=null)"已回報 · 修改" else "回報天氣",
+                            if(state.report!=null)Icons.Rounded.CheckCircle else Icons.Rounded.Campaign){reportOpen=true}
+                        pill("編輯首頁",Icons.Rounded.Tune){editingHome=true}
                     }
                     if(editingHome) HomeCardEditor{editingHome=false}
                 }

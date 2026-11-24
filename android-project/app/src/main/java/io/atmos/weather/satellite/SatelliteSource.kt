@@ -183,6 +183,18 @@ internal object SatelliteSource {
         } finally { c.disconnect() }
     }
 
+    private val forecastLock = Mutex()
+    private var forecast: Pair<Long, List<Pair<Instant, ForecastStep>>>? = null
+
+    /** The 11-day model forecast, refreshed at most hourly. */
+    suspend fun forecast(force: Boolean = false): List<Pair<Instant, ForecastStep>> = forecastLock.withLock {
+        val now = System.currentTimeMillis()
+        forecast?.takeIf { !force && now - it.first < 60 * 60_000L }?.let { return@withLock it.second }
+        try {
+            WeatherField.parseForecast(String(request(WeatherField.forecastUrl(), 12_000_000), Charsets.UTF_8)).also { forecast = now to it }
+        } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { forecast?.second.orEmpty() }
+    }
+
     private val fieldLock = Mutex()
     private var field: Pair<Long, WeatherGrid>? = null
 

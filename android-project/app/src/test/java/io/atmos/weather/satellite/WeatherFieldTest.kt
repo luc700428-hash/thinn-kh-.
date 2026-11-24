@@ -63,6 +63,27 @@ class WeatherFieldTest {
         assertTrue(fine.all{row->row.all{it>=993.99f}})
     }
 
+    @Test fun elevenDayForecastParsesEveryStepAndSamplesSmoothly() {
+        val steps=6
+        val sb=StringBuilder("[")
+        for(r in 0 until rows)for(c in 0 until cols){
+            if(sb.length>1)sb.append(',')
+            val times=(0 until steps).joinToString(","){"\"2026-11-25T${"%02d".format(it*6%24)}:00\""}
+            fun series(f:(Int)->Double)=(0 until steps).joinToString(","){f(it).toString()}
+            sb.append("""{"hourly":{"time":[$times],"pressure_msl":[${series{1010.0+it}}],"temperature_2m":[${series{20.0}}],"wind_speed_10m":[${series{10.0}}],"wind_direction_10m":[${series{90.0}}],"cloud_cover":[${series{(r*5).toDouble()}}],"precipitation":[${series{if(c>3)2.0 else 0.0}}]}}""")
+        }
+        sb.append(']')
+        val f=WeatherField.parseForecast(sb.toString())
+        assertEquals(steps,f.size)
+        assertEquals(1013f,f[3].second.grid.pressure[2][2],.01f)
+        assertEquals(20f,f[0].second.cloud[4][0],.01f)
+        assertTrue(WeatherField.forecastUrl().contains("forecast_days=11"))
+        // Bilinear sampling between grid points, NaN outside the grid.
+        val g=f[0].second.cloud
+        assertEquals(12.5f,WeatherField.sample(g,WeatherField.SOUTH+5.0,WeatherField.WEST+1.0),.01f)
+        assertTrue(WeatherField.sample(g,0.0,0.0).isNaN())
+    }
+
     @Test fun windBarbsRoundToFiveKnots() {
         assertTrue(WeatherField.barb(1f).calm)
         assertEquals(WeatherField.Barb(0,0,1,false),WeatherField.barb(5f))

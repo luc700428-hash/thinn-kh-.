@@ -20,15 +20,15 @@
       "category": "ambience",
       "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
       "sources": [
-        "birds_alishan"
+        "birds_forest"
       ],
-      "sha256": "9664b4d837d6a7945d21ba56ef7e0e49faf970b13777a7e8dbd2a8fb1011c9af",
+      "sha256": "e4b58f6efc9da51e354b5ee0d2acf6acff71cafcf96ccf9db3422744411b8d90",
       "sample_rate": 44100,
       "channels": 1,
       "frames": 1058400,
       "seconds": 24,
-      "rms_dbfs": -29.048,
-      "peak_dbfs": -11.853,
+      "rms_dbfs": -29.001,
+      "peak_dbfs": -12.014,
       "loop_jump_pcm": 0
     },
     {

@@ -280,10 +280,19 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
  */
 internal fun eventBadge(context:Context,d:OpticalWidgetData,r:WidgetRegion,motion:Boolean):RemoteViews {
     val dip=TypedValue.COMPLEX_UNIT_DIP
+    val titles=d.events.map{it.title}.distinct()
+    // One warning stays still; only several take turns.
+    if(titles.size<=1||!motion) {
+        val text=titles.first()+if(titles.size>1)"（另有 ${titles.size-1} 則）" else ""
+        return RemoteViews(context.packageName,R.layout.widget_event_single).apply{
+            setTextViewText(R.id.widget_event_badge,text)
+            setTextViewTextSize(R.id.widget_event_badge,dip,(r.font*.92f).coerceAtLeast(7f))
+            setContentDescription(R.id.widget_event_badge,"警報：$text")
+        }
+    }
     val frame=RemoteViews(context.packageName,R.layout.widget_event_flipper)
     frame.removeAllViews(R.id.widget_event_flipper)
-    val titles=d.events.map{it.title}.distinct()
-    val shown=if(motion)titles.take(6) else listOf(titles.first()+if(titles.size>1)"（另有 ${titles.size-1} 則）" else "")
+    val shown=titles.take(6)
     shown.forEach{title->
         frame.addView(R.id.widget_event_flipper,RemoteViews(context.packageName,R.layout.widget_event_badge).apply{
             setTextViewText(R.id.widget_event_badge,title)

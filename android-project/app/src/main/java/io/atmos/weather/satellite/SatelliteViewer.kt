@@ -53,6 +53,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
@@ -64,11 +65,12 @@ import kotlin.math.*
 /** Professional overlays, each switchable; stored as a bit set so the choice is remembered. */
 internal enum class SatelliteLayer(val label: String, val bit: Int) {
     ISOBARS("等壓線", 1), CENTERS("高低壓", 2), WIND("風標", 4), ISOTHERMS("等溫線", 8),
+    FLOW("風場動畫", 256), CLOUD("雲量預報", 64), RAIN("降水預報", 128),
     GRID("經緯網", 16), COAST("海岸線", 32);
-    companion object { const val DEFAULT = 1 or 2 or 16 or 32 }
+    companion object { const val DEFAULT = 1 or 2 or 16 or 32 or 64 or 128 }
 }
 
-/** Everything drawn from the model field, prepared off the main thread. */
+/** Everything drawn from one model field, prepared off the main thread. */
 internal class FieldOverlay(
     val grid: WeatherGrid,
     val isobars: List<ContourSet>,
@@ -90,10 +92,63 @@ internal class FieldOverlay(
     }
 }
 
+/** Forecast clouds and rain as smooth images over the grid (built once per forecast step). */
+internal class ForecastPictures(val cloud: ImageBitmap, val rain: ImageBitmap) {
+    companion object {
+        private const val F = 8
+        fun build(step: ForecastStep): ForecastPictures {
+            val rows = WeatherField.lats.size; val cols = WeatherField.lons.size
+            val w = (cols - 1) * F + 1; val h = (rows - 1) * F + 1
+            val c = WeatherField.refine(step.cloud, F); val r = WeatherField.refine(step.rain, F)
+            val cp = IntArray(w * h); val rp = IntArray(w * h)
+            for (y in 0 until h) for (x in 0 until w) {
+                val gy = ((rows - 1) * F - y)
+                val cc = c[gy][x]; val rr = r[gy][x]
+                if (cc.isFinite() && cc > 5f) {
+                    val a = ((cc - 5f) / 95f).coerceIn(0f, 1f)
+                    cp[y * w + x] = (((a * a * .62f + a * .2f) * 255).toInt().coerceIn(0, 230) shl 24) or 0xF2F5FA
+                }
+                if (rr.isFinite() && rr >= .3f) rp[y * w + x] = rainColour(rr)
+            }
+            fun image(px: IntArray) = android.graphics.Bitmap.createBitmap(px, w, h, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+            return ForecastPictures(image(cp), image(rp))
+        }
+        /** Radar-like scale for rain per 6 hours. */
+        fun rainColour(mm: Float): Int {
+            val stops = listOf(.3f to 0x6A9AD8FF.toInt(), 2f to 0x9A3DA2FF.toInt(), 8f to 0xB43DC36A.toInt(),
+                20f to 0xC8F2D23B.toInt(), 50f to 0xD8F08A2B.toInt(), 100f to 0xE6E23B3B.toInt(), 200f to 0xEEB03BD8.toInt())
+            val i = stops.indexOfLast { mm >= it.first }.coerceAtLeast(0)
+            return stops[i].second
+        }
+    }
+}
+
 private const val COS = 0.9135 // cos 24°, one fixed scale for the whole East Asia view
 
 private fun viewport(lon: Double, lat: Double, pxPerKm: Double, size: IntSize) =
     TyphoonViewport(lon * 111.2 * COS, lat * 111.2, pxPerKm, size.width.toDouble(), size.height.toDouble(), COS)
+
+/** A wind particle field: streaks that drift with the model wind, fading and reborn. */
+private class WindFlow(n: Int) {
+    val lon = FloatArray(n); val lat = FloatArray(n); val pLon = FloatArray(n); val pLat = FloatArray(n); val age = IntArray(n)
+    private val r = java.util.Random(7)
+    fun seed(i: Int, w: Double, s: Double, e: Double, nn: Double) {
+        lon[i] = (w + r.nextDouble() * (e - w)).toFloat(); lat[i] = (s + r.nextDouble() * (nn - s)).toFloat()
+        pLon[i] = lon[i]; pLat[i] = lat[i]; age[i] = r.nextInt(80)
+    }
+    fun step(grid: WeatherGrid, w: Double, s: Double, e: Double, n: Double, dt: Float) {
+        for (i in lon.indices) {
+            val kt = WeatherField.sample(grid.windKnots, lat[i].toDouble(), lon[i].toDouble())
+            val from = WeatherField.sample(grid.windFrom, lat[i].toDouble(), lon[i].toDouble())
+            age[i]++
+            if (!kt.isFinite() || !from.isFinite() || age[i] > 110 || lon[i] < w || lon[i] > e || lat[i] < s || lat[i] > n) { seed(i, w, s, e, n); continue }
+            pLon[i] = lon[i]; pLat[i] = lat[i]
+            val a = Math.toRadians(from.toDouble())
+            val k = .0011f * dt * 60f
+            lon[i] -= (sin(a) * kt * k).toFloat(); lat[i] -= (cos(a) * kt * k).toFloat()
+        }
+    }
+}
 
 @Composable
 fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, modeSwitch: @Composable () -> Unit = {}) {
@@ -102,7 +157,7 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
     val palette = MaterialTheme.colorScheme
     AppSystemBars(true)
     val prefs = remember(context) { context.getSharedPreferences("thinn_settings", android.content.Context.MODE_PRIVATE) }
-    var layers by remember { mutableIntStateOf(prefs.getInt("satellite_layers", SatelliteLayer.DEFAULT)) }
+    var layers by remember { mutableIntStateOf(prefs.getInt("satellite_layers_v2", SatelliteLayer.DEFAULT)) }
     var channel by remember { mutableStateOf(SatelliteSource.Channel.entries.getOrElse(prefs.getInt("satellite_channel", 0)) { SatelliteSource.Channel.INFRARED }) }
     var size by remember { mutableStateOf(IntSize.Zero) }
     var centerLon by remember { mutableDoubleStateOf(121.0) }
@@ -112,10 +167,12 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
         if (pxPerKm == 0.0 && size.width > 0) pxPerKm = size.width / (28.0 * 111.2 * COS)
     }
     var frames by remember { mutableStateOf<List<Instant>>(emptyList()) }
+    var forecast by remember { mutableStateOf<List<Pair<Instant, ForecastStep>>>(emptyList()) }
     var index by remember { mutableIntStateOf(0) }
     var playing by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
     var status by remember { mutableStateOf("正在取得衛星時間軸…") }
+    var revision by remember { mutableIntStateOf(0) }
     val reduce = rememberAppleReduceMotion()
     val lifecycle = LocalLifecycleOwner.current
     LaunchedEffect(channel, refresh) {
@@ -127,51 +184,93 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
     LaunchedEffect(lifecycle) {
         lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { while (isActive) { delay(600_000); refresh++ } }
     }
+    // The analysis now, and the 11-day forecast after the last picture.
     var overlay by remember { mutableStateOf<FieldOverlay?>(null) }
     var fieldStatus by remember { mutableStateOf("") }
     LaunchedEffect(refresh) {
-        fieldStatus = "正在取得數值模式氣壓場…"
+        fieldStatus = "正在取得數值模式氣壓場與 11 天預報…"
         val grid = SatelliteSource.field(refresh > 0)
         overlay = grid?.let { withContext(Dispatchers.Default) { runCatching { FieldOverlay.build(it) }.getOrNull() } } ?: overlay
-        fieldStatus = if (overlay == null) "氣壓場暫時無法取得，衛星影像仍可查看" else ""
-    }
-    val view = if (size.width > 0 && pxPerKm > 0) viewport(centerLon, centerLat, pxPerKm, size) else null
-    val tiles = remember(view?.let { listOf(it.originXKm.roundToInt(), it.originYKm.roundToInt(), (it.pxPerKm * 100).roundToInt()) }, channel, size) {
-        view?.let { v ->
-            val b = v.rasterBounds()
-            SatelliteSource.tilesFor(b.west, b.south, b.east, b.north, 111.2 * v.pxPerKm * COS, channel.maxZoom)
-        }.orEmpty()
-    }
-    // What is on screen: the chosen frame's tiles, or the last complete picture while it loads.
-    var shown by remember { mutableStateOf<Map<SatelliteSource.Tile, ImageBitmap>>(emptyMap()) }
-    var shownTime by remember { mutableStateOf<Instant?>(null) }
-    var loading by remember { mutableStateOf(false) }
-    val time = frames.getOrNull(index)
-    LaunchedEffect(time, tiles, channel) {
-        val t = time ?: return@LaunchedEffect
-        if (tiles.isEmpty()) return@LaunchedEffect
-        loading = true
-        try {
-            val images = supervisorScope {
-                tiles.map { tile -> async { tile to SatelliteSource.tile(context, channel, t, tile)?.asImageBitmap() } }.awaitAll()
-            }.mapNotNull { (tile, image) -> image?.let { tile to it } }.toMap()
-            if (images.isNotEmpty()) { shown = images; shownTime = t }
-        } finally { loading = false }
-        // Quietly fetch the next frames so playback does not wait.
-        if (playing) frames.getOrNull(index + 1)?.let { next ->
-            supervisorScope { tiles.forEach { tile -> launch { SatelliteSource.tile(context, channel, next, tile) } } }
+        forecast = SatelliteSource.forecast(refresh > 0)
+        fieldStatus = when {
+            overlay == null && forecast.isEmpty() -> "數值模式資料暫時無法取得，衛星影像仍可查看"
+            forecast.isEmpty() -> "11 天預報暫時無法取得"
+            else -> ""
         }
     }
-    LaunchedEffect(playing, frames, reduce) {
-        if (!playing || reduce || frames.size < 2) return@LaunchedEffect
+    val lastObserved = frames.lastOrNull()
+    val ahead = remember(forecast, lastObserved) { forecast.filter { lastObserved == null || it.first.isAfter(lastObserved) } }
+    val total = frames.size + ahead.size
+    val forecastIndex = index - frames.size
+    val step = ahead.getOrNull(forecastIndex)
+    // Forecast pictures and overlays are built once per step, off the main thread, and kept.
+    val pictures = remember(ahead) { mutableStateMapOf<Int, ForecastPictures>() }
+    val stepOverlays = remember(ahead) { mutableStateMapOf<Int, FieldOverlay>() }
+    LaunchedEffect(forecastIndex, ahead) {
+        val s = step ?: return@LaunchedEffect
+        if (forecastIndex !in pictures) withContext(Dispatchers.Default) { runCatching { ForecastPictures.build(s.second) }.getOrNull() }?.let { pictures[forecastIndex] = it }
+        if (forecastIndex !in stepOverlays) withContext(Dispatchers.Default) { runCatching { FieldOverlay.build(s.second.grid) }.getOrNull() }?.let { stepOverlays[forecastIndex] = it }
+    }
+    val view = if (size.width > 0 && pxPerKm > 0) viewport(centerLon, centerLat, pxPerKm, size) else null
+    // Tiles for a margin around the view: panning within it needs nothing new, so dragging stays smooth.
+    val zoomStep = remember(pxPerKm) { if (pxPerKm > 0) kotlin.math.round(ln(pxPerKm) / ln(1.5)) else 0.0 }
+    val tiles = remember(view?.let { (it.originXKm / 400).roundToInt() to (it.originYKm / 400).roundToInt() }, zoomStep, channel, size) {
+        view?.let { v ->
+            val b = v.rasterBounds(); val dx = (b.east - b.west) * .35; val dy = (b.north - b.south) * .35
+            SatelliteSource.tilesFor(b.west - dx, b.south - dy, b.east + dx, b.north + dy, 111.2 * v.pxPerKm * COS, channel.maxZoom, budget = 48)
+        }.orEmpty()
+    }
+    // Preload every picture of the last two hours for these tiles, newest first.
+    var loaded by remember { mutableIntStateOf(0) }
+    val needed = frames.size * tiles.size
+    LaunchedEffect(frames, tiles, channel) {
+        loaded = 0
+        if (frames.isEmpty() || tiles.isEmpty()) return@LaunchedEffect
+        for (t in frames.asReversed()) {
+            supervisorScope {
+                tiles.map { tile -> launch {
+                    if (SatelliteSource.cached(channel, t, tile) == null) SatelliteSource.tile(context, channel, t, tile)
+                    loaded++; revision++
+                } }.joinAll()
+            }
+        }
+    }
+    val allLoaded = needed > 0 && loaded >= needed
+    LaunchedEffect(playing, total, reduce, allLoaded) {
+        if (!playing || reduce || total < 2) return@LaunchedEffect
         while (isActive) {
-            delay(if (index >= frames.lastIndex) 1200 else 650)
-            if (!loading) index = if (index >= frames.lastIndex) 0 else index + 1
+            delay(if (index >= total - 1) 1400 else if (index >= frames.size) 450 else 600)
+            index = if (index >= total - 1) 0 else index + 1
+        }
+    }
+    // Wind particles run only while the layer is on and the page is visible.
+    val flow = remember { WindFlow(650) }
+    var flowTick by remember { mutableIntStateOf(0) }
+    val flowOn = layers and SatelliteLayer.FLOW.bit != 0 && !reduce
+    LaunchedEffect(flowOn, lifecycle) {
+        if (!flowOn) return@LaunchedEffect
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var last = 0L
+            while (isActive) withFrameNanos { now ->
+                val dt = if (last == 0L) 1f / 60 else ((now - last) / 1e9f).coerceIn(0f, .05f); last = now
+                val v = view; val g = (if (forecastIndex >= 0) stepOverlays[forecastIndex] else overlay)?.grid
+                if (v != null && g != null) { val b = v.rasterBounds(); flow.step(g, b.west, b.south, b.east, b.north, dt) }
+                flowTick++
+            }
         }
     }
     val atlas = rememberRegionalVectorAtlas()
-    val density = LocalDensity.current.density
     val textPaint = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD) } }
+    val taipei = remember { ZoneId.of("Asia/Taipei") }
+    val timeLabel = when {
+        index < frames.size -> frames.getOrNull(index)?.let { "觀測 " + DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(taipei).format(it) }
+        step != null -> {
+            val days = java.time.Duration.between(lastObserved ?: Instant.now(), step.first).toHours() / 24.0
+            "預報 " + DateTimeFormatter.ofPattern("MM/dd(E) HH:00", java.util.Locale.TAIWAN).withZone(taipei).format(step.first) +
+                " · " + if (days < 1) "${java.time.Duration.between(Instant.now(), step.first).toHours().coerceAtLeast(0)} 小時後" else "%.1f 天後".format(days)
+        }
+        else -> null
+    }
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         IOSSettingsHeader("衛星雲圖", onClose)
         modeSwitch()
@@ -182,23 +281,36 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
                         if (size.width <= 0 || pxPerKm <= 0) return@detectTransformGestures
                         val min = size.width / (70.0 * 111.2 * COS); val max = 5.0
                         val next = (pxPerKm * zoom).coerceIn(min, max)
-                        // Keep the point under the fingers still while zooming, then pan.
                         val dx = centroid.x - size.width / 2.0; val dy = centroid.y - size.height / 2.0
                         val lonAt = centerLon + dx / (pxPerKm * 111.2 * COS); val latAt = centerLat - dy / (pxPerKm * 111.2)
-                        centerLon = lonAt - dx / (next * 111.2 * COS) - pan.x / (next * 111.2 * COS)
-                        centerLat = (latAt + dy / (next * 111.2) + pan.y / (next * 111.2))
-                        centerLon = centerLon.coerceIn(80.0, 170.0); centerLat = centerLat.coerceIn(-10.0, 55.0)
+                        centerLon = (lonAt - dx / (next * 111.2 * COS) - pan.x / (next * 111.2 * COS)).coerceIn(80.0, 170.0)
+                        centerLat = (latAt + dy / (next * 111.2) + pan.y / (next * 111.2)).coerceIn(-10.0, 55.0)
                         pxPerKm = next
                     }
                 }) {
+                    @Suppress("UNUSED_EXPRESSION") revision; @Suppress("UNUSED_EXPRESSION") flowTick
                     val v = view ?: return@Canvas
-                    drawSatellite(v, shown)
-                    val o = overlay
+                    val o: FieldOverlay?
+                    if (index < frames.size) {
+                        drawSatellite(v, channel, frames, index, tiles)
+                        o = overlay
+                    } else {
+                        // Forecast: a dark map with the model's clouds and rain.
+                        atlas?.draw(this, v, true)
+                        pictures[forecastIndex]?.let { pic ->
+                            val (x0, y0) = v.project(WeatherField.WEST, WeatherField.NORTH); val (x1, y1) = v.project(WeatherField.EAST, WeatherField.SOUTH)
+                            val dst = IntOffset(x0.roundToInt(), y0.roundToInt()); val dsz = IntSize((x1 - x0).roundToInt(), (y1 - y0).roundToInt())
+                            if (layers and SatelliteLayer.CLOUD.bit != 0) drawImage(pic.cloud, dstOffset = dst, dstSize = dsz, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
+                            if (layers and SatelliteLayer.RAIN.bit != 0) drawImage(pic.rain, dstOffset = dst, dstSize = dsz, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
+                        }
+                        o = stepOverlays[forecastIndex]
+                    }
                     if (layers and SatelliteLayer.GRID.bit != 0) drawGraticule(v, textPaint)
                     if (layers and SatelliteLayer.COAST.bit != 0) atlas?.draw(this, v, true, outline = 0xE6F2D27A.toInt(), outlineDp = 1.1f)
                     if (o != null) {
                         if (layers and SatelliteLayer.ISOTHERMS.bit != 0) drawContours(v, o.isotherms, textPaint, isotherm = true)
                         if (layers and SatelliteLayer.ISOBARS.bit != 0) drawContours(v, o.isobars, textPaint, isotherm = false)
+                        if (flowOn) drawFlow(v, flow)
                         if (layers and SatelliteLayer.WIND.bit != 0) drawBarbs(v, o.grid)
                         if (layers and SatelliteLayer.CENTERS.bit != 0) drawCenters(v, o.centers, textPaint)
                     }
@@ -213,66 +325,127 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
                     Spacer(Modifier.height(7.dp))
                     GlassIconButton(onClick = { centerLon = 121.0; centerLat = 24.0; if (size.width > 0) pxPerKm = size.width / (28.0 * 111.2 * COS) }) { Icon(Icons.Rounded.MyLocation, "回到台灣") }
                 }
-                val label = shownTime?.let { DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei")).format(it) }
-                Text(listOfNotNull(label?.let { "觀測 $it" }, if (loading) "載入中…" else null).joinToString(" · ").ifEmpty { status },
-                    color = Color.White, fontSize = 14.sp,
-                    modifier = Modifier.align(Alignment.TopStart).padding(10.dp).background(Color(0xB3000000), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp))
+                Column(Modifier.align(Alignment.TopStart).padding(10.dp)) {
+                    Text(timeLabel ?: status, color = Color.White, fontSize = 14.sp,
+                        modifier = Modifier.background(Color(0xB3000000), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp))
+                    if (needed > 0 && !allLoaded) {
+                        Spacer(Modifier.height(5.dp))
+                        Text("預載雲圖 ${(loaded * 100 / needed).coerceIn(0, 100)}%", color = Color.White, fontSize = 14.sp,
+                            modifier = Modifier.background(Color(0x99000000), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 3.dp))
+                    }
+                }
+                if (layers and SatelliteLayer.RAIN.bit != 0 && index >= frames.size) RainLegend(Modifier.align(Alignment.BottomStart).padding(10.dp))
             }
         }, controls = {
             GlassChoiceGroup(SatelliteSource.Channel.entries.map { it.label }, channel.ordinal, { i ->
                 channel = SatelliteSource.Channel.entries[i]; prefs.edit().putInt("satellite_channel", i).apply()
             }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp))
-            Text(status, color = palette.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 18.dp))
+            Text(if (index >= frames.size) "數值模式預報（未來 11 天，每 6 小時）：雲量、降水、氣壓與風" else status,
+                color = palette.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 18.dp))
+            Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                GlassIconButton({ playing = false; index = (index - 1).coerceAtLeast(0) }, enabled = total > 1) { Icon(Icons.Rounded.SkipPrevious, "前一張") }
+                GlassIconButton({ playing = !playing }, enabled = total > 1 && !reduce) {
+                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "暫停動畫" else "播放動畫")
+                }
+                GlassSlider(index.toFloat(), { playing = false; index = it.roundToInt().coerceIn(0, (total - 1).coerceAtLeast(0)) },
+                    Modifier.weight(1f), valueRange = 0f..(total - 1).coerceAtLeast(1).toFloat(), steps = 0, enabled = total > 1)
+                GlassIconButton({ playing = false; index = (index + 1).coerceAtMost((total - 1).coerceAtLeast(0)) }, enabled = total > 1) { Icon(Icons.Rounded.SkipNext, "後一張") }
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassToggleChoice("現在", index == frames.lastIndex, { playing = false; index = frames.lastIndex.coerceAtLeast(0) }, Modifier.weight(1f))
+                GlassToggleChoice("明天", false, { playing = false; jumpTo(ahead, 1)?.let { index = frames.size + it } }, Modifier.weight(1f))
+                GlassToggleChoice("3 天後", false, { playing = false; jumpTo(ahead, 3)?.let { index = frames.size + it } }, Modifier.weight(1f))
+                GlassToggleChoice("7 天後", false, { playing = false; jumpTo(ahead, 7)?.let { index = frames.size + it } }, Modifier.weight(1f))
+            }
             Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SatelliteLayer.entries.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         row.forEach { layer ->
                             GlassToggleChoice(layer.label, layers and layer.bit != 0, {
-                                layers = layers xor layer.bit; prefs.edit().putInt("satellite_layers", layers).apply()
+                                layers = layers xor layer.bit; prefs.edit().putInt("satellite_layers_v2", layers).apply()
                             }, Modifier.weight(1f))
                         }
                     }
                 }
             }
             if (fieldStatus.isNotEmpty()) Text(fieldStatus, color = palette.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 18.dp))
-            Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                GlassIconButton({ playing = false; index = (index - 1).coerceAtLeast(0) }, enabled = frames.size > 1) { Icon(Icons.Rounded.SkipPrevious, "前一張") }
-                GlassIconButton({ playing = !playing }, enabled = frames.size > 1 && !reduce) {
-                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "暫停雲圖動畫" else "播放雲圖動畫")
-                }
-                GlassSlider(index.toFloat(), { playing = false; index = it.roundToInt().coerceIn(0, frames.lastIndex.coerceAtLeast(0)) },
-                    Modifier.weight(1f), valueRange = 0f..frames.lastIndex.coerceAtLeast(1).toFloat(), steps = 0, enabled = frames.size > 1)
-                GlassIconButton({ playing = false; index = (index + 1).coerceAtMost(frames.lastIndex.coerceAtLeast(0)) }, enabled = frames.size > 1) { Icon(Icons.Rounded.SkipNext, "後一張") }
-                GlassIconButton({ refresh++ }) { Icon(Icons.Rounded.Refresh, "重新讀取衛星雲圖") }
-            }
-            val modelTime = overlay?.grid?.time?.let { DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.of("Asia/Taipei")).format(it) }
-            Text("等壓線每 4 hPa（1000 hPa 加粗）、等溫線每 3°C、風標單位為節；H 為高壓、L 為低壓。" +
-                (modelTime?.let { "氣壓、氣溫與風來自數值模式分析（$it），不是衛星觀測。" } ?: ""),
+            Text("等壓線每 4 hPa（1000 hPa 加粗）、等溫線每 3°C、風標單位為節；H 為高壓、L 為低壓。拖到「現在」之後是數值模式預報，越遠越不確定。",
                 color = palette.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
             Text("衛星：日本氣象廳 向日葵 9 號 · NASA GIBS ↗", color = palette.primary, fontSize = 14.sp,
                 modifier = Modifier.clickable { uri.openUri("https://www.earthdata.nasa.gov/gibs") }.padding(horizontal = 18.dp, vertical = 4.dp))
-            Text("氣象模式：Open-Meteo ↗", color = palette.primary, fontSize = 14.sp,
+            Text("氣象模式與預報：Open-Meteo ↗", color = palette.primary, fontSize = 14.sp,
                 modifier = Modifier.clickable { uri.openUri("https://open-meteo.com") }.padding(horizontal = 18.dp, vertical = 4.dp))
         })
     }
 }
 
-/** Web Mercator tiles drawn into the equal-scale lon/lat view in thin strips, so latitudes line up. */
-private fun DrawScope.drawSatellite(v: TyphoonViewport, images: Map<SatelliteSource.Tile, ImageBitmap>) {
-    val strips = 8
-    images.forEach { (tile, img) ->
-        val n = (1 shl tile.z).toDouble()
-        val west = tile.x / n * 360 - 180; val east = (tile.x + 1) / n * 360 - 180
-        for (k in 0 until strips) {
-            val north = RadarProjection.latitude((tile.y + k.toDouble() / strips) / n)
-            val south = RadarProjection.latitude((tile.y + (k + 1).toDouble() / strips) / n)
-            val (x0, y0) = v.project(west, north); val (x1, y1) = v.project(east, south)
-            if (x1 < 0 || y1 < 0 || x0 > size.width || y0 > size.height) continue
-            val sy = img.height * k / strips; val sh = img.height * (k + 1) / strips - sy
-            drawImage(img, IntOffset(0, sy), IntSize(img.width, sh),
-                IntOffset(floor(x0).toInt(), floor(y0).toInt()),
-                IntSize((ceil(x1) - floor(x0)).toInt().coerceAtLeast(1), (ceil(y1) - floor(y0)).toInt().coerceAtLeast(1) + 1))
+/** The first forecast step at least [days] days from now (Taipei noon when possible). */
+private fun jumpTo(ahead: List<Pair<Instant, ForecastStep>>, days: Int): Int? {
+    val target = Instant.now().plusSeconds(days * 86_400L)
+    return ahead.indices.minByOrNull { kotlin.math.abs(ahead[it].first.epochSecond - target.epochSecond) }
+}
+
+@Composable
+private fun RainLegend(modifier: Modifier) {
+    Row(modifier.background(Color(0xB3000000), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text("降水", color = Color.White, fontSize = 14.sp); Spacer(Modifier.width(6.dp))
+        listOf(.3f, 2f, 8f, 20f, 50f, 100f).forEach { mm ->
+            Box(Modifier.size(14.dp).background(Color(ForecastPictures.rainColour(mm)).copy(alpha = 1f), RoundedCornerShape(3.dp)))
+            Spacer(Modifier.width(3.dp))
         }
+        Text("多", color = Color.White, fontSize = 14.sp)
+    }
+}
+
+private fun DrawScope.drawFlow(v: TyphoonViewport, f: WindFlow) {
+    val c = Color(0xFFCFF7FF)
+    for (i in f.lon.indices) {
+        if (f.age[i] < 2) continue
+        val (x0, y0) = v.project(f.pLon[i].toDouble(), f.pLat[i].toDouble()); val (x1, y1) = v.project(f.lon[i].toDouble(), f.lat[i].toDouble())
+        if (x1 !in 0f..size.width || y1 !in 0f..size.height) continue
+        val life = (1f - kotlin.math.abs(f.age[i] - 55f) / 55f).coerceIn(0f, 1f)
+        // Stretch each step into a streak so slow winds still read as motion.
+        val ex = x1 + (x1 - x0) * 3f; val ey = y1 + (y1 - y0) * 3f
+        drawLine(c.copy(alpha = .55f * life), Offset(x0, y0), Offset(ex, ey), 1.3f * density, StrokeCap.Round)
+    }
+}
+
+/**
+ * The satellite picture for [index]: each tile from the cache for that time; if one is still on its
+ * way, the nearest time already loaded, and failing that the coarser tile around it. Never blank.
+ */
+private fun DrawScope.drawSatellite(v: TyphoonViewport, channel: SatelliteSource.Channel, frames: List<Instant>, index: Int,
+                                    tiles: List<SatelliteSource.Tile>) {
+    val time = frames.getOrNull(index) ?: return
+    val order = frames.indices.sortedBy { kotlin.math.abs(it - index) }
+    tiles.forEach { tile ->
+        val direct = order.firstNotNullOfOrNull { SatelliteSource.cached(channel, frames[it], tile) }
+        if (direct != null) { drawTile(v, tile, direct.asImageBitmap(), 0, 0, direct.width, direct.height); return@forEach }
+        if (tile.z > 0) {
+            val parent = SatelliteSource.Tile(tile.z - 1, tile.x / 2, tile.y / 2)
+            SatelliteSource.cached(channel, time, parent)?.let { p ->
+                val half = p.width / 2
+                drawTile(v, tile, p.asImageBitmap(), (tile.x % 2) * half, (tile.y % 2) * half, half, half)
+            }
+        }
+    }
+}
+
+/** One Mercator tile (or a part of it) drawn into the lon/lat view in thin strips, so latitudes line up. */
+private fun DrawScope.drawTile(v: TyphoonViewport, tile: SatelliteSource.Tile, img: ImageBitmap, sx: Int, sy: Int, sw: Int, sh: Int) {
+    val strips = 8
+    val n = (1 shl tile.z).toDouble()
+    val west = tile.x / n * 360 - 180; val east = (tile.x + 1) / n * 360 - 180
+    for (k in 0 until strips) {
+        val north = RadarProjection.latitude((tile.y + k.toDouble() / strips) / n)
+        val south = RadarProjection.latitude((tile.y + (k + 1).toDouble() / strips) / n)
+        val (x0, y0) = v.project(west, north); val (x1, y1) = v.project(east, south)
+        if (x1 < 0 || y1 < 0 || x0 > size.width || y0 > size.height) continue
+        val top = sy + sh * k / strips; val bottom = sy + sh * (k + 1) / strips
+        drawImage(img, IntOffset(sx, top), IntSize(sw, (bottom - top).coerceAtLeast(1)),
+            IntOffset(floor(x0).toInt(), floor(y0).toInt()),
+            IntSize((ceil(x1) - floor(x0)).toInt().coerceAtLeast(1), (ceil(y1) - floor(y0)).toInt().coerceAtLeast(1) + 1))
     }
 }
 

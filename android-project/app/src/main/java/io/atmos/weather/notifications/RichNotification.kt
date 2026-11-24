@@ -145,8 +145,15 @@ object RichNotification {
      * The same notification with the two faces attached. Promoted live updates and notifications
      * that already draw their own views are left exactly as they are.
      */
+    /** Only these keep the system's own look: the earthquake countdown and a ringing alarm or timer. */
+    fun keepsSystemLook(kind: XiaomiFocusBridge.Kind) = kind in setOf(XiaomiFocusBridge.Kind.SEISMIC_EEW,
+        XiaomiFocusBridge.Kind.ALARM_RINGING, XiaomiFocusBridge.Kind.TIMER_RUNNING)
+
     fun enrich(ctx: Context, n: Notification, title: String, detail: String, kind: XiaomiFocusBridge.Kind): Notification = runCatching {
-        if (n.extras.getBoolean("android.requestPromotedOngoing", false)) return n
+        val promoted = n.extras.getBoolean("android.requestPromotedOngoing", false) || (n.flags and FLAG_PROMOTED) != 0
+        if (promoted && keepsSystemLook(kind)) return n
+        // Everything else trades the status-bar chip for the picture card the person asked for.
+        if (promoted) n.extras.remove("android.requestPromotedOngoing")
         @Suppress("DEPRECATION")
         if (n.contentView != null || n.bigContentView != null) return n
         val card = cardFor(ctx, n, title, detail, kind)
@@ -157,6 +164,9 @@ object RichNotification {
         b.setCustomContentView(small)
         b.setCustomBigContentView(expanded(ctx.packageName, card))
         b.setCustomHeadsUpContentView(collapsed(ctx.packageName, card))
-        b.build()
+        b.build().also { it.flags = it.flags and FLAG_PROMOTED.inv() }
     }.getOrDefault(n)
+
+    /** Notification.FLAG_PROMOTED_ONGOING (Android 16). */
+    private const val FLAG_PROMOTED = 0x00040000
 }

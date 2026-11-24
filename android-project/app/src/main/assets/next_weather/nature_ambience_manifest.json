@@ -114,15 +114,15 @@
       "category": "ambience",
       "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
       "sources": [
-        "birds_alishan"
+        "birds_forest"
       ],
-      "sha256": "9664b4d837d6a7945d21ba56ef7e0e49faf970b13777a7e8dbd2a8fb1011c9af",
+      "sha256": "e4b58f6efc9da51e354b5ee0d2acf6acff71cafcf96ccf9db3422744411b8d90",
       "sample_rate": 44100,
       "channels": 1,
       "frames": 1058400,
       "seconds": 24,
-      "rms_dbfs": -29.048,
-      "peak_dbfs": -11.853,
+      "rms_dbfs": -29.001,
+      "peak_dbfs": -12.014,
       "loop_jump_pcm": 0
     },
     {
@@ -131,10 +131,10 @@
       "category": "ambience",
       "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
       "sources": [
-        "birds_alishan",
+        "birds_forest",
         "wind_leaves"
       ],
-      "sha256": "c88ae117352436ef7d12a1f7a0877604d825c27f6d6ef361dd10d0e195c04ddd",
+      "sha256": "4072c56c2714185362b8222eb19ab621266c4f35094c6416683ad65fd094fecd",
       "sample_rate": 44100,
       "channels": 1,
       "frames": 1058400,

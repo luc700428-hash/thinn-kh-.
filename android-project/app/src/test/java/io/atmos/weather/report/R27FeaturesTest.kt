@@ -70,5 +70,11 @@ class R27FeaturesTest {
         val live=NotificationCompat.Builder(ctx,"c").setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("t")
             .addExtras(android.os.Bundle().apply{putBoolean("android.requestPromotedOngoing",true)}).build()
         assertSame(live,RichNotification.enrich(ctx,live,"t","d",XiaomiFocusBridge.Kind.SEISMIC_EEW))
+        // A promoted status (earthquake monitoring) gives up the chip for the picture card.
+        val status=RichNotification.enrich(ctx,live,"地震即時監測中","連線中",XiaomiFocusBridge.Kind.STATION_DETECTION)
+        @Suppress("DEPRECATION") assertNotNull(status.contentView)
+        assertFalse(status.extras.getBoolean("android.requestPromotedOngoing",false))
+        assertTrue(RichNotification.keepsSystemLook(XiaomiFocusBridge.Kind.SEISMIC_EEW))
+        assertFalse(RichNotification.keepsSystemLook(XiaomiFocusBridge.Kind.WEATHER_BRIEFING))
     }
 }

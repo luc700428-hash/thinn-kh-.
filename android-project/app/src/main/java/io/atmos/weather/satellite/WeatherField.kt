@@ -29,6 +29,7 @@ internal class WeatherGrid(
 }
 
 internal data class ContourSet(val level: Float, val segments: FloatArray) // lon,lat,lon,lat per segment
+internal class ForecastStep(val grid: WeatherGrid, val cloud: Array<FloatArray>, val rain: Array<FloatArray>)
 internal data class PressureCenter(val high: Boolean, val lat: Double, val lon: Double, val hPa: Float)
 
 internal object WeatherField {
@@ -77,6 +78,52 @@ internal object WeatherField {
         }
         require(p.sumOf { row -> row.count { it.isFinite() } } >= rows * cols / 2) { "too little pressure data" }
         return WeatherGrid(lats, lons, p, t, w, d, time)
+    }
+
+    /** 11-day model forecast every 6 hours on the same grid (Open-Meteo, GFS/ECMWF blend). */
+    fun forecastUrl(): String = url().substringBefore("&current=") +
+        "&hourly=pressure_msl,temperature_2m,wind_speed_10m,wind_direction_10m,cloud_cover,precipitation" +
+        "&forecast_days=11&temporal_resolution=hourly_6&wind_speed_unit=kn&timezone=GMT"
+
+    /** One grid per forecast time. Precipitation is the total of each 6-hour step (mm). */
+    fun parseForecast(json: String): List<Pair<Instant, ForecastStep>> {
+        val trimmed = json.trim()
+        val items: List<JSONObject> = if (trimmed.startsWith("[")) JSONArray(trimmed).let { a -> List(a.length()) { a.getJSONObject(it) } }
+            else listOf(JSONObject(trimmed))
+        val rows = lats.size; val cols = lons.size
+        require(items.size == rows * cols) { "expected ${rows * cols} points, got ${items.size}" }
+        val times = items[0].getJSONObject("hourly").getJSONArray("time").let { a ->
+            List(a.length()) { LocalDateTime.parse(a.getString(it)).toInstant(ZoneOffset.UTC) } }
+        val n = times.size
+        fun grid() = Array(n) { Array(rows) { FloatArray(cols) { Float.NaN } } }
+        val p = grid(); val t = grid(); val w = grid(); val d = grid(); val cc = grid(); val pr = grid()
+        items.forEachIndexed { i, o ->
+            val h = o.optJSONObject("hourly") ?: return@forEachIndexed
+            val r = i / cols; val k = i % cols
+            fun fill(name: String, into: Array<Array<FloatArray>>, range: ClosedFloatingPointRange<Double>) {
+                val a = h.optJSONArray(name) ?: return
+                for (s in 0 until minOf(n, a.length())) {
+                    val v = a.optDouble(s, Double.NaN)
+                    if (v.isFinite() && v in range) into[s][r][k] = v.toFloat()
+                }
+            }
+            fill("pressure_msl", p, 850.0..1090.0); fill("temperature_2m", t, -80.0..60.0)
+            fill("wind_speed_10m", w, 0.0..250.0); fill("wind_direction_10m", d, 0.0..360.0)
+            fill("cloud_cover", cc, 0.0..100.0); fill("precipitation", pr, 0.0..2000.0)
+        }
+        return times.indices.map { s ->
+            times[s] to ForecastStep(WeatherGrid(lats, lons, p[s], t[s], w[s], d[s], times[s]), cc[s], pr[s])
+        }.filter { (_, step) -> step.grid.pressure.sumOf { row -> row.count { it.isFinite() } } >= rows * cols / 2 }
+    }
+
+    /** Bilinear value of a grid at a point; NaN outside it. */
+    fun sample(values: Array<FloatArray>, lat: Double, lon: Double): Float {
+        val fr = (lat - SOUTH) / STEP; val fc = (lon - WEST) / STEP
+        if (fr < 0 || fc < 0 || fr > lats.size - 1 || fc > lons.size - 1) return Float.NaN
+        val r0 = floor(fr).toInt().coerceAtMost(lats.size - 2); val c0 = floor(fc).toInt().coerceAtMost(lons.size - 2)
+        val tr = (fr - r0).toFloat(); val tc = (fc - c0).toFloat()
+        val a = values[r0][c0]; val b = values[r0][c0 + 1]; val c = values[r0 + 1][c0]; val d = values[r0 + 1][c0 + 1]
+        return (a * (1 - tc) + b * tc) * (1 - tr) + (c * (1 - tc) + d * tc) * tr
     }
 
     /** Catmull-Rom upsampling: smooth curves through the model points, no new extremes added. */

@@ -1,15 +1,15 @@
 [
   {
-    "id": "birds_alishan",
-    "title": "Taiwan Chiayi Alishan Ogasawara Lookout – June early morning forest birds and dawn ambience",
-    "source_page": "https://freesound.org/people/BayTsai/sounds/860231/",
-    "download_url": "https://cdn.freesound.org/previews/860/860231_17078888-hq.mp3",
+    "id": "birds_forest",
+    "title": "Morning Forest with Birds",
+    "author": "RyanKingArt",
+    "source_page": "https://freesound.org/people/RyanKingArt/sounds/844605/",
+    "download_url": "https://cdn.freesound.org/previews/844/844605_11069322-hq.mp3",
     "license": "CC0-1.0",
     "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-    "source_format": "Excerpt (stream copy, no re-encode) of the public 128 kbps MP3 preview of the CC0 recording",
-    "sha256": "353b33cc263839bf25a8b7f5d36a08616e24c0e7288e1aa5aea5a1096290ac63",
-    "retrieved": "2026-11-24",
-    "author": "BayTsai"
+    "source_format": "Excerpt (stream copy, no re-encode) of the public 128 kbps MP3 preview of the CC0 recording; checked free of speech",
+    "sha256": "55b85f3735a7c718196c484ade3bc191ee911191a6361bc97b6ae29db972126c",
+    "retrieved": "2026-11-24"
   },
   {
     "id": "wind_leaves",

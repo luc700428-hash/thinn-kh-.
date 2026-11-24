@@ -2,7 +2,7 @@
 """Reproducible 24-second weather soundscapes and thunder claps from credited field recordings.
 
 r27: every scene is now a real recording: rain on a rural roof and leaves (light and heavy), a
-city drizzle, a storm with distant thunder, Alishan dawn birds, wind in leaves, crickets, winter
+city drizzle, a storm with distant thunder, wind in leaves, crickets, winter
 wind. Thunder claps are five separate real recordings, played at random after each flash.
 
 No generated bird/cricket oscillators, bells, melodies, or synthesized rainfall. The CC0 MP3
@@ -78,12 +78,12 @@ def main():
     credits = json.loads((SOURCES / 'SOURCES.json').read_text())
     for source in credits:
         assert hashlib.sha256((SOURCES / (source['id'] + '.mp3')).read_bytes()).hexdigest() == source['sha256']
-    s = {k: decode(k) for k in ['rain_light', 'rain_heavy', 'rain_city', 'storm', 'birds_alishan', 'wind_leaves', 'crickets', 'snow_wind', 'gust']}
+    s = {k: decode(k) for k in ['rain_light', 'rain_heavy', 'rain_city', 'storm', 'birds_forest', 'wind_leaves', 'crickets', 'snow_wind', 'gust']}
     light = loop(steady(filt(s['rain_light'], 'highpass', 60)))
     heavy = loop(steady(filt(s['rain_heavy'], 'highpass', 40)))
     city = loop(steady(filt(s['rain_city'], 'highpass', 250)))
     storm = loop(steady(filt(s['storm'], 'highpass', 30)))
-    birds = loop(steady(filt(filt(s['birds_alishan'], 'highpass', 150), 'lowpass', 4500)))
+    birds = loop(steady(filt(filt(s['birds_forest'], 'highpass', 150), 'lowpass', 4500)))
     leaves = loop(steady(filt(filt(s['wind_leaves'], 'highpass', 60), 'lowpass', 4000)))
     night = loop(steady(filt(filt(s['crickets'], 'highpass', 200), 'lowpass', 3400)))
     snow = loop(steady(filt(s['snow_wind'], 'highpass', 40)))
@@ -95,8 +95,8 @@ def main():
         'heavy_rain': (heavy, -25.5, ['rain_heavy']),
         'thunderstorm': (at(storm, -20) * .8 + at(heavy, -20) * .5, -26.0, ['storm', 'rain_heavy']),
         'severe_thunderstorm': (at(storm, -20) * .8 + at(heavy, -20) * .8, -25.2, ['storm', 'rain_heavy']),
-        'sunny': (birds, -29.0, ['birds_alishan']),
-        'cloudy_day': (at(leaves, -20) + at(birds, -20) * .25, -29.5, ['wind_leaves', 'birds_alishan']),
+        'sunny': (birds, -29.0, ['birds_forest']),
+        'cloudy_day': (at(leaves, -20) + at(birds, -20) * .25, -29.5, ['wind_leaves', 'birds_forest']),
         'clear_night': (night, -31.0, ['crickets']),
         'cloudy_night': (at(filt(night, 'lowpass', 3000), -20) + at(leaves, -20) * .3, -31.5, ['crickets', 'wind_leaves']),
         'fog': (filt(leaves, 'lowpass', 1800), -31.5, ['wind_leaves']),
@@ -122,7 +122,7 @@ def main():
     manifest = dict(schema=2, description='Real CC0 field recordings, 24 s crossfaded loops; no generated sounds.',
                     human_listening_or_wake_efficacy_verified=False, assets=records)
     (DEST / 'nature_ambience_manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
-    nonrain = dict(manifest, description='Real CC0 Alishan birds, wind in leaves and cricket field recordings.',
+    nonrain = dict(manifest, description='Real CC0 forest birds, wind in leaves and cricket field recordings.',
                    assets=[r for r in records if r['scene'] in ('sunny', 'clear_night', 'cloudy_day', 'cloudy_night')])
     (DEST / 'non_rain_ambience_manifest.json').write_text(json.dumps(nonrain, ensure_ascii=False, indent=2) + '\n')
     suite = DEST / 'wake_suite_manifest.json'; old = json.loads(suite.read_text()); by_path = {r['path']: r for r in records}
