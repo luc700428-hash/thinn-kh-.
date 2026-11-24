@@ -44,6 +44,25 @@ jobs:
           gradle-version: '8.13'
       - name: Source and delivery contracts
         run: python3 -m unittest discover -s android-project/tools/tests -p 'test_*.py'
+      - name: Restore Robolectric Android runtimes
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric/android-all-instrumented
+          key: robolectric-android-all-4.16.1-sdk31-33-35-36
+      - name: Fetch Robolectric Android runtimes with retries
+        # Robolectric downloads these itself on first use and fails the whole class on one
+        # dropped connection. Fetch them up front with retries; the cache above usually has them.
+        run: |
+          for v in 12-robolectric-7732740-i7 13-robolectric-9030017-i7 15-robolectric-13954326-i7 16-robolectric-13921718-i7; do
+            dir="$HOME/.m2/repository/org/robolectric/android-all-instrumented/$v"; mkdir -p "$dir"
+            for ext in pom jar; do
+              f="$dir/android-all-instrumented-$v.$ext"
+              [ -s "$f" ] && continue
+              curl -fsSL --retry 6 --retry-all-errors --retry-delay 5 -o "$f.part" \
+                "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v.$ext" && mv "$f.part" "$f"
+            done
+          done
+          ls -la ~/.m2/repository/org/robolectric/android-all-instrumented/*/
       - name: Verify all JVM tests, tablet layouts, alert delivery and release lint
         timeout-minutes: 38
         run: |
@@ -341,6 +360,25 @@ jobs:
             chmod 600 "$RUNNER_TEMP/thinn-release.jks"
             keytool -list -keystore "$RUNNER_TEMP/thinn-release.jks" -alias "$APK_KEY_ALIAS" -storepass "$APK_KEYSTORE_PASSWORD" >/dev/null
           fi
+      - name: Restore Robolectric Android runtimes
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric/android-all-instrumented
+          key: robolectric-android-all-4.16.1-sdk31-33-35-36
+      - name: Fetch Robolectric Android runtimes with retries
+        # Robolectric downloads these itself on first use and fails the whole class on one
+        # dropped connection. Fetch them up front with retries; the cache above usually has them.
+        run: |
+          for v in 12-robolectric-7732740-i7 13-robolectric-9030017-i7 15-robolectric-13954326-i7 16-robolectric-13921718-i7; do
+            dir="$HOME/.m2/repository/org/robolectric/android-all-instrumented/$v"; mkdir -p "$dir"
+            for ext in pom jar; do
+              f="$dir/android-all-instrumented-$v.$ext"
+              [ -s "$f" ] && continue
+              curl -fsSL --retry 6 --retry-all-errors --retry-delay 5 -o "$f.part" \
+                "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v.$ext" && mv "$f.part" "$f"
+            done
+          done
+          ls -la ~/.m2/repository/org/robolectric/android-all-instrumented/*/
       - name: Compile Android and run unit tests
         shell: bash
         env:
