@@ -65,6 +65,9 @@ android {
         // Native Compose tests recreate Android Loopers; isolate their static dispatcher/render state.
         unitTests.all {
             it.forkEvery = 1
+            // Maven Central answers GitHub runners with 429 (too many requests); Robolectric then
+            // fails whole test classes. Google's official mirror of Maven Central serves the same files.
+            it.systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2")
             // Robolectric's Android 16 runtime needs Java 21. App bytecode stays Java 17.
             it.javaLauncher.set(project.extensions.getByType<org.gradle.jvm.toolchain.JavaToolchainService>().launcherFor {
                 languageVersion.set(org.gradle.jvm.toolchain.JavaLanguageVersion.of(21))

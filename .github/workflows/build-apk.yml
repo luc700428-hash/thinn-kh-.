@@ -51,15 +51,23 @@ jobs:
           key: robolectric-android-all-4.16.1-sdk31-33-35-36
       - name: Fetch Robolectric Android runtimes with retries
         # Robolectric downloads these itself on first use and fails the whole class on one
-        # dropped connection. Fetch them up front with retries; the cache above usually has them.
+        # dropped connection. Fetch them up front from Google's Maven Central mirror (Maven
+        # Central itself answers runners with 429), each attempt time-limited; the cache above
+        # usually has them already. If this step cannot finish, the tests still try on their own.
+        timeout-minutes: 12
+        continue-on-error: true
         run: |
           for v in 12-robolectric-7732740-i7 13-robolectric-9030017-i7 15-robolectric-13954326-i7 16-robolectric-13921718-i7; do
             dir="$HOME/.m2/repository/org/robolectric/android-all-instrumented/$v"; mkdir -p "$dir"
             for ext in pom jar; do
               f="$dir/android-all-instrumented-$v.$ext"
               [ -s "$f" ] && continue
-              curl -fsSL --retry 6 --retry-all-errors --retry-delay 5 -o "$f.part" \
-                "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v.$ext" && mv "$f.part" "$f"
+              for attempt in 1 2 3; do
+                curl -fsSL --connect-timeout 20 --max-time 240 -o "$f.part" \
+                  "https://maven-central.storage-download.googleapis.com/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v.$ext" \
+                  && mv "$f.part" "$f" && break
+                rm -f "$f.part"; sleep 5
+              done
             done
           done
           ls -la ~/.m2/repository/org/robolectric/android-all-instrumented/*/
@@ -367,15 +375,23 @@ jobs:
           key: robolectric-android-all-4.16.1-sdk31-33-35-36
       - name: Fetch Robolectric Android runtimes with retries
         # Robolectric downloads these itself on first use and fails the whole class on one
-        # dropped connection. Fetch them up front with retries; the cache above usually has them.
+        # dropped connection. Fetch them up front from Google's Maven Central mirror (Maven
+        # Central itself answers runners with 429), each attempt time-limited; the cache above
+        # usually has them already. If this step cannot finish, the tests still try on their own.
+        timeout-minutes: 12
+        continue-on-error: true
         run: |
           for v in 12-robolectric-7732740-i7 13-robolectric-9030017-i7 15-robolectric-13954326-i7 16-robolectric-13921718-i7; do
             dir="$HOME/.m2/repository/org/robolectric/android-all-instrumented/$v"; mkdir -p "$dir"
             for ext in pom jar; do
               f="$dir/android-all-instrumented-$v.$ext"
               [ -s "$f" ] && continue
-              curl -fsSL --retry 6 --retry-all-errors --retry-delay 5 -o "$f.part" \
-                "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v.$ext" && mv "$f.part" "$f"
+              for attempt in 1 2 3; do
+                curl -fsSL --connect-timeout 20 --max-time 240 -o "$f.part" \
+                  "https://maven-central.storage-download.googleapis.com/maven2/org/robolectric/android-all-instrumented/$v/android-all-instrumented-$v.$ext" \
+                  && mv "$f.part" "$f" && break
+                rm -f "$f.part"; sleep 5
+              done
             done
           done
           ls -la ~/.m2/repository/org/robolectric/android-all-instrumented/*/
