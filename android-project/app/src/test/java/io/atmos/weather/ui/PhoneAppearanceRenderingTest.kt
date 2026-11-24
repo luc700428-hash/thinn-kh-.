@@ -33,7 +33,7 @@ class PhoneAppearanceRenderingTest:IPadFixture() {
   try{for(dark in listOf(false,true))render(dark,1f,"phone-theme",{AdaptiveWindowProvider{WeatherHomeScreen(vm,{})}}){view,_->
    settle(view){nodes(view).any{it.config.contains(SemanticsProperties.Text)&&it.config[SemanticsProperties.Text].any{t->t.text.contains("現在的天氣")}}}
    val dock=nodes(view).single{it.config.contains(SemanticsProperties.Role)&&it.config[SemanticsProperties.Role]==Role.Tab&&text(it,"天氣")}.boundsInRoot
-   nodes(view).filter{it.config.contains(SemanticsProperties.Text)&&it.boundsInRoot.height>0&&it.boundsInRoot.width>100}.forEach{assertTrue(it.boundsInRoot.bottom<=dock.top-4)}
+   nodes(view).filter{it.config.contains(SemanticsProperties.Text)&&it.boundsInRoot.height>0&&it.boundsInRoot.width>100}.forEach{assertTrue("Text under the dock: ${it.config[SemanticsProperties.Text]} ${it.boundsInRoot} dock=$dock",it.boundsInRoot.bottom<=dock.top-4)}
    save(view,"phone-weather-pastel-$dark")
    tapVisible(view,"設定");tapVisible(view,"主題顏色")
    val square=unmergedTag(view,"theme-swatch-forest").boundsInRoot

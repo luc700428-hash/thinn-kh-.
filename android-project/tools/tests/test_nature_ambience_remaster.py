@@ -10,7 +10,7 @@ class NaturalAmbience(unittest.TestCase):
   self.assertEqual(17,len({a['sha256'] for a in m['assets']}))
   for a in m['assets']:
    p=ASSETS/a['path'];self.assertEqual(a['sha256'],hashlib.sha256(p.read_bytes()).hexdigest())
-   self.assertTrue(a['sources']);self.assertTrue(set(a['sources'])<={'birds','leaves','night','rain','downpour'})
+   self.assertTrue(a['sources']);self.assertTrue(set(a['sources'])<={'birds_alishan','wind_leaves','crickets','rain_light','rain_heavy','rain_city','storm','snow_wind','gust'})
    with wave.open(str(p)) as w:
     self.assertEqual((1,2,44100,24*44100),(w.getnchannels(),w.getsampwidth(),w.getframerate(),w.getnframes()))
     data=array.array('h',w.readframes(w.getnframes()))
@@ -22,7 +22,7 @@ class NaturalAmbience(unittest.TestCase):
    self.assertEqual(data[0],data[-1]);self.assertEqual(data[1]-data[0],data[-1]-data[-2])
  def test_sources_are_credited_cc0_files_and_reproduction_does_not_download(self):
   sources=json.loads((ROOT/'tools/audio_sources/SOURCES.json').read_text())
-  self.assertEqual({'birds','leaves','night'},{s['id'] for s in sources})
+  self.assertEqual({'birds_alishan','wind_leaves','crickets','rain_light','rain_heavy','rain_city','storm','snow_wind','gust'}|{'thunder_1','thunder_2','thunder_3','thunder_4','thunder_5'},{s['id'] for s in sources})
   for source in sources:
    self.assertEqual('CC0-1.0',source['license']);self.assertTrue(source['author'])
    self.assertIn('freesound.org/people/',source['source_page'])

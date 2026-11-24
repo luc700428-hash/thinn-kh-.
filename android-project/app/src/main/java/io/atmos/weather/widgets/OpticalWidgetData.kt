@@ -17,7 +17,9 @@ data class OpticalWidgetData(val city:String,val temperature:String,val conditio
  val hours:List<WidgetHour>,val alarm:String,val alarmAt:Long?,val task:String,val alert:String,val alertDetail:String,val alertRecent:Boolean,val weatherCode:Int?=null,
  val days:List<WidgetDay> = emptyList(),val outlook:String="",val tomorrow:String="",val bring:String="",
  /** A live warning, a weather warning or a fresh quake report every widget leads with. */
- val event:WidgetEvent.Event?=null){
+ val event:WidgetEvent.Event?=null,
+ /** All events showing now; the badge in the corner rotates through them. */
+ val events:List<WidgetEvent.Event> = listOfNotNull(event)){
  companion object{
   private val week=listOf("週一","週二","週三","週四","週五","週六","週日")
   internal fun days(raw:String?,zone:ZoneId,now:Long):List<WidgetDay> =runCatching{
@@ -35,6 +37,7 @@ data class OpticalWidgetData(val city:String,val temperature:String,val conditio
    val task=TaskStore.load(context).filter{!it.completed&&it.dueMillis()>=now}.minByOrNull{it.dueMillis()}
    val push=context.getSharedPreferences("thinn_push_widget",Context.MODE_PRIVATE);val issued=push.getLong("issued",0);val recent=issued>0&&now-issued in 0..3_600_000L
    fun int(key:String,unit:String)=p.getInt(key,-1).let{if(available&&it>=0)"$it$unit" else "—"}
+   val events=runCatching{WidgetEvent.all(context,now)}.getOrDefault(emptyList())
    return OpticalWidgetData(LocationLabels.clean(p.getString("widget_city","臺灣天氣")?:"臺灣天氣"),WidgetPresentationRules.temperature(p.getInt("widget_temp",Int.MIN_VALUE),available),
     if(available)runCatching{WeatherCondition.valueOf(p.getString("widget_condition","UNKNOWN")?:"UNKNOWN")}.getOrDefault(WeatherCondition.UNKNOWN) else WeatherCondition.UNKNOWN,p.getBoolean("widget_day",true),stamp,age,int("widget_rain","%"),
     if(available&&p.contains("widget_high"))"最高 ${p.getInt("widget_high",0)}°  最低 ${p.getInt("widget_low",0)}°" else "高低溫尚未同步",int("widget_humidity","%"),p.getFloat("widget_wind",-1f).let{if(available&&it>=0)"%.1f m/s".format(it) else "—"},int("widget_air",""),p.getFloat("widget_uv",-1f).let{if(available&&it>=0)"%.1f".format(it) else "—"},if(available)hours else emptyList(),
@@ -42,7 +45,7 @@ data class OpticalWidgetData(val city:String,val temperature:String,val conditio
     if(recent)push.getString("title","最近地震報告")?:"最近地震報告" else "尚無近期地震推播",if(recent)push.getString("detail","")?:"" else "請以官方災防告警為準",recent,if(available)p.getInt("widget_weather_code",-1).takeIf{it>=0} else null,
     if(available)days(p.getString("widget_days","[]"),zone,now) else emptyList(),
     if(available)p.getString("widget_outlook","")?:"" else "",if(available)p.getString("widget_tomorrow","")?:"" else "",if(available)p.getString("widget_bring","")?:"" else "",
-    runCatching{WidgetEvent.current(context,now)}.getOrNull())
+    events.firstOrNull(),events)
   }
  }
 }

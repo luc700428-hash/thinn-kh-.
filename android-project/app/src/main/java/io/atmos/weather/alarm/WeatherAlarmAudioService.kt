@@ -94,7 +94,8 @@ class WeatherAlarmAudioService : Service(), TextToSpeech.OnInitListener {
             val islandPreferred = XiaomiFocusBridge.shouldUseAlarmIsland(ctx)
             if (!islandPreferred) b.setFullScreenIntent(openIntent(ctx,alarm.id),true)
             b.addExtras(android.os.Bundle().apply{putString("thinn.island.primary","%02d:%02d".format(alarm.hour,alarm.minute))})
-            var note = b.build()
+            var note = io.atmos.weather.notifications.RichNotification.enrich(ctx,b.build(),alarm.title.ifBlank{"天氣鬧鐘"},
+                String.format(Locale.TAIWAN,"%02d:%02d 鬧鐘響鈴中",alarm.hour,alarm.minute),XiaomiFocusBridge.Kind.ALARM_RINGING)
             if (islandPreferred) {
                 val text = String.format(Locale.TAIWAN,"%02d:%02d 鬧鐘響鈴中",alarm.hour,alarm.minute)
                 // If Xiaomi rejects the island (including a higher-priority EEW),

@@ -24,10 +24,11 @@ class UpdateReminderWorker(context:Context,params:WorkerParameters):CoroutineWor
         val open=PendingIntent.getActivity(applicationContext,250026,Intent(applicationContext,MainActivity::class.java)
             .putExtra("open_update_center",true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        manager.notify(250026,NotificationCompat.Builder(applicationContext,CHANNEL)
+        val text="開啟軟體更新，確認並安裝新版 ${inputData.getString("version") ?: ""}"
+        manager.notify(250026,io.atmos.weather.notifications.RichNotification.enrich(applicationContext,NotificationCompat.Builder(applicationContext,CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_weather).setContentTitle("thinn-khì 更新提醒")
-            .setContentText("開啟軟體更新，確認並安裝新版 ${inputData.getString("version") ?: ""}")
-            .setContentIntent(open).setAutoCancel(true).build())
+            .setContentText(text)
+            .setContentIntent(open).setAutoCancel(true).build(),"thinn-khì 更新提醒",text,io.atmos.weather.notifications.XiaomiFocusBridge.Kind.APP_UPDATE))
         return Result.success()
     }
     companion object {

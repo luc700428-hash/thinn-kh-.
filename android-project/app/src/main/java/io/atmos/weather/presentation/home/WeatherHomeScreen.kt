@@ -699,6 +699,10 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     style=physicsStyle,strongWind=strongWind,lightningEvent=lightningBolt,lightBackdrop=!weatherSky.dark,active=weatherSceneActive) {
                     if(!workspace.tablet)io.atmos.weather.ui.ThinnBackdropCapture(weatherBackdrop,Modifier.matchParentSize()) {
                     Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(blendTop,blendMid,blendLow))))
+                    // The place's landmarks stand on the horizon behind the weather (rain falls in front).
+                    io.atmos.weather.visual.LandmarkScene(state.city.name,state.city.coordinate.latitude,state.city.coordinate.longitude,
+                        blendMid,blendLow,isNight,if(stormy).8f else if(rainy).55f else if(hazy).6f else 0f,
+                        Modifier.fillMaxWidth().fillMaxHeight(.62f))
                     // Full-screen background layer. It never captures gestures.
                     if(weatherSceneActive)SkyEffects(demoCondition ?: snapshot?.condition, isNight,
                         heavyRain || demoCondition == WeatherCondition.THUNDERSTORM,
@@ -777,6 +781,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     Icon(Icons.Rounded.KeyboardArrowDown,null,tint=weatherSky.ink,modifier=Modifier.size(18.dp))
                 }
                 Spacer(Modifier.height(6.dp))
+                var reportOpen by remember { mutableStateOf(false) }
                 if (snapshot != null) {
                     io.atmos.weather.next.V25HomeHero(
                         temperature=snapshot.temperatureC.roundToInt(),
@@ -787,8 +792,13 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         feelsLike=snapshot.feelsLikeC?.roundToInt(),
                         isNight=!snapshot.isDay,
                         rainProbability=snapshot.nextHourRainProbabilityPct,
-                        modifier=Modifier.skyGlow(!snapshot.isDay,reduceCityMotion||!weatherSceneActive)
+                        modifier=Modifier.skyGlow(!snapshot.isDay,reduceCityMotion||!weatherSceneActive),
+                        reported=state.report!=null,onReport={reportOpen=true}
                     )
+                    if(reportOpen) io.atmos.weather.report.WeatherReportSheet(snapshot,state.report,
+                        onReport={viewModel.reportWeather(it)},onWithdraw={viewModel.withdrawReport()},onDismiss={reportOpen=false})
+                    // 高鐵模式 / 火車模式: appears by itself while the phone moves along a railway.
+                    io.atmos.weather.transit.RailModeCard(io.atmos.weather.transit.rememberRailTrip(weatherSceneActive),weatherSky.ink)
                     // Station name, distance and observation time are kept internal and not shown.
                 } else if(state.loading) {
                     Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=weatherSky.ink,modifier=Modifier.align(Alignment.CenterHorizontally))
@@ -1609,9 +1619,26 @@ private fun SkyLayers(condition:WeatherCondition?, night:Boolean, heavyRain:Bool
     if (condition == WeatherCondition.THUNDERSTORM && lightningAlpha > 0f) {
         Canvas(Modifier.fillMaxSize()) {
             val w=size.width; val h=size.height
-            val x=w*(.22f + (boltSeed % 5)*.13f)
-            drawRect(Color(0xFFE3EEFF).copy(alpha=lightningAlpha))
-
+            val a=(lightningAlpha/.22f).coerceIn(0f,1f)
+            drawRect(Color(0xFFE3EEFF).copy(alpha=lightningAlpha*.8f))
+            // A real branching channel from the cloud base to the horizon: a wide violet glow,
+            // a bright halo and a white-hot core, with thinner forks that fade sooner.
+            val seed=boltSeed.coerceAtLeast(1)
+            val endX=w*(.18f+((seed ushr 3)%64)/64f*.64f)
+            val g=io.atmos.weather.ui.LightningGeometry.create(seed,w,h,endX,h*(.50f+((seed ushr 9)%16)/16f*.12f))
+            val top=g.trunk.first()
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFDCE6FF).copy(alpha=.42f*a),Color.Transparent),
+                center=Offset(top.x,0f),radius=w*.62f),radius=w*.62f,center=Offset(top.x,0f))
+            fun channel(points:List<io.atmos.weather.ui.RainCollisionWorld.Point>,scale:Float,fade:Float) {
+                if(points.size<2)return
+                val path=androidx.compose.ui.graphics.Path().apply{moveTo(points[0].x,points[0].y);points.drop(1).forEach{lineTo(it.x,it.y)}}
+                val join=androidx.compose.ui.graphics.StrokeJoin.Round
+                drawPath(path,Color(0xFFA8B6FF).copy(alpha=.16f*a*fade),style=Stroke((16f*scale).dp.toPx(),cap=StrokeCap.Round,join=join))
+                drawPath(path,Color(0xFFD9E2FF).copy(alpha=.42f*a*fade),style=Stroke((5.5f*scale).dp.toPx(),cap=StrokeCap.Round,join=join))
+                drawPath(path,Color.White.copy(alpha=.97f*a*fade),style=Stroke((1.8f*scale).dp.toPx(),cap=StrokeCap.Round,join=join))
+            }
+            g.branches.forEach{channel(it,.55f,a)}
+            channel(g.trunk,1f,1f)
         }
     }
 }
@@ -1669,7 +1696,13 @@ private fun ContinuousRain(heavy: Boolean, modifier: Modifier = Modifier) {
         val width=size.width
         val height=size.height
         val density=size.minDimension.coerceAtLeast(1f)
-        val count=if (heavy) 178 else 90
+        val count=if (heavy) 230 else 120
+        // Heavy rain hangs in sheets: soft lighter bands drifting across the view.
+        if(heavy) for(k in 0 until 3) {
+            val bx=(((t*.035f+k*.37f)%1f)*1.6f-.3f)*width
+            drawRect(Brush.horizontalGradient(listOf(Color.Transparent,Color(0xFFDDE8F2).copy(alpha=.045f),Color.Transparent),startX=bx,endX=bx+width*.45f),
+                Offset(bx,0f),Size(width*.45f,height))
+        }
         for (i in 0 until count) {
             val d=RainParticles.drop(i,heavy)
             val yn=RainParticles.y(d,t)
@@ -1680,12 +1713,26 @@ private fun ContinuousRain(heavy: Boolean, modifier: Modifier = Modifier) {
             val len=(d.length * height).coerceIn(5f,34f)
             val dx=d.slant * width
             val alpha=(d.alpha * (if (heavy) 1.36f else 1f)).coerceAtMost(.39f)
+            // A falling drop is seen as a streak: faint at its tail, brightest at its head.
+            // Near drops are longer, wider and softer; far ones are thin and faint.
+            val head=Offset(x-dx,y+len*(1f+d.depth*.6f))
             drawLine(
-                color=brandColor(0xFFD3F0E8).copy(alpha=alpha),
-                start=Offset(x,y),end=Offset(x-dx,y+len),
-                strokeWidth=(d.thickness * density / 400f).coerceIn(.55f,2.2f),
+                brush=Brush.linearGradient(listOf(Color(0x00E6F3FF),Color(0xFFE6F3FF).copy(alpha=alpha*.55f),Color(0xFFF4FAFF).copy(alpha=alpha*1.15f)),
+                    start=Offset(x,y),end=head),
+                start=Offset(x,y),end=head,
+                strokeWidth=(d.thickness * density / 400f * (if(d.depth>.9f) 1.6f else 1f)).coerceIn(.5f,2.8f),
                 cap=StrokeCap.Round
             )
+            // Splashes where drops land at the bottom of the screen.
+            if(i%5==0 && yn>.93f) {
+                val p=((yn-.93f)/.12f).coerceIn(0f,1f)
+                val gx=x-dx;val gy=height*.985f
+                drawArc(Color(0xFFE6F3FF).copy(alpha=(1f-p)*.30f),200f,140f,false,
+                    Offset(gx-(2f+p*9f)*density/400f,gy-(1f+p*3f)*density/400f),Size((4f+p*18f)*density/400f,(2f+p*6f)*density/400f),
+                    style=Stroke((.8f*density/400f).coerceAtLeast(.5f)))
+                drawCircle(Color(0xFFE6F3FF).copy(alpha=(1f-p)*.35f),(.8f*density/400f).coerceAtLeast(.6f),Offset(gx-p*6f,gy-kotlin.math.sin(p*3.1416f)*8f))
+                drawCircle(Color(0xFFE6F3FF).copy(alpha=(1f-p)*.35f),(.8f*density/400f).coerceAtLeast(.6f),Offset(gx+p*7f,gy-kotlin.math.sin(p*3.1416f)*6f))
+            }
             // Occasional physically-inspired contacts: each selected drop hits a
             // different glass/card plane and releases a tiny rebound plus ripple.
             // Sampling, not every drop, avoids expensive full-screen particles.

@@ -10,4 +10,8 @@
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowLightNavigationBar">@bool/thinn_launch_light_bars</item>
     </style>
+    <style name="ThinnPageAnimation">
+        <item name="android:windowEnterAnimation">@anim/thinn_page_enter</item>
+        <item name="android:windowExitAnimation">@anim/thinn_page_exit</item>
+    </style>
 </resources>

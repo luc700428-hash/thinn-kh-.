@@ -56,6 +56,12 @@ class EarthquakeReportWorker(ctx: Context, params: WorkerParameters): CoroutineW
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title).setContentText(detail)
             .setStyle(NotificationCompat.BigTextStyle().bigText(latest.reportText))
+            .addExtras(io.atmos.weather.notifications.RichNotification.card(io.atmos.weather.notifications.RichNotification.Card(
+                "M ${"%.1f".format(java.util.Locale.US,latest.magnitude)} · 最大震度 ${latest.maxIntensity?:"—"}",
+                SeismicDisplayFormat.location(latest.location),
+                listOf("規模" to "M ${"%.1f".format(java.util.Locale.US,latest.magnitude)}","最大震度" to (latest.maxIntensity?.toString()?:"—"),
+                    "來源" to if(isOfficial) "中央氣象署" else "ExpTech"),
+                latest.reportText)))
             .setAutoCancel(true).setContentIntent(intent)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

@@ -54,6 +54,32 @@ object WidgetEvent {
     fun current(ctx: Context, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): Event? =
         pick(p(ctx).getString("eew", null), p(ctx).getString("warnings", null), p(ctx).getString("quake", null), now, zone)
 
+    /** Every event showing now, most urgent first: the widgets rotate through them. */
+    fun all(ctx: Context, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): List<Event> =
+        pickAll(p(ctx).getString("eew", null), p(ctx).getString("warnings", null), p(ctx).getString("quake", null), now, zone)
+
+    internal fun pickAll(eew: String?, warnings: String?, quake: String?, now: Long, zone: ZoneId): List<Event> {
+        fun single(raw: String?, kind: Kind): Event? = runCatching {
+            val o = JSONObject(raw ?: return null)
+            Event(kind, o.getString("t"), o.optString("d"), o.getLong("u")).takeIf { now < it.until }
+        }.getOrNull()
+        val out = ArrayList<Event>()
+        single(eew, Kind.EEW)?.let { out += it }
+        runCatching {
+            val a = JSONArray(warnings ?: "[]")
+            val list = (0 until a.length()).map { a.getJSONObject(it) }.filter { now < it.getLong("e") }
+            val shown = list.filter { it.getLong("s") <= now } + list.filter { it.getLong("s") > now && it.getLong("s") - now <= 12 * 3600_000L }
+            shown.distinctBy { it.getString("t") }.forEach { w ->
+                val start = w.getLong("s"); val end = w.getLong("e")
+                val detail = if (start > now) "預告 · ${hm.format(Instant.ofEpochMilli(start).atZone(zone))} 起生效"
+                    else "有效至 ${hm.format(Instant.ofEpochMilli(end).atZone(zone))}"
+                out += Event(Kind.WARNING, w.getString("t"), detail, if (start > now) start else end)
+            }
+        }
+        single(quake, Kind.QUAKE)?.let { out += it }
+        return out
+    }
+
     internal fun pick(eew: String?, warnings: String?, quake: String?, now: Long, zone: ZoneId): Event? {
         fun single(raw: String?, kind: Kind): Event? = runCatching {
             val o = JSONObject(raw ?: return null)

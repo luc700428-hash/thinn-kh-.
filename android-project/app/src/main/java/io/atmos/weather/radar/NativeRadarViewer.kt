@@ -38,7 +38,7 @@ import kotlin.math.*
 
 private class RadarSceneMemory(var scene:RadarScene?=null)
 
-@Composable fun NativeRadarViewer(latitude:Double,longitude:Double,onClose:()->Unit) {
+@Composable fun NativeRadarViewer(latitude:Double,longitude:Double,onClose:()->Unit,modeSwitch:@Composable ()->Unit={}) {
     val uri=LocalUriHandler.current
     val context=LocalContext.current.applicationContext;val density=LocalDensity.current.density
     val palette=MaterialTheme.colorScheme
@@ -58,7 +58,11 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
     var opacity by remember(cwa){mutableFloatStateOf(if(cwa)1f else .75f)}
     val reduce=rememberAppleReduceMotion()
     LaunchedEffect(reduce){if(reduce)playing=false}
-    val maxSources=remember(context){if(context.getSystemService(ActivityManager::class.java)?.isLowRamDevice==true)2 else RadarPlayback.MAX_SOURCE_TILES}
+    val maxSources=remember(context){
+        val manager=context.getSystemService(ActivityManager::class.java)
+        val memory=ActivityManager.MemoryInfo().also{manager?.getMemoryInfo(it)}
+        RadarPlayback.sourceBudget(memory.totalMem,manager?.isLowRamDevice==true)
+    }
     LaunchedEffect(attempt,cwa) {
         try {
             val old=frames.getOrNull(RadarPlayback.sample(position,frames.size).lower)
@@ -175,12 +179,13 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
     val tileFailure=baseFailure||radarFailure
     Column(Modifier.fillMaxSize().background(palette.background).statusBarsPadding().navigationBarsPadding()) {
         IOSSettingsHeader("降雨雷達",onClose)
+        modeSwitch()
         io.atmos.weather.ui.AdaptiveMapInspector(Modifier.weight(1f),map={mapModifier->
         Box(mapModifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
             .background(if(dark)RadarMapStyle.darkBackground else RadarMapStyle.lightBackground).onSizeChanged{size=it}) {
             Canvas(Modifier.fillMaxSize().pointerInput(density,cwa) {
                 detectTransformGestures {centroid,pan,zoom,_->
-                    val bounded=if(cwa)minOf(zoom,2.0.pow(9.0-camera.zoom).toFloat()) else zoom
+                    val bounded=if(cwa)minOf(zoom,2.0.pow(CwaHighDefinitionRadar.MAX_ZOOM-camera.zoom).toFloat()) else zoom
                     camera=camera.zoomAt(bounded,centroid.x,centroid.y,size.width.toFloat(),size.height.toFloat(),density).pan(pan.x,pan.y,density)
                 }
             }) {
@@ -193,7 +198,7 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
                 drawCircle(brandColor(0xFF308970),5.dp.toPx(),point)
             }
             Column(Modifier.align(Alignment.TopEnd).padding(9.dp)) {
-                GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom+.5).coerceAtMost(if(cwa)9.0 else RadarTilePolicy.CAMERA_MAX_ZOOM))}){androidx.compose.material3.Icon(Icons.Rounded.Add,"放大")}
+                GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom+.5).coerceAtMost(if(cwa)CwaHighDefinitionRadar.MAX_ZOOM.toDouble() else RadarTilePolicy.CAMERA_MAX_ZOOM))}){androidx.compose.material3.Icon(Icons.Rounded.Add,"放大")}
                 Spacer(Modifier.height(7.dp))
                 GlassIconButton(onClick={camera=camera.copy(zoom=(camera.zoom-.5).coerceAtLeast(2.0))}){androidx.compose.material3.Icon(Icons.Rounded.Remove,"縮小")}
                 Spacer(Modifier.height(7.dp))
@@ -211,7 +216,7 @@ private class RadarSceneMemory(var scene:RadarScene?=null)
             if(next!=cwa) {
                 playing=false;frames=emptyList();position=0f;cwa=next;status="正在取得雷達時間軸…"
                 if(next && !CwaHighDefinitionRadar.covers(camera.latitude,camera.longitude))camera=RadarCamera()
-                else if(next)camera=camera.copy(zoom=camera.zoom.coerceAtMost(9.0))
+                else if(next)camera=camera.copy(zoom=camera.zoom.coerceAtMost(CwaHighDefinitionRadar.MAX_ZOOM.toDouble()))
             }
         },modifier=Modifier.padding(horizontal=16.dp,vertical=5.dp))
         Text(status,color=palette.onSurfaceVariant,modifier=Modifier.padding(horizontal=18.dp),fontSize=14.sp)

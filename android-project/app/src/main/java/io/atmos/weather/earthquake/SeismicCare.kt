@@ -74,6 +74,7 @@ internal object SeismicCare {
             .addAction(android.R.drawable.ic_menu_share, "報平安", sharePi)
             .setAutoCancel(true).setTimeoutAfter(6 * 3600_000L)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
-        runCatching { (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(29300, n) }
+        val rich = io.atmos.weather.notifications.RichNotification.enrich(ctx, n, "搖晃過後，先確認安全", "${SeismicDisplayFormat.location(incident.epicenter)} 附近地震 · 留意餘震", io.atmos.weather.notifications.XiaomiFocusBridge.Kind.EARTHQUAKE_REPORT)
+        runCatching { (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(29300, rich) }
     }
 }

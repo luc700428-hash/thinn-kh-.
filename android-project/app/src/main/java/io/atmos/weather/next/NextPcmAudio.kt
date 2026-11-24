@@ -179,8 +179,12 @@ internal class NextAmbienceController(private val context:Context) {
     fun thunderCue() {
         if(closed||!active||!enabled||!focused)return
         runCatching{thunder?.release()}
-        thunder=MediaPlayer.create(context,R.raw.thunder_strike)?.apply {
-            setVolume((level*.45f).coerceIn(0f,.35f),(level*.45f).coerceIn(0f,.35f))
+        // Five real thunder recordings, a different one each time, nearer or farther away.
+        val clips=intArrayOf(R.raw.thunder_strike,R.raw.thunder_strike_2,R.raw.thunder_strike_3,R.raw.thunder_strike_4,R.raw.thunder_strike_5)
+        val near=kotlin.random.Random.nextFloat()
+        thunder=MediaPlayer.create(context,clips[kotlin.random.Random.nextInt(clips.size)])?.apply {
+            val v=(level*(.38f+.32f*near)).coerceIn(0f,.55f)
+            setVolume(v,v)
             setOnCompletionListener{it.release();if(thunder===it)thunder=null};start()
         }
     }

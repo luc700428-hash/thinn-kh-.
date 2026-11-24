@@ -17,7 +17,7 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('SHA-256',ota)
     def test_source_contains_radar_history_and_security(self):
         page=(JAVA/'ui/RadarHistoryDialog.kt').read_text()
-        self.assertIn('NativeRadarViewer(latitude,longitude,onClose)',page)
+        self.assertIn('NativeRadarViewer(latitude,longitude,onClose,switch)',page)
         self.assertNotIn('WebView(',page)
         network=(JAVA/'radar/RadarRepository.kt').read_text()+(JAVA/'radar/RadarProjection.kt').read_text()
         self.assertIn('api.rainviewer.com/public/weather-maps.json',network)

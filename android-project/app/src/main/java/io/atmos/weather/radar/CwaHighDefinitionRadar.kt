@@ -41,7 +41,12 @@ private class AndroidCwaRadarRegions(file:File):CwaRadarRegions {
  * reproject measured pixels. No smoothing, invented rain, or generative upscaling.
  */
 internal object CwaHighDefinitionRadar {
-    const val MAX_ZOOM=9
+    /** Beyond z9 the source cells are smaller than a screen pixel group, so tiles are drawn by
+     * interpolating the measured dBZ levels between neighbouring cells: sharp, smooth edges
+     * instead of blocks or a blurry stretch, and never a value outside the cells around it. */
+    const val MAX_ZOOM=11
+    /** Below this many source pixels across a 512 px tile, levels are interpolated. */
+    internal const val INTERPOLATE_BELOW=300
     const val WEST=118.0;const val EAST=124.0;const val SOUTH=20.5;const val NORTH=26.5
     private val lock=Mutex()
     private var latest:RadarTimeline?=null
@@ -98,7 +103,7 @@ internal object CwaHighDefinitionRadar {
     }
     suspend fun tiles(context:Context,frame:RadarFrame,tiles:List<RadarTile>):Map<RadarTile,ImageBitmap> =
         withContext(Dispatchers.IO) {
-            require(tiles.distinctBy{Triple(it.z,it.x,it.y)}.size<=4 && tiles.all{RadarTilePolicy.valid(it,MAX_ZOOM)})
+            require(tiles.distinctBy{Triple(it.z,it.x,it.y)}.size<=RadarPlayback.MAX_SOURCE_TILES_LARGE && tiles.all{RadarTilePolicy.valid(it,MAX_ZOOM)})
             val source=file(context,frame)
             try {
                 val job=currentCoroutineContext()[Job]
@@ -114,12 +119,16 @@ internal object CwaHighDefinitionRadar {
             // Read the source's own 0–65 dBZ colour ramp, excluding text and neutral map ink.
             val scale=regions.read(Rect(3450,2450,3451,3580))
             val colours=HashSet<Int>()
-            for(y in 0 until scale.height) {
+            // The ramp in order, weakest echo first, so a colour can be read back as a level.
+            val ramp=ArrayList<Int>()
+            for(y in scale.height-1 downTo 0) {
                 val c=scale.getPixel(0,y)
                 val r=(c ushr 16)and 255;val g=(c ushr 8)and 255;val b=c and 255
-                if(maxOf(r,g,b)-minOf(r,g,b)>60)colours.add(c or (0xFF shl 24))
+                if(maxOf(r,g,b)-minOf(r,g,b)>60&&colours.add(c or (0xFF shl 24)))ramp.add(c or (0xFF shl 24))
             }
             scale.recycle();require(colours.size>=50){"CWA colour ramp invalid"}
+            val levelOf=HashMap<Int,Int>(ramp.size*2).apply{ramp.forEachIndexed{i,c->put(c,i)}}
+            val rampColours=ramp.toIntArray()
             val result=linkedMapOf<RadarTile,Bitmap>()
             val physical=hashMapOf<Triple<Int,Int,Int>,Bitmap>()
             tiles.forEach{tile ->
@@ -134,7 +143,9 @@ internal object CwaHighDefinitionRadar {
                 val top=floor((NORTH-min(NORTH,latTop))*600).toInt().coerceIn(0,3600)
                 val bottom=ceil((NORTH-max(SOUTH,latBottom))*600).toInt().coerceIn(0,3600)
                 val output=Bitmap.createBitmap(512,512,Bitmap.Config.ARGB_8888)
-                if(right>left && bottom>top) {
+                if(right>left && bottom>top && right-left<INTERPOLATE_BELOW) {
+                    smooth(regions,tile,n,left,top,right,bottom,levelOf,rampColours,output,checkActive)
+                } else if(right>left && bottom>top) {
                     // Decode only the original-resolution region needed by this tile.
                     var sampleSize=1
                     while(max(right-left,bottom-top)/sampleSize>1024)sampleSize*=2
@@ -161,6 +172,49 @@ internal object CwaHighDefinitionRadar {
                 physical[identity]=output;result[tile]=output
             }
             return result
+    }
+    /**
+     * Close-up tile: each output pixel takes the four nearest source cells, reads their dBZ level
+     * from the ramp, blends the levels bilinearly and paints the ramp colour of the result. Edges
+     * of an echo fade over about one output pixel so outlines are crisp, not stair-stepped.
+     */
+    private fun smooth(regions:CwaRadarRegions,tile:RadarTile,n:Double,left:Int,top:Int,right:Int,bottom:Int,
+        levelOf:Map<Int,Int>,ramp:IntArray,output:Bitmap,checkActive:()->Unit) {
+        val l=(left-1).coerceAtLeast(0);val t=(top-1).coerceAtLeast(0)
+        val r=(right+1).coerceAtMost(3600);val b=(bottom+1).coerceAtMost(3600)
+        val region=regions.read(Rect(l,t,r,b),1)
+        val w=region.width;val h=region.height
+        val raw=IntArray(w*h);region.getPixels(raw,0,w,0,0,w,h);region.recycle()
+        val levels=IntArray(w*h){i->
+            val sx=l+i%w;val sy=t+i/w
+            if(annotation(sx,sy))-1 else levelOf[raw[i]]?:-1
+        }
+        fun level(x:Int,y:Int):Float {
+            val cx=x-l;val cy=y-t
+            return if(cx<0||cy<0||cx>=w||cy>=h)-1f else levels[cy*w+cx].toFloat()
+        }
+        val pixels=IntArray(512*512)
+        val fxs=DoubleArray(512){x->((tile.x+(x+.5)/512)/n*360-180-WEST)*600-.5}
+        for(y in 0 until 512) {
+            if(y%32==0)checkActive()
+            val fy=(NORTH-RadarProjection.latitude((tile.y+(y+.5)/512)/n))*600-.5
+            if(fy< -1||fy>3600)continue
+            val y0=floor(fy).toInt();val ty=(fy-y0).toFloat()
+            for(x in 0 until 512) {
+                val fx=fxs[x];if(fx< -1||fx>3600)continue
+                val x0=floor(fx).toInt();val tx=(fx-x0).toFloat()
+                val a=level(x0,y0);val bb=level(x0+1,y0);val c=level(x0,y0+1);val d=level(x0+1,y0+1)
+                if(a<0&&bb<0&&c<0&&d<0)continue
+                val v=(a*(1-tx)+bb*tx)*(1-ty)+(c*(1-tx)+d*tx)*ty
+                if(v<= -.5f)continue
+                // Measured cells only: never brighter than the strongest of the four neighbours.
+                val top4=maxOf(maxOf(a,bb),maxOf(c,d))
+                val idx=kotlin.math.round(v.coerceIn(0f,top4)).toInt().coerceIn(0,ramp.size-1)
+                val alpha=((v+.5f)/.5f).coerceIn(0f,1f)
+                pixels[y*512+x]=(ramp[idx] and 0xFFFFFF) or ((alpha*255).toInt() shl 24)
+            }
+        }
+        output.setPixels(pixels,0,512,0,0,512,512)
     }
     internal fun annotation(x:Int,y:Int)= (x<1250&&y<760)||(x>2600&&y<300)||
         (x<660&&y>3180)||(x>3375&&y>2400)

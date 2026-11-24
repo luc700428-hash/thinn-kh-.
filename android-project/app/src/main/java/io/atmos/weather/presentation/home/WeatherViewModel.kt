@@ -51,6 +51,8 @@ data class WeatherUiState(
     val locationFeedback: LocationFeedback = LocationFeedback(),
     val loading: Boolean = false,
     val weather: WeatherSnapshot? = null,
+    /** The person's own report of the sky here, shown instead of the forecast for an hour. */
+    val report: io.atmos.weather.report.WeatherReports.Report? = null,
     val scene: WeatherScene? = null,
     val fromCache: Boolean = false,
     val stale: Boolean = false,
@@ -201,6 +203,40 @@ class WeatherViewModel(
             }
         }
     }
+    private fun reportFor(city: WeatherCity) = io.atmos.weather.report.WeatherReports.applicable(
+        io.atmos.weather.report.WeatherReports.load(context), city.coordinate.latitude, city.coordinate.longitude, System.currentTimeMillis())
+
+    private var reportExpiry: kotlinx.coroutines.Job? = null
+
+    /**
+     * 回報目前天氣: the sky changes at once on the home page, in the animation and on the widgets,
+     * then the latest observation is fetched. After an hour the official data returns by itself.
+     */
+    fun reportWeather(kind: io.atmos.weather.report.WeatherReports.Kind) {
+        val city = mutableState.value.city
+        val r = io.atmos.weather.report.WeatherReports.Report(kind, System.currentTimeMillis(), city.coordinate.latitude, city.coordinate.longitude)
+        io.atmos.weather.report.WeatherReports.save(context, r)
+        mutableState.value.weather?.let { w ->
+            val shown = io.atmos.weather.report.WeatherReports.apply(w, r)
+            mutableState.update { it.copy(weather = shown, scene = sceneFor(shown), report = r) }
+            if (WidgetSnapshotStore.publish(context, shown)) WidgetSync.updateVisible(context)
+        }
+        reportExpiry?.cancel()
+        reportExpiry = viewModelScope.launch {
+            kotlinx.coroutines.delay(io.atmos.weather.report.WeatherReports.LIFETIME_MS + 1_000L); load(false)
+        }
+        load(true)
+    }
+
+    /** Back to the official data for this place. */
+    fun withdrawReport() {
+        val city = mutableState.value.city
+        io.atmos.weather.report.WeatherReports.clear(context, city.coordinate.latitude, city.coordinate.longitude)
+        reportExpiry?.cancel()
+        mutableState.update { it.copy(report = null) }
+        load(true)
+    }
+
     private fun load(force: Boolean) {
         if (force) loadWarnings()
         requestJob?.cancel()
@@ -211,15 +247,17 @@ class WeatherViewModel(
             if(mutableState.value.city.id!=city.id||mutableState.value.city.coordinate!=city.coordinate)return@launch
             when (result) {
                 is WeatherLoadResult.Success -> {
+                    val report = reportFor(city)
+                    val shown = report?.let { io.atmos.weather.report.WeatherReports.apply(result.value, it) } ?: result.value
                     mutableState.update {
-                        it.copy(loading = false, weather = result.value, scene = sceneFor(result.value),
+                        it.copy(loading = false, weather = shown, scene = sceneFor(shown), report = report,
                             fromCache = result.fromCache, stale = result.stale)
                     }
                     if (city.id=="gps" && mutableState.value.locationFeedback.phase==LocationPhase.WEATHER) {
                         setLocationFeedback(LocationPhase.SUCCESS,"已定位至 ${city.name}，天氣更新完成")
                     }
                     if(mutableState.value.city.id == city.id) {
-                        if(WidgetSnapshotStore.publish(context,result.value))WidgetSync.updateVisible(context)
+                        if(WidgetSnapshotStore.publish(context,shown))WidgetSync.updateVisible(context)
                     }
                 }
                 is WeatherLoadResult.Failure -> {

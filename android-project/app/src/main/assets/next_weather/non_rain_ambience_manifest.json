@@ -1,78 +1,76 @@
 {
   "schema": 2,
-  "description": "Quiet CC0 leaves, birds and night field recordings.",
+  "description": "Real CC0 Alishan birds, wind in leaves and cricket field recordings.",
   "human_listening_or_wake_efficacy_verified": false,
   "assets": [
     {
       "path": "next_weather/ambience/sunny.wav",
       "scene": "sunny",
       "category": "ambience",
-      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
       "sources": [
-        "birds",
-        "leaves"
+        "birds_alishan"
       ],
-      "sha256": "a657166909d998676e43419ceac0639049065ded293be32d9dc3e7f7fb4b370c",
+      "sha256": "9664b4d837d6a7945d21ba56ef7e0e49faf970b13777a7e8dbd2a8fb1011c9af",
       "sample_rate": 44100,
       "channels": 1,
       "frames": 1058400,
       "seconds": 24,
-      "rms_dbfs": -27.5,
-      "peak_dbfs": -14.102,
-      "loop_jump_pcm": 0
-    },
-    {
-      "path": "next_weather/ambience/clear_night.wav",
-      "scene": "clear_night",
-      "category": "ambience",
-      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-      "sources": [
-        "leaves",
-        "night"
-      ],
-      "sha256": "78969bcd307da2e62f9e97e5caebe39822aff056a1e93563ae9836bfb5b5bb02",
-      "sample_rate": 44100,
-      "channels": 1,
-      "frames": 1058400,
-      "seconds": 24,
-      "rms_dbfs": -31.0,
-      "peak_dbfs": -17.64,
+      "rms_dbfs": -29.048,
+      "peak_dbfs": -11.853,
       "loop_jump_pcm": 0
     },
     {
       "path": "next_weather/ambience/cloudy_day.wav",
       "scene": "cloudy_day",
       "category": "ambience",
-      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
       "sources": [
-        "birds",
-        "leaves"
+        "birds_alishan",
+        "wind_leaves"
       ],
-      "sha256": "2a5dae42f6e213ff96027c0cbd188d5aaf12728c9537c4b1a59e6587c0c28e6e",
+      "sha256": "c88ae117352436ef7d12a1f7a0877604d825c27f6d6ef361dd10d0e195c04ddd",
       "sample_rate": 44100,
       "channels": 1,
       "frames": 1058400,
       "seconds": 24,
-      "rms_dbfs": -29.0,
-      "peak_dbfs": -15.611,
+      "rms_dbfs": -29.505,
+      "peak_dbfs": -12.0,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/clear_night.wav",
+      "scene": "clear_night",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "crickets"
+      ],
+      "sha256": "8d57a63fdcc11e7b5b1e16c9d14b9b1a7d54dcbeba87433e5d6f88cfcf028dec",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.0,
+      "peak_dbfs": -13.002,
       "loop_jump_pcm": 0
     },
     {
       "path": "next_weather/ambience/cloudy_night.wav",
       "scene": "cloudy_night",
       "category": "ambience",
-      "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
       "sources": [
-        "leaves",
-        "night"
+        "crickets",
+        "wind_leaves"
       ],
-      "sha256": "ff14a4c059eb5fa307384f7d1815d47369e3de93b233cf74dba025b3201a9126",
+      "sha256": "e20a74697951da565120b7756a5266c1e59be877d516c2592a8f596ef2101a18",
       "sample_rate": 44100,
       "channels": 1,
       "frames": 1058400,
       "seconds": 24,
-      "rms_dbfs": -31.499,
-      "peak_dbfs": -18.117,
+      "rms_dbfs": -31.5,
+      "peak_dbfs": -12.321,
       "loop_jump_pcm": 0
     }
   ]

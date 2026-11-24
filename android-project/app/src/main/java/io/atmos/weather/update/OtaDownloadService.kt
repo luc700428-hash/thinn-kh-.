@@ -119,7 +119,7 @@ class OtaDownloadService:Service() {
             val stop=PendingIntent.getService(this,1,Intent(this,OtaDownloadService::class.java).setAction(CANCEL),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             builder.addAction(0,"暫停",stop)
         }
-        return builder.build().also { note ->
+        return builder.build().let{if(ongoing)it else io.atmos.weather.notifications.RichNotification.enrich(this,it,"軟體更新已準備好",text,XiaomiFocusBridge.Kind.APP_UPDATE)}.also { note ->
             if(ongoing)runCatching {
                 XiaomiFocusBridge.decorate(this,note,"軟體更新",text,XiaomiFocusBridge.Kind.APP_UPDATE,ID)
             }

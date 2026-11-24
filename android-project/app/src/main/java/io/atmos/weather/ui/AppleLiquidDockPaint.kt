@@ -40,6 +40,8 @@ import kotlin.math.roundToInt
  val dark=darkBackdrop?:(androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f)
  val p=if(dark)BrandPalette.dark else BrandPalette.light
  val colors=FluidGlassStyle.navigation(p,dark)
+ // Without a sampled backdrop (power-saving glass) the tinted pill must carry contrast on its own.
+ val sampled=thinnBackdropAvailable(reduceTransparency)
  Box(modifier.matchParentSize().onSizeChanged{pixels=it}) {
   val g=DockLiquidGeometry.shape(length,cross,density,tabCount,location,if(reduceMotion)location else tail,vertical,touch)
   if(g!=null){
@@ -54,7 +56,7 @@ import kotlin.math.roundToInt
      // iOS 27: the tinted pill gives way to the clear lens while a finger is down.
      .graphicsLayer{alpha=(1f-touch).coerceIn(0f,1f)}.clip(mask)
      .thinnBackdrop(reduceTransparency,(g.height/density/2).dp,.5f,frostScale=.78f,materialDark=dark)) {
-     drawPath(local,if(reduceTransparency)p.primaryContainer else colors.selection)
+     drawPath(local,if(reduceTransparency||!sampled)p.primaryContainer else colors.selection)
      val energy=touch.coerceIn(0f,1f)
      val center=Offset(size.width*.38f,size.height*.20f)
      drawPath(local,Brush.radialGradient(listOf(Color.White.copy(alpha=if(dark).06f+energy*.10f else .16f+energy*.14f),Color.Transparent),center,size.maxDimension))

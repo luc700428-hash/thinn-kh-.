@@ -70,6 +70,9 @@ private val LocalBackdropAncestors=staticCompositionLocalOf<Set<ThinnBackdrop>> 
 @Composable fun rememberThinnBackdrop():ThinnBackdrop {
     val layer=rememberGraphicsLayer()
     val source=remember(layer) {ThinnBackdrop(layer)}
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {com.kyant.backdrop.SharedRuntimeShaders.prewarm()}
+    }
     DisposableEffect(source) {
         source.active=true
         onDispose {source.active=false;source.ready=false;source.pixels=IntSize.Zero;source.coordinates=null}
@@ -117,7 +120,8 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
 /** True when [thinnBackdrop] here would really paint the scene behind (not a no-op). */
 @Composable fun thinnBackdropAvailable(reduceTransparency:Boolean):Boolean {
     val source=LocalThinnBackdrop.current
-    return !reduceTransparency && source!=null && source !in LocalBackdropAncestors.current && !LiquidGlassKit.softwareRenderedDevice
+    return !reduceTransparency && source!=null && source !in LocalBackdropAncestors.current && !LiquidGlassKit.softwareRenderedDevice &&
+        GlassQuality.current()!=GlassQuality.Level.LIGHT
 }
 
 /** iOS-style tint over glass: see-through where real glass is drawn, solid where it is not. */
@@ -136,6 +140,9 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     // piece on every frame exhausts its GPU buffers and takes the virtual device down. They get
     // the same translucent material without sampling; real phones keep the full backdrop.
     if(reduceTransparency || source==null || source in LocalBackdropAncestors.current || LiquidGlassKit.softwareRenderedDevice) return this
+    // Phones that cannot keep up get tinted glass without sampling (see GlassQuality).
+    val quality=GlassQuality.current()
+    if(quality==GlassQuality.Level.LIGHT) return this
     val appearance=io.atmos.weather.presentation.home.LocalAppearance.current
     val frost=appearance.glassFrost.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
     val edge=appearance.edgeLight.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
@@ -144,25 +151,28 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     val angle=Math.toDegrees(atan2(light.y,light.x).toDouble()).toFloat()
     val shape=remember(cornerRadius) {RoundedCornerShape(cornerRadius)}
     val shapeOf=remember(shape) {{shape}}
-    val effects=remember(frost,scale,refract,materialDark) {
+    val effects=remember(frost,scale,refract,materialDark,quality) {
         val blurDp=(2f+6f*frost)*scale
         val block:com.kyant.backdrop.BackdropEffectScope.()->Unit={
             vibrancy()
             blur(blurDp.dp.toPx())
             val minor=size.minDimension
-            if(minor>4f) {
+            // BALANCED: only small controls bend light; large cards keep blur and colour.
+            val bends=quality==GlassQuality.Level.FULL||minor<120.dp.toPx()
+            if(minor>4f&&bends) {
                 // iOS glass is thick at the rim: a band about a fifth of the short side bends the
                 // scene inward; small controls also split colour a little where it bends most.
                 val band=minOf((if(refract)22f else 14f).dp.toPx(),minor*(if(refract).34f else .22f))
                 val amount=minOf((if(refract)44f else 26f).dp.toPx(),minor*(if(refract).62f else .4f))
-                lens(band,amount,depthEffect=refract,chromaticAberration=refract&&minor<140.dp.toPx())
+                lens(band,amount,depthEffect=refract,chromaticAberration=refract&&quality==GlassQuality.Level.FULL&&minor<140.dp.toPx())
             }
             if(materialDark!=null&&Build.VERSION.SDK_INT>=31) renderEffect?.let{renderEffect=GlassToneEffect.apply(it,materialDark)}
         }
         block
     }
     val highlight=remember(angle,edge) {
-        val h=Highlight(width=(.6f+.5f*edge).dp,alpha=.55f+.45f*edge,style=HighlightStyle.Default(angle=angle,falloff=1.6f))
+        // No blur on the rim: a blurred mask is re-rendered whenever the glass changes size.
+        val h=Highlight(width=(.6f+.5f*edge).dp,blurRadius=0.dp,alpha=.55f+.45f*edge,style=HighlightStyle.Default(angle=angle,falloff=1.6f))
         val f:()->Highlight?={h}
         f
     }

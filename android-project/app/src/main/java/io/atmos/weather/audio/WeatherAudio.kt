@@ -78,7 +78,7 @@ private class AtmosAudioMixer(private val context:Context) {
     fun triggerThunder() {
         if (!active || !enabled || audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
         runCatching { transientThunder?.release() }
-        transientThunder=MediaPlayer.create(context,R.raw.thunder_strike)?.apply {
+        transientThunder=MediaPlayer.create(context,intArrayOf(R.raw.thunder_strike,R.raw.thunder_strike_2,R.raw.thunder_strike_3,R.raw.thunder_strike_4,R.raw.thunder_strike_5).random())?.apply {
             setVolume((level*.73f).coerceIn(0f,.7f),(level*.73f).coerceIn(0f,.7f))
             setOnCompletionListener { player ->
                 player.release()

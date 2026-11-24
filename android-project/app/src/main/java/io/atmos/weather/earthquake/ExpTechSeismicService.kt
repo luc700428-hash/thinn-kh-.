@@ -124,7 +124,7 @@ class ExpTechSeismicService : Service() {
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel,"取消置頂",unpinAction)
                 .setDeleteIntent(unpinAction)
         }
-        return builder.build()
+        return io.atmos.weather.notifications.RichNotification.enrich(this,builder.build(),"地震即時監測中",detail,io.atmos.weather.notifications.XiaomiFocusBridge.Kind.STATION_DETECTION)
     }
     private fun updateStatusNotification(detail:String) {
         if (!begun) return

@@ -1,262 +1,262 @@
 {
- "schema": 2,
- "themes": [
-  "dawn",
-  "rain",
-  "wood",
-  "water",
-  "fire",
-  "metal"
- ],
- "scene_count": 14,
- "alarm_arrangements": 84,
- "neutral_arrangements": 6,
- "ambience_loops": 14,
- "listening_quality_or_wake_efficacy_verified": false,
- "assets": [
-  {
-   "path": "next_weather/ambience/sunny.wav",
-   "scene": "sunny",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "birds",
-    "leaves"
-   ],
-   "sha256": "a657166909d998676e43419ceac0639049065ded293be32d9dc3e7f7fb4b370c",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -27.5,
-   "peak_dbfs": -14.102,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/drizzle.wav",
-   "scene": "drizzle",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves",
-    "rain"
-   ],
-   "sha256": "cc1c17a3cbedd57670328090a851785ae82b88d6bfbbe998810a7eff8b7e1d68",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -30.0,
-   "peak_dbfs": -16.567,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/light_rain.wav",
-   "scene": "light_rain",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "rain"
-   ],
-   "sha256": "0c7aaec629c7acb6361a2e3489662521df74fb3d6be1ea263b9e687713135d6c",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -28.501,
-   "peak_dbfs": -15.055,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/moderate_rain.wav",
-   "scene": "moderate_rain",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "downpour",
-    "rain"
-   ],
-   "sha256": "4be0f9d074ce50cd4cf34cb14e84f6eac61bc91b5d01feb0abd1bf1b149b1253",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -27.0,
-   "peak_dbfs": -13.547,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/heavy_rain.wav",
-   "scene": "heavy_rain",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "downpour"
-   ],
-   "sha256": "fbafe29a24340ee88980f64ea98eaf01f675dcb7881f31f3444b72309956714e",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -25.5,
-   "peak_dbfs": -12.533,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/thunderstorm.wav",
-   "scene": "thunderstorm",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "downpour",
-    "leaves"
-   ],
-   "sha256": "f559989e85fc01b5f44a2ec82f1c92c149712bd9feec3ed0a128d20b97e3f3f7",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -26.0,
-   "peak_dbfs": -12.823,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/severe_thunderstorm.wav",
-   "scene": "severe_thunderstorm",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "downpour",
-    "leaves"
-   ],
-   "sha256": "b8303b433654713a68f356bdbc0ec6d5c003a9dda964b83eabec82e82c098423",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -25.0,
-   "peak_dbfs": -11.847,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/haze.wav",
-   "scene": "haze",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves"
-   ],
-   "sha256": "7640b1f2407952c0a6768ce795d2aa9e8a6a63fc66e2a21e347c620200f49906",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -30.0,
-   "peak_dbfs": -16.623,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/fog.wav",
-   "scene": "fog",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves"
-   ],
-   "sha256": "d28c8c6e335516824fa35702b61a97a783efbc54faa9f810386ad6991b15032c",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -30.999,
-   "peak_dbfs": -17.601,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/dense_fog.wav",
-   "scene": "dense_fog",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves"
-   ],
-   "sha256": "eaaa6fc581a31ff76402a03e730679e15de42c02e23928de69980a11b5ff7ef1",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -32.0,
-   "peak_dbfs": -18.616,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/dust_storm.wav",
-   "scene": "dust_storm",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves"
-   ],
-   "sha256": "5f13c2c2851e235cbc58698c660e9b89be399c218c8840c4d431556ed007220c",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -28.0,
-   "peak_dbfs": -14.627,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/light_snow.wav",
-   "scene": "light_snow",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves"
-   ],
-   "sha256": "713bde5387e75cd6884317de774f1788081539dcd37b1948e5d7b18c06f54224",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -31.0,
-   "peak_dbfs": -17.638,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/moderate_snow.wav",
-   "scene": "moderate_snow",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves"
-   ],
-   "sha256": "e2cd055f247ab84455c6f6976c3f8f00ebfad228cc020ae984eb008f4ccf2c93",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -30.0,
-   "peak_dbfs": -16.63,
-   "loop_jump_pcm": 0
-  },
-  {
-   "path": "next_weather/ambience/heavy_snow.wav",
-   "scene": "heavy_snow",
-   "category": "ambience",
-   "authorship": "Remixed CC0 / public-domain field recordings; source credits in docs/NATURE_AMBIENCE_REMASTER.md",
-   "sources": [
-    "leaves"
-   ],
-   "sha256": "e32531db14809d8341e15cbcfc2539fa58df826d5155180541738b861ae84610",
-   "sample_rate": 44100,
-   "channels": 1,
-   "frames": 1058400,
-   "seconds": 24,
-   "rms_dbfs": -29.0,
-   "peak_dbfs": -15.594,
-   "loop_jump_pcm": 0
-  }
- ],
- "alarm_music": "r22: alarm music moved to the soft Ogg loops in res/raw (thinn_alarm_<theme>[_clear|_rain|_snow]); this manifest now tracks the nature ambience only."
+  "schema": 2,
+  "themes": [
+    "dawn",
+    "rain",
+    "wood",
+    "water",
+    "fire",
+    "metal"
+  ],
+  "scene_count": 14,
+  "alarm_arrangements": 84,
+  "neutral_arrangements": 6,
+  "ambience_loops": 14,
+  "listening_quality_or_wake_efficacy_verified": false,
+  "assets": [
+    {
+      "path": "next_weather/ambience/sunny.wav",
+      "scene": "sunny",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "birds_alishan"
+      ],
+      "sha256": "9664b4d837d6a7945d21ba56ef7e0e49faf970b13777a7e8dbd2a8fb1011c9af",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -29.048,
+      "peak_dbfs": -11.853,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/drizzle.wav",
+      "scene": "drizzle",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "rain_city"
+      ],
+      "sha256": "a0b320a70e3cef3fcee4a711be8a25e00dadf393c489c6f839f0305c7c66a75b",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.002,
+      "peak_dbfs": -12.0,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/light_rain.wav",
+      "scene": "light_rain",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "rain_light"
+      ],
+      "sha256": "3ed7a811a61d405867fa0f7a843f43715d8239e47543ce0cdb258f6562bf6770",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -28.503,
+      "peak_dbfs": -12.012,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/moderate_rain.wav",
+      "scene": "moderate_rain",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "rain_heavy",
+        "rain_light"
+      ],
+      "sha256": "d25ca3e6bb4242924740dedc5c78afc05139d0806db16cb8f033c51155faa0aa",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -27.002,
+      "peak_dbfs": -12.005,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/heavy_rain.wav",
+      "scene": "heavy_rain",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "rain_heavy"
+      ],
+      "sha256": "aa3b0fadd79a8ec9413a976339914ebf9286884539f6da634e5bcfc1aab20006",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -25.502,
+      "peak_dbfs": -11.998,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/thunderstorm.wav",
+      "scene": "thunderstorm",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "rain_heavy",
+        "storm"
+      ],
+      "sha256": "4eb3e36732b1384b713e0d3fc2219a2bd3de7709df4d8f991447440dc2752171",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -26.001,
+      "peak_dbfs": -12.012,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/severe_thunderstorm.wav",
+      "scene": "severe_thunderstorm",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "rain_heavy",
+        "storm"
+      ],
+      "sha256": "a0ef0aeb878f35c779eb3db44954d07ad3a9bc9a52b44f7f28ce01420217fa7b",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -25.201,
+      "peak_dbfs": -12.005,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/haze.wav",
+      "scene": "haze",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "crickets",
+        "wind_leaves"
+      ],
+      "sha256": "bd75659a4df39788cb7b3b46586c28b3b79b8b84034561ea318404306d5728e9",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.502,
+      "peak_dbfs": -12.038,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/fog.wav",
+      "scene": "fog",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "wind_leaves"
+      ],
+      "sha256": "91cc90d9ed9340d72989d6090873b120070a2f8182a3b9b1ca5261e011ecb54a",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.502,
+      "peak_dbfs": -12.032,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/dense_fog.wav",
+      "scene": "dense_fog",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "wind_leaves"
+      ],
+      "sha256": "f01302d036187aaef2d55a08964e9e241e5ef90981bac434149deb05110887fc",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.902,
+      "peak_dbfs": -12.156,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/dust_storm.wav",
+      "scene": "dust_storm",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "gust"
+      ],
+      "sha256": "2b5ce82b5531aa887ce4ce24e8fc9b8c702aa13d97ab30fbdd8173dc47f0fe27",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -27.0,
+      "peak_dbfs": -12.303,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/light_snow.wav",
+      "scene": "light_snow",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "snow_wind"
+      ],
+      "sha256": "6cee53d802db08971d803c4e744612d89f6f5dcd2cde5ae05b6b710bd99055db",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -31.5,
+      "peak_dbfs": -12.062,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/moderate_snow.wav",
+      "scene": "moderate_snow",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "snow_wind"
+      ],
+      "sha256": "0210b2f0abcec5b37a03c945554c26a5c12d80bcea957a34ec834e179d12b1e9",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -30.001,
+      "peak_dbfs": -12.022,
+      "loop_jump_pcm": 0
+    },
+    {
+      "path": "next_weather/ambience/heavy_snow.wav",
+      "scene": "heavy_snow",
+      "category": "ambience",
+      "authorship": "CC0 field recordings (see tools/audio_sources/SOURCES.json); trimmed, filtered and looped",
+      "sources": [
+        "gust",
+        "snow_wind"
+      ],
+      "sha256": "0fe5e56d2abb9aa8cc6e37e2c7c031a24c38c0f530962a7a011934de7fe8fdd2",
+      "sample_rate": 44100,
+      "channels": 1,
+      "frames": 1058400,
+      "seconds": 24,
+      "rms_dbfs": -28.5,
+      "peak_dbfs": -12.022,
+      "loop_jump_pcm": 0
+    }
+  ],
+  "alarm_music": "r22: alarm music moved to the soft Ogg loops in res/raw (thinn_alarm_<theme>[_clear|_rain|_snow]); this manifest now tracks the nature ambience only."
 }

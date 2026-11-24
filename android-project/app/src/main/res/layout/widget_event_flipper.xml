@@ -1,0 +1,6 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_event_frame"
+ android:layout_width="match_parent" android:layout_height="wrap_content" android:clipChildren="true">
+ <ViewFlipper android:id="@+id/widget_event_flipper" android:layout_width="wrap_content" android:layout_height="match_parent"
+  android:layout_gravity="start|center_vertical" android:autoStart="true" android:flipInterval="4200"
+  android:animateFirstView="false" android:inAnimation="@anim/widget_event_in" android:outAnimation="@anim/widget_event_out"/>
+</FrameLayout>

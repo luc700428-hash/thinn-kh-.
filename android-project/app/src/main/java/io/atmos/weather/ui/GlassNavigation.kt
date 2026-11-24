@@ -235,6 +235,15 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
     val appearanceContent:@Composable ()->Unit = {
         IOS27AppearancePage(onBack={appearanceOpen=false},advancedSettings={
             ThinnSection("進階外觀與動態") {
+                var glassChoice by remember { mutableStateOf(prefs.getInt(GlassQuality.SETTING,0)) }
+                Text("玻璃效果",fontSize=17.sp,color=MaterialTheme.colorScheme.onSurface,modifier=Modifier.padding(top=4.dp))
+                Text(when(glassChoice){1->"完整液態玻璃：所有卡片都有厚玻璃折射，需要較強的手機"
+                    2->"省電：玻璃改為半透明色塊，最流暢、最省電"
+                    else->"自動：依手機效能選擇，畫面不順時會自動降低"},fontSize=14.sp,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(bottom=6.dp))
+                IOSSegmentedControl(listOf("自動","完整","省電"),glassChoice,{glassChoice=it;GlassQuality.choose(context,it)})
+                Spacer(Modifier.height(8.dp))
+                GlassDivider()
                 GlassToggle("降低透明度","加強文字對比",reduceTransparency) {
                     reduceTransparency=it; prefs.edit().putBoolean("reduce_transparency",it).apply()
                 }

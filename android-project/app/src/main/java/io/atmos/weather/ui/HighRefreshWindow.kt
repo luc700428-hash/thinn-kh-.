@@ -155,6 +155,7 @@ private fun Context.activity():Activity?=when(this) {
     val readingDensity=LocalDensity.current
     val contentColor=LocalContentColor.current
     Dialog(onDismissRequest,properties=properties){
+        if(!properties.usePlatformDefaultWidth)FullPageWindow()
         CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){
             HighRefreshHost()
             if(!properties.usePlatformDefaultWidth) {
@@ -180,5 +181,23 @@ private fun Context.activity():Activity?=when(this) {
     val contentColor=LocalContentColor.current
     Popup(popupPositionProvider,onDismissRequest,properties){
         CompositionLocalProvider(LocalDensity provides readingDensity,LocalContentColor provides contentColor){HighRefreshHost();content()}
+    }
+}
+
+/**
+ * Full-screen pages are dialog windows. The platform dims everything behind a dialog, and while the
+ * page animated away that dim showed as a grey sheet before the home screen came back. Pages draw
+ * their own background, so the dim is removed, and they rise in and settle away with one motion.
+ */
+@Composable private fun FullPageWindow() {
+    val view=LocalView.current
+    DisposableEffect(view) {
+        val window=(view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+        window?.let {
+            it.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            it.setDimAmount(0f)
+            it.setWindowAnimations(io.atmos.weather.R.style.ThinnPageAnimation)
+        }
+        onDispose{}
     }
 }

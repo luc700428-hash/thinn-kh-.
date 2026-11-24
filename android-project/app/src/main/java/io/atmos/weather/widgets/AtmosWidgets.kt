@@ -51,8 +51,9 @@ class WidgetRefreshAction:ActionCallback {
     val plan=WidgetLayoutPlan.create(size.width.value,size.height.value,prefs.getFloat("v4_fontscale",1f),context.resources.configuration.fontScale,WidgetTypography.read(context))
     val family=when(variant){25->5;26->6;27->7;28->8;29->9;30->10;else->variant/5}
     val index=when(variant){25->0;26->3;27,28,29,30->if(data.day)0 else 1;else->variant%5}
-    // Any widget turns to alert glass while a warning or a fresh quake report is shown.
-    val alert=data.event!=null||data.alertRecent&&(family==4||family==5)
+    // Warnings no longer turn the whole widget red: a red badge in the corner carries them
+    // (see adaptiveWidgetRemote), so the weather stays readable on the usual glass.
+    val alert=false
     // Light or dark glass follows what the system reports about the wallpaper.
     val tone=WidgetGlassTone.current(context)
     // iOS 27 appearances: live sky, dark, clear, tinted and smoked clear (see IOSWidgetSky).

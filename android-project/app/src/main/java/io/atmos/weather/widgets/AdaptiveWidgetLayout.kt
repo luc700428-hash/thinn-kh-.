@@ -255,7 +255,10 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
                     };setTextViewTextSize(id,dip,r.font);setTextColor(id,colors.accent)
                 }
             }
-            else->{
+            else->if(r.kind==WidgetRegion.Kind.TEXT&&d.events.isNotEmpty()&&r.text==d.event?.title){
+                id=R.id.widget_event_frame
+                eventBadge(context,d,r,motion)
+            } else {
                 val temp=r.kind==WidgetRegion.Kind.TEMPERATURE&&family==8;id=if(temp)R.id.buddy_clock_temp else R.id.widget_adaptive_text
                 val hero=!temp&&r.kind==WidgetRegion.Kind.TEMPERATURE&&r.font>=26f
                 RemoteViews(context.packageName,if(temp)R.layout.widget_adaptive_temperature else if(hero)R.layout.widget_adaptive_hero else R.layout.widget_adaptive_text).apply{
@@ -269,6 +272,26 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
         remote.setViewLayoutMargin(id,RemoteViews.MARGIN_LEFT,r.x,dip);remote.setViewLayoutMargin(id,RemoteViews.MARGIN_TOP,r.y,dip)
         result.addView(R.id.widget_adaptive_root,remote)
     };return result
+}
+/**
+ * The warning label in the corner: white text on a red pill. With several warnings the pills
+ * take turns, each sliding up and out as the next rises in; with motion off only the most urgent
+ * shows, followed by how many more there are.
+ */
+internal fun eventBadge(context:Context,d:OpticalWidgetData,r:WidgetRegion,motion:Boolean):RemoteViews {
+    val dip=TypedValue.COMPLEX_UNIT_DIP
+    val frame=RemoteViews(context.packageName,R.layout.widget_event_flipper)
+    frame.removeAllViews(R.id.widget_event_flipper)
+    val titles=d.events.map{it.title}.distinct()
+    val shown=if(motion)titles.take(6) else listOf(titles.first()+if(titles.size>1)"（另有 ${titles.size-1} 則）" else "")
+    shown.forEach{title->
+        frame.addView(R.id.widget_event_flipper,RemoteViews(context.packageName,R.layout.widget_event_badge).apply{
+            setTextViewText(R.id.widget_event_badge,title)
+            setTextViewTextSize(R.id.widget_event_badge,dip,(r.font*.92f).coerceAtLeast(7f))
+            setContentDescription(R.id.widget_event_badge,"警報：$title")
+        })
+    }
+    return frame
 }
 private fun weatherRemote(context:Context,condition:io.atmos.weather.domain.model.WeatherCondition,day:Boolean,size:Float,motion:Boolean):RemoteViews{
     val px=(size*context.resources.displayMetrics.density).toInt().coerceIn(24,192)

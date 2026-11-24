@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
             this,io.atmos.weather.task.TaskStore.load(this)) }
         CwaAlertWorker.checkNow(this)
         setContent {
+            io.atmos.weather.ui.GlassQuality.Watch()
             val vm: WeatherViewModel = viewModel(factory=WeatherViewModel.Factory(AppContainer.repository(applicationContext), applicationContext))
             // Queue runtime requests sequentially. Two simultaneous launchers may cause
             // the second system dialog to be dropped on some OEM Android variants.

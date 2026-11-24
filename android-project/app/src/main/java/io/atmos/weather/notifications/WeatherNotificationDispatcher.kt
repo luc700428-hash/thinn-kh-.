@@ -17,12 +17,14 @@ object WeatherNotificationDispatcher {
     fun post(
         context: Context,
         id: Int,
-        notification: Notification,
+        plain: Notification,
         title: String,
         detail: String,
         kind: XiaomiFocusBridge.Kind
     ): Boolean {
         if (!PermissionGuide.canNotify(context)) return false
+        // Picture and facts when collapsed, the full story when expanded (see RichNotification).
+        val notification = RichNotification.enrich(context, plain, title, detail, kind)
         // Kept for the in-app notification center (iOS-style history), on this phone only.
         runCatching { NotificationHistory.record(context, title, detail, kind) }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

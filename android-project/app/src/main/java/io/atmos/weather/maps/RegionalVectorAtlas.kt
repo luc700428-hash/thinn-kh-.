@@ -62,19 +62,21 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
     fun hasLandNear(lon:Double,lat:Double,tolerance:Double=.08)=polygons.any {
         lon>=it.bounds.left-tolerance&&lon<=it.bounds.right+tolerance&&lat>=it.bounds.top-tolerance&&lat<=it.bounds.bottom+tolerance
     }
-    fun draw(scope:DrawScope,view:TyphoonViewport,dark:Boolean,preparedOnly:Boolean=false) {
+    fun draw(scope:DrawScope,view:TyphoonViewport,dark:Boolean,preparedOnly:Boolean=false,outline:Int?=null,outlineDp:Float=.75f) {
         val pixelsPerDegree=(111.2*view.pxPerKm).toFloat()
         if(!pixelsPerDegree.isFinite()||pixelsPerDegree<=0f)return
         val batch=if(preparedOnly)synchronized(batches){batches[cameraKey(view)]}?:overview else batch(view).second
         fill.color=if(dark)animatedBrandArgb(0xFF284E44) else 0xffd3e3d1.toInt()
         edge.color=if(dark)animatedBrandArgb(0xFF85B9AB) else animatedBrandArgb(0xFF5F8C80)
-        edge.strokeWidth=(.75f*scope.density/pixelsPerDegree).coerceAtLeast(.000001f)
+        if(outline!=null)edge.color=outline
+        edge.strokeWidth=(outlineDp*scope.density/pixelsPerDegree).coerceAtLeast(.000001f)
         val origin=view.project(100.0,0.0);val canvas=scope.drawContext.canvas.nativeCanvas
         canvas.save();canvas.clipRect(0f,0f,scope.size.width,scope.size.height)
         canvas.translate(origin.first,origin.second)
         canvas.scale((pixelsPerDegree*view.cosCenter).toFloat(),-pixelsPerDegree)
         // One immutable vector batch replaces thousands of drawPath calls per gesture frame.
-        canvas.drawPath(batch.path,fill);canvas.drawPath(batch.path,edge)
+        if(outline==null)canvas.drawPath(batch.path,fill)
+        canvas.drawPath(batch.path,edge)
         if(islandPoints.size<batch.minor.size*2)islandPoints=FloatArray(batch.minor.size*2)
         val dots=islandPoints;var count=0
         batch.minor.forEach {p->
@@ -82,7 +84,7 @@ class RegionalVectorAtlas private constructor(private val polygons:List<Polygon>
                 dots[count++]=p.bounds.centerX()-100;dots[count++]=p.bounds.centerY()
             }
         }
-        if(count>0) {
+        if(count>0&&outline==null) {
             val previous=fill.style
             fill.style=Paint.Style.STROKE;fill.strokeCap=Paint.Cap.ROUND
             fill.strokeWidth=1.4f*scope.density/pixelsPerDegree

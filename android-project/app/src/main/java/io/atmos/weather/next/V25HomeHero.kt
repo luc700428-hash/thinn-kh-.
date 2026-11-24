@@ -45,7 +45,10 @@ fun V25HomeHero(
     conditionLabel: String,
     high: Int?, low: Int?, feelsLike: Int?, isNight: Boolean,
     rainProbability: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** 回報目前天氣: a small pill beside the condition, so nothing below moves. */
+    reported: Boolean = false,
+    onReport: (() -> Unit)? = null,
 ) {
     val scene=V25WeatherPresentation.from(condition,isNight,rainProbability)
     val ctx=LocalContext.current
@@ -81,8 +84,14 @@ fun V25HomeHero(
                 Text("${scene.emblem}   現在的天氣",fontSize=15.sp,
                     color=heroInk.copy(alpha=.85f),fontWeight=FontWeight.Medium)
                 WeatherTemperature(temperature,heroInk)
-                Text(conditionLabel.ifBlank {scene.name},fontSize=22.sp,
-                    fontWeight=FontWeight.SemiBold,color=heroInk)
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text(conditionLabel.ifBlank {scene.name},fontSize=22.sp,
+                        fontWeight=FontWeight.SemiBold,color=heroInk)
+                    if(onReport!=null) {
+                        Spacer(Modifier.width(8.dp))
+                        io.atmos.weather.report.WeatherReportPill(reported,heroInk,onReport)
+                    }
+                }
             }
         }
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal=18.dp),

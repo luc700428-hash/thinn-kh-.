@@ -7,3 +7,4 @@ Vendored into thinn-khì so it builds with this project's Compose version. Chang
 - LayerRecorder.kt: the context parameter became an ordinary first parameter (this project's Kotlin has no context parameters).
 - InverseLayerScope.kt: blendMode/colorFilter are plain properties (GraphicsLayerScope here has none).
 - highlight/HighlightModifier.kt: no RuntimeShader on software canvases (plain colour rim instead).
+- RuntimeShaderCache.kt: compiled shaders are shared process-wide (SharedRuntimeShaders) and can be prewarmed.

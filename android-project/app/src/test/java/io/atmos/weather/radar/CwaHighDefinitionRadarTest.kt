@@ -44,6 +44,39 @@ class CwaHighDefinitionRadarTest {
         }
         return source.use{CwaHighDefinitionRadar.decode(it,tiles)}
     }
+    @Test fun closeUpTilesBlendMeasuredLevelsIntoSharpRampColours() {
+        // z11 children of the rainy z9 tile: about 105 source cells across 512 px, so blended.
+        val tiles=(0 until 4).flatMap{dy->(0 until 4).map{dx->RadarTile(11,1700+dx,896+dy,1700+dx)}}
+        val bytes=resource("CV1_TW_3600_202610290630.png")
+        val png=android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+        val ramp=HashSet<Int>()
+        for(y in 2450 until 3580){val c=png.getPixel(3450,y);val r=(c ushr 16)and 255;val g=(c ushr 8)and 255;val b=c and 255
+            if(maxOf(r,g,b)-minOf(r,g,b)>60)ramp.add(c and 0xFFFFFF)}
+        png.recycle()
+        var solid=0;var edge=0
+        decode("CV1_TW_3600_202610290630.png",tiles).values.forEach{image->
+            assertEquals(512,image.width)
+            for(y in 0 until 512)for(x in 0 until 512){
+                val v=image.getPixel(x,y);val a=v ushr 24
+                if(a==0)continue
+                assertTrue("Colour outside the CWA ramp",(v and 0xFFFFFF) in ramp)
+                if(a==255)solid++ else edge++
+            }
+        }
+        assertTrue("Close-up lost the rain",solid>5000)
+        // Edges fade over about a pixel instead of stair-stepping.
+        assertTrue("No soft edge pixels",edge>0)
+        assertTrue(edge<solid)
+        assertEquals(11,CwaHighDefinitionRadar.MAX_ZOOM)
+    }
+    @Test fun phonesWithMoreMemoryHoldMoreSourceTiles() {
+        assertEquals(2,RadarPlayback.sourceBudget(12_000_000_000L,true))
+        assertEquals(9,RadarPlayback.sourceBudget(8_000_000_000L,false))
+        assertEquals(6,RadarPlayback.sourceBudget(6_000_000_000L,false))
+        assertEquals(4,RadarPlayback.sourceBudget(4_000_000_000L,false))
+        val c=RadarCamera(23.5,120.7,10.5)
+        assertTrue(RadarPlayback.tiles(c,1080f,1900f,3f,9,11).distinctBy{Triple(it.z,it.x,it.y)}.size<=9)
+    }
     @Test fun publicTimelineKeepsOriginalTimesAndRejectsUnexpectedSourcesAndFutureData() {
         val now=Instant.parse("2026-10-28T22:40:00Z").toEpochMilli()
         val timeline=CwaHighDefinitionRadar.parse(String(resource("Observe_radar.js")),now)

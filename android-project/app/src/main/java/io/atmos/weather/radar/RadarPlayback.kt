@@ -14,6 +14,14 @@ internal data class RadarSample(val lower:Int,val upper:Int,val fraction:Float) 
 internal object RadarPlayback {
     const val MILLIS_PER_OBSERVATION=1100.0
     const val MAX_SOURCE_TILES=4
+    /** Phones with plenty of memory hold more, smaller-on-screen tiles: sharper close-ups. */
+    const val MAX_SOURCE_TILES_LARGE=9
+    fun sourceBudget(totalMemBytes:Long,lowRam:Boolean):Int = when {
+        lowRam -> 2
+        totalMemBytes>=7_500_000_000L -> MAX_SOURCE_TILES_LARGE
+        totalMemBytes>=5_500_000_000L -> 6
+        else -> MAX_SOURCE_TILES
+    }
     const val MAX_INTERPOLATION_GAP_SECONDS=900L
 
     fun sample(position:Float,count:Int):RadarSample {
@@ -42,7 +50,7 @@ internal object RadarPlayback {
 
     /** Keep all source frames resident without multiplying native tiles at wide viewports. */
     fun tiles(camera:RadarCamera,width:Float,height:Float,density:Float,maxSources:Int=MAX_SOURCE_TILES,maxZoom:Int=RadarTilePolicy.RADAR_MAX_ZOOM):List<RadarTile> {
-        var zoom=maxZoom.coerceIn(0,9)
+        var zoom=maxZoom.coerceIn(0,CwaHighDefinitionRadar.MAX_ZOOM)
         while(true) {
             val tiles=RadarProjection.tiles(camera,width,height,density,zoom)
             if(zoom==0 || tiles.distinctBy{Triple(it.z,it.x,it.y)}.size<=maxSources.coerceAtLeast(1))return tiles

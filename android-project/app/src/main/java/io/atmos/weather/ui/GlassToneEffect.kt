@@ -25,9 +25,16 @@ internal object GlassToneEffect {
   return androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix(
    floatArrayOf(scale,0f,0f,0f,bias,0f,scale,0f,0f,bias,0f,0f,scale,0f,bias,0f,0f,0f,1f,0f)))
  }
+ // Compiled once per material; RenderEffect copies the uniform, so the same instance is reused.
+ private var lightShader:Any?=null
+ private var darkShader:Any?=null
+ @RequiresApi(33) private fun shaderFor(dark:Boolean):RuntimeShader {
+  val cached=(if(dark)darkShader else lightShader) as? RuntimeShader
+  if(cached!=null)return cached
+  return RuntimeShader(SOURCE).also { it.setFloatUniform("darkMaterial",if(dark)1f else 0f); if(dark)darkShader=it else lightShader=it }
+ }
  @RequiresApi(33) private fun modern(input:RenderEffect,dark:Boolean):RenderEffect {
-  val shader=RuntimeShader(SOURCE)
-  shader.setFloatUniform("darkMaterial",if(dark)1f else 0f)
+  val shader=shaderFor(dark)
   return RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(shader,"scene"),input)
  }
  private const val SOURCE="""
