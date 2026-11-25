@@ -22,7 +22,19 @@ data class IOSMotionResponse(val damping:Float,val stiffness:Float)
  * the Liquid Glass touch response ([liquidPress]): a swell under the finger, a droplet stretch
  * toward a drag and a jelly settle. Wide rows swell by at most 8 dp.
  */
-fun Modifier.iosJellyPress():Modifier=liquidPress(maxGrowDp=8f)
+fun Modifier.iosJellyPress():Modifier=if(LiquidGlassKit.softwareRenderedDevice)classicJellyPress() else liquidPress(maxGrowDp=8f)
+
+/**
+ * The earlier, lighter press, kept for emulators that draw through SwiftShader: a list swiped
+ * across dozens of swelling, stretching rows repeatedly took the CI emulator's host renderer
+ * down. Real phones always get [liquidPress].
+ */
+private fun Modifier.classicJellyPress():Modifier=composed{
+ val reduce=rememberAppleReduceMotion();val response=iosMotionResponse();var down by remember{mutableStateOf(false)}
+ val x by animateFloatAsState(if(down&&!reduce).975f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍橫向回彈")
+ val y by animateFloatAsState(if(down&&!reduce).95f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍縱向回彈")
+ this.graphicsLayer{scaleX=x;scaleY=y;alpha=if(down&&!reduce).92f else 1f}.pointerInput(Unit){awaitEachGesture{awaitFirstDown(requireUnconsumed=false);down=true;try{var held=true;while(held){val event=awaitPointerEvent(PointerEventPass.Final);held=event.changes.any{it.pressed}}}finally{down=false}}}
+}
 
 /**
  * iOS 27 content entrance: rises 14 dp and fades in on the fluid curve, staggered by [index]

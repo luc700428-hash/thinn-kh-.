@@ -268,7 +268,9 @@ internal class LiquidPressState {
 internal fun Modifier.liquidPress(enabled: Boolean = true, state: LiquidPressState? = null, maxGrowDp: Float = 10f,
                                   lean: Dp = 10.dp, stretch: Float = .2f): Modifier = composed {
     val reduce = rememberAppleReduceMotion()
-    if (!enabled || reduce) return@composed this
+    // SwiftShader emulators (CI) keep presses still: swiping across many swelling glass pieces
+    // has taken their host renderer down. Real phones get the full response.
+    if (!enabled || reduce || LiquidGlassKit.softwareRenderedDevice) return@composed this
     val scope = rememberCoroutineScope()
     val sx = remember { Animatable(1f) }; val sy = remember { Animatable(1f) }
     val tx = remember { Animatable(0f) }; val ty = remember { Animatable(0f) }
