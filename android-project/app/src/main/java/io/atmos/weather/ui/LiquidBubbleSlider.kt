@@ -47,10 +47,12 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
     var pressed by remember{mutableStateOf(false)}
     val head by animateFloatAsState(fraction,if(dragging||reduce)tween(0) else spring(response.damping,response.stiffness),label="bubble head")
     val tail by animateFloatAsState(head,if(reduce)tween(0) else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="adhering water tail")
-    val lift by animateFloatAsState(if((dragging||pressed)&&!reduce)1f else 0f,if(reduce)tween(0) else spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="bubble rebound")
+    // Liquid Glass slider: the thumb inflates with the lift spring and deflates with the wobbly settle.
+    val held=(dragging||pressed)&&!reduce
+    val lift by animateFloatAsState(if(held)1f else 0f,if(reduce)tween(0) else if(held)LiquidSprings.lift() else LiquidSprings.settle(),label="bubble rebound")
     val dark=MaterialTheme.colorScheme.background.red<.5f
     val active=colors?.activeTrackColor?:MaterialTheme.colorScheme.primary
-    val inactive=colors?.inactiveTrackColor?:if(dark)brandColor(0xFF565C5A) else Color(0xFFC7C7CC)
+    val inactive=colors?.inactiveTrackColor?:LiquidMaterial.rail(dark)
     val solid=MaterialTheme.colorScheme.surface
     val opticalTail=tail.coerceIn(head-.12f,head+.12f)
     fun quantized(v:Float)=BubbleSliderGeometry.quantize(v,low,high,steps)
@@ -100,7 +102,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
         // layer is lensed: inside the knob the magnified track bends at the rim, as in iOS 27.
         Canvas(Modifier.matchParentSize().graphicsLayer {
             renderEffect=if(android.os.Build.VERSION.SDK_INT<33)null else optics?.let{o->knobOf(size.width,size.height)?.let{k->
-                o.effect(size.width,size.height,k.rect,k.rect.minDimension/2,k.clear,density.density)}}
+                o.effect(size.width,size.height,k.rect,k.rect.minDimension/2,k.clear,density.density,zoom=1f,dispersion=.6f)}}
         }) {
             val k=knobOf(size.width,size.height)?:return@Canvas
             val rect=k.rect;val clear=k.clear
@@ -108,9 +110,9 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
             val restW=38.dp.toPx()
             val start=k.inset-restW/2;val end=size.width-k.inset+restW/2
             val fill=k.inset+(size.width-2*k.inset)*head.coerceIn(0f,1f)
-            val thickness=5.dp.toPx()
+            val thickness=6.dp.toPx()
             fun track() {
-                drawLine(inactive.copy(alpha=.60f),Offset(start,k.y),Offset(end,k.y),thickness,StrokeCap.Round)
+                drawLine(inactive,Offset(start,k.y),Offset(end,k.y),thickness,StrokeCap.Round)
                 drawLine(active,Offset(start,k.y),Offset(fill,k.y),thickness,StrokeCap.Round)
             }
             // SwiftShader emulators crash in their host renderer when a path clip is rebuilt at a
@@ -131,8 +133,9 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
             if(simple)drawPath(knob,if(opaque)solid else Color.White.copy(alpha=if(dark).05f else .08f))
             else clipPath(knob) {
                 drawPath(knob,if(opaque)solid else Color.White.copy(alpha=if(dark).05f else .08f))
-                val zoom=1f+(LiquidGlassKit.MAGNIFY-1f)*clear
-                withTransform({scale(zoom,zoom*1.15f,rect.center)}) {track()}
+                // iOS magnifies the rail about 2× inside the lifted thumb.
+                val zoom=1f+.95f*clear
+                withTransform({scale(zoom,zoom,rect.center)}) {track()}
             }
         }
         // Layer 2: light. Crisp specular rim from the sun or moon, and the white resting knob.
@@ -142,7 +145,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
             val path=rim
             liquidGlassEdge(path,light,k.clear,dark,bounds=k.rect)
             // At rest iOS shows a solid white knob; it clears as the finger lifts the glass.
-            val white=(1f-k.clear).coerceIn(0f,1f)
+            val white=(1f-k.clear*.92f).coerceIn(0f,1f)
             if(white>.001f) {
                 drawPath(path,Color.White.copy(alpha=white))
                 drawPath(path,Color.Black.copy(alpha=.06f*white),style=Stroke(.6.dp.toPx()))

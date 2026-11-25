@@ -29,10 +29,9 @@ import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.effects.liquidRefraction
 import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.highlight.HighlightStyle
 import kotlin.math.atan2
 
 /**
@@ -148,32 +147,32 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     val edge=appearance.edgeLight.takeIf{it.isFinite()}?.coerceIn(0f,1f)?:.5f
     val scale=frostScale.takeIf{it.isFinite()}?.coerceIn(.1f,2f)?:1f
     val light=GlassLight.current(follow=true)
-    val angle=Math.toDegrees(atan2(light.y,light.x).toDouble()).toFloat()
     val shape=remember(cornerRadius) {RoundedCornerShape(cornerRadius)}
     val shapeOf=remember(shape) {{shape}}
-    val effects=remember(frost,scale,refract,materialDark,quality) {
-        val blurDp=(2f+6f*frost)*scale
+    val dark=materialDark?:liquidDark()
+    val effects=remember(frost,scale,refract,materialDark,quality,dark) {
+        // Liquid Glass material (github.com/zakisheriff/Liquid-Glass): saturate 1.9 / 1.6,
+        // brightness 1.04 / .96 and a light blur (6 / 8 px at the default frost), then the
+        // Snell's-law squircle bevel bends the scene inward at the rim.
+        val blurDp=LiquidMaterial.blurDp(dark)*(.5f+frost)*scale
         val block:com.kyant.backdrop.BackdropEffectScope.()->Unit={
-            vibrancy()
+            colorControls(brightness=LiquidMaterial.brightness(dark),saturation=LiquidMaterial.saturation(dark))
             blur(blurDp.dp.toPx())
             val minor=size.minDimension
             // BALANCED: only small controls bend light; large cards keep blur and colour.
             val bends=quality==GlassQuality.Level.FULL||minor<120.dp.toPx()
             if(minor>4f&&bends) {
-                // iOS glass is thick at the rim: a band about a fifth of the short side bends the
-                // scene inward; small controls also split colour a little where it bends most.
-                val band=minOf((if(refract)22f else 14f).dp.toPx(),minor*(if(refract).34f else .22f))
-                val amount=minOf((if(refract)44f else 26f).dp.toPx(),minor*(if(refract).62f else .4f))
-                lens(band,amount,depthEffect=refract,chromaticAberration=refract&&quality==GlassQuality.Level.FULL&&minor<140.dp.toPx())
+                val shape=LiquidShape.surface(size.width/density,size.height/density)
+                liquidRefraction(lens=false,bezel=shape.bezel.dp.toPx(),thickness=shape.thickness.dp.toPx(),
+                    strength=if(refract)1f else .6f)
             }
             if(materialDark!=null&&Build.VERSION.SDK_INT>=31) renderEffect?.let{renderEffect=GlassToneEffect.apply(it,materialDark)}
         }
         block
     }
-    val highlight=remember(angle,edge) {
-        // No blur on the rim: a blurred mask is re-rendered whenever the glass changes size.
-        val h=Highlight(width=(.6f+.5f*edge).dp,blurRadius=0.dp,alpha=.55f+.45f*edge,style=HighlightStyle.Default(angle=angle,falloff=1.6f))
-        val f:()->Highlight?={h}
+    val highlight=remember {
+        // The rim is the library's baked specular hairline, drawn by [liquidRim] below.
+        val f:()->Highlight?={null}
         f
     }
     // RenderEffects are ignored on software canvases (bitmap snapshots); keep the material's
@@ -190,6 +189,7 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
         f
     }
     return drawBackdrop(backdrop=source,shape=shapeOf,effects=effects,highlight=highlight,shadow=null,onDrawBackdrop=onDrawBackdrop)
+        .liquidRim(cornerRadius,light,dark,strength=.55f+.9f*edge)
 }
 
 /** A glass card or control: the glass, then a tint that stays light enough to see through. */

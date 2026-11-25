@@ -46,29 +46,12 @@ object ThinnOpticalMaterial {
 }
 
 /**
- * A restrained dynamic-looking specular edge. It must remain transparent over text
- * and must not be mistaken for true background sampling/refraction.
+ * The Liquid Glass specular rim (github.com/zakisheriff/Liquid-Glass): a hairline just inside the
+ * edge, brightest on the corner facing the sun or moon and again on the opposite corner (light
+ * reflected inside the glass), with a faint glow fading inward. Transparent over text.
  */
 fun Modifier.thinnSpecularEdge(radius: Dp = 28.dp): Modifier = composed {
-    // iOS 27: the rim catches light from where the sun (or moon) really is, not a fixed corner.
     val light = GlassLight.current(follow = true)
-    drawWithContent {
-        drawContent()
-        val inset=1.5.dp.toPx()
-        val edgeRadius=radius.toPx().coerceAtMost(size.minDimension/2f)
-        val c=Offset(size.width/2f,size.height/2f)
-        val reach=(size.width+size.height)/2f
-        drawRoundRect(
-            brush=Brush.linearGradient(
-                0f to Color.White.copy(alpha=.65f),
-                .5f to Color.White.copy(alpha=.15f),
-                1f to Color.Transparent,
-                start=Offset(c.x+light.x*reach/2f,c.y+light.y*reach/2f),end=Offset(c.x-light.x*reach/2f,c.y-light.y*reach/2f)
-            ),
-            topLeft=Offset(inset,inset),
-            size=Size((size.width-inset*2).coerceAtLeast(0f),(size.height-inset*2).coerceAtLeast(0f)),
-            cornerRadius=CornerRadius(edgeRadius,edgeRadius),
-            style=Stroke(width=1.dp.toPx())
-        )
-    }
+    val dark = MaterialTheme.colorScheme.background.red < .5f
+    liquidRim(radius, light, dark)
 }

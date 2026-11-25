@@ -57,6 +57,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -77,6 +78,24 @@ internal class FieldOverlay(
     val isotherms: List<ContourSet>,
     val centers: List<PressureCenter>,
 ) {
+    /** Each contour as one path in degrees (lon − 100, lat), drawn with a single transform per frame. */
+    class Line(val set: ContourSet, val path: android.graphics.Path, val labels: FloatArray)
+    val isobarLines: List<Line> = isobars.map(::line)
+    val isothermLines: List<Line> = isotherms.map(::line)
+    private fun line(set: ContourSet): Line {
+        val path = android.graphics.Path(); val s = set.segments
+        var i = 0; var lastX = Float.NaN; var lastY = Float.NaN
+        val labels = ArrayList<Float>()
+        while (i + 3 < s.size) {
+            val x0 = s[i] - 100f; val y0 = s[i + 1]; val x1 = s[i + 2] - 100f; val y1 = s[i + 3]
+            if (x0 != lastX || y0 != lastY) path.moveTo(x0, y0)
+            path.lineTo(x1, y1); lastX = x1; lastY = y1
+            if ((i / 4) % 6 == 0) { labels += (s[i] + s[i + 2]) / 2; labels += (s[i + 1] + s[i + 3]) / 2 }
+            i += 4
+        }
+        return Line(set, path, labels.toFloatArray())
+    }
+
     companion object {
         fun build(grid: WeatherGrid): FieldOverlay {
             val factor = 4
@@ -185,7 +204,7 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
         lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { while (isActive) { delay(600_000); refresh++ } }
     }
     // The analysis now, and the 11-day forecast after the last picture.
-    var overlay by remember { mutableStateOf<FieldOverlay?>(null) }
+    var overlay by remember { mutableStateOf(SatelliteSource.warmOverlay as? FieldOverlay) }
     var fieldStatus by remember { mutableStateOf("") }
     LaunchedEffect(refresh) {
         fieldStatus = "正在取得數值模式氣壓場與 11 天預報…"
@@ -211,31 +230,46 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
         if (forecastIndex !in pictures) withContext(Dispatchers.Default) { runCatching { ForecastPictures.build(s.second) }.getOrNull() }?.let { pictures[forecastIndex] = it }
         if (forecastIndex !in stepOverlays) withContext(Dispatchers.Default) { runCatching { FieldOverlay.build(s.second.grid) }.getOrNull() }?.let { stepOverlays[forecastIndex] = it }
     }
-    val view = if (size.width > 0 && pxPerKm > 0) viewport(centerLon, centerLat, pxPerKm, size) else null
-    // Tiles for a margin around the view: panning within it needs nothing new, so dragging stays smooth.
-    val zoomStep = remember(pxPerKm) { if (pxPerKm > 0) kotlin.math.round(ln(pxPerKm) / ln(1.5)) else 0.0 }
-    val tiles = remember(view?.let { (it.originXKm / 400).roundToInt() to (it.originYKm / 400).roundToInt() }, zoomStep, channel, size) {
-        view?.let { v ->
-            val b = v.rasterBounds(); val dx = (b.east - b.west) * .35; val dy = (b.north - b.south) * .35
-            SatelliteSource.tilesFor(b.west - dx, b.south - dy, b.east + dx, b.north + dy, 111.2 * v.pxPerKm * COS, channel.maxZoom, budget = 48)
-        }.orEmpty()
-    }
-    // Preload every picture of the last two hours for these tiles, newest first.
-    var loaded by remember { mutableIntStateOf(0) }
-    val needed = frames.size * tiles.size
-    LaunchedEffect(frames, tiles, channel) {
-        loaded = 0
-        if (frames.isEmpty() || tiles.isEmpty()) return@LaunchedEffect
-        for (t in frames.asReversed()) {
-            supervisorScope {
-                tiles.map { tile -> launch {
-                    if (SatelliteSource.cached(channel, t, tile) == null) SatelliteSource.tile(context, channel, t, tile)
-                    loaded++; revision++
-                } }.joinAll()
-            }
+    // The camera is read only while drawing and in effects, so a drag redraws the map and nothing else.
+    fun currentView() = if (size.width > 0 && pxPerKm > 0) viewport(centerLon, centerLat, pxPerKm, size) else null
+    // Tiles for a wide margin around the view (about three screens across): dragging within it needs
+    // nothing new. The set changes only when the view moves far or the zoom level changes.
+    var tiles by remember { mutableStateOf<List<SatelliteSource.Tile>>(emptyList()) }
+    LaunchedEffect(channel) {
+        snapshotFlow {
+            if (size.width <= 0 || pxPerKm <= 0) null
+            else Triple((centerLon * 2).roundToInt(), (centerLat * 2).roundToInt(), kotlin.math.round(ln(pxPerKm) / ln(1.5)).toInt())
+        }.distinctUntilChanged().collect { key ->
+            if (key == null) return@collect
+            val span = size.width / (pxPerKm * 111.2 * COS)
+            tiles = SatelliteSource.around(channel, centerLon, centerLat, span, size.width, margin = .8, budget = 72)
         }
     }
-    val allLoaded = needed > 0 && loaded >= needed
+    val overview = remember(channel) { SatelliteSource.overview(channel) }
+    // Preload: the newest picture everywhere first (nearest tiles first), then the coarse East Asia
+    // picture for every time, then every older picture. Progress is counted without recomposing.
+    val loaded = remember { java.util.concurrent.atomic.AtomicInteger() }
+    var progress by remember { mutableIntStateOf(100) }
+    val needed = frames.size * tiles.size
+    LaunchedEffect(frames, tiles, channel) {
+        if (frames.isEmpty() || tiles.isEmpty()) return@LaunchedEffect
+        loaded.set(frames.sumOf { t -> tiles.count { SatelliteSource.cached(channel, t, it) != null } })
+        progress = loaded.get() * 100 / needed.coerceAtLeast(1)
+        val ticker = launch { while (isActive) { delay(250); revision++; progress = (loaded.get() * 100 / needed.coerceAtLeast(1)).coerceIn(0, 100) } }
+        suspend fun fetch(time: Instant, list: List<SatelliteSource.Tile>, count: Boolean) = supervisorScope {
+            list.map { tile -> launch {
+                if (SatelliteSource.cached(channel, time, tile) == null) {
+                    SatelliteSource.tile(context, channel, time, tile)
+                    if (count) loaded.incrementAndGet()
+                }
+            } }.joinAll()
+        }
+        fetch(frames.last(), tiles, true)
+        for (t in frames.asReversed()) fetch(t, overview, false)
+        for (t in frames.asReversed().drop(1)) fetch(t, tiles, true)
+        ticker.cancel(); revision++; progress = 100
+    }
+    val allLoaded = progress >= 100
     LaunchedEffect(playing, total, reduce, allLoaded) {
         if (!playing || reduce || total < 2) return@LaunchedEffect
         while (isActive) {
@@ -253,7 +287,7 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
             var last = 0L
             while (isActive) withFrameNanos { now ->
                 val dt = if (last == 0L) 1f / 60 else ((now - last) / 1e9f).coerceIn(0f, .05f); last = now
-                val v = view; val g = (if (forecastIndex >= 0) stepOverlays[forecastIndex] else overlay)?.grid
+                val v = currentView(); val g = (if (forecastIndex >= 0) stepOverlays[forecastIndex] else overlay)?.grid
                 if (v != null && g != null) { val b = v.rasterBounds(); flow.step(g, b.west, b.south, b.east, b.north, dt) }
                 flowTick++
             }
@@ -288,11 +322,11 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
                         pxPerKm = next
                     }
                 }) {
-                    @Suppress("UNUSED_EXPRESSION") revision; @Suppress("UNUSED_EXPRESSION") flowTick
-                    val v = view ?: return@Canvas
+                    @Suppress("UNUSED_EXPRESSION") revision
+                    val v = currentView() ?: return@Canvas
                     val o: FieldOverlay?
                     if (index < frames.size) {
-                        drawSatellite(v, channel, frames, index, tiles)
+                        drawSatellite(v, channel, frames, index, tiles, overview)
                         o = overlay
                     } else {
                         // Forecast: a dark map with the model's clouds and rain.
@@ -308,15 +342,19 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
                     if (layers and SatelliteLayer.GRID.bit != 0) drawGraticule(v, textPaint)
                     if (layers and SatelliteLayer.COAST.bit != 0) atlas?.draw(this, v, true, outline = 0xE6F2D27A.toInt(), outlineDp = 1.1f)
                     if (o != null) {
-                        if (layers and SatelliteLayer.ISOTHERMS.bit != 0) drawContours(v, o.isotherms, textPaint, isotherm = true)
-                        if (layers and SatelliteLayer.ISOBARS.bit != 0) drawContours(v, o.isobars, textPaint, isotherm = false)
-                        if (flowOn) drawFlow(v, flow)
+                        if (layers and SatelliteLayer.ISOTHERMS.bit != 0) drawContours(v, o.isothermLines, textPaint, isotherm = true)
+                        if (layers and SatelliteLayer.ISOBARS.bit != 0) drawContours(v, o.isobarLines, textPaint, isotherm = false)
                         if (layers and SatelliteLayer.WIND.bit != 0) drawBarbs(v, o.grid)
                         if (layers and SatelliteLayer.CENTERS.bit != 0) drawCenters(v, o.centers, textPaint)
                     }
                     val (px, py) = v.project(longitude, latitude)
                     drawCircle(Color.White, 6.dp.toPx(), Offset(px, py))
                     drawCircle(brandColor(0xFF308970), 4.dp.toPx(), Offset(px, py))
+                }
+                // Wind particles in their own layer: their every-frame redraw leaves the map untouched.
+                if (flowOn) Canvas(Modifier.fillMaxSize()) {
+                    @Suppress("UNUSED_EXPRESSION") flowTick
+                    currentView()?.let { drawFlow(it, flow) }
                 }
                 Column(Modifier.align(Alignment.TopEnd).padding(9.dp)) {
                     GlassIconButton(onClick = { pxPerKm = (pxPerKm * 1.5).coerceAtMost(5.0) }) { Icon(Icons.Rounded.Add, "放大") }
@@ -330,7 +368,7 @@ fun SatelliteViewer(latitude: Double, longitude: Double, onClose: () -> Unit, mo
                         modifier = Modifier.background(Color(0xB3000000), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp))
                     if (needed > 0 && !allLoaded) {
                         Spacer(Modifier.height(5.dp))
-                        Text("預載雲圖 ${(loaded * 100 / needed).coerceIn(0, 100)}%", color = Color.White, fontSize = 14.sp,
+                        Text("預載雲圖 $progress%", color = Color.White, fontSize = 14.sp,
                             modifier = Modifier.background(Color(0x99000000), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 3.dp))
                     }
                 }
@@ -416,25 +454,40 @@ private fun DrawScope.drawFlow(v: TyphoonViewport, f: WindFlow) {
  * way, the nearest time already loaded, and failing that the coarser tile around it. Never blank.
  */
 private fun DrawScope.drawSatellite(v: TyphoonViewport, channel: SatelliteSource.Channel, frames: List<Instant>, index: Int,
-                                    tiles: List<SatelliteSource.Tile>) {
+                                    tiles: List<SatelliteSource.Tile>, overview: List<SatelliteSource.Tile>) {
     val time = frames.getOrNull(index) ?: return
     val order = frames.indices.sortedBy { kotlin.math.abs(it - index) }
+    val b = v.rasterBounds()
+    fun visible(t: SatelliteSource.Tile): Boolean {
+        val n = (1 shl t.z).toDouble()
+        val west = t.x / n * 360 - 180; val east = (t.x + 1) / n * 360 - 180
+        val north = RadarProjection.latitude(t.y / n); val south = RadarProjection.latitude((t.y + 1) / n)
+        return east >= b.west && west <= b.east && north >= b.south && south <= b.north
+    }
+    // The coarse picture first, so nothing is ever black while finer tiles arrive.
+    overview.forEach { t ->
+        if (!visible(t)) return@forEach
+        order.firstNotNullOfOrNull { SatelliteSource.cached(channel, frames[it], t) }?.let { drawTile(v, t, it.asImageBitmap(), 0, 0, it.width, it.height) }
+    }
     tiles.forEach { tile ->
-        val direct = order.firstNotNullOfOrNull { SatelliteSource.cached(channel, frames[it], tile) }
-        if (direct != null) { drawTile(v, tile, direct.asImageBitmap(), 0, 0, direct.width, direct.height); return@forEach }
-        if (tile.z > 0) {
-            val parent = SatelliteSource.Tile(tile.z - 1, tile.x / 2, tile.y / 2)
-            SatelliteSource.cached(channel, time, parent)?.let { p ->
-                val half = p.width / 2
-                drawTile(v, tile, p.asImageBitmap(), (tile.x % 2) * half, (tile.y % 2) * half, half, half)
-            }
+        if (!visible(tile)) return@forEach
+        SatelliteSource.cached(channel, time, tile)?.let { drawTile(v, tile, it.asImageBitmap(), 0, 0, it.width, it.height); return@forEach }
+        // Not here yet: the nearest coarser tile of the same time, then this tile at the nearest time.
+        for (dz in 1..minOf(3, tile.z)) {
+            val parent = SatelliteSource.Tile(tile.z - dz, tile.x shr dz, tile.y shr dz)
+            val p = SatelliteSource.cached(channel, time, parent) ?: continue
+            val part = p.width shr dz
+            drawTile(v, tile, p.asImageBitmap(), (tile.x - (parent.x shl dz)) * part, (tile.y - (parent.y shl dz)) * part, part, part)
+            return@forEach
         }
+        order.firstNotNullOfOrNull { SatelliteSource.cached(channel, frames[it], tile) }?.let { drawTile(v, tile, it.asImageBitmap(), 0, 0, it.width, it.height) }
     }
 }
 
-/** One Mercator tile (or a part of it) drawn into the lon/lat view in thin strips, so latitudes line up. */
+/** One Mercator tile (or a part of it) drawn into the lon/lat view in strips, so latitudes line up. */
 private fun DrawScope.drawTile(v: TyphoonViewport, tile: SatelliteSource.Tile, img: ImageBitmap, sx: Int, sy: Int, sw: Int, sh: Int) {
-    val strips = 8
+    // Fine tiles span few degrees, where Mercator is nearly linear: fewer strips, fewer draws.
+    val strips = when { tile.z <= 3 -> 8; tile.z == 4 -> 4; else -> 2 }
     val n = (1 shl tile.z).toDouble()
     val west = tile.x / n * 360 - 180; val east = (tile.x + 1) / n * 360 - 180
     for (k in 0 until strips) {
@@ -445,7 +498,8 @@ private fun DrawScope.drawTile(v: TyphoonViewport, tile: SatelliteSource.Tile, i
         val top = sy + sh * k / strips; val bottom = sy + sh * (k + 1) / strips
         drawImage(img, IntOffset(sx, top), IntSize(sw, (bottom - top).coerceAtLeast(1)),
             IntOffset(floor(x0).toInt(), floor(y0).toInt()),
-            IntSize((ceil(x1) - floor(x0)).toInt().coerceAtLeast(1), (ceil(y1) - floor(y0)).toInt().coerceAtLeast(1) + 1))
+            IntSize((ceil(x1) - floor(x0)).toInt().coerceAtLeast(1), (ceil(y1) - floor(y0)).toInt().coerceAtLeast(1) + 1),
+            filterQuality = androidx.compose.ui.graphics.FilterQuality.Low)
     }
 }
 
@@ -471,41 +525,51 @@ private fun DrawScope.drawGraticule(v: TyphoonViewport, paint: Paint) {
     }
 }
 
-private fun DrawScope.drawContours(v: TyphoonViewport, sets: List<ContourSet>, paint: Paint, isotherm: Boolean) {
-    val dash = PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 5.dp.toPx()))
-    paint.textSize = 11.sp.toPx(); paint.textAlign = Paint.Align.CENTER
-    sets.forEach { set ->
+private val contourPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+
+/** Contours: one prepared path per level under a single transform, and one label per line. */
+private fun DrawScope.drawContours(v: TyphoonViewport, lines: List<FieldOverlay.Line>, paint: Paint, isotherm: Boolean) {
+    val ppd = (111.2 * v.pxPerKm).toFloat()
+    if (!ppd.isFinite() || ppd <= 0f) return
+    val origin = v.project(100.0, 0.0)
+    val canvas = drawContext.canvas.nativeCanvas
+    val dash = if (isotherm) android.graphics.DashPathEffect(floatArrayOf(7.dp.toPx() / ppd, 5.dp.toPx() / ppd), 0f) else null
+    canvas.save(); canvas.clipRect(0f, 0f, size.width, size.height)
+    canvas.translate(origin.first, origin.second); canvas.scale((ppd * COS).toFloat(), -ppd)
+    lines.forEach { line ->
+        val set = line.set
         val bold = !isotherm && abs(set.level - 1000f) < .01f || isotherm && abs(set.level) < .01f
-        val color = when {
-            !isotherm -> Color.White.copy(alpha = if (bold) .95f else .78f)
-            set.level <= 0f -> Color(0xFF7EC8FF)
-            set.level >= 27f -> Color(0xFFFF7A5C)
-            else -> Color(0xFFFFB55C)
-        }
-        val width = (if (bold) 2.2f else 1.3f) * density
-        val s = set.segments
-        var best = -1; var bestScore = Float.MAX_VALUE
+        contourPaint.color = contourColour(set.level, isotherm, bold)
+        contourPaint.strokeWidth = (if (bold) 2.2f else 1.3f) * density / ppd
+        contourPaint.pathEffect = dash
+        canvas.drawPath(line.path, contourPaint)
+    }
+    canvas.restore()
+    paint.textSize = 11.sp.toPx(); paint.textAlign = Paint.Align.CENTER
+    lines.forEach { line ->
+        val l = line.labels; var bx = 0f; var by = 0f; var best = Float.MAX_VALUE
         var i = 0
-        while (i + 3 < s.size) {
-            val (x0, y0) = v.project(s[i].toDouble(), s[i + 1].toDouble())
-            val (x1, y1) = v.project(s[i + 2].toDouble(), s[i + 3].toDouble())
-            if (max(x0, x1) >= 0 && min(x0, x1) <= size.width && max(y0, y1) >= 0 && min(y0, y1) <= size.height) {
-                drawLine(color, Offset(x0, y0), Offset(x1, y1), width, StrokeCap.Round, pathEffect = if (isotherm) dash else null)
-                // One label per line, near the right third of the view where it rarely meets a centre mark.
-                val mx = (x0 + x1) / 2; val my = (y0 + y1) / 2
-                if (mx in 30f..size.width - 30f && my in 20f..size.height - 20f) {
-                    val score = abs(mx - size.width * (if (isotherm) .3f else .72f)) + abs(my - size.height / 2) * .2f
-                    if (score < bestScore) { bestScore = score; best = i }
-                }
+        while (i + 1 < l.size) {
+            val (x, y) = v.project(l[i].toDouble(), l[i + 1].toDouble())
+            if (x in 30f..size.width - 30f && y in 20f..size.height - 20f) {
+                val score = abs(x - size.width * (if (isotherm) .3f else .72f)) + abs(y - size.height / 2) * .2f
+                if (score < best) { best = score; bx = x; by = y }
             }
-            i += 4
+            i += 2
         }
-        if (best >= 0) {
-            val (x, y) = v.project(((s[best] + s[best + 2]) / 2).toDouble(), ((s[best + 1] + s[best + 3]) / 2).toDouble())
-            val text = if (isotherm) "${set.level.roundToInt()}°" else "${set.level.roundToInt()}"
-            haloText(text, x, y + 4.dp.toPx(), paint, color)
+        if (best < Float.MAX_VALUE) {
+            val bold = !isotherm && abs(line.set.level - 1000f) < .01f || isotherm && abs(line.set.level) < .01f
+            haloText(if (isotherm) "${line.set.level.roundToInt()}°" else "${line.set.level.roundToInt()}", bx, by + 4.dp.toPx(), paint,
+                Color(contourColour(line.set.level, isotherm, bold)))
         }
     }
+}
+
+private fun contourColour(level: Float, isotherm: Boolean, bold: Boolean): Int = when {
+    !isotherm -> if (bold) 0xF2FFFFFF.toInt() else 0xC7FFFFFF.toInt()
+    level <= 0f -> 0xFF7EC8FF.toInt()
+    level >= 27f -> 0xFFFF7A5C.toInt()
+    else -> 0xFFFFB55C.toInt()
 }
 
 private fun DrawScope.haloText(text: String, x: Float, y: Float, paint: Paint, color: Color) {

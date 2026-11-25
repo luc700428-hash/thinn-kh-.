@@ -104,8 +104,9 @@ internal fun dockLensPath(width:Float,height:Float,density:Float,count:Int,head:
  val lift=energy.coerceIn(0f,1.15f)
  val lag=position-tail
  val stretch=LiquidGlassKit.stretch(lag)
- val major=g.width*(1f+.12f*lift)*(1f+stretch)
- val minor=(cross-10f*density)*(1f+LiquidGlassKit.DOCK_LIFT*lift)*(1f-stretch*.40f)
+ // Liquid Glass tab bar: the lifted lens is wider by a third of a slot and rises 14 dp past the bar.
+ val major=g.width*(1f+LiquidGlassKit.DOCK_SPREAD*lift)*(1f+stretch)
+ val minor=LiquidGlassKit.lerp(cross-10f*density,cross+LiquidGlassKit.DOCK_OVERHANG_DP*density,lift)*(1f-stretch*.40f)
  // The body leans back toward where it came from, like a drop being pulled.
  val along=g.headX-lag.coerceIn(-.6f,.6f)*slot*.16f
  val rect=if(vertical)Rect(cross/2-minor/2,along-major/2,cross/2+minor/2,along+major/2)
@@ -131,7 +132,7 @@ internal fun dockLensPath(width:Float,height:Float,density:Float,count:Int,head:
   .requiredSize((fullW/density).dp,(fullH/density).dp)
   .graphicsLayer{alpha=(energy*1.8f).coerceIn(0f,1f)
    // iOS 27 lensing: icons and scene bend toward the centre along the rim, with dispersion.
-   renderEffect=if(android.os.Build.VERSION.SDK_INT>=33)optics?.effect(size.width,size.height,rect.translate(margin,margin),minor/2,lift,density) else null}
+   renderEffect=if(android.os.Build.VERSION.SDK_INT>=33)optics?.effect(size.width,size.height,rect.translate(margin,margin),minor/2,lift,density,zoom=1f,dispersion=1f,stretch=1f) else null}
   .clip(mask)
   .thinnBackdrop(reduceTransparency,(minor/density/2).dp,.5f,frostScale=.18f,refract=false)) {
   // Clear glass: the backdrop is sampled without the Dock's material tone, and without the

@@ -9,6 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -146,7 +147,7 @@ internal object SatelliteSource {
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
                     if (bounds.outWidth !in 1..512 || bounds.outHeight !in 1..512) { file.delete(); return@withContext null }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.also { synchronized(images) { images.put(key, it) } }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.also { it.prepareToDraw(); synchronized(images) { images.put(key, it) } }
                 } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
             }
         }
@@ -181,6 +182,44 @@ internal object SatelliteSource {
             }
             out.toByteArray()
         } finally { c.disconnect() }
+    }
+
+    /** Tiles that cover East Asia coarsely; drawn under anything not loaded yet, so a drag never shows black. */
+    fun overview(channel: Channel): List<Tile> = tilesFor(95.0, 0.0, 150.0, 48.0, 8.0, minOf(3, channel.maxZoom), budget = 12)
+
+    /** The tiles a view of [widthPx] pixels centred on Taiwan needs, with a wide margin for dragging. */
+    fun around(channel: Channel, lon: Double, lat: Double, spanDeg: Double, widthPx: Int, margin: Double = .6, budget: Int = 64): List<Tile> {
+        val halfW = spanDeg / 2 * (1 + 2 * margin); val halfH = halfW * 1.1
+        val centre = Pair(lon, lat)
+        return tilesFor(lon - halfW, lat - halfH, lon + halfW, lat + halfH, widthPx / spanDeg, channel.maxZoom, budget)
+            .sortedBy { t -> val n = (1 shl t.z).toDouble(); val tl = (t.x + .5) / n * 360 - 180; val tt = RadarProjection.latitude((t.y + .5) / n)
+                (tl - centre.first) * (tl - centre.first) + (tt - centre.second) * (tt - centre.second) }
+    }
+
+    private val warmScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+    @Volatile private var warmedAt = 0L
+    @Volatile var warmOverlay: Any? = null
+
+    /**
+     * Started as soon as the radar page opens: the satellite timeline, the latest picture of the
+     * Taiwan view, the coarse East Asia picture for every time, and the model field (prepared for
+     * drawing), so switching to 衛星雲圖 shows everything at once and a drag never waits.
+     */
+    fun warmUp(context: Context, widthPx: Int, channel: Channel, prepare: (WeatherGrid) -> Any?) {
+        val now = System.currentTimeMillis()
+        if (now - warmedAt < 5 * 60_000L) return
+        warmedAt = now
+        val app = context.applicationContext
+        warmScope.launch {
+            val list = frames(channel)
+            val latest = list.lastOrNull()
+            if (latest != null) {
+                val view = around(channel, 121.0, 24.0, 28.0, widthPx.coerceAtLeast(720), margin = .3, budget = 30)
+                kotlinx.coroutines.coroutineScope { view.forEach { t -> launch { tile(app, channel, latest, t) } } }
+                kotlinx.coroutines.coroutineScope { list.asReversed().forEach { time -> overview(channel).forEach { t -> launch { tile(app, channel, time, t) } } } }
+            }
+            field()?.let { g -> runCatching { warmOverlay = prepare(g) } }
+        }
     }
 
     private val forecastLock = Mutex()

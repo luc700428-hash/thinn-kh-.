@@ -39,13 +39,15 @@ import kotlin.math.min
  *  4. while a finger is down, a soft bloom of light that spreads from the touch point.
  */
 internal object LiquidGlassKit {
-    /** The tab-bar lens grows this much taller than the bar's inner height, so it pokes out. */
-    const val DOCK_LIFT=.34f
-    /** Content under a lifted lens is magnified by this factor. */
-    const val MAGNIFY=1.22f
-    /** iOS "interactive" spring: follows the finger almost one to one. */
-    const val FOLLOW_DAMPING=.86f
-    const val FOLLOW_STIFFNESS=1754.6f
+    /** The tab-bar lens rises this far (dp) past the bar's height (Liquid Glass "overhang"). */
+    const val DOCK_OVERHANG_DP=14f
+    /** Extra width, as a share of a slot, that the lifted tab-bar lens gains ("spread"). */
+    const val DOCK_SPREAD=.3f
+    /** Icons under the lifted tab-bar lens are magnified by this factor ("contentZoom"). */
+    const val MAGNIFY=1.04f
+    /** Liquid Glass "drag" spring (0.12 s, 0.92): follows the finger almost one to one. */
+    const val FOLLOW_DAMPING=.92f
+    const val FOLLOW_STIFFNESS=2741.6f
     /** How far the lens stretches along its motion for each slot (or knob width) of lag. */
     const val STRETCH_PER_LAG=.55f
     const val MAX_STRETCH=.34f
@@ -122,27 +124,15 @@ internal object GlassRim {
             catch(_:RuntimeException) {broken=true;null}
     }
 
-    /** False when the painted fallback should be used instead. */
+    /** False when the painted fallback should be used instead. Lenses get the iridescent rim. */
     fun draw(scope:DrawScope,path:Path,bounds:Rect,corner:Float,light:GlassLight.Light,alpha:Float):Boolean = with(scope) {
         if(android.os.Build.VERSION.SDK_INT<33||bounds.width<2f||bounds.height<2f)return false
         // Software canvases (bitmap snapshots) cannot draw RuntimeShaders; they get the painted rim.
         if(!drawContext.canvas.nativeCanvas.isHardwareAccelerated)return false
-        val s=obtain()?:return false
-        return try {
-            val r=corner.coerceIn(0f,bounds.minDimension/2f)
-            s.setFloatUniform("size",bounds.width,bounds.height)
-            s.setFloatUniform("cornerRadii",r,r,r,r)
-            s.setColorUniform("color",android.graphics.Color.WHITE)
-            s.setFloatUniform("angle",kotlin.math.atan2(light.y,light.x))
-            s.setFloatUniform("falloff",1.6f)
-            matrix.setTranslate(bounds.left,bounds.top);s.setLocalMatrix(matrix)
-            val brush=androidx.compose.ui.graphics.ShaderBrush(s)
-            val a=alpha.coerceIn(0f,1f)
-            // A soft glow under a crisp line, both added onto what is behind (like real light).
-            drawPath(path,brush,alpha=a*.32f,style=Stroke(3.2f*density),blendMode=androidx.compose.ui.graphics.BlendMode.Plus)
-            drawPath(path,brush,alpha=a,style=Stroke(1.1f*density),blendMode=androidx.compose.ui.graphics.BlendMode.Plus)
-            true
-        } catch(_:RuntimeException) {broken=true;false}
+        if(obtain()==null)return false
+        val shape=LiquidShape.lens(bounds.width/density,bounds.height/density)
+        LiquidRim.draw(this,bounds,corner,shape.bezel*density,light,lens=true,dispersion=1f,opacity=alpha*1.15f)
+        true
     }
 }
 
@@ -216,18 +206,26 @@ internal fun liquidLensEffectOrNull(opaque:Boolean=false):LiquidLensEffect? =
 @androidx.annotation.RequiresApi(33)
 internal class LiquidLensEffect {
     private val shader=android.graphics.RuntimeShader(SOURCE)
-    /** [lens] in surface pixels; [lift] 0 (no bending) .. 1 (fully lifted). */
-    fun effect(width:Float,height:Float,lens:Rect,corner:Float,lift:Float,density:Float,zoom:Float=1f):androidx.compose.ui.graphics.RenderEffect? {
+    /**
+     * [lens] in surface pixels; [lift] 0 (no bending) .. 1 (fully lifted). The Liquid Glass lens
+     * (github.com/zakisheriff/Liquid-Glass): a thick droplet whose squircle rim bends light outward
+     * by Snell's law, magnifying by [zoom] ([zoomY] vertically, below 1 it thins what is under it)
+     * and splitting colour at the rim; [stretch] smears the rim like a thick drop instead.
+     */
+    fun effect(width:Float,height:Float,lens:Rect,corner:Float,lift:Float,density:Float,zoom:Float=1.16f,
+               zoomY:Float=zoom,dispersion:Float=1f,stretch:Float=0f):androidx.compose.ui.graphics.RenderEffect? {
         val l=if(lift.isFinite())lift.coerceIn(0f,1.15f) else 0f
         if(l<.02f||lens.width<2f||lens.height<2f||width<1f||height<1f)return null
         val minor=minOf(lens.width,lens.height)
+        val k=l.coerceAtMost(1f)
         shader.setFloatUniform("size",width,height)
         shader.setFloatUniform("lens",lens.left,lens.top,lens.right,lens.bottom)
         shader.setFloatUniform("corner",corner.coerceIn(0f,minor/2))
-        // A thick dome: the band reaches most of the way in and bends hard at the rim.
-        shader.setFloatUniform("band",minOf(16f*density,minor*.5f).coerceAtLeast(1f))
-        shader.setFloatUniform("amount",minOf(16f*density,minor*.46f)*l)
-        shader.setFloatUniform("zoom",1f+(zoom-1f)*l.coerceAtMost(1f))
+        shader.setFloatUniform("bezel",(minor*.32f).coerceAtLeast(1f))
+        shader.setFloatUniform("thickness",minor*.55f*k)
+        shader.setFloatUniform("magnify",(1f-1f/(1f+(zoom-1f)*k).coerceAtLeast(.5f)),(1f-1f/(1f+(zoomY-1f)*k).coerceAtLeast(.5f)))
+        shader.setFloatUniform("dispersion",dispersion.coerceIn(0f,1f)*k)
+        shader.setFloatUniform("stretch",stretch.coerceIn(0f,1f)*k)
         return android.graphics.RenderEffect.createRuntimeShaderEffect(shader,"content").asComposeRenderEffect()
     }
     companion object {
@@ -236,12 +234,22 @@ internal class LiquidLensEffect {
             uniform float2 size;
             uniform float4 lens;
             uniform float corner;
-            uniform float band;
-            uniform float amount;
-            uniform float zoom;
+            uniform float bezel;
+            uniform float thickness;
+            uniform float2 magnify;
+            uniform float dispersion;
+            uniform float stretch;
             float sdRect(float2 p,float2 c,float2 h,float r){
                 float2 q=abs(p-c)-h+float2(r);
                 return length(max(q,float2(0.0)))+min(max(q.x,q.y),0.0)-r;
+            }
+            float shiftAt(float d){
+                if(d<0.0||d>=bezel) return 0.0;
+                float t=max(0.002,d/bezel);float q=1.0-t;float q2=q*q;
+                float base=1.0-q2*q2;float height=pow(base,0.25);
+                float slope=q2*q/max(0.0001,pow(base,0.75));
+                float incident=atan(slope);float refracted=asin(sin(incident)/1.5);
+                return tan(incident-refracted)*thickness*(0.35+0.65*height);
             }
             half4 main(float2 p) {
                 float2 c=(lens.xy+lens.zw)*0.5;
@@ -249,19 +257,20 @@ internal class LiquidLensEffect {
                 float r=min(corner,min(h.x,h.y));
                 float sd=sdRect(p,c,h,r);
                 if(sd>0.0) return content.eval(p);
-                float2 n=float2(sdRect(p+float2(1.0,0.0),c,h,r)-sdRect(p-float2(1.0,0.0),c,h,r),
-                                sdRect(p+float2(0.0,1.0),c,h,r)-sdRect(p-float2(0.0,1.0),c,h,r));
-                n=n/max(length(n),0.0001);
-                float t=clamp(1.0+sd/max(band,1.0),0.0,1.0);
-                float x=1.0-t;
-                float bend=1.0-pow(max(1.0-pow(1.0-x,4.0),0.0),0.25);
-                float2 uv=c+(p-c)/max(zoom,0.5)-n*bend*amount;
+                float d=-sd;
+                float2 q=abs(p-c)-h+float2(r);
+                float2 n=(q.x>=0.0&&q.y>=0.0)?sign(p-c)*normalize(q):(q.x>q.y?float2(sign(p.x-c.x),0.0):float2(0.0,sign(p.y-c.y)));
+                float u=d/bezel;
+                float s=stretch>0.0?(u<1.0?-bezel*stretch*0.5*(1.0-u)*(1.0-u):0.0):shiftAt(d);
                 float2 hi=size-float2(1.0);
-                uv=clamp(uv,float2(0.0),hi);
-                half4 col=content.eval(uv);
-                float disp=bend*amount*0.14;
-                col.r=content.eval(clamp(uv+n*disp,float2(0.0),hi)).r;
-                col.b=content.eval(clamp(uv-n*disp,float2(0.0),hi)).b;
+                float2 source=p-(p-c)*magnify;
+                float2 edge=n*s;
+                half4 col=content.eval(clamp(source+edge,float2(0.0),hi));
+                if(dispersion>0.0&&abs(s)>0.001){
+                    float spread=(stretch>0.0?0.12:0.16)*dispersion;
+                    col.r=content.eval(clamp(source+edge*(1.0+spread),float2(0.0),hi)).r;
+                    col.b=content.eval(clamp(source+edge*(1.0-spread),float2(0.0),hi)).b;
+                }
                 return col;
             }
         """

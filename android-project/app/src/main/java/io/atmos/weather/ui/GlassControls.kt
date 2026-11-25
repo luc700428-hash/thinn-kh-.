@@ -45,6 +45,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.disabled
+import kotlinx.coroutines.launch
+import androidx.compose.ui.input.pointer.PointerEventPass
 import io.atmos.weather.haptics.HapticEngine
 import io.atmos.weather.haptics.LocalHapticEngine
 
@@ -52,49 +60,41 @@ import io.atmos.weather.haptics.LocalHapticEngine
 // Core controls are Foundation-only; Android system menus/notifications remain OS-owned.
 private val edge: Brush get() = ThinnOpticalMaterial.rim
 
+/**
+ * Liquid Glass button (github.com/zakisheriff/Liquid-Glass, GlassButton): regular glass with a
+ * 0.5 px edge, the specular rim and a light bloom under the finger; it swells, leans and stretches
+ * toward a drag and wobbles as it settles ([liquidPress]). Primary buttons are the filled variant.
+ */
 @Composable
 private fun GlassPill(onClick:()->Unit, modifier:Modifier, enabled:Boolean,
     padding:PaddingValues, outlined:Boolean, content:@Composable RowScope.()->Unit,
     colors:ButtonColors?=null, border:androidx.compose.foundation.BorderStroke?=null) {
     val opaque=rememberAppleReduceTransparency()
-    val response=iosMotionResponse()
     val haptics=LocalHapticEngine.current
     val corner=RoundedCornerShape(ThinnDesignTokens.radiusControl)
-    val context=LocalContext.current
-    val reduce=rememberAppleReduceMotion()
     val interaction=remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    // iOS 26/27 glass: the control swells and lights up under the finger, then springs back.
-    val pressScale by animateFloatAsState(if(pressed && !reduce) AppleMotion.pressedSwell else 1f,
-        animationSpec=if(reduce) tween(0) else if(pressed) AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃按鈕按壓")
-    val glow by animateFloatAsState(if(pressed && !reduce) 1f else 0f,
-        animationSpec=if(reduce) tween(0) else if(pressed) AppleMotion.interactive() else AppleMotion.smooth(),label="玻璃按鈕高光")
-    val appear=1f
-    val touch=remember{GlassTouch()}
-    val light=GlassLight.current(follow=!opaque)
-    val lean by androidx.compose.animation.core.animateOffsetAsState(if(pressed&&!reduce)touch.lean(with(LocalDensity.current){8.dp.toPx()}) else androidx.compose.ui.geometry.Offset.Zero,
-        if(pressed)AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃按鈕傾向手指")
+    val press=remember{LiquidPressState()}
     val palette=androidx.compose.material3.MaterialTheme.colorScheme
+    val dark=palette.background.red<.5f
     val weatherCards=LocalWeatherCardPalette.current
-    val fill=if(colors!=null) {
-        val chosen=if(enabled) colors.containerColor else colors.disabledContainerColor
-        listOf(chosen,chosen)
-    } else if(outlined) {
-        val neutral=weatherCards?.fill?:palette.surfaceVariant
-        listOf(neutral,neutral)
-    } else listOf(BrandPalette.selection,BrandPalette.selection)
+    val filled=colors==null&&!outlined
+    val base=if(colors!=null) {if(enabled) colors.containerColor else colors.disabledContainerColor}
+        else if(outlined) weatherCards?.fill?:palette.surfaceVariant
+        else BrandPalette.selection
+    val clear=when{filled->.88f;colors!=null->if(pressed).55f else .62f;pressed->if(dark).55f else .92f;else->if(dark).5f else .66f}
     val labelColor=colors?.let {if(enabled) it.contentColor else it.disabledContentColor}
         ?: if(outlined) weatherCards?.accent?:palette.primary
         else Color.White
+    val radiusPx=with(LocalDensity.current){ThinnDesignTokens.radiusControl.toPx()}
     Row(modifier.defaultMinSize(minHeight=48.dp)
-        .graphicsLayer { scaleX=pressScale*appear;scaleY=(1f+(pressScale-1f)*.75f)*appear;alpha=if(enabled) appear else appear*.45f
-            translationX=lean.x;translationY=lean.y }
-        .glassTouchTracker(touch)
+        .liquidPress(enabled,press)
+        .graphicsLayer { alpha=if(enabled) 1f else .45f }
         .clip(corner)
         .thinnBackdrop(opaque,ThinnDesignTokens.radiusControl)
-        .background(Brush.linearGradient(fill.map{glassTint(it,opaque,if(!outlined&&colors==null).78f else if(pressed).30f else .36f)}))
-        .border(border ?: androidx.compose.foundation.BorderStroke(1.dp,edge),corner)
-        .liquidGlassSurface(ThinnDesignTokens.radiusControl,{glow},touch,palette.background.red<.5f,light)
+        .background(glassTint(base,opaque,clear))
+        .border(border ?: androidx.compose.foundation.BorderStroke(.5.dp,LiquidMaterial.edge(dark)),corner)
+        .drawWithContent { drawContent(); liquidGlow(press,radiusPx,dark) }
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=androidx.compose.ui.semantics.Role.Button,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
         })
@@ -127,134 +127,175 @@ fun GlassTextButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=
     GlassPill(onClick,modifier,enabled,contentPadding,true,content,null,null)
 }
 
+/** A Liquid Glass circle button: small circles swell about 20% under the finger. */
 @Composable
 fun GlassIconButton(onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=true,
     content:@Composable ()->Unit) {
     val opaque=rememberAppleReduceTransparency()
-    val response=iosMotionResponse()
     val haptics=LocalHapticEngine.current
     val interaction=remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val context=LocalContext.current
-    val reduce=rememberAppleReduceMotion()
-    // Small glass buttons swell more than wide ones, as on iOS 27.
-    val scale by animateFloatAsState(if(pressed && !reduce)AppleMotion.pressedSwell+.06f else 1f,
-        animationSpec=if(reduce)tween(0) else if(pressed)AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃圖示按鈕回饋")
-    val glow by animateFloatAsState(if(pressed && !reduce) 1f else 0f,
-        animationSpec=if(reduce) tween(0) else if(pressed) AppleMotion.interactive() else AppleMotion.smooth(),label="玻璃圖示按鈕高光")
-    val touch=remember{GlassTouch()}
-    val light=GlassLight.current(follow=!opaque)
-    val lean by androidx.compose.animation.core.animateOffsetAsState(if(pressed&&!reduce)touch.lean(with(LocalDensity.current){7.dp.toPx()}) else androidx.compose.ui.geometry.Offset.Zero,
-        if(pressed)AppleMotion.interactive() else spring(dampingRatio=response.damping,stiffness=response.stiffness),label="玻璃圖示按鈕傾向手指")
+    val press=remember{LiquidPressState()}
+    val scheme=androidx.compose.material3.MaterialTheme.colorScheme
+    val dark=scheme.background.red<.5f
+    val fill=if(opaque)scheme.surfaceVariant else LocalWeatherCardPalette.current?.fill?:scheme.surface
     Box(modifier.defaultMinSize(48.dp,48.dp)
-        .graphicsLayer { scaleX=scale;scaleY=scale;alpha=if(!enabled) .45f else 1f;translationX=lean.x;translationY=lean.y }
-        .glassTouchTracker(touch)
+        .liquidPress(enabled,press,maxGrowDp=12f)
+        .graphicsLayer { alpha=if(!enabled) .45f else 1f }
         .clip(CircleShape)
         .thinnBackdrop(opaque,24.dp)
-        .background(if(opaque)ThinnOpticalMaterial.opaque else Brush.linearGradient(listOf(
-            glassTint(androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,opaque,.30f),
-            glassTint(androidx.compose.material3.MaterialTheme.colorScheme.surface,opaque,.34f))))
-        .border(1.dp,ThinnOpticalMaterial.rim,CircleShape)
-        .liquidGlassSurface(24.dp,{glow},touch,androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f,light)
+        .background(glassTint(fill,opaque,if(pressed)(if(dark).55f else .92f) else if(dark).5f else .66f))
+        .border(.5.dp,LiquidMaterial.edge(dark),CircleShape)
+        .drawWithContent { drawContent(); liquidGlow(press,size.minDimension/2,dark) }
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,onClick={
             haptics?.play(HapticEngine.Event.TAP); onClick()
         }),contentAlignment=Alignment.Center){
         CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides
-            (LocalWeatherCardPalette.current?.ink?:androidx.compose.material3.MaterialTheme.colorScheme.onSurface)){content()}
+            (LocalWeatherCardPalette.current?.ink?:scheme.onSurface)){content()}
     }
 }
 
-/** Own Compose switch visual. TalkBack receives a proper switch role and checked state. */
+/**
+ * The Liquid Glass switch (github.com/zakisheriff/Liquid-Glass, GlassSwitch): a 64×28 track with a
+ * 38×25 white pill. Touched, the pill inflates into a clear 58×38 lens hanging over the track,
+ * which runs on through it thinner (the lens minifies it vertically) with a streaked rim. Drag it
+ * with rubber-banding at the ends, or tap; the knob has to travel most of the way before it
+ * flips, then drops back into a white pill with a gentle settle. TalkBack gets a real switch.
+ */
 @Composable
 fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modifier=Modifier,
     enabled:Boolean=true,colors:SwitchColors?=null) {
     val opaque=rememberAppleReduceTransparency()
-    val response=iosMotionResponse()
     val haptics=LocalHapticEngine.current
-    val context=LocalContext.current
     val reduce=rememberAppleReduceMotion()
     val density=LocalDensity.current
-    val presses=remember { MutableInteractionSource() }
-    val pressed by presses.collectIsPressedAsState()
-    var dragging by remember { mutableStateOf(false) }
-    var dragDp by remember { mutableFloatStateOf(0f) }
+    val scope=rememberCoroutineScope()
     val change by rememberUpdatedState(onCheckedChange)
-    val movement by androidx.compose.animation.core.animateDpAsState(
-        (if(dragging) ((if(checked)20f else 0f)+dragDp).coerceIn(0f,20f) else if(checked)20f else 0f).dp,
-        animationSpec=if(reduce||dragging) tween(0) else spring(dampingRatio=response.damping,stiffness=response.stiffness),
-        label="iOS 視覺開關滑塊"
-    )
+    val latest by rememberUpdatedState(checked)
     val active=enabled && onCheckedChange!=null
-    // iOS 27: while held the white knob lifts into a clear lens wider and taller than the track.
-    val lift by animateFloatAsState(if((pressed||dragging)&&active&&!reduce)1f else 0f,
-        if(reduce)tween(0) else spring(FluidGlassStyle.CONTACT_DAMPING,FluidGlassStyle.CONTACT_STIFFNESS),label="開關玻璃抬起")
-    val lag by animateFloatAsState(movement.value,if(reduce)tween(0) else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="開關果凍形變")
-    val light=GlassLight.current(follow=!opaque)
+    val presses=remember{MutableInteractionSource()}
     val dark=androidx.compose.material3.MaterialTheme.colorScheme.background.red<.5f
-    val tint=if(checked) colors?.checkedTrackColor ?: ThinnDesignTokens.positive else colors?.uncheckedTrackColor ?: androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
-    Box(modifier.size(width=51.dp,height=48.dp)
-        .then(if(onCheckedChange!=null)
-            Modifier.toggleable(value=checked,enabled=enabled,role=androidx.compose.ui.semantics.Role.Switch,
-                interactionSource=presses,indication=null,
-                onValueChange={ next ->
-                    haptics?.play(HapticEngine.Event.TAP);onCheckedChange(next)
-                }) else Modifier)
-        .then(if(active)Modifier.pointerInput(checked,density){
-            detectHorizontalDragGestures(
-                onDragStart={dragDp=0f;dragging=true},
-                onHorizontalDrag={pointer,delta->pointer.consume();dragDp+=delta/density.density},
-                onDragEnd={
-                    val next=(if(checked)20f else 0f)+dragDp>=10f
-                    dragging=false;dragDp=0f
-                    if(next!=checked){haptics?.play(HapticEngine.Event.RELEASE);change?.invoke(next)}
-                },
-                onDragCancel={dragging=false;dragDp=0f}
-            )
+    val onColour=colors?.checkedTrackColor ?: LiquidMaterial.green(dark)
+    val offColour=colors?.uncheckedTrackColor?.takeIf{it!=Color.Unspecified} ?: LiquidMaterial.track(dark)
+    val position=remember{androidx.compose.animation.core.Animatable(if(checked)1f else 0f)}
+    val lift=remember{androidx.compose.animation.core.Animatable(0f)}
+    val tint=remember{androidx.compose.animation.core.Animatable(if(checked)1f else 0f)}
+    val stretch=remember{androidx.compose.animation.core.Animatable(0f)}
+    // How much the knob reads as glass: follows the lift up, but on the way down only falls, so
+    // the lift's wobble below rest never flashes the lens back on.
+    var glass by remember{mutableFloatStateOf(0f)}
+    var dragging by remember{mutableStateOf(false)}
+    LaunchedEffect(Unit){
+        snapshotFlow{lift.value}.collect{v->glass=if(lift.targetValue>.5f)v else minOf(glass,v)}
+    }
+    // The knob stretches with its speed and jiggles round when it stops.
+    LaunchedEffect(Unit){
+        snapshotFlow{position.velocity}.collect{v->
+            val target=if(reduce)0f else jellyTarget(v,.14f,5f)
+            if(kotlin.math.abs(target-stretch.targetValue)>.004f)scope.launch{stretch.animateTo(target,LiquidSprings.jelly())}
+        }
+    }
+    LaunchedEffect(checked){
+        if(!dragging){
+            launch{position.animateTo(if(checked)1f else 0f,if(reduce)tween(0) else LiquidSprings.snap())}
+            launch{tint.animateTo(if(checked)1f else 0f,if(reduce)tween(0) else LiquidSprings.tint())}
+        }
+    }
+    val travel=22f
+    fun flips(from:Float,raw:Float)=if(from>.5f)raw>.3f else raw>.7f
+    Box(modifier.size(width=64.dp,height=48.dp)
+        .then(if(active)Modifier.pointerInput(Unit){
+            awaitEachGesture {
+                val down=awaitFirstDown(requireUnconsumed=false,pass=PointerEventPass.Initial)
+                val startedAt=System.currentTimeMillis()
+                val from=if(latest)1f else 0f
+                var moved=false;var lastRaw=from
+                dragging=true
+                if(!reduce)scope.launch{lift.animateTo(1f,LiquidSprings.lift())}
+                var released=false
+                try {
+                    while(true){
+                        val event=awaitPointerEvent(PointerEventPass.Initial)
+                        val c=event.changes.firstOrNull{it.id==down.id}?:break
+                        if(!c.pressed){released=true;break}
+                        // A list scrolling under the finger takes the gesture: no toggle.
+                        if(!moved&&c.isConsumed)break
+                        val dx=(c.position.x-down.position.x)/density.density
+                        if(!moved&&kotlin.math.abs(dx)<3f)continue
+                        moved=true;c.consume()
+                        val raw=from+dx/travel;lastRaw=raw
+                        val over=when{raw<0f->rubberband(raw*travel,travel,.6f)/travel;raw>1f->1f+rubberband((raw-1f)*travel,travel,.6f)/travel;else->raw}
+                        scope.launch{position.animateTo(over,LiquidSprings.drag())}
+                        val on=flips(from,raw)
+                        if((tint.targetValue>.5f)!=on){haptics?.play(HapticEngine.Event.TAP);scope.launch{tint.animateTo(if(on)1f else 0f,LiquidSprings.tint())}}
+                    }
+                } finally {
+                    dragging=false
+                    // A tap is toggled by the switch itself ([toggleable] below); a drag lands here.
+                    if(moved&&released) {
+                        val next=flips(from,lastRaw)
+                        scope.launch{position.animateTo(if(next)1f else 0f,if(reduce)tween(0) else LiquidSprings.snap())}
+                        scope.launch{tint.animateTo(if(next)1f else 0f,if(reduce)tween(0) else LiquidSprings.tint())}
+                        if(next!=latest){haptics?.play(HapticEngine.Event.RELEASE);change?.invoke(next)}
+                    } else if(!released) {
+                        scope.launch{position.animateTo(if(latest)1f else 0f,if(reduce)tween(0) else LiquidSprings.snap())}
+                        scope.launch{tint.animateTo(if(latest)1f else 0f,if(reduce)tween(0) else LiquidSprings.tint())}
+                    }
+                    // A quick tap keeps the lens up long enough to be seen crossing.
+                    val wait=if(moved||!released)0L else (200L-(System.currentTimeMillis()-startedAt)).coerceAtLeast(0L)
+                    scope.launch{kotlinx.coroutines.delay(wait);lift.animateTo(0f,LiquidSprings.knobSettle())}
+                }
+            }
         }else Modifier)
-        .graphicsLayer { alpha=if(active) 1f else .48f },
+        // Taps (and TalkBack, keyboards) toggle through the real switch; drags are handled above.
+        .then(if(onCheckedChange!=null)Modifier.toggleable(value=checked,enabled=enabled,role=androidx.compose.ui.semantics.Role.Switch,
+            interactionSource=presses,indication=null,onValueChange={next->haptics?.play(HapticEngine.Event.TAP);change?.invoke(next)}) else Modifier)
+        .graphicsLayer { alpha=if(active) 1f else .4f },
         contentAlignment=Alignment.Center) {
-        val trackColor=Brush.linearGradient(listOf(tint,tint.copy(alpha=.78f)))
-        Box(Modifier.fillMaxWidth().height(31.dp).clip(CircleShape).background(trackColor)
-            .border(1.dp,Color.White.copy(alpha=if(checked).24f else .15f),CircleShape))
-        val knob=remember{Path()}
+        val light=GlassLight.current(follow=!opaque)
         val optics=remember{liquidLensEffectOrNull(opaque)}
-        fun knobRect(w:Float,h:Float,unit:Float):Rect {
-            val grow=if(lift.isFinite())lift.coerceIn(-.12f,1.15f) else 0f
-            val stretch=LiquidGlassKit.stretch((lag-movement.value)/27f)
-            val kw=LiquidGlassKit.lerp(27f*unit,39f*unit,grow)*(1f+stretch)
-            val kh=LiquidGlassKit.lerp(27f*unit,35f*unit,grow)*(1f-stretch*.35f)
-            val cx=(2f+13.5f+movement.value)*unit+(lag-movement.value)*unit*.18f
+        fun knob(w:Float,h:Float,unit:Float):Rect {
+            val l=lift.value
+            val sc=.655f+(1f-.655f)*l
+            val st=stretch.value
+            val kw=58f*unit*sc*(1f+st); val kh=38f*unit*sc*(1f-st*.5f)
+            val trackLeft=w/2-32f*unit
+            val cx=trackLeft+(21f+position.value*travel)*unit
             return Rect(cx-kw/2,h/2-kh/2,cx+kw/2,h/2+kh/2)
         }
-        // Lensing layer (Android 13+): the track colour inside the knob bends at its rim.
-        Canvas(Modifier.fillMaxWidth().height(31.dp).graphicsLayer {
-            renderEffect=if(android.os.Build.VERSION.SDK_INT<33)null else optics?.let{o->val r=knobRect(size.width,size.height,density.density)
-                o.effect(size.width,size.height,r,r.minDimension/2,lift.coerceIn(0f,1f),density.density)}
+        // The track and its colour, on one layer that the lifted knob refracts (Android 13+): the
+        // lens thins the track inside it and smears its rim, like iOS 26.
+        Canvas(Modifier.matchParentSize().graphicsLayer {
+            renderEffect=if(android.os.Build.VERSION.SDK_INT<33)null else optics?.let{o->val r=knob(size.width,size.height,density.density)
+                o.effect(size.width,size.height,r,r.minDimension/2,glass.coerceIn(0f,1f),density.density,zoom=1f,zoomY=.72f,dispersion=0f,stretch=1f)}
         }) {
-            val r=knobRect(size.width,size.height,density.density)
-            clipPath(Path().apply{addRoundRect(RoundRect(r,CornerRadius(r.minDimension/2)))}) {
-                drawRoundRect(if(opaque)tint else tint.copy(alpha=.70f),Offset.Zero,size,CornerRadius(size.height/2))
-            }
+            val u=density.density
+            val track=Rect(size.width/2-32f*u,size.height/2-14f*u,size.width/2+32f*u,size.height/2+14f*u)
+            drawRoundRect(offColour,track.topLeft,track.size,CornerRadius(14f*u))
+            drawRoundRect(onColour.copy(alpha=onColour.alpha*tint.value.coerceIn(0f,1f)),track.topLeft,track.size,CornerRadius(14f*u))
         }
-        Canvas(Modifier.fillMaxWidth().height(31.dp)) {
-            val grow=if(lift.isFinite())lift.coerceIn(-.12f,1.15f) else 0f
-            val clear=grow.coerceIn(0f,1f)
-            val stretch=LiquidGlassKit.stretch((lag-movement.value)/27f)
-            val w=LiquidGlassKit.lerp(27.dp.toPx(),39.dp.toPx(),grow)*(1f+stretch)
-            val h=LiquidGlassKit.lerp(27.dp.toPx(),35.dp.toPx(),grow)*(1f-stretch*.35f)
-            val cx=(2f+13.5f+movement.value).dp.toPx()+(lag-movement.value).dp.toPx()*.18f
-            val rect=Rect(cx-w/2,size.height/2-h/2,cx+w/2,size.height/2+h/2)
-            knob.reset();knob.addRoundRect(RoundRect(rect,CornerRadius(minOf(w,h)/2)))
-            drawRoundRect(Color.Black.copy(alpha=.10f*(1f-clear)),rect.topLeft+Offset(0f,1.5.dp.toPx()),rect.size,CornerRadius(minOf(w,h)/2))
-            clipPath(knob) {
-                // The lens shows the track colour beneath, brighter and magnified.
-                drawPath(knob,Brush.verticalGradient(listOf(Color.White.copy(alpha=if(dark).16f else .26f),Color.Transparent),rect.top,rect.bottom))
+        Canvas(Modifier.matchParentSize()) {
+            val r=knob(size.width,size.height,density.density)
+            val g=glass.coerceIn(0f,1f)
+            val corner=CornerRadius(r.minDimension/2)
+            val path=Path().apply{addRoundRect(RoundRect(r,corner))}
+            // Shadow: 0 (2 + 8·lift) (6 + 20·lift) rgba(0,0,0,.12 + .08·lift), from widening capsules.
+            for(n in 1..3) {
+                val spread=n*(1.5f+5f*g)*density.density/3f
+                drawRoundRect(Color.Black.copy(alpha=(.12f+.08f*g)*.3f),Offset(r.left-spread,r.top+(2f+8f*g)*density.density/2-spread*.5f),
+                    Size(r.width+spread*2,r.height+spread),CornerRadius((r.height+spread)/2))
             }
-            liquidGlassEdge(knob,light,clear,dark,bounds=rect)
-            val white=(1f-clear).coerceIn(0f,1f)
-            if(white>.001f) {
-                drawPath(knob,Color.White.copy(alpha=white))
-                drawPath(knob,Color.Black.copy(alpha=.05f*white),style=Stroke(.6.dp.toPx()))
+            if(g>.01f) {
+                drawPath(path,LiquidMaterial.lensFill(dark).copy(alpha=LiquidMaterial.lensFill(dark).alpha*g))
+                drawPath(path,LiquidMaterial.lensRing(dark).copy(alpha=LiquidMaterial.lensRing(dark).alpha*g),style=Stroke(.75f*density.density))
+                LiquidRim.draw(this,r,r.minDimension/2,LiquidShape.lens(r.width/density.density,r.height/density.density).bezel*density.density,
+                    light,lens=true,dispersion=0f,opacity=(g*1.3f).coerceAtMost(1f)*LiquidMaterial.rimOpacity(dark))
+            }
+            // The white face, fading as the knob turns to glass.
+            val face=(1f-g*(if(dark).92f else 1f)).coerceIn(0f,1f)
+            if(face>.001f) {
+                drawPath(path,(if(opaque)Color.White else Color.White).copy(alpha=face))
+                drawPath(path,Color.Black.copy(alpha=.06f*face),style=Stroke(.5f*density.density))
             }
         }
     }

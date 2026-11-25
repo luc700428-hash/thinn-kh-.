@@ -17,13 +17,12 @@ data class IOSMotionResponse(val damping:Float,val stiffness:Float)
  // ~8% overshoot measured frame by frame on the iOS island (islandcn's recordings).
  return IOSMotionResponse(.9f-.4f*v,320f-80f*v)
 }
-/** Observes the existing click gesture; never steals scrolling or replaces a callback. */
-fun Modifier.iosJellyPress():Modifier=composed{
- val reduce=rememberAppleReduceMotion();val response=iosMotionResponse();var down by remember{mutableStateOf(false)}
- val x by animateFloatAsState(if(down&&!reduce).975f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍橫向回彈")
- val y by animateFloatAsState(if(down&&!reduce).95f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍縱向回彈")
- this.graphicsLayer{scaleX=x;scaleY=y;alpha=if(down&&!reduce).92f else 1f}.pointerInput(Unit){awaitEachGesture{awaitFirstDown(requireUnconsumed=false);down=true;try{var held=true;while(held){val event=awaitPointerEvent(PointerEventPass.Final);held=event.changes.any{it.pressed}}}finally{down=false}}}
-}
+/**
+ * Observes the existing click gesture; never steals scrolling or replaces a callback. The press is
+ * the Liquid Glass touch response ([liquidPress]): a swell under the finger, a droplet stretch
+ * toward a drag and a jelly settle. Wide rows swell by at most 8 dp.
+ */
+fun Modifier.iosJellyPress():Modifier=liquidPress(maxGrowDp=8f)
 
 /**
  * iOS 27 content entrance: rises 14 dp and fades in on the fluid curve, staggered by [index]

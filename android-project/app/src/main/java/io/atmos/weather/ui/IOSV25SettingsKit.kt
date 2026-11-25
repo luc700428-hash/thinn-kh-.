@@ -55,30 +55,10 @@ fun IOSSettingsHeader(title:String,onBack:()->Unit,modifier:Modifier=Modifier) {
     }
 }
 
+/** The Liquid Glass segmented control; see [LiquidSegmented]. */
 @Composable
-fun IOSSegmentedControl(labels:List<String>,selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier) {
-    require(labels.isNotEmpty())
-    val palette=MaterialTheme.colorScheme
-    val reduce=rememberAppleReduceMotion()
-    val response=iosMotionResponse()
-    BoxWithConstraints(modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(9999.dp))
-        .background(palette.surfaceVariant)) {
-        val cell=(maxWidth-8.dp)/labels.size
-        val position by animateDpAsState(cell*selected.coerceIn(labels.indices),
-            if(reduce)tween(0) else spring(response.damping,response.stiffness),label="分段控制滑動")
-        Box(Modifier.padding(4.dp).offset(x=position).width(cell).fillMaxHeight()
-            .clip(RoundedCornerShape(9999.dp)).thinnBackdrop(rememberAppleReduceTransparency(),9999.dp)
-            .background(BrandPalette.selection).thinnSpecularEdge(9999.dp))
-        Row(Modifier.fillMaxSize().padding(4.dp).selectableGroup()) {
-            labels.forEachIndexed { index,label ->
-                Box(Modifier.weight(1f).fillMaxHeight().iosJellyPress().selectable(
-                    selected=index==selected,role=Role.Tab,onClick={onSelect(index)}),contentAlignment=Alignment.Center) {
-                    Text(label,color=if(index==selected)Color.White else palette.onSurface,fontSize=14.sp,fontWeight=if(index==selected)FontWeight.SemiBold else FontWeight.Normal)
-                }
-            }
-        }
-    }
-}
+fun IOSSegmentedControl(labels:List<String>,selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modifier) =
+    LiquidSegmented(labels,selected,onSelect,modifier)
 
 @Composable
 fun IOSV25SettingsCell(

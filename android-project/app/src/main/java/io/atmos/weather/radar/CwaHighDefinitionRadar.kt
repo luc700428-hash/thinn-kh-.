@@ -153,9 +153,10 @@ internal object CwaHighDefinitionRadar {
                     val raw=IntArray(region.width*region.height)
                     region.getPixels(raw,0,region.width,0,0,region.width,region.height)
                     // Same map-ink bridging as close-ups, on the decoded cells.
-                    val lv=IntArray(raw.size){i->levelOf[raw[i]]?:-1}
+                    val lv=IntArray(raw.size){i->classify(raw[i],levelOf)}
+                    fillMapInk(lv,region.width,region.height)
                     bridgeMapInk(lv,region.width,region.height)
-                    for(i in raw.indices)if(lv[i]>=0)raw[i]=rampColours[lv[i]]
+                    for(i in raw.indices)raw[i]=if(lv[i]>=0)rampColours[lv[i]] else 0
                     val pixels=IntArray(512*512)
                     val xs=IntArray(512){x->floor(((tile.x+(x+.5)/512)/n*360-180-WEST)*600).toInt()}
                     for(y in 0 until 512) {
@@ -168,7 +169,7 @@ internal object CwaHighDefinitionRadar {
                             val rx=((sx-left)/sampleSize).coerceAtMost(region.width-1)
                             val ry=((sy-top)/sampleSize).coerceAtMost(region.height-1)
                             val value=raw[ry*region.width+rx]
-                            if(value in colours)pixels[y*512+x]=value
+                            if(value!=0)pixels[y*512+x]=value
                         }
                     }
                     output.setPixels(pixels,0,512,0,0,512,512);region.recycle()
@@ -184,15 +185,16 @@ internal object CwaHighDefinitionRadar {
      */
     private fun smooth(regions:CwaRadarRegions,tile:RadarTile,n:Double,left:Int,top:Int,right:Int,bottom:Int,
         levelOf:Map<Int,Int>,ramp:IntArray,output:Bitmap,checkActive:()->Unit) {
-        val l=(left-4).coerceAtLeast(0);val t=(top-4).coerceAtLeast(0)
-        val r=(right+4).coerceAtMost(3600);val b=(bottom+4).coerceAtMost(3600)
+        val l=(left-10).coerceAtLeast(0);val t=(top-10).coerceAtLeast(0)
+        val r=(right+10).coerceAtMost(3600);val b=(bottom+10).coerceAtMost(3600)
         val region=regions.read(Rect(l,t,r,b),1)
         val w=region.width;val h=region.height
         val raw=IntArray(w*h);region.getPixels(raw,0,w,0,0,w,h);region.recycle()
         val levels=IntArray(w*h){i->
             val sx=l+i%w;val sy=t+i/w
-            if(annotation(sx,sy))-2 else levelOf[raw[i]]?:-1
+            if(annotation(sx,sy))-2 else classify(raw[i],levelOf)
         }
+        fillMapInk(levels,w,h)
         bridgeMapInk(levels,w,h)
         fun level(x:Int,y:Int):Float {
             val cx=x-l;val cy=y-t
@@ -249,6 +251,62 @@ internal object CwaHighDefinitionRadar {
             if(fill>=0)levels[y*w+x]=fill
         }
     }
+    internal const val INK=-3
+
+    /**
+     * A source pixel as a level: a ramp colour is echo; the plain white sea and grey land are
+     * "no echo"; anything else (coastlines, county borders, rivers, the 1° grid, station dots and
+     * their anti-aliased edges) is printed map ink with the echo underneath unknown.
+     */
+    internal fun classify(colour:Int,levelOf:Map<Int,Int>):Int {
+        val c=colour or (0xFF shl 24)
+        levelOf[c]?.let{return it}
+        val r=(c ushr 16)and 255;val g=(c ushr 8)and 255;val b=c and 255
+        if(r==g&&g==b&&(r==255||r==229))return -1
+        if(maxOf(r,g,b)-minOf(r,g,b)<=60)return INK
+        // A strong colour the legend does not list (the echo uses a few in-between shades): the
+        // nearest legend colour if it is close, otherwise ink (a dark edge where a line meets rain).
+        synchronized(nearby){nearby[c]?.let{return it}}
+        var best=INK;var bestD=40*40*3+1
+        for((rc,lv) in levelOf) {
+            val dr=((rc ushr 16)and 255)-r;val dg=((rc ushr 8)and 255)-g;val db=(rc and 255)-b
+            val d=dr*dr+dg*dg+db*db
+            if(d<bestD){bestD=d;best=lv}
+        }
+        synchronized(nearby){if(nearby.size<4096)nearby[c]=best}
+        return best
+    }
+    private val nearby=HashMap<Int,Int>()
+
+    /**
+     * Printed ink is filled from its surroundings, one ring of pixels per pass, so a 7-pixel
+     * coastline or a station dot closes completely: a pixel next to more echo than empty sea takes
+     * the average level of that echo, otherwise it stays empty. Real gaps never touch ink and stay.
+     */
+    internal fun fillMapInk(levels:IntArray,w:Int,h:Int,passes:Int=14) {
+        var todo=IntArray(0).let{_->val l=ArrayList<Int>();for(i in levels.indices)if(levels[i]==INK)l+=i;l.toIntArray()}
+        val next=IntArray(todo.size)
+        repeat(passes) {
+            if(todo.isEmpty())return@repeat
+            for(j in todo.indices) {
+                val i=todo[j];val x=i%w;val y=i/w
+                var echo=0;var sum=0;var empty=0
+                for(dy in -1..1)for(dx in -1..1) {
+                    if(dx==0&&dy==0)continue
+                    val xx=x+dx;val yy=y+dy
+                    if(xx<0||yy<0||xx>=w||yy>=h)continue
+                    val v=levels[yy*w+xx]
+                    if(v>=0){echo++;sum+=v} else if(v==-1)empty++
+                }
+                next[j]=if(echo>0&&echo>=empty)(sum+echo/2)/echo else if(empty>0)-1 else INK
+            }
+            var k=0
+            for(j in todo.indices){levels[todo[j]]=next[j];if(next[j]==INK)todo[k++]=todo[j]}
+            todo=todo.copyOf(k)
+        }
+        for(i in todo)levels[i]=-1
+    }
+
     internal fun annotation(x:Int,y:Int)= (x<1250&&y<760)||(x>2600&&y<300)||
         (x<660&&y>3180)||(x>3375&&y>2400)
     private suspend fun request(url:String,limit:Int):ByteArray=withContext(Dispatchers.IO) {

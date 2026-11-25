@@ -3,6 +3,9 @@ package io.atmos.weather.festival
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -18,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -171,10 +175,10 @@ private val shadowed = TextStyle(shadow = Shadow(Color(0x99000000), Offset(0f, 2
 
 /** The greeting, the countdown and the midnight line: always white on a dark glass pill, readable on any theme. */
 @Composable
-private fun FestivalWords(clock: androidx.compose.runtime.MutableLongState) {
+internal fun FestivalWords(clock: androidx.compose.runtime.MutableLongState) {
     val greeting by remember { derivedStateOf {
         val now = clock.longValue
-        FestivalDirector.progress(FestivalDirector.Pass.BANNER, now)?.let { FestivalCalendar.at(now)?.let { f -> greetingFor(f) } }
+        FestivalDirector.progress(FestivalDirector.Pass.BANNER, now)?.let { FestivalCalendar.at(now) }
     } }
     val countdown by remember { derivedStateOf {
         val now = clock.longValue
@@ -184,11 +188,35 @@ private fun FestivalWords(clock: androidx.compose.runtime.MutableLongState) {
         val now = clock.longValue
         FestivalCalendar.show(now)?.takeIf { now - it.start < 8_000 }?.title
     } }
-    Box(Modifier.fillMaxSize().statusBarsPadding()) {
-        val pill = Modifier.align(Alignment.TopCenter).padding(top = 10.dp)
-            .background(Color(0xD9101218), RoundedCornerShape(999.dp)).padding(horizontal = 18.dp, vertical = 9.dp)
+    val glass = Color(0xE6121620)
+    Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        // The greeting: a small card a third of the way down, centred, gone after six seconds.
+        if (countdown == null && headline == null) greeting?.let { f ->
+            Column(Modifier.align(BiasAlignment(0f, -.42f)).padding(horizontal = 32.dp).widthIn(max = 320.dp)
+                .graphicsLayer {
+                    val p = FestivalDirector.progress(FestivalDirector.Pass.BANNER, clock.longValue) ?: 6f
+                    val inP = minOf(1f, p / .45f)
+                    alpha = minOf(inP, (6f - p) / .6f).coerceIn(0f, 1f)
+                    val sc = .88f + .12f * (1f - (1f - inP) * (1f - inP)); scaleX = sc; scaleY = sc
+                }
+                .background(glass, RoundedCornerShape(26.dp)).padding(horizontal = 24.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(emojiFor(f), fontSize = 40.sp, lineHeight = 48.sp)
+                Text(f.label, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp))
+                Text(f.greeting, color = Color.White.copy(alpha = .86f), fontSize = 15.sp, lineHeight = 21.sp,
+                    textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+            }
+        }
+        // The countdown: a compact capsule above the bottom bar, out of the way of every page's header.
         countdown?.let { (title, left) ->
-            Text("$title  ${"%02d:%02d".format(left / 60, left % 60)}", pill, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 108.dp)
+                .background(glass, RoundedCornerShape(22.dp)).padding(horizontal = 22.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(title, color = Color.White.copy(alpha = .8f), fontSize = 14.sp, maxLines = 1)
+                Text("%02d:%02d".format(left / 60, left % 60), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold,
+                    style = TextStyle(fontFeatureSettings = "tnum"))
+            }
             if (left in 1..10) {
                 Text("$left", Modifier.align(Alignment.Center).graphicsLayer {
                     val frac = ((clock.longValue % 1000L) / 1000f)
@@ -196,32 +224,37 @@ private fun FestivalWords(clock: androidx.compose.runtime.MutableLongState) {
                     scaleX = pop; scaleY = pop; alpha = 1f - maxOf(0f, frac - .75f) * 2f
                 }, color = Color.White, fontSize = 120.sp, fontWeight = FontWeight.Black, style = shadowed)
             }
-        } ?: greeting?.let { Text(it, pill.graphicsLayer {
-            val p = FestivalDirector.progress(FestivalDirector.Pass.BANNER, clock.longValue) ?: 6f
-            alpha = minOf(1f, p / .4f, (6f - p) / .6f).coerceIn(0f, 1f); translationY = (1f - minOf(1f, p / .4f)) * -24f
-        }, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
+        }
+        // Midnight: the new-year line, large, two lines at most, centred over the fireworks.
         headline?.let {
-            Text(it, Modifier.align(Alignment.Center).padding(horizontal = 24.dp), color = Color(0xFFFFE6A0), fontSize = 40.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, style = shadowed)
+            Text(it.replace(" · ", "\n").replaceFirst(Regex("^(\\d{4}) "), "$1\n"), Modifier.align(BiasAlignment(0f, -.25f)).padding(horizontal = 28.dp)
+                .graphicsLayer {
+                    val start = FestivalCalendar.show(clock.longValue)?.start ?: 0L
+                    val p = ((clock.longValue - start) / 1000f).coerceAtLeast(0f)
+                    alpha = minOf(1f, p / .6f, (8f - p) / 1f).coerceIn(0f, 1f)
+                    val sc = .9f + .1f * minOf(1f, p / .6f); scaleX = sc; scaleY = sc
+                },
+                color = Color(0xFFFFE6A0), fontSize = 36.sp, lineHeight = 46.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, style = shadowed)
         }
     }
 }
 
-private fun greetingFor(f: Festival) = when (f) {
-    Festival.CHRISTMAS -> "🎄 " + f.greeting
-    Festival.HALLOWEEN -> "🎃 " + f.greeting
-    Festival.LUNAR_NEW_YEAR -> "🧧 " + f.greeting
-    Festival.LANTERN -> "🏮 " + f.greeting
-    Festival.MID_AUTUMN -> "🥮 " + f.greeting
-    Festival.DRAGON_BOAT -> "🐉 " + f.greeting
-    Festival.NATIONAL_DAY, Festival.NEW_YEAR, Festival.NEW_YEARS_EVE -> "🎆 " + f.greeting
-    Festival.CHILDREN -> "🎈 " + f.greeting
-    Festival.MOTHERS_DAY -> "💐 " + f.greeting
-    Festival.TEACHERS_DAY -> "📚 " + f.greeting
-    Festival.WINTER_SOLSTICE -> "🍡 " + f.greeting
-    Festival.QINGMING -> "🌿 " + f.greeting
-    Festival.FATHERS_DAY -> "👔 " + f.greeting
-    Festival.GHOST_FESTIVAL -> "🪷 " + f.greeting
-    else -> "💝 " + f.greeting
+private fun emojiFor(f: Festival) = when (f) {
+    Festival.CHRISTMAS -> "🎄"
+    Festival.HALLOWEEN -> "🎃"
+    Festival.LUNAR_NEW_YEAR -> "🧧"
+    Festival.LANTERN -> "🏮"
+    Festival.MID_AUTUMN -> "🥮"
+    Festival.DRAGON_BOAT -> "🐉"
+    Festival.NATIONAL_DAY, Festival.NEW_YEAR, Festival.NEW_YEARS_EVE -> "🎆"
+    Festival.CHILDREN -> "🎈"
+    Festival.MOTHERS_DAY -> "💐"
+    Festival.TEACHERS_DAY -> "📚"
+    Festival.WINTER_SOLSTICE -> "🍡"
+    Festival.QINGMING -> "🌿"
+    Festival.FATHERS_DAY -> "👔"
+    Festival.GHOST_FESTIVAL -> "🪷"
+    else -> "💝"
 }
 
 /** Sounds due between two moments of the festival clock. */

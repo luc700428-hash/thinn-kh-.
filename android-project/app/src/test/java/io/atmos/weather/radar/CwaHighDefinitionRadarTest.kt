@@ -78,6 +78,35 @@ class CwaHighDefinitionRadarTest {
         val legend=intArrayOf(4,-2,4)
         CwaHighDefinitionRadar.bridgeMapInk(legend,3,1);assertEquals(-2,legend[1])
     }
+    @Test fun rainUnderCoastlinesGridAndStationDotsHasNoGaps() {
+        // The real 06:30 picture around Hengchun (thick coastline, county border, the 22°N grid line
+        // and a station dot), with every sea and land pixel turned into 25 dBZ echo, as when it rains
+        // over the whole peninsula. After filling, no ink may be left as a hole.
+        val bytes=resource("CV1_TW_3600_202610290630.png")
+        val full=android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+        val x0=1450;val y0=2380;val w=450;val h=450
+        val px=IntArray(w*h);full.getPixels(px,0,w,x0,y0,w,h)
+        val rain=0xFF00C800.toInt()
+        val levelOf=mapOf(rain to 20)
+        val levels=IntArray(w*h){i->
+            val c=px[i] or (0xFF shl 24)
+            val r=(c ushr 16)and 255;val g=(c ushr 8)and 255;val b=c and 255
+            CwaHighDefinitionRadar.classify(if(r==g&&g==b&&(r==255||r==229))rain else c,levelOf)
+        }
+        val ink=levels.count{it==CwaHighDefinitionRadar.INK}
+        assertTrue("the crop has printed lines ($ink)",ink>2000)
+        CwaHighDefinitionRadar.fillMapInk(levels,w,h)
+        assertEquals(0,levels.count{it<0})
+        assertTrue(levels.all{it==20})
+        // Without rain the same ink stays empty: nothing is invented.
+        val dry=IntArray(w*h){i->CwaHighDefinitionRadar.classify(px[i],levelOf)}
+        CwaHighDefinitionRadar.fillMapInk(dry,w,h)
+        assertTrue(dry.all{it==-1})
+        // Rain on one side of a 7-pixel line only: the line splits, the dry side stays dry.
+        val half=IntArray(21){if(it<7)9 else if(it<14)CwaHighDefinitionRadar.INK else -1}
+        CwaHighDefinitionRadar.fillMapInk(half,21,1)
+        assertEquals(9,half[9]);assertEquals(-1,half[12]);assertTrue((14 until 21).all{half[it]==-1})
+    }
     @Test fun phonesWithMoreMemoryHoldMoreSourceTiles() {
         assertEquals(2,RadarPlayback.sourceBudget(12_000_000_000L,true))
         assertEquals(9,RadarPlayback.sourceBudget(8_000_000_000L,false))
@@ -102,6 +131,7 @@ class CwaHighDefinitionRadarTest {
         val image=decode("CV1_TW_3600_202610290630.png",listOf(tile)).getValue(tile)
         assertEquals(512,image.width);assertEquals(512,image.height)
         val png=android.graphics.BitmapFactory.decodeByteArray(resource("CV1_TW_3600_202610290630.png"),0,resource("CV1_TW_3600_202610290630.png").size)
+        val ramp=(2450 until 3580).map{png.getPixel(3450,it)}.filter{c->val r=(c ushr 16)and 255;val g=(c ushr 8)and 255;val b=c and 255;maxOf(r,g,b)-minOf(r,g,b)>60}.toSet()
         var rain=0;var bridged=0
         for(y in 0 until 512)for(x in 0 until 512) {
             val value=image.getPixel(x,y)
@@ -110,10 +140,10 @@ class CwaHighDefinitionRadarTest {
             val lon=(tile.x+(x+.5)/512)/256*360-180
             val lat=RadarProjection.latitude((tile.y+(y+.5)/512)/256)
             val sx=kotlin.math.floor((lon-118)*600).toInt();val sy=kotlin.math.floor((26.5-lat)*600).toInt()
-            // A measured cell keeps its exact colour; a cell under a printed border or river is
-            // bridged from the echo on both sides, so it shows a ramp colour, never map ink.
+            // A measured cell keeps its exact colour; a cell under printed ink (borders, rivers, the
+            // grid, anti-aliased edges) is filled from the echo around it, so it shows a ramp colour.
             val source=png.getPixel(sx,sy);val sr=(source ushr 16)and 255;val sg=(source ushr 8)and 255;val sb=source and 255
-            if(maxOf(sr,sg,sb)-minOf(sr,sg,sb)>60)assertEquals(source,value) else bridged++
+            if(source in ramp)assertEquals(source,value) else bridged++
             val r=(value ushr 16)and 255;val g=(value ushr 8)and 255;val b=value and 255
             assertTrue(maxOf(r,g,b)-minOf(r,g,b)>60)
             assertFalse(CwaHighDefinitionRadar.annotation(sx,sy))

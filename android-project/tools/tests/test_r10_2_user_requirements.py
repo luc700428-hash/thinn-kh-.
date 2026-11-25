@@ -98,8 +98,9 @@ class R102UserRequirements(unittest.TestCase):
     def test_shared_button_haptics(self):
         s=self.read('ui/GlassControls.kt')
         self.assertIn('HapticEngine.Event.TAP',s)
-        # Shared buttons now follow approved UI motion tokens and remain ripple-free.
-        self.assertIn('spring(dampingRatio=response.damping,stiffness=response.stiffness)',s)
+        # Shared buttons use the Liquid Glass touch response and springs, and remain ripple-free.
+        self.assertIn('liquidPress(enabled,press',s)
+        self.assertIn('LiquidSprings.snap()',s)
         self.assertIn('indication=null',s)
         motion=self.read('ui/AppleMotion.kt')
         self.assertIn('const val springDamping: Float = 0.72f',motion)
