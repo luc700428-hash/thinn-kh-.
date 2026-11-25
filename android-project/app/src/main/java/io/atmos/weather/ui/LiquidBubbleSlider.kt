@@ -33,9 +33,11 @@ import kotlin.math.abs
 internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier,
     valueRange:ClosedFloatingPointRange<Float>,steps:Int,onValueChangeFinished:(()->Unit)?,colors:SliderColors?,enabled:Boolean) {
     val opaque=rememberAppleReduceTransparency()
-    // SwiftShader emulators (CI) keep the knob still: a lens that lifts, stretches and wobbles on
-    // every drag has taken their host renderer down. Phones get the full Liquid Glass thumb.
-    val reduce=rememberAppleReduceMotion()||LiquidGlassKit.softwareRenderedDevice
+    // Reduce Motion: the knob stays a still white capsule. SwiftShader emulators (CI) still lift
+    // it into the clear lens while held, but in one step: a lens that springs, stretches and
+    // wobbles on every drag has taken their host renderer down. Phones get the full thumb.
+    val reduceMotion=rememberAppleReduceMotion()
+    val reduce=reduceMotion||LiquidGlassKit.softwareRenderedDevice
     val response=iosMotionResponse()
     val feedback=LocalHapticEngine.current
     val density=LocalDensity.current
@@ -50,7 +52,7 @@ internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier
     val head by animateFloatAsState(fraction,if(dragging||reduce)tween(0) else spring(response.damping,response.stiffness),label="bubble head")
     val tail by animateFloatAsState(head,if(reduce)tween(0) else spring(FluidGlassStyle.TAIL_DAMPING,FluidGlassStyle.TAIL_STIFFNESS),label="adhering water tail")
     // Liquid Glass slider: the thumb inflates with the lift spring and deflates with the wobbly settle.
-    val held=(dragging||pressed)&&!reduce
+    val held=(dragging||pressed)&&!reduceMotion
     val lift by animateFloatAsState(if(held)1f else 0f,if(reduce)tween(0) else if(held)LiquidSprings.lift() else LiquidSprings.settle(),label="bubble rebound")
     val dark=MaterialTheme.colorScheme.background.red<.5f
     val active=colors?.activeTrackColor?:MaterialTheme.colorScheme.primary
