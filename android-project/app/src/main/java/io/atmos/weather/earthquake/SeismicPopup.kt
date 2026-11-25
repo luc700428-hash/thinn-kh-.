@@ -72,7 +72,10 @@ internal object SeismicPopup {
         if(card!=null||!canOverlay(ctx))return
         val e=ticket.incident
         val place=SeismicUserLocation.current(ctx)
-        val local=SeismicAlertThreshold.local(e.localIntensityByCounty,place?.name)
+        val sourceLocal=SeismicAlertThreshold.local(e.localIntensityByCounty,place?.name)
+        // No county values from the source: show the clearly labelled local estimate instead.
+        val local=sourceLocal?:SeismicCountyEstimate.forPlace(SeismicCountyEstimate.view(e),place?.name)
+        val estimated=sourceLocal==null&&local!=null
         val wm=ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val root=FrameLayout(ctx)
         val panel=LinearLayout(ctx).apply {
@@ -102,7 +105,7 @@ internal object SeismicPopup {
             val p=dp(ctx,14f).toInt();setPadding(p,0,0,0)
             addView(text("緊急地震速報",19f,AColor.WHITE,true))
             addView(text("${SeismicDisplayFormat.location(e.epicenter)} · ${SeismicDisplayFormat.magnitude(e.magnitude)}",15f,AColor.argb(210,255,255,255)))
-            addView(text(if(grade==null)"所在地震度待來源提供" else "${place?.name?:"所在地"}預估 ${SeismicDisplayFormat.symbol(grade)} 級",15f,AColor.argb(210,255,255,255)))
+            addView(text(if(grade==null)"所在地震度待來源提供" else "${place?.name?:"所在地"}${if(estimated)"推算" else "預估"} ${SeismicDisplayFormat.symbol(grade)} 級",15f,AColor.argb(210,255,255,255)))
         }
         header.addView(tile);header.addView(titles,LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1f))
         panel.addView(header)

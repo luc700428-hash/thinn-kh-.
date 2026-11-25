@@ -1,5 +1,6 @@
 package io.atmos.weather.widgets
 
+import androidx.compose.ui.graphics.luminance
 import android.content.Context
 import android.graphics.Typeface
 import android.util.TypedValue
@@ -280,6 +281,8 @@ internal fun adaptiveWidgetRemote(context:Context,family:Int,d:OpticalWidgetData
  */
 internal fun eventBadge(context:Context,d:OpticalWidgetData,r:WidgetRegion,motion:Boolean):RemoteViews {
     val dip=TypedValue.COMPLEX_UNIT_DIP
+    // A live earthquake warning: the person's expected intensity and a countdown to the main shaking.
+    d.events.firstOrNull{it.kind==WidgetEvent.Kind.EEW&&(it.intensity!=null||it.arrivalAt!=null)}?.let{e->return eewBadge(context,e,r)}
     val titles=d.events.map{it.title}.distinct()
     // One warning stays still; only several take turns.
     if(titles.size<=1||!motion) {
@@ -301,6 +304,32 @@ internal fun eventBadge(context:Context,d:OpticalWidgetData,r:WidgetRegion,motio
         })
     }
     return frame
+}
+internal fun eewBadge(context:Context,e:WidgetEvent.Event,r:WidgetRegion,now:Long=System.currentTimeMillis()):RemoteViews {
+    val dip=TypedValue.COMPLEX_UNIT_DIP
+    val size=(r.font*.92f).coerceAtLeast(7f)
+    return RemoteViews(context.packageName,R.layout.widget_event_eew).apply{
+        val grade=e.intensity
+        val shown=when(grade){"5弱"->"5−";"5強"->"5+";"6弱"->"6−";"6強"->"6+";else->grade}
+        setTextViewText(R.id.widget_eew_intensity,if(shown==null)"?" else shown+"級")
+        setTextViewTextSize(R.id.widget_eew_intensity,dip,size)
+        val fill=io.atmos.weather.earthquake.SeismicIntensityColors.color(grade)
+        val argb=android.graphics.Color.argb(255,(fill.red*255).toInt(),(fill.green*255).toInt(),(fill.blue*255).toInt())
+        setColorStateList(R.id.widget_eew_intensity,"setBackgroundTintList",android.content.res.ColorStateList.valueOf(argb))
+        setTextColor(R.id.widget_eew_intensity,if(fill.luminance()>.45f)0xFF1B1B1B.toInt() else 0xFFFFFFFF.toInt())
+        setTextViewText(R.id.widget_event_badge,e.title)
+        setTextViewTextSize(R.id.widget_event_badge,dip,size)
+        setTextViewTextSize(R.id.widget_eew_countdown,dip,size)
+        val at=e.arrivalAt
+        if(at!=null&&at>now){
+            setChronometer(R.id.widget_eew_countdown,android.os.SystemClock.elapsedRealtime()+(at-now),"%s",true)
+            setChronometerCountDown(R.id.widget_eew_countdown,true)
+        } else {
+            setChronometer(R.id.widget_eew_countdown,android.os.SystemClock.elapsedRealtime(),if(at==null)"" else "已抵達",false)
+        }
+        setContentDescription(R.id.widget_event_frame,"地震速報：所在地預估震度 ${shown?:"未知"} 級"+
+            (if(at!=null&&at>now)"，主震波約 ${(at-now+999)/1000} 秒後抵達" else ""))
+    }
 }
 private fun weatherRemote(context:Context,condition:io.atmos.weather.domain.model.WeatherCondition,day:Boolean,size:Float,motion:Boolean):RemoteViews{
     val px=(size*context.resources.displayMetrics.density).toInt().coerceIn(24,192)

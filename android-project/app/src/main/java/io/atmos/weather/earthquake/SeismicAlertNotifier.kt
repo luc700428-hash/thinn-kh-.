@@ -24,8 +24,10 @@ object SeismicAlertNotifier {
         val channel=SeismicAlertPolicy.channelId(ctx,scenario)
         if((ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).getNotificationChannel(channel)?.importance==NotificationManager.IMPORTANCE_NONE)return true
         val local=SeismicAlertThreshold.local(e.localIntensityByCounty,SeismicUserLocation.current(ctx)?.name)
+        val estimate=if(local==null)SeismicCountyEstimate.forPlace(SeismicCountyEstimate.view(e),SeismicUserLocation.current(ctx)?.name) else null
         val title="收到地震速報 · 慎防強烈搖晃"
-        val detail="${SeismicDisplayFormat.location(e.epicenter)} · ${SeismicDisplayFormat.magnitude(e.magnitude)} · "+(local?.let{"所在地預估 ${SeismicDisplayFormat.symbol(it)} 級"}?:"所在地震度待來源提供")
+        val detail="${SeismicDisplayFormat.location(e.epicenter)} · ${SeismicDisplayFormat.magnitude(e.magnitude)} · "+(local?.let{"所在地預估 ${SeismicDisplayFormat.symbol(it)} 級"}
+            ?:estimate?.let{"所在地推算 ${SeismicDisplayFormat.symbol(it)} 級"}?:"所在地震度待來源提供")
         val pi=SeismicAlertDelivery.pendingIntent(ctx,ticket)
         val builder=NotificationCompat.Builder(ctx,channel).setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle(title).setContentText(detail).setStyle(NotificationCompat.BigTextStyle().bigText("$detail\n趴下、掩護、穩住 · ${e.source} 第 ${e.serial} 報\n第三方速報，非政府災防告警訊息"))

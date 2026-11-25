@@ -33,7 +33,9 @@ import kotlin.math.abs
 internal fun LiquidBubbleSlider(value:Float,onValueChange:(Float)->Unit,modifier:Modifier,
     valueRange:ClosedFloatingPointRange<Float>,steps:Int,onValueChangeFinished:(()->Unit)?,colors:SliderColors?,enabled:Boolean) {
     val opaque=rememberAppleReduceTransparency()
-    val reduce=rememberAppleReduceMotion()
+    // SwiftShader emulators (CI) keep the knob still: a lens that lifts, stretches and wobbles on
+    // every drag has taken their host renderer down. Phones get the full Liquid Glass thumb.
+    val reduce=rememberAppleReduceMotion()||LiquidGlassKit.softwareRenderedDevice
     val response=iosMotionResponse()
     val feedback=LocalHapticEngine.current
     val density=LocalDensity.current

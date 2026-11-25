@@ -133,6 +133,18 @@ class MainActivity : ComponentActivity() {
     }
     override fun onResume() {
         super.onResume()
+        // Samsung resets 全螢幕通知 on every update: ask once, with the one button that fixes it.
+        if (io.atmos.weather.permission.FullScreenGuard.onResume(this)) {
+            io.atmos.weather.permission.FullScreenGuard.acknowledge(this)
+            android.app.AlertDialog.Builder(this)
+                .setTitle("請重新開啟全螢幕通知")
+                .setMessage(if (io.atmos.weather.earthquake.SeismicPopup.canOverlay(this))
+                    "這次更新後，三星系統又關閉了 thinn-khì 的「全螢幕通知」。地震速報仍會透過「顯示在其他應用程式上層」在鎖定畫面亮起；重新開啟全螢幕通知可讓鬧鐘也直接亮起。"
+                    else "這次更新後，系統關閉了 thinn-khì 的「全螢幕通知」。沒有它，螢幕鎖定時地震速報與鬧鐘不會直接亮起。")
+                .setPositiveButton("開啟設定") { _, _ -> runCatching { startActivity(io.atmos.weather.permission.FullScreenGuard.settingsIntent(this)) } }
+                .setNegativeButton("稍後", null)
+                .show()
+        }
         val prefs = getSharedPreferences("thinn_settings", MODE_PRIVATE)
         val nowAllowed = io.atmos.weather.permission.PermissionGuide.canNotify(this)
         val locationAllowed = io.atmos.weather.permission.PermissionGuide.hasLocation(this)

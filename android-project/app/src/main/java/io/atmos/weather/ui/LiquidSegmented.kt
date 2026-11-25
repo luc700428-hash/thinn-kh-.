@@ -65,7 +65,7 @@ internal fun LiquidSegmented(labels: List<String>, selected: Int, onSelect: (Int
     require(labels.isNotEmpty())
     val palette = MaterialTheme.colorScheme
     val dark = palette.background.red < .5f
-    val reduce = rememberAppleReduceMotion()
+    val reduce = rememberAppleReduceMotion() || LiquidGlassKit.softwareRenderedDevice
     val opaque = rememberAppleReduceTransparency()
     val haptics = LocalHapticEngine.current
     val density = LocalDensity.current.density

@@ -92,6 +92,11 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/thinn_buddy_outing_widget_info"/>
         </receiver>
         <receiver android:name=".widgets.BuddyClockRefreshReceiver" android:exported="false"/>
+        <receiver android:name=".permission.FullScreenGuardReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
         <receiver android:name=".widgets.WidgetMaintenanceReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

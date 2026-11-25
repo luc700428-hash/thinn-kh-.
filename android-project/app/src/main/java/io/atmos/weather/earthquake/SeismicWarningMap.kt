@@ -42,13 +42,14 @@ import androidx.compose.animation.core.tween
 
 internal object SeismicIntensityColors {
     fun color(value:String?):Color=when(value){
-        "0"->Color(0xFFD4DFE8);"1"->Color(0xFFB1D9C6);"2"->Color(0xFF59BA9E);"3"->Color(0xFF12A269)
-        "4"->Color(0xFFF0CB4B);"5","5弱"->Color(0xFFF4A447);"5強"->Color(0xFFF07848)
-        "6","6弱"->Color(0xFFE14D4B);"6強"->Color(0xFFBD202D);"7"->Color(0xFF9644C7);else->Color(0xFF81909E)
+        // The scale people know from the CWA cards: blue, green, yellow, orange, then reds and purples.
+        "0"->Color(0xFFC9D3DC);"1"->Color(0xFF2E9BE6);"2"->Color(0xFF48C83E);"3"->Color(0xFFE0BC12)
+        "4"->Color(0xFFF26B1D);"5","5弱"->Color(0xFFE5432C);"5強"->Color(0xFFC62828)
+        "6","6弱"->Color(0xFFA3174A);"6強"->Color(0xFF7B2C9E);"7"->Color(0xFF55188F);else->Color(0xFF81909E)
     }
 }
 /** County detail stays vector. Advancing rings redraw independently of static polygon/label layers. */
-@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier,viewportHeight:Dp=310.dp,compact:Boolean=false,simulation:Boolean=false,subtitle:String?=null,observed:Boolean=false) {
+@Composable internal fun SeismicWarningMap(incident:EewIncident,values:Map<String,String>,place:SeismicPlace?,historical:Boolean,frameNow:State<Long>,modifier:Modifier=Modifier,viewportHeight:Dp=310.dp,compact:Boolean=false,simulation:Boolean=false,subtitle:String?=null,observed:Boolean=false,estimated:Boolean=false) {
     val ctx=LocalContext.current.applicationContext
     val atlas by produceState<WarningCountyAtlas?>(null,ctx){value=WarningCountyAtlas.load(ctx)}
     val dark=MaterialTheme.colorScheme.background.red<.5f
@@ -58,7 +59,7 @@ internal object SeismicIntensityColors {
     val fill=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.FILL}}
     val edge=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}}
     val reduce=io.atmos.weather.ui.rememberAppleReduceMotion()
-    val rotation=remember(values,place?.name){SeismicCountyRotation.entries(values,place?.name)}
+    val rotation=remember(values,place?.name,estimated){SeismicCountyRotation.entries(values,place?.name).map{if(estimated&&it.grade!="—")it.copy(grade="推算 "+it.grade) else it}}
     val page=remember(incident.id){mutableIntStateOf(0)}
     val labelAlpha=remember(incident.id){Animatable(1f)}
     LaunchedEffect(incident.id,rotation,reduce){
@@ -72,7 +73,7 @@ internal object SeismicIntensityColors {
     }
     val labels=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)}}
     Column(modifier){
-        if(compact)Text((if(historical)"縣市歷史震度 · 舊制" else if(simulation)"演練情境震度（虛構）" else "來源縣市預估震度")+
+        if(compact)Text((if(historical)"縣市歷史震度 · 舊制" else if(simulation)"演練情境震度（虛構）" else if(estimated)"縣市震度推算（來源未提供）" else "來源縣市預估震度")+
             (subtitle?.let{" · $it"}?:""),fontSize=14.sp,lineHeight=18.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
         if(!compact&&!historical&&!observed&&values.isEmpty()){
             Text("此速報未附縣市震度；灰色不代表無震。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=21.sp,modifier=Modifier.fillMaxWidth())
@@ -86,7 +87,7 @@ internal object SeismicIntensityColors {
         if(!compact)Spacer(Modifier.height(8.dp))
         Box(Modifier.fillMaxWidth().then(if(compact)Modifier.weight(1f) else Modifier.height(viewportHeight)).testTag("seismic-warning-map").clip(RoundedCornerShape(24.dp)).background(sea)
             .semantics{contentDescription="可縮放的臺灣縣市震度地圖；"+
-                (if(historical)"921 歷史縣市最大震度（舊制）；" else if(simulation)"演練情境震度（虛構）；" else "依來源縣市震度著色；")+
+                (if(historical)"921 歷史縣市最大震度（舊制）；" else if(simulation)"演練情境震度（虛構）；" else if(estimated)"來源未提供縣市震度，依規模、深度與距離本機推算著色；" else "依來源縣市震度著色；")+
                 "灰色為未提供；波圈為示意，非到達預測。"+rotation.joinToString("；"){it.county+" "+it.grade}}
             .pointerInput(incident.id){detectTransformGestures{centroid,move,factor,_->
                 if(factor.isFinite()&&factor>0&&move.x.isFinite()&&move.y.isFinite()){

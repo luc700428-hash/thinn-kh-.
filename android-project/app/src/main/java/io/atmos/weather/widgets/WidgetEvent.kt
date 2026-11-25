@@ -19,7 +19,9 @@ import java.util.concurrent.TimeUnit
  */
 object WidgetEvent {
     enum class Kind(val label: String) { EEW("地震速報"), WARNING("特報"), QUAKE("最新地震") }
-    data class Event(val kind: Kind, val title: String, val detail: String, val until: Long)
+    /** [intensity] and [arrivalAt] are the person's expected intensity and main-wave arrival (EEW only). */
+    data class Event(val kind: Kind, val title: String, val detail: String, val until: Long,
+                     val intensity: String? = null, val arrivalAt: Long? = null)
 
     private const val STORE = "thinn_widget_event_v1"
     /** A quake report stays on the widgets this long after it arrives. */
@@ -29,8 +31,10 @@ object WidgetEvent {
     private fun p(ctx: Context) = ctx.getSharedPreferences(STORE, Context.MODE_PRIVATE)
 
     /** A live warning was raised or updated. It shows until it expires, plus a minute for the shaking. */
-    fun eew(ctx: Context, title: String, detail: String, until: Long) {
-        p(ctx).edit().putString("eew", JSONObject().put("t", title).put("d", detail).put("u", until).toString()).apply()
+    fun eew(ctx: Context, title: String, detail: String, until: Long, intensity: String? = null, arrivalAt: Long? = null) {
+        val o = JSONObject().put("t", title).put("d", detail).put("u", until)
+        intensity?.let { o.put("i", it) }; arrivalAt?.let { o.put("a", it) }
+        p(ctx).edit().putString("eew", o.toString()).apply()
         changed(ctx)
     }
     fun endEew(ctx: Context) { if (p(ctx).contains("eew")) { p(ctx).edit().remove("eew").apply(); changed(ctx) } }
@@ -61,7 +65,8 @@ object WidgetEvent {
     internal fun pickAll(eew: String?, warnings: String?, quake: String?, now: Long, zone: ZoneId): List<Event> {
         fun single(raw: String?, kind: Kind): Event? = runCatching {
             val o = JSONObject(raw ?: return null)
-            Event(kind, o.getString("t"), o.optString("d"), o.getLong("u")).takeIf { now < it.until }
+            Event(kind, o.getString("t"), o.optString("d"), o.getLong("u"), o.optString("i").takeIf { it.isNotBlank() },
+                o.optLong("a", 0L).takeIf { it > 0L }).takeIf { now < it.until }
         }.getOrNull()
         val out = ArrayList<Event>()
         single(eew, Kind.EEW)?.let { out += it }
@@ -83,7 +88,8 @@ object WidgetEvent {
     internal fun pick(eew: String?, warnings: String?, quake: String?, now: Long, zone: ZoneId): Event? {
         fun single(raw: String?, kind: Kind): Event? = runCatching {
             val o = JSONObject(raw ?: return null)
-            Event(kind, o.getString("t"), o.optString("d"), o.getLong("u")).takeIf { now < it.until }
+            Event(kind, o.getString("t"), o.optString("d"), o.getLong("u"), o.optString("i").takeIf { it.isNotBlank() },
+                o.optLong("a", 0L).takeIf { it > 0L }).takeIf { now < it.until }
         }.getOrNull()
         single(eew, Kind.EEW)?.let { return it }
         runCatching {
@@ -107,6 +113,8 @@ object WidgetEvent {
     private fun nextChange(ctx: Context, now: Long): Long? {
         val times = mutableListOf<Long>()
         listOf("eew", "quake").forEach { k -> p(ctx).getString(k, null)?.let { runCatching { times += JSONObject(it).getLong("u") } } }
+        // The moment the main shaking arrives, the countdown turns into "已抵達".
+        p(ctx).getString("eew", null)?.let { runCatching { JSONObject(it).optLong("a", 0L).takeIf { a -> a > 0L }?.let { a -> times += a } } }
         runCatching {
             val a = JSONArray(p(ctx).getString("warnings", "[]"))
             for (i in 0 until a.length()) { val o = a.getJSONObject(i); times += o.getLong("s"); times += o.getLong("e") }

@@ -107,8 +107,11 @@ data class SeismicOlderReports(val loading:Boolean,val failed:Boolean,val allLoa
     var filter by rememberSaveable{mutableStateOf("全部")}
     // Reports refresh on their own each time the list is shown; no manual button needed.
     androidx.compose.runtime.LaunchedEffect(Unit){onRefresh()}
-    val filters=listOf("全部","顯著有感","小區域","震度 3 以上","規模 5 以上")
+    val place=rememberSeismicPlace()
+    val myCounty=place?.name?.replace('台','臺')?.removeSuffix("附近")?.trim()
+    val filters=listOfNotNull("全部",myCounty?.let{"我的縣市"},"顯著有感","小區域","震度 3 以上","規模 5 以上")
     val shown=reports.filter{r->when(filter){
+        "我的縣市"->myCounty!=null&&r.countyIntensity.keys.any{myCounty==it||myCounty.contains(it)}
         "顯著有感"->r.category!="小區域有感"
         "小區域"->r.category=="小區域有感"
         "震度 3 以上"->CwaEarthquakeParser.intensityRank(r.maxIntensity?:"")>=3
@@ -141,17 +144,23 @@ data class SeismicOlderReports(val loading:Boolean,val failed:Boolean,val allLoa
                         .clickable(role=Role.Tab){filter=f}.padding(horizontal=14.dp,vertical=8.dp))
             }
         }
+        SeismicWeekSummary(reports,place)
         if(error!=null)Text(error,color=palette.error,fontSize=14.sp)
         if(loading&&reports.isEmpty())Text("正在取得最新地震報告…",color=palette.onSurfaceVariant,fontSize=14.sp)
         else if(shown.isEmpty())Text(if(reports.isEmpty())"尚未取得地震報告，請檢查網路連線" else "沒有符合「$filter」的地震",
             color=palette.onSurfaceVariant,fontSize=14.sp)
         // Changing the filter re-runs the waterfall entrance, so the new list visibly replaces the old.
         key(filter) {
-            Column(Modifier.fillMaxWidth().animateContentSize(androidx.compose.animation.core.tween(260,easing=io.atmos.weather.ui.AppleMotion.fluid))
-                .clip(RoundedCornerShape(24.dp)).background(ThinnOpticalMaterial.surface)) {
-                shown.forEachIndexed{i,r->
-                    if(i>0)Box(Modifier.fillMaxWidth().padding(start=70.dp).height(.5.dp).background(palette.onSurface.copy(alpha=.10f)))
-                    Box(Modifier.iosAppear(i)){SeismicReportRow(r){onOpen(r)}}
+            // The newest report leads as a full card; the rest follow as rich rows.
+            shown.firstOrNull()?.let{latest->Box(Modifier.iosAppear(0)){SeismicReportHero(latest,{onOpen(latest)})}}
+            if(shown.size>1){
+                Text("近期地震",color=palette.onSurface,fontSize=17.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=6.dp,start=4.dp))
+                Column(Modifier.fillMaxWidth().animateContentSize(androidx.compose.animation.core.tween(260,easing=io.atmos.weather.ui.AppleMotion.fluid))
+                    .clip(RoundedCornerShape(24.dp)).background(ThinnOpticalMaterial.surface)) {
+                    shown.drop(1).forEachIndexed{i,r->
+                        if(i>0)Box(Modifier.fillMaxWidth().height(.5.dp).background(palette.onSurface.copy(alpha=.10f)))
+                        Box(Modifier.iosAppear(i+1)){SeismicReportListRow(r){onOpen(r)}}
+                    }
                 }
             }
         }
@@ -203,7 +212,7 @@ data class SeismicOlderReports(val loading:Boolean,val failed:Boolean,val allLoa
             io.atmos.weather.ui.GlassTextButton(onClick=onAll){Text("全部報告")}
         }
         if(report==null)Text(if(loading)"正在取得…" else "尚無報告",color=palette.onSurfaceVariant,fontSize=14.sp)
-        else SeismicReportRow(report){onOpen(report)}
+        else SeismicReportListRow(report){onOpen(report)}
     }
 }
 

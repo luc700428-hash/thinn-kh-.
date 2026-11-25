@@ -167,7 +167,8 @@ fun GlassSwitch(checked:Boolean,onCheckedChange:((Boolean)->Unit)?,modifier:Modi
     enabled:Boolean=true,colors:SwitchColors?=null) {
     val opaque=rememberAppleReduceTransparency()
     val haptics=LocalHapticEngine.current
-    val reduce=rememberAppleReduceMotion()
+    // Emulators drawing through SwiftShader keep the knob a still white pill (see the slider).
+    val reduce=rememberAppleReduceMotion()||LiquidGlassKit.softwareRenderedDevice
     val density=LocalDensity.current
     val scope=rememberCoroutineScope()
     val change by rememberUpdatedState(onCheckedChange)

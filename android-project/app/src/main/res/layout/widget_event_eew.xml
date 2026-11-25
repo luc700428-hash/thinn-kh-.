@@ -1,0 +1,14 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_event_frame"
+ android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"
+ android:gravity="center_vertical" android:background="@drawable/widget_event_badge" android:paddingStart="4dp" android:paddingEnd="8dp">
+ <TextView android:id="@+id/widget_eew_intensity" android:layout_width="wrap_content" android:layout_height="wrap_content"
+  android:minWidth="26dp" android:gravity="center" android:includeFontPadding="false" android:paddingStart="5dp" android:paddingEnd="5dp"
+  android:paddingTop="2dp" android:paddingBottom="2dp" android:background="@drawable/widget_eew_intensity" android:textColor="#FF1B1B1B"
+  android:textStyle="bold" android:fontFamily="sans-serif-medium" android:maxLines="1"/>
+ <TextView android:id="@+id/widget_event_badge" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+  android:layout_marginStart="6dp" android:gravity="center_vertical|start" android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end"
+  android:textColor="#FFFFFFFF" android:textStyle="bold" android:fontFamily="sans-serif-medium"/>
+ <Chronometer android:id="@+id/widget_eew_countdown" android:layout_width="wrap_content" android:layout_height="wrap_content"
+  android:layout_marginStart="6dp" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FFFFE14D"
+  android:textStyle="bold" android:fontFamily="sans-serif-medium"/>
+</LinearLayout>

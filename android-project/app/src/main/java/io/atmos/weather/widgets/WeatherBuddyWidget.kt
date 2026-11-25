@@ -15,6 +15,8 @@ class WeatherBuddyWidgetReceiver:SyncedWidgetReceiver(){override val glanceAppWi
 
 /** Native vectors resolve at the launcher's final dimensions, including after a resize. */
 internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed:Int,sizeDp:Float=112f,layoutId:Int=R.layout.widget_buddy_scene):RemoteViews {
+    // An earthquake warning or a fresh earthquake report: the buddy becomes the quake bull.
+    if(d.events.any{it.kind==WidgetEvent.Kind.EEW||it.kind==WidgetEvent.Kind.QUAKE})return bullRemote(context,d,motion)
     val kind=WeatherBuddyArt.kind(d.condition,d.day)
     // GONE auto-start ViewFlippers still own timers in a visible launcher window.
     // Static/unknown weather has no animation views at all.
@@ -82,8 +84,31 @@ internal fun buddyRemote(context:Context,d:OpticalWidgetData,motion:Boolean,seed
         if(wet){setInt(R.id.buddy_ground,"setFlipInterval",period);setInt(R.id.buddy_ground,"setDisplayedChild",0)}
     }
 }
+/**
+ * The quake bull: 地牛 (the earth ox) rearing up and stamping: the ground splits with a glow, stones jump, dust rolls out,
+ * 24 vector frames (tools/make_quake_bull.py) looping every 1.68 s without a seam.
+ */
+internal val BULL_FRAMES=intArrayOf(R.drawable.widget_bull_f00,R.drawable.widget_bull_f01,R.drawable.widget_bull_f02,R.drawable.widget_bull_f03,
+    R.drawable.widget_bull_f04,R.drawable.widget_bull_f05,R.drawable.widget_bull_f06,R.drawable.widget_bull_f07,R.drawable.widget_bull_f08,
+    R.drawable.widget_bull_f09,R.drawable.widget_bull_f10,R.drawable.widget_bull_f11,R.drawable.widget_bull_f12,R.drawable.widget_bull_f13,
+    R.drawable.widget_bull_f14,R.drawable.widget_bull_f15,R.drawable.widget_bull_f16,R.drawable.widget_bull_f17,R.drawable.widget_bull_f18,
+    R.drawable.widget_bull_f19,R.drawable.widget_bull_f20,R.drawable.widget_bull_f21,R.drawable.widget_bull_f22,R.drawable.widget_bull_f23)
+internal fun bullRemote(context:Context,d:OpticalWidgetData,motion:Boolean):RemoteViews {
+    val eew=d.events.any{it.kind==WidgetEvent.Kind.EEW}
+    val label=if(eew)"地震速報中 · 地牛" else "最新地震報告 · 地牛"
+    if(!motion)return RemoteViews(context.packageName,R.layout.widget_buddy_still).apply{
+        setImageViewResource(R.id.buddy_still,R.drawable.widget_bull_still);setContentDescription(R.id.buddy_root,label)
+    }
+    return RemoteViews(context.packageName,R.layout.widget_buddy_bull).apply{
+        setContentDescription(R.id.buddy_root,label)
+        removeAllViews(R.id.buddy_bull)
+        BULL_FRAMES.forEach{frame->addView(R.id.buddy_bull,RemoteViews(context.packageName,R.layout.widget_buddy_frame).apply{setImageViewResource(R.id.buddy_frame,frame)})}
+        setInt(R.id.buddy_bull,"setFlipInterval",70)
+        setInt(R.id.buddy_bull,"setDisplayedChild",0)
+    }
+}
 @Composable internal fun BuddyScene(context:Context,d:OpticalWidgetData,size:Float,motion:Boolean) {
     val seed=remember(d.stamp,d.condition,d.day){(d.stamp xor (d.stamp ushr 32)).toInt()}
-    val remote=remember(d.condition,d.day,d.stamp,motion,size){buddyRemote(context,d,motion,seed,size)}
+    val remote=remember(d.condition,d.day,d.stamp,motion,size,d.events){buddyRemote(context,d,motion,seed,size)}
     AndroidRemoteViews(remote,GlanceModifier.width(size.dp).height(size.dp))
 }

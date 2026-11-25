@@ -29,7 +29,9 @@ class SeismicAlertActivity:ComponentActivity() {
     private fun load(intent:Intent):Boolean {
         val t=SeismicAlertDelivery.resolve(this,intent.getStringExtra("ticket"))
         if(t==null){if(current?.let{SeismicAlertDelivery.resolve(this,it.key)}==null)finish();return false};current=t
-        val allowed=SeismicAlertDelivery.mayUseFullScreen(this)
+        // Samsung switches 全螢幕通知 off after every update. With 顯示在其他應用程式上層 the warning
+        // is opened directly, so it still lights up the locked screen while that switch is off.
+        val allowed=SeismicAlertDelivery.mayUseFullScreen(this)||(SeismicAlertDelivery.lockScreenAllowed(this)&&SeismicPopup.canOverlay(this))
         setShowWhenLocked(allowed);setTurnScreenOn(allowed);return true
     }
     private fun close(t:SeismicAlertDelivery.Ticket){SeismicAlertDelivery.dismiss(this,t.key);finish()}

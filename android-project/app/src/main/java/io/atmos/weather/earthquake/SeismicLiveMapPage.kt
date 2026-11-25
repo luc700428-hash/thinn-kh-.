@@ -490,9 +490,13 @@ fun SeismicLiveMapPage(
                     Text("${devicePlace?.name ?: "尚未定位"} · 最後觀測 ${if(hasObservedFrame)formatted(live.lastRtsAt) else "—"}",fontSize=14.sp,color=muted)
                 }
                 if(incidentRecent || inReplay) MapGlass {
-                    Text(if(inReplay)"歷史資料回放中" else "收到地震預警 · 第三方來源",color=seismicCautionInk,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-                    Text(SeismicDisplayFormat.location(quake?.epicenter ?: replayReport?.location ?: "震央位置待來源確認"),fontSize=21.sp,color=light,fontWeight=FontWeight.SemiBold)
-                    Text(if(inReplay)"過去事件的教育回放，並非目前警報。" else "立即趴下、掩護、穩住。",fontSize=14.sp,color=muted)
+                    val shown=displayQuake
+                    if(shown!=null) SeismicLiveEewDetails(shown,devicePlace,waveNow,inReplay)
+                    else {
+                        Text(if(inReplay)"歷史資料回放中" else "收到地震預警 · 第三方來源",color=seismicCautionInk,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+                        Text(SeismicDisplayFormat.location(quake?.epicenter ?: replayReport?.location ?: "震央位置待來源確認"),fontSize=21.sp,color=light,fontWeight=FontWeight.SemiBold)
+                        Text(if(inReplay)"過去事件的教育回放，並非目前警報。" else "立即趴下、掩護、穩住。",fontSize=14.sp,color=muted)
+                    }
                 }
                 SeismicCountyMaxPanel(currentStations)
                 SeismicLatestReportCard(reports.firstOrNull(),reportsLoading,{details=it},{section="報告"})

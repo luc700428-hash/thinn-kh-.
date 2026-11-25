@@ -54,7 +54,9 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
     val reveal by androidx.compose.animation.core.animateFloatAsState(if(entered)1f else .96f,
         androidx.compose.animation.core.tween(if(reduce)0 else 180,easing=io.atmos.weather.ui.AppleMotion.snap),label="速報光學入場")
     val county=(place?.name?:userCounty).orEmpty().replace('台','臺')
-    val allCounties=remember(incident) { SeismicWarningCounties.allFromProvider(incident.localIntensityByCounty) }
+    // Source county values, or (when the source sent none) the labelled local estimate.
+    val countyView=remember(incident) { SeismicCountyEstimate.view(incident) }
+    val allCounties=remember(incident) { SeismicWarningCounties.allFromProvider(countyView.values) }
     val eventKey="${incident.id}:${incident.serial}:$replay:$simulation"
     val frameNow=io.atmos.weather.ui.rememberDisplayWallClock(!reduce)
     // A true incident plays a bounded looping alert tone and one descriptive spoken warning.
@@ -181,8 +183,8 @@ fun SeismicWarningOverlay(incident:EewIncident,replay:Boolean,userCounty:String?
                         }
                     }
                     val map:@Composable (Modifier)->Unit={modifier->
-                        SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else incident.localIntensityByCounty,
-                            place,historical,frameNow,modifier.testTag("seismic-inspector-pane"),compact=true,simulation=simulation,
+                        SeismicWarningMap(incident,if(historical)ChiChi921.historicalCountyMaxima else countyView.values,
+                            place,historical,frameNow,modifier.testTag("seismic-inspector-pane"),compact=true,simulation=simulation,estimated=!historical&&countyView.estimated&&countyView.values.isNotEmpty(),
                             subtitle=if(shortLandscape)issued else null)
                     }
                     if(sideBySide){

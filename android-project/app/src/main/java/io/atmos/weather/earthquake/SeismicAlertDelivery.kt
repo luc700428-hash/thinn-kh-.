@@ -49,10 +49,15 @@ object SeismicAlertDelivery {
         if(!editor.commit())return null
         // Every widget switches to this warning until the shaking should be over.
         if(!e.test)runCatching{
+            // The person's own expected intensity and main-wave arrival, shown with a live countdown.
+            val place=runCatching{SeismicUserLocation.current(ctx)}.getOrNull()
+            val local=SeismicLocalPrediction.resolve(e,place)
+            val here=local.intensity?:SeismicCountyEstimate.forPlace(SeismicCountyEstimate.view(e),place?.name)
             io.atmos.weather.widgets.WidgetEvent.eew(ctx,
                 "地震速報"+(e.magnitude?.let{" · 規模 ${"%.1f".format(java.util.Locale.US,it)}"}?:""),
                 SeismicDisplayFormat.location(e.epicenter)+(e.maximumIntensity?.takeIf{it.isNotBlank()}?.let{" · 最大震度 $it"}?:""),
-                maxOf(expires(e),(e.originAtMs?:e.issuedAtMs)+180_000L))
+                maxOf(expires(e),(e.originAtMs?:e.issuedAtMs)+180_000L),
+                here?.replace("級以上","")?.removeSuffix("級"),local.arrivalAtMs)
         }
         return Ticket(id,e).also{active.value=it}
     }
@@ -91,6 +96,8 @@ object SeismicAlertDelivery {
         if(e.serial<serial)return false
         dismiss(ctx,ticketKey);runCatching{io.atmos.weather.widgets.WidgetEvent.endEew(ctx)};return true
     }
+    /** The person's own 地震速報 lock-screen switch (on unless they turned it off). */
+    fun lockScreenAllowed(ctx:Context)=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean("allow_seismic_full_screen",true)
     fun mayUseFullScreen(ctx:Context):Boolean {
         val enabled=ctx.getSharedPreferences("thinn_seismic_v15",0).getBoolean("allow_seismic_full_screen",true)
         val nm=ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
