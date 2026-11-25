@@ -252,6 +252,8 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     reduceMotion=it; prefs.edit().putBoolean("reduce_motion",it).apply()
                 }
                 GlassDivider()
+                FestivalSettings(prefs)
+                GlassDivider()
                 GlassTrackingSlider("玻璃透明感",appearance.glassOpacity) { onAppearance(appearance.copy(glassOpacity=it)) }
                 GlassTrackingSlider("玻璃霧化",appearance.glassFrost) { onAppearance(appearance.copy(glassFrost=it)) }
                 GlassTrackingSlider("邊緣光效",appearance.edgeLight) { onAppearance(appearance.copy(edgeLight=it)) }
@@ -367,3 +369,34 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
 }
 private data class SettingsEntry(val title:String,val icon:androidx.compose.ui.graphics.vector.ImageVector,
     val color:Color,val action:()->Unit)
+
+/** 節慶彩蛋: on/off, sounds, and a one-minute preview of any festival. */
+@Composable private fun FestivalSettings(prefs:android.content.SharedPreferences) {
+    var effects by remember { mutableStateOf(prefs.getBoolean(io.atmos.weather.festival.FestivalDirector.SETTING,true)) }
+    var sound by remember { mutableStateOf(prefs.getBoolean(io.atmos.weather.festival.FestivalSound.SETTING,true)) }
+    GlassToggle("節慶彩蛋","聖誕雪花與聖誕老人、跨年倒數煙火、春節燈籠等",effects) {
+        effects=it; prefs.edit().putBoolean(io.atmos.weather.festival.FestivalDirector.SETTING,it).apply()
+        if(!it) io.atmos.weather.festival.FestivalDirector.stopPreview()
+    }
+    GlassDivider()
+    GlassToggle("節慶音效","鈴鐺、聖誕歌、煙火聲；手機靜音時不播放",sound) {
+        sound=it; prefs.edit().putBoolean(io.atmos.weather.festival.FestivalSound.SETTING,it).apply()
+    }
+    if(effects) {
+        GlassDivider()
+        Text("預覽節慶彩蛋",fontSize=17.sp,color=MaterialTheme.colorScheme.onSurface,modifier=Modifier.padding(top=8.dp))
+        Text("點一下即可播放一分鐘",fontSize=14.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(bottom=6.dp))
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement=androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            verticalArrangement=androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),modifier=Modifier.padding(bottom=8.dp)) {
+            io.atmos.weather.festival.Festival.entries.forEach { f ->
+                val on=io.atmos.weather.festival.FestivalDirector.preview?.festival==f
+                Box(Modifier.clip(RoundedCornerShape(9999.dp))
+                    .background(if(on)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { if(on) io.atmos.weather.festival.FestivalDirector.stopPreview() else io.atmos.weather.festival.FestivalDirector.startPreview(f) }
+                    .padding(horizontal=14.dp,vertical=8.dp)) {
+                    Text(f.label,fontSize=14.sp,color=if(on)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}

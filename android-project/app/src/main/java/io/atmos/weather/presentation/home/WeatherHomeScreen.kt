@@ -1,5 +1,6 @@
 package io.atmos.weather.presentation.home
 
+import androidx.compose.ui.graphics.luminance
 import io.atmos.weather.ui.thinnGlass
 import io.atmos.weather.ui.lightningScreenEffect
 
@@ -184,6 +185,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         animationSpec=if(io.atmos.weather.ui.rememberAppleReduceMotion())tween(0) else tween(1400),label="weather-day-night")
     val weatherSky=WeatherSkyPalette.create(dayPhase,nightBlend,if(stormy)1f else if(rainy).65f else if(hazy).4f else 0f)
     val blendTop=weatherSky.top;val blendMid=weatherSky.middle;val blendLow=weatherSky.bottom
+    SideEffect { WeatherCardPalettes.skyDark=weatherSky.dark }
     val darkAppearance=MaterialTheme.colorScheme.background.red<.5f
     val context = LocalContext.current
     val reduceCityMotion = remember(context) {
@@ -717,6 +719,16 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         hapticEngine.play(HapticEngine.Event.RELEASE)
                         viewModel.onIntent(WeatherIntent.Refresh)
                     },Modifier.fillMaxSize().testTag("weather-scroll-viewport").weatherCollisionViewport().zIndex(1f)) {
+                    // The weather page follows the sky, not the app theme: at night its buttons, cards and
+                    // text use the dark palette even in light mode, and by day the light one, so they
+                    // always read against the sky behind them.
+                    val appScheme=MaterialTheme.colorScheme
+                    val appDark=appScheme.background.luminance()<.5f
+                    val outerTextStyle=androidx.compose.material3.LocalTextStyle.current
+                    androidx.compose.material3.MaterialTheme(colorScheme=if(appDark==weatherSky.dark)appScheme
+                        else if(weatherSky.dark)io.atmos.weather.ui.BrandPalette.dark else io.atmos.weather.ui.BrandPalette.light,
+                        typography=MaterialTheme.typography,shapes=MaterialTheme.shapes) {
+                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides outerTextStyle) {
                     io.atmos.weather.ui.AdaptiveScrollingPanes(
                         modifier=Modifier.fillMaxSize().zIndex(1f),scrollState=weatherScrollState,
                         horizontalPadding=20.dp,topPadding=18.dp,bottomPadding=maxOf(176.dp,io.atmos.weather.ui.floatingDockContentClearance()),
@@ -1045,6 +1057,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 Text("天氣是預測資訊，請以當地官方警報為準。",color=weatherSky.secondary,fontSize=14.sp,
                     modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)
                     }) // forecast panes: one shared state, responsive single/dual columns
+                    }} // sky-following theme
                     } // elastic pull-to-refresh
                 } // page Box: one measurable root for HorizontalPager
                 } // weather background material provider

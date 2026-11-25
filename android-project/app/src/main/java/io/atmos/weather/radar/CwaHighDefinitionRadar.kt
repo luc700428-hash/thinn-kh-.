@@ -46,7 +46,7 @@ internal object CwaHighDefinitionRadar {
      * instead of blocks or a blurry stretch, and never a value outside the cells around it. */
     const val MAX_ZOOM=11
     /** Below this many source pixels across a 512 px tile, levels are interpolated. */
-    internal const val INTERPOLATE_BELOW=300
+    internal const val INTERPOLATE_BELOW=520
     const val WEST=118.0;const val EAST=124.0;const val SOUTH=20.5;const val NORTH=26.5
     private val lock=Mutex()
     private var latest:RadarTimeline?=null
@@ -152,6 +152,10 @@ internal object CwaHighDefinitionRadar {
                     val region=regions.read(Rect(left,top,right,bottom),sampleSize)
                     val raw=IntArray(region.width*region.height)
                     region.getPixels(raw,0,region.width,0,0,region.width,region.height)
+                    // Same map-ink bridging as close-ups, on the decoded cells.
+                    val lv=IntArray(raw.size){i->levelOf[raw[i]]?:-1}
+                    bridgeMapInk(lv,region.width,region.height)
+                    for(i in raw.indices)if(lv[i]>=0)raw[i]=rampColours[lv[i]]
                     val pixels=IntArray(512*512)
                     val xs=IntArray(512){x->floor(((tile.x+(x+.5)/512)/n*360-180-WEST)*600).toInt()}
                     for(y in 0 until 512) {
@@ -180,18 +184,19 @@ internal object CwaHighDefinitionRadar {
      */
     private fun smooth(regions:CwaRadarRegions,tile:RadarTile,n:Double,left:Int,top:Int,right:Int,bottom:Int,
         levelOf:Map<Int,Int>,ramp:IntArray,output:Bitmap,checkActive:()->Unit) {
-        val l=(left-1).coerceAtLeast(0);val t=(top-1).coerceAtLeast(0)
-        val r=(right+1).coerceAtMost(3600);val b=(bottom+1).coerceAtMost(3600)
+        val l=(left-4).coerceAtLeast(0);val t=(top-4).coerceAtLeast(0)
+        val r=(right+4).coerceAtMost(3600);val b=(bottom+4).coerceAtMost(3600)
         val region=regions.read(Rect(l,t,r,b),1)
         val w=region.width;val h=region.height
         val raw=IntArray(w*h);region.getPixels(raw,0,w,0,0,w,h);region.recycle()
         val levels=IntArray(w*h){i->
             val sx=l+i%w;val sy=t+i/w
-            if(annotation(sx,sy))-1 else levelOf[raw[i]]?:-1
+            if(annotation(sx,sy))-2 else levelOf[raw[i]]?:-1
         }
+        bridgeMapInk(levels,w,h)
         fun level(x:Int,y:Int):Float {
             val cx=x-l;val cy=y-t
-            return if(cx<0||cy<0||cx>=w||cy>=h)-1f else levels[cy*w+cx].toFloat()
+            return if(cx<0||cy<0||cx>=w||cy>=h)-1f else levels[cy*w+cx].coerceAtLeast(-1).toFloat()
         }
         val pixels=IntArray(512*512)
         val fxs=DoubleArray(512){x->((tile.x+(x+.5)/512)/n*360-180-WEST)*600-.5}
@@ -215,6 +220,34 @@ internal object CwaHighDefinitionRadar {
             }
         }
         output.setPixels(pixels,0,512,0,0,512,512)
+    }
+    /**
+     * CWA prints county borders and rivers over the echoes. Those thin lines are map ink, not
+     * missing rain, so a gap of up to [reach] cells with echo on both sides (left and right, or
+     * above and below) takes the weaker of the two neighbouring levels. Wider gaps stay empty.
+     * Levels: 0+ = echo, -1 = no echo, -2 = printed legend (never filled, never used).
+     */
+    internal fun bridgeMapInk(levels:IntArray,w:Int,h:Int,reach:Int=3) {
+        val src=levels.copyOf()
+        fun scan(x:Int,y:Int,dx:Int,dy:Int):Int {
+            for(d in 1..reach) {
+                val xx=x+dx*d;val yy=y+dy*d
+                if(xx<0||yy<0||xx>=w||yy>=h)return -1
+                val v=src[yy*w+xx]
+                if(v>=0)return v
+                if(v==-2)return -1
+            }
+            return -1
+        }
+        for(y in 0 until h)for(x in 0 until w) {
+            if(src[y*w+x]!=-1)continue
+            val a=scan(x,y,-1,0);val b=if(a>=0)scan(x,y,1,0) else -1
+            val c=scan(x,y,0,-1);val d=if(c>=0)scan(x,y,0,1) else -1
+            val horizontal=if(a>=0&&b>=0)minOf(a,b) else -1
+            val vertical=if(c>=0&&d>=0)minOf(c,d) else -1
+            val fill=maxOf(horizontal,vertical)
+            if(fill>=0)levels[y*w+x]=fill
+        }
     }
     internal fun annotation(x:Int,y:Int)= (x<1250&&y<760)||(x>2600&&y<300)||
         (x<660&&y>3180)||(x>3375&&y>2400)

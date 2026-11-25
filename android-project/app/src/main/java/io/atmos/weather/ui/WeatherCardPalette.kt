@@ -9,12 +9,15 @@ object WeatherCardPalettes {
  internal fun fromScheme(p:androidx.compose.material3.ColorScheme)=WeatherCardPalette(lerp(p.surface,p.primaryContainer,.22f).copy(alpha=.97f),p.onSurface,p.onSurfaceVariant,p.primary)
  val day get()=fromScheme(BrandPalette.light)
  val night get()=fromScheme(BrandPalette.dark)
- val current get()=fromScheme(BrandPalette.current)
+ /** Set by the weather page: its cards follow the sky (dark at night), not the app theme. */
+ var skyDark by mutableStateOf<Boolean?>(null)
+ val current get()=when(skyDark){true->night;false->day;null->fromScheme(BrandPalette.current)}
  val alert=WeatherCardPalette(Color(0xFF92343E))
 }
 val LocalWeatherCardPalette=staticCompositionLocalOf<WeatherCardPalette?>{null}
 val LocalWeatherSceneInk=staticCompositionLocalOf{Color(0xFF23312F)}
 @Composable fun rememberWeatherCardPalette():WeatherCardPalette {
- val base=WeatherCardPalettes.fromScheme(MaterialTheme.colorScheme);val opaque=rememberAppleReduceTransparency()
+ val sky=WeatherCardPalettes.skyDark
+ val base=if(sky!=null)WeatherCardPalettes.current else WeatherCardPalettes.fromScheme(MaterialTheme.colorScheme);val opaque=rememberAppleReduceTransparency()
  return remember(base,opaque){if(opaque)base.copy(fill=base.fill.copy(alpha=1f)) else base}
 }

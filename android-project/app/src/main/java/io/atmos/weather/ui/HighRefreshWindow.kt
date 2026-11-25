@@ -163,6 +163,7 @@ private fun Context.activity():Activity?=when(this) {
                     if(adaptiveContentWidth!=null) AdaptiveWindowProvider { AdaptivePageFrame(maxContentWidth=adaptiveContentWidth){content()} }
                     else content()
                 }}
+                io.atmos.weather.festival.FestivalOverlay(host=false)
             } else content()
         }
     }

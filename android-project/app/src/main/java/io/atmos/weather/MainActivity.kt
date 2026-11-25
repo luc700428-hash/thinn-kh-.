@@ -123,6 +123,7 @@ class MainActivity : ComponentActivity() {
                     locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION))
                 }
             })
+            io.atmos.weather.festival.FestivalOverlay(host=true)
             io.atmos.weather.earthquake.SeismicForegroundAlertHost()
             } // Current resizable app window; no physical-tablet or pixel-ratio flag.
             } // ThinnAppTheme

@@ -69,6 +69,15 @@ class CwaHighDefinitionRadarTest {
         assertTrue(edge<solid)
         assertEquals(11,CwaHighDefinitionRadar.MAX_ZOOM)
     }
+    @Test fun printedBordersInsideAnEchoAreBridgedButRealGapsStay() {
+        // A 1-cell line through an echo, and a 6-cell real gap.
+        val w=12;val h=1
+        val line=intArrayOf(5,5,5,-1,7,7,7,-1,-1,-1,-1,-1)
+        CwaHighDefinitionRadar.bridgeMapInk(line,w,h)
+        assertEquals(5,line[3]);assertEquals(-1,line[9])
+        val legend=intArrayOf(4,-2,4)
+        CwaHighDefinitionRadar.bridgeMapInk(legend,3,1);assertEquals(-2,legend[1])
+    }
     @Test fun phonesWithMoreMemoryHoldMoreSourceTiles() {
         assertEquals(2,RadarPlayback.sourceBudget(12_000_000_000L,true))
         assertEquals(9,RadarPlayback.sourceBudget(8_000_000_000L,false))
@@ -89,24 +98,28 @@ class CwaHighDefinitionRadarTest {
         assertTrue(CwaHighDefinitionRadar.covers(25.0,121.5));assertFalse(CwaHighDefinitionRadar.covers(35.0,139.0))
     }
     @Test fun originalPixelsReprojectToGeographicLocationWithoutPrintingMapInkAsRain() {
-        val tile=RadarTile(9,425,224,425)
+        val tile=RadarTile(8,212,112,212)
         val image=decode("CV1_TW_3600_202610290630.png",listOf(tile)).getValue(tile)
         assertEquals(512,image.width);assertEquals(512,image.height)
         val png=android.graphics.BitmapFactory.decodeByteArray(resource("CV1_TW_3600_202610290630.png"),0,resource("CV1_TW_3600_202610290630.png").size)
-        var rain=0
+        var rain=0;var bridged=0
         for(y in 0 until 512)for(x in 0 until 512) {
             val value=image.getPixel(x,y)
             if(value ushr 24==0)continue
             rain++
-            val lon=(tile.x+(x+.5)/512)/512*360-180
-            val lat=RadarProjection.latitude((tile.y+(y+.5)/512)/512)
+            val lon=(tile.x+(x+.5)/512)/256*360-180
+            val lat=RadarProjection.latitude((tile.y+(y+.5)/512)/256)
             val sx=kotlin.math.floor((lon-118)*600).toInt();val sy=kotlin.math.floor((26.5-lat)*600).toInt()
-            assertEquals(png.getPixel(sx,sy),value)
+            // A measured cell keeps its exact colour; a cell under a printed border or river is
+            // bridged from the echo on both sides, so it shows a ramp colour, never map ink.
+            val source=png.getPixel(sx,sy);val sr=(source ushr 16)and 255;val sg=(source ushr 8)and 255;val sb=source and 255
+            if(maxOf(sr,sg,sb)-minOf(sr,sg,sb)>60)assertEquals(source,value) else bridged++
             val r=(value ushr 16)and 255;val g=(value ushr 8)and 255;val b=value and 255
             assertTrue(maxOf(r,g,b)-minOf(r,g,b)>60)
             assertFalse(CwaHighDefinitionRadar.annotation(sx,sy))
         }
         assertTrue("Real southwestern ocean rain was lost",rain>1000)
+        assertTrue("Bridging must stay rare",bridged<rain/5)
         png.recycle()
         val directory=File("build/cwa-hd-renders").apply{mkdirs()}
         File(directory,"native-rain-pixels.png").outputStream().use{image.compress(Bitmap.CompressFormat.PNG,100,it)}
