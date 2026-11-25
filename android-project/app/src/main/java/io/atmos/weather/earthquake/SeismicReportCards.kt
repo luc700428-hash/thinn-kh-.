@@ -165,30 +165,47 @@ internal object SeismicReportStyle {
         text.textSize = 12f * density
         val box = 16f * density
         // Strongest counties first; a box that would cover another is left out (the chips list all).
-        val placed = ArrayList<android.graphics.RectF>()
+        class Placed(val at: Offset, val grade: String)
+        val placed = ArrayList<Placed>()
+        val claims = ArrayList<android.graphics.RectF>()
         loaded.counties.filter { it.name in counties && it.name !in setOf("金門縣", "連江縣") }
             .sortedByDescending { CwaEarthquakeParser.intensityRank(counties[it.name] ?: "") }.forEach { shape ->
             val grade = counties[shape.name] ?: return@forEach
             val at = view.project(shape.label.first, shape.label.second)
             if (at.x !in 0f..size.width || at.y !in 0f..size.height) return@forEach
             val claim = android.graphics.RectF(at.x - box * .6f, at.y - box * .6f, at.x + box * .6f, at.y + box * .6f)
-            if (placed.any { android.graphics.RectF.intersects(it, claim) }) return@forEach
-            placed += claim
-            val c = SeismicIntensityColors.color(grade)
-            fill.color = android.graphics.Color.rgb((c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt())
-            edge.strokeWidth = 1.4f * density; edge.color = if (dark) 0xFF0E1116.toInt() else 0xFF1F2937.toInt()
-            val r = android.graphics.RectF(at.x - box / 2, at.y - box / 2, at.x + box / 2, at.y + box / 2)
-            canvas.drawRoundRect(r, 3f * density, 3f * density, fill); canvas.drawRoundRect(r, 3f * density, 3f * density, edge)
-            text.color = seismicInkOn(c).let { android.graphics.Color.rgb((it.red * 255).toInt(), (it.green * 255).toInt(), (it.blue * 255).toInt()) }
-            canvas.drawText(SeismicDisplayFormat.symbol(grade), at.x, at.y + text.textSize * .36f, text)
+            if (claims.any { android.graphics.RectF.intersects(it, claim) }) return@forEach
+            claims += claim; placed += Placed(at, grade)
         }
-        // The person, under the epicentre so the epicentre always stays readable.
-        if (place != null && place.lat.isFinite() && place.lon.isFinite()) {
-            val me = view.project(place.lon, place.lat)
-            if (me.x in 0f..size.width && me.y in 0f..size.height) {
-                drawCircle(Color(0xFF3B82F6).copy(alpha = .25f), 9.dp.toPx(), me)
-                drawCircle(Color.White, 5.5.dp.toPx(), me)
-                drawCircle(Color(0xFF2563EB), 4.dp.toPx(), me)
+        // The person. A dot that would sit on (or touch) a grade box never covers the number:
+        // that box is ringed in blue with a small blue dot on its corner instead.
+        val me = if (place != null && place.lat.isFinite() && place.lon.isFinite()) view.project(place.lon, place.lat)
+            .takeIf { it.x in 0f..size.width && it.y in 0f..size.height } else null
+        val reach = box / 2 + 9.dp.toPx()
+        val mine = me?.let { m -> placed.indexOfFirst { kotlin.math.abs(it.at.x - m.x) < reach && kotlin.math.abs(it.at.y - m.y) < reach } } ?: -1
+        val you = Color(0xFF2563EB)
+        if (me != null && mine < 0) {
+            drawCircle(you.copy(alpha = .22f), 8.dp.toPx(), me)
+            drawCircle(Color.White, 5.dp.toPx(), me)
+            drawCircle(you, 3.5.dp.toPx(), me)
+        }
+        placed.forEachIndexed { index, p ->
+            val c = SeismicIntensityColors.color(p.grade)
+            fill.color = android.graphics.Color.rgb((c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt())
+            val r = android.graphics.RectF(p.at.x - box / 2, p.at.y - box / 2, p.at.x + box / 2, p.at.y + box / 2)
+            canvas.drawRoundRect(r, 3f * density, 3f * density, fill)
+            if (index == mine) {
+                edge.strokeWidth = 2.2f * density; edge.color = android.graphics.Color.rgb(0x25, 0x63, 0xEB)
+            } else {
+                edge.strokeWidth = 1.4f * density; edge.color = if (dark) 0xFF0E1116.toInt() else 0xFF1F2937.toInt()
+            }
+            canvas.drawRoundRect(r, 3f * density, 3f * density, edge)
+            text.color = seismicInkOn(c).let { android.graphics.Color.rgb((it.red * 255).toInt(), (it.green * 255).toInt(), (it.blue * 255).toInt()) }
+            canvas.drawText(SeismicDisplayFormat.symbol(p.grade), p.at.x, p.at.y + text.textSize * .36f, text)
+            if (index == mine) {
+                val corner = Offset(r.right, r.top)
+                drawCircle(Color.White, 4.5.dp.toPx(), corner)
+                drawCircle(you, 3.dp.toPx(), corner)
             }
         }
         if (lat != null && lon != null) {

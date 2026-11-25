@@ -67,6 +67,8 @@ class SeismicReportCardsRenderingTest {
         for(dark in listOf(true,false)) {
             val ctx=RuntimeEnvironment.getApplication()
             IOS27AppearanceMode.update(ctx,if(dark)"dark" else "light")
+            // The person in 嘉義市: their dot must not hide the county grade box (it rings it instead).
+            SeismicUserLocation.choose(ctx,"嘉義市")
             val c=Robolectric.buildActivity(ComponentActivity::class.java).setup();val a=c.get();val view=ComposeView(a)
             try {
                 view.setContent{ThinnAppTheme{Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(16.dp)){
@@ -76,7 +78,7 @@ class SeismicReportCardsRenderingTest {
                 val bmp=pump(parent)
                 File("build/seismic-reports").apply{mkdirs()}.let{File(it,"reports-$dark.png").outputStream().use{s->bmp.compress(Bitmap.CompressFormat.PNG,100,s)}}
                 val all=nodes(parent).filter{it.config.contains(SemanticsProperties.Text)}.joinToString("|"){it.config[SemanticsProperties.Text].joinToString("")}
-                for(t in listOf("5.5","臺東縣政府南南東方","臺東最大 4 級 · 11 個縣市有感","次有感地震","近期地震","雲林","分鐘前","第 115081 號","最大震度"," 震央","每一格是一次地震，顏色是最大震度","最大 M5.5"))assertTrue(t,all.contains(t))
+                for(t in listOf("5.5","臺東縣政府南南東方","臺東最大 4 級 · 11 個縣市有感","你在 嘉義市","次有感地震","近期地震","雲林","分鐘前","第 115081 號","最大震度"," 震央","每一格是一次地震，顏色是最大震度","最大 M5.5"))assertTrue(t,all.contains(t))
                 nodes(parent).filter{it.config.contains(SemanticsProperties.Text)}.forEach{n->assertTrue("${n.config[SemanticsProperties.Text]} ${n.boundsInRoot}",n.boundsInRoot.right<=w+1f&&n.boundsInRoot.left>=-1f)}
             } finally {view.disposeComposition();c.pause().stop().destroy()}
         }
