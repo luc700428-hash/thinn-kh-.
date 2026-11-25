@@ -42,10 +42,13 @@ import androidx.compose.animation.core.tween
 
 internal object SeismicIntensityColors {
     fun color(value:String?):Color=when(value){
-        // The scale people know from the CWA cards: blue, green, yellow, orange, then reds and purples.
-        "0"->Color(0xFFC9D3DC);"1"->Color(0xFF2E9BE6);"2"->Color(0xFF48C83E);"3"->Color(0xFFE0BC12)
-        "4"->Color(0xFFF26B1D);"5","5弱"->Color(0xFFE5432C);"5強"->Color(0xFFC62828)
-        "6","6弱"->Color(0xFFA3174A);"6強"->Color(0xFF7B2C9E);"7"->Color(0xFF55188F);else->Color(0xFF81909E)
+        // thinn-khì's own intensity scale, mixed from traditional Taiwanese pigments instead of
+        // the blue-green-yellow traffic-light ramps other earthquake apps share: 霧青 mist,
+        // 青瓷 celadon, 竹黃 bamboo, 赭 ochre, 朱 vermilion, 胭脂 rouge, 紫棠 plum, 茄 aubergine
+        // and 玄 ink. Lightness falls step by step, so the order reads without colour vision.
+        "0"->Color(0xFFD9DED8);"1"->Color(0xFFB9D7CB);"2"->Color(0xFF6FB39B);"3"->Color(0xFFD8B65A)
+        "4"->Color(0xFFC9803F);"5","5弱"->Color(0xFFC8553D);"5強"->Color(0xFFA63A4A)
+        "6","6弱"->Color(0xFF7E3358);"6強"->Color(0xFF5A2D5E);"7"->Color(0xFF2E2140);else->Color(0xFF9AA39D)
     }
 }
 /** County detail stays vector. Advancing rings redraw independently of static polygon/label layers. */

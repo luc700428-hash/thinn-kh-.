@@ -52,6 +52,20 @@ internal object SeismicReportFacts {
         return Local(county, grade, distance, arrival)
     }
 
+    /**
+     * One plain sentence about the whole report: where it shook hardest and how widely it was
+     * felt — "臺東最大 4 級 · 11 個縣市有感".
+     */
+    fun summary(report: EarthquakeReport): String? {
+        val counties = report.countyIntensity
+        if (counties.isEmpty()) return null
+        val top = counties.entries.maxByOrNull { CwaEarthquakeParser.intensityRank(it.value) } ?: return null
+        val grade = SeismicDisplayFormat.symbol(top.value.removeSuffix("級"))
+        val tied = counties.count { CwaEarthquakeParser.intensityRank(it.value) == CwaEarthquakeParser.intensityRank(top.value) }
+        val where = SeismicReportStyle.shortCounty(top.key) + if (tied > 1) "等 $tied 地" else ""
+        return if (counties.size == 1) "只有${where}有感，最大 $grade 級" else "${where}最大 $grade 級 · ${counties.size} 個縣市有感"
+    }
+
     /** 極淺層 / 淺層 / 中層 / 深層, as the CWA describes focal depth. */
     fun depthClass(depthKm: Double?): String? = depthKm?.takeIf { it.isFinite() }?.let {
         when { it < 30 -> "極淺層"; it < 70 -> "淺層"; it < 300 -> "中層"; else -> "深層" }
@@ -118,77 +132,96 @@ internal object SeismicReportFacts {
     }
 }
 
-/** The intensity scale under the map: 1 to 7, the colours people know, those that occurred raised. */
+/** The intensity scale under the map: a slim 1–7 ramp; the grades that occurred stand up, numbered. */
 @Composable internal fun SeismicIntensityLegend(present: Set<String>, modifier: Modifier = Modifier) {
     val grades = listOf("1", "2", "3", "4", "5弱", "5強", "6弱", "6強", "7")
-    val palette = MaterialTheme.colorScheme
-    Row(modifier.semantics { contentDescription = "震度色階" }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(modifier.height(18.dp).semantics { contentDescription = "震度色階" }, horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically) {
         grades.forEach { g ->
             val on = g in present
             val c = SeismicIntensityColors.color(g)
-            Box(Modifier.weight(1f).height(if (on) 16.dp else 10.dp).clip(RoundedCornerShape(3.dp))
-                .background(if (on) c else c.copy(alpha = .38f)), contentAlignment = Alignment.Center) {
-                if (on) Text(SeismicDisplayFormat.symbol(g), color = seismicInkOn(c), fontSize = 14.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold)
+            Box(Modifier.weight(1f).height(if (on) 18.dp else 5.dp).clip(RoundedCornerShape(if (on) 5.dp else 3.dp))
+                .background(if (on) c else c.copy(alpha = .55f)), contentAlignment = Alignment.Center) {
+                if (on) Text(SeismicDisplayFormat.symbol(g), color = seismicInkOn(c), fontSize = 14.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
     }
-    @Suppress("UNUSED_EXPRESSION") palette
 }
 
 /**
- * The week at a glance: a seven-day strip where each earthquake is a dot sized by magnitude and
- * coloured by its strongest intensity, with the count, the largest one and how many were felt
- * where the person is.
+ * The week at a glance. Three numbers first (how many, how many were felt widely, how many
+ * reached the person's county), then one column per day where every earthquake is a block in
+ * the colour of its strongest shaking, strongest at the bottom. The week's largest is outlined
+ * and named underneath.
  */
 @Composable internal fun SeismicWeekSummary(reports: List<EarthquakeReport>, place: SeismicPlace?, modifier: Modifier = Modifier) {
     val palette = MaterialTheme.colorScheme
     val dark = palette.background.red < .5f
     val week = remember(reports, place) { SeismicReportFacts.week(reports, place) }
     if (week.count == 0) return
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-        .background(Brush.linearGradient(listOf(palette.primary.copy(alpha = if (dark) .16f else .10f), palette.onSurface.copy(alpha = .03f))))
-        .border(.5.dp, palette.onSurface.copy(alpha = .08f), RoundedCornerShape(22.dp)).padding(14.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text("近 7 天", color = palette.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Text("${week.count} 次有感 · 顯著 ${week.felt} 次", color = palette.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(10.dp))
-        val dayLabels = remember { val today = java.time.LocalDate.now(ZoneId.of("Asia/Taipei")); (6 downTo 0).map { today.minusDays(it.toLong()) } }
-        Canvas(Modifier.fillMaxWidth().height(64.dp).semantics {
-            contentDescription = "近 7 天地震分布：" + week.days.mapIndexed { i, d -> "${dayLabels[i].dayOfMonth} 日 ${d.size} 次" }.joinToString("、")
+    val dayLabels = remember { val today = java.time.LocalDate.now(ZoneId.of("Asia/Taipei")); (6 downTo 0).map { today.minusDays(it.toLong()) } }
+    val outline = if (dark) Color.White else Color(0xFF111827)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(io.atmos.weather.ui.ThinnOpticalMaterial.surface)
+        .border(.75.dp, palette.onSurface.copy(alpha = if (dark) .10f else .08f), RoundedCornerShape(24.dp)).padding(16.dp)
+        .semantics(mergeDescendants = true) {
+            contentDescription = "近 7 天 ${week.count} 次地震：" + week.days.mapIndexed { i, d -> "${dayLabels[i].monthValue} 月 ${dayLabels[i].dayOfMonth} 日 ${d.size} 次" }.joinToString("、")
         }) {
-            val col = size.width / 7f
-            for (i in 0 until 7) {
-                if (i % 2 == 0) drawRoundRect(palette.onSurface.copy(alpha = .035f), Offset(i * col, 0f), Size(col, size.height), CornerRadius(8.dp.toPx()))
-                val day = week.days[i]
-                day.sortedBy { it.origin }.forEachIndexed { k, r ->
-                    val frac = (r.origin.atZone(ZoneId.of("Asia/Taipei")).toLocalTime().toSecondOfDay() / 86400f)
-                    val x = i * col + col * (.12f + .76f * frac)
-                    val y = size.height * (1f - ((r.magnitude - 2.0) / 5.0).toFloat().coerceIn(.05f, .95f))
-                    val radius = (3f + (r.magnitude.toFloat() - 2f).coerceIn(0f, 5f) * 2.2f).dp.toPx()
-                    val c = SeismicIntensityColors.color(r.maxIntensity?.removeSuffix("級"))
-                    drawCircle(c.copy(alpha = .28f), radius * 1.6f, Offset(x, y))
-                    drawCircle(c, radius, Offset(x, y))
-                    drawCircle(if (dark) Color.Black.copy(alpha = .4f) else Color.White, radius, Offset(x, y), style = Stroke(1.dp.toPx()))
-                    @Suppress("UNUSED_EXPRESSION") k
+        Text("近 7 天", color = palette.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            @Composable fun RowScope.stat(value: String, label: String) {
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(palette.onSurface.copy(alpha = if (dark) .06f else .045f))
+                    .padding(horizontal = 10.dp, vertical = 8.dp)) {
+                    Text(value, color = palette.onSurface, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(label, color = palette.onSurfaceVariant, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            stat("${week.count}", "次有感地震")
+            stat("${week.felt}", "次顯著有感")
+            if (place != null) stat("${week.mine}", "次你的縣市") else stat(week.strongest?.let { "M" + "%.1f".format(Locale.US, it.magnitude) } ?: "—", "本週最大")
+        }
+        Spacer(Modifier.height(12.dp))
+        // The chart is only as tall as the busiest day needs (at most six blocks).
+        val tallest = week.days.maxOf { it.size }.coerceIn(2, 6)
+        val block = 12.dp
+        val chart = block * tallest + 3.dp * (tallest - 1)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            week.days.forEachIndexed { i, day ->
+                val today = i == 6
+                Column(Modifier.weight(1f).padding(horizontal = 2.dp).clip(RoundedCornerShape(12.dp))
+                    .background(if (today) palette.onSurface.copy(alpha = if (dark) .07f else .05f) else Color.Transparent).padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().height(chart), contentAlignment = Alignment.BottomCenter) {
+                        if (day.isEmpty()) Box(Modifier.size(5.dp).clip(RoundedCornerShape(99.dp)).background(palette.onSurface.copy(alpha = .18f)))
+                        else Column(verticalArrangement = Arrangement.spacedBy(3.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            // Strongest at the bottom, like a pile settling.
+                            day.sortedBy { CwaEarthquakeParser.intensityRank(it.maxIntensity ?: "") * 100 + it.magnitude }.takeLast(tallest).forEach { r ->
+                                val c = SeismicIntensityColors.color(r.maxIntensity?.removeSuffix("級"))
+                                val top = r === week.strongest
+                                Box(Modifier.width(24.dp).height(block).clip(RoundedCornerShape(4.dp)).background(c)
+                                    .then(if (top) Modifier.border(2.dp, outline, RoundedCornerShape(4.dp)) else Modifier))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(if (today) "今天" else "${dayLabels[i].monthValue}/${dayLabels[i].dayOfMonth}",
+                        color = if (today) palette.onSurface else palette.onSurfaceVariant, fontSize = 14.sp,
+                        fontWeight = if (today) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, softWrap = false)
                 }
             }
         }
-        Row(Modifier.fillMaxWidth()) {
-            dayLabels.forEachIndexed { i, d ->
-                Text(if (i == 6) "今天" else "${d.monthValue}/${d.dayOfMonth}", color = if (i == 6) palette.onSurface else palette.onSurfaceVariant,
-                    fontSize = 14.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            week.strongest?.let { s ->
+        Spacer(Modifier.height(10.dp))
+        week.strongest?.let { s ->
+            val c = SeismicIntensityColors.color(s.maxIntensity?.removeSuffix("級"))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(c).border(1.5.dp, outline, RoundedCornerShape(3.dp)))
+                Spacer(Modifier.width(8.dp))
                 Text("最大 M${"%.1f".format(Locale.US, s.magnitude)} · ${s.shortLocation}", color = palette.onSurface, fontSize = 14.sp,
-                    modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (place != null) Text("你所在縣市有感 ${week.mine} 次", color = palette.onSurfaceVariant, fontSize = 14.sp, maxLines = 1)
         }
+        Spacer(Modifier.height(4.dp))
+        Text("每一格是一次地震，顏色是最大震度", color = palette.onSurfaceVariant, fontSize = 14.sp)
     }
 }
 
