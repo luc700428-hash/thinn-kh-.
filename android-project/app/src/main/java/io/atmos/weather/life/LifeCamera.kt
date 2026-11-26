@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -76,15 +77,37 @@ private fun rememberSnapFacts(snapshot: WeatherSnapshot?): LifeCards.SnapFacts {
     }
 }
 
-/** A sky gradient to show the templates before any photo is taken. */
-private fun sampleSky(w: Int = 540, h: Int = 720): Bitmap {
+/**
+ * A sample photo to show the designs before any is taken: a dusk sky over layered mountains,
+ * with a low sun and soft clouds (drawn, so it works offline and needs no picture file).
+ */
+private fun sampleSky(w: Int = 864, h: Int = 1080): Bitmap {
     val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     val c = android.graphics.Canvas(b)
-    c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), android.graphics.Paint().apply {
-        shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), intArrayOf(0xFF2B4C8C.toInt(), 0xFFE58A5B.toInt(), 0xFFF6C68A.toInt()), floatArrayOf(0f, .62f, 1f), android.graphics.Shader.TileMode.CLAMP)
+    val P = { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
+    c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), P().apply {
+        shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), intArrayOf(0xFF233E7A.toInt(), 0xFF5C6FB0.toInt(), 0xFFE7908A.toInt(), 0xFFF7C58B.toInt()),
+            floatArrayOf(0f, .35f, .62f, .78f), android.graphics.Shader.TileMode.CLAMP)
     })
-    c.drawCircle(w * .7f, h * .58f, w * .12f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFE6B0.toInt() })
-    c.drawRect(0f, h * .78f, w.toFloat(), h.toFloat(), android.graphics.Paint().apply { color = 0xFF1F2A3A.toInt() })
+    // The sun and its glow.
+    c.drawCircle(w * .68f, h * .66f, w * .55f, P().apply {
+        shader = android.graphics.RadialGradient(w * .68f, h * .66f, w * .55f, intArrayOf(0x88FFE2A8.toInt(), 0x00FFE2A8), null, android.graphics.Shader.TileMode.CLAMP) })
+    c.drawCircle(w * .68f, h * .66f, w * .07f, P().apply { color = 0xFFFFF1CC.toInt() })
+    // Soft clouds.
+    val cloud = P().apply { color = 0x55FFFFFF; maskFilter = android.graphics.BlurMaskFilter(w * .04f, android.graphics.BlurMaskFilter.Blur.NORMAL) }
+    listOf(Triple(.22f, .22f, .26f), Triple(.7f, .3f, .3f), Triple(.45f, .46f, .22f)).forEach { (x, y, r) ->
+        c.drawOval(w * (x - r), h * (y - r * .18f), w * (x + r), h * (y + r * .18f), cloud)
+    }
+    // Three ridges, far to near.
+    listOf(Triple(.70f, 0xFF7B6FA0.toInt(), 1.3f), Triple(.76f, 0xFF4E4A78.toInt(), 2.1f), Triple(.84f, 0xFF262640.toInt(), 3.0f)).forEach { (base, color, f) ->
+        val path = android.graphics.Path().apply {
+            moveTo(0f, h.toFloat()); lineTo(0f, h * base)
+            var x = 0f
+            while (x <= w) { lineTo(x, h * base - h * .05f * kotlin.math.sin(x / w * Math.PI * f + base * 9).toFloat() - h * .02f * kotlin.math.sin(x / w * 13.0 + f).toFloat()); x += 6f }
+            lineTo(w.toFloat(), h.toFloat()); close()
+        }
+        c.drawPath(path, P().apply { this.color = color })
+    }
     return b
 }
 
@@ -93,13 +116,15 @@ private fun sampleSky(w: Int = 540, h: Int = 720): Bitmap {
 @Composable
 internal fun SnapPageV2(snapshot: WeatherSnapshot?) {
     val ctx = LocalContext.current
-    val dim = MaterialTheme.colorScheme.onSurfaceVariant
+    val p = MaterialTheme.colorScheme
     val facts = rememberSnapFacts(snapshot)
     var cameraOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Pair<Bitmap, SnapRender.Edit>?>(null) }
-    var template by remember { mutableStateOf(SnapRender.Template.MAGAZINE) }
     var status by remember { mutableStateOf("") }
     val pageScope = rememberCoroutineScope()
+    val styles = SnapRender.Template.entries.filter { it != SnapRender.Template.NONE }
+    val pager = androidx.compose.foundation.pager.rememberPagerState { styles.size }
+    val template = styles[pager.currentPage]
     // Decoding a full photo takes a moment: never on the main thread, so the page keeps animating.
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri?.let { pageScope.launch {
@@ -109,49 +134,75 @@ internal fun SnapPageV2(snapshot: WeatherSnapshot?) {
     }
     val sky = remember { sampleSky() }
     val previews by produceState<Map<SnapRender.Template, androidx.compose.ui.graphics.ImageBitmap>>(emptyMap(), facts) {
-        value = withContext(Dispatchers.Default) { SnapRender.Template.entries.associateWith { t -> SnapRender.render(ctx, sky, SnapRender.Edit(template = t), facts, 540).asImageBitmap() } }
+        value = withContext(Dispatchers.Default) { styles.associateWith { t -> SnapRender.render(ctx, sky, SnapRender.Edit(template = t), facts, 864).asImageBitmap() } }
     }
-    LifeHero(Color(0xFFE58A5B)) {
-        Text("拍下天空，自動壓上當下天氣", color = MaterialTheme.colorScheme.onSurface, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-        Text("${facts.temperature?.let { "$it°" } ?: "--°"} · ${facts.place}" + (facts.pressure?.let { " · $it hPa" } ?: ""), color = dim, fontSize = 14.sp)
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SnapRender.Template.entries.forEach { t ->
-                val on = t == template
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.iosJellyPress().clickable { template = t }) {
-                    val shape = Modifier.width(96.dp).height(128.dp).clip(RoundedCornerShape(14.dp))
-                        .border(if (on) 3.dp else .5.dp, if (on) Color(0xFFE58A5B) else Color.White.copy(alpha = .3f), RoundedCornerShape(14.dp))
-                    previews[t]?.let { Image(it, t.label, shape, contentScale = ContentScale.Crop) }
-                        ?: Box(shape.background(Brush.verticalGradient(listOf(Color(0xFF5B8FD9), Color(0xFFF2A56B)))))
-                    Text(t.label, color = if (on) MaterialTheme.colorScheme.onSurface else dim, fontSize = 14.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
-                }
-            }
+    // The stage: swipe through the designs on a real-looking photo, like a camera app's styles.
+    Box(Modifier.fillMaxWidth().aspectRatio(.8f).clip(RoundedCornerShape(30.dp)).background(Color(0xFF15161B))) {
+        androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
+            val t = styles[page]
+            previews[t]?.let { Image(it, t.label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                ?: Image(remember { sky.asImageBitmap() }, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
-        Spacer(Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlassButton(onClick = { cameraOpen = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Rounded.PhotoCamera, null); Spacer(Modifier.width(6.dp)); Text("開啟相機") }
-            GlassOutlinedButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Rounded.PhotoLibrary, null); Spacer(Modifier.width(6.dp)); Text("從相簿選")
-            }
+        Row(Modifier.align(Alignment.TopStart).padding(14.dp).clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .35f))
+            .padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.PhotoCamera, null, Modifier.size(16.dp), tint = Color.White); Spacer(Modifier.width(6.dp))
+            Text("天空浮水印", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
-        if (status.isNotEmpty()) { Spacer(Modifier.height(8.dp)); Note(status) }
-    }
-    SectionTitle("能做什麼", Icons.Rounded.AutoAwesome, IOSColors.orange)
-    @OptIn(ExperimentalLayoutApi::class)
-    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) {
-        listOf(Triple(Icons.Rounded.Camera, IOSColors.gray, "即時相機" to "閃光、倒數、格線、前後鏡頭、雙指縮放、點擊對焦"),
-            Triple(Icons.Rounded.FilterVintage, IOSColors.pink, "${SnapRender.Filter.entries.size - 1} 種濾鏡" to "晴空、黃昏、底片、雲海、黑白…"),
-            Triple(Icons.Rounded.Tune, IOSColors.blue, "5 種調整" to "亮度、對比、飽和度、色溫、暈影"),
-            Triple(Icons.Rounded.Crop, IOSColors.green, "${SnapRender.Aspect.entries.size} 種比例" to "1:1、4:5、9:16 限動、16:9…"),
-            Triple(Icons.Rounded.TextFields, IOSColors.orange, "${SnapRender.Template.entries.size - 1} 種浮水印" to "上方或下方，資料自己挑"),
-            Triple(Icons.Rounded.IosShare, IOSColors.indigo, "存相簿、直接分享" to "Threads、IG 限動、LINE")).forEach { (icon, tint, t) ->
-            Row(Modifier.weight(1f).frosted(18.dp).padding(12.dp), verticalAlignment = Alignment.Top) {
-                IOSIconTile(icon, tint, 30.dp); Spacer(Modifier.width(10.dp))
-                Column { Text(t.first, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold); Text(t.second, color = dim, fontSize = 14.sp, lineHeight = 18.sp) }
-            }
+        Column(Modifier.align(Alignment.TopEnd).padding(14.dp), horizontalAlignment = Alignment.End) {
+            Text(template.label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .35f)).padding(horizontal = 12.dp, vertical = 6.dp))
         }
     }
-    Note("相機只在這一頁開啟時使用；照片只存在你的手機相簿。")
+    // Page dots, then the style names as a scrolling ribbon.
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        styles.indices.forEach { i ->
+            val on = i == pager.currentPage
+            Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(if (on) 18.dp else 6.dp).clip(RoundedCornerShape(99.dp))
+                .background(if (on) p.onSurface else p.onSurface.copy(alpha = .25f)))
+        }
+    }
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        styles.forEachIndexed { i, t ->
+            val on = i == pager.currentPage
+            Text(t.label, color = if (on) p.surface else p.onSurface, fontSize = 15.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(if (on) p.onSurface else p.onSurface.copy(alpha = .07f))
+                    .clickable { pageScope.launch { pager.animateScrollToPage(i) } }.padding(horizontal = 14.dp, vertical = 8.dp))
+        }
+    }
+    // The camera row: library · shutter · how it works.
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp)).background(p.onSurface.copy(alpha = .07f))
+                .clickable(onClickLabel = "從相簿選") { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                contentAlignment = Alignment.Center) { Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(26.dp), tint = p.onSurface) }
+            Spacer(Modifier.height(6.dp)); Text("相簿", color = p.onSurfaceVariant, fontSize = 14.sp)
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(92.dp).clip(CircleShape).border(5.dp, Brush.sweepGradient(listOf(Color(0xFFFFB86B), Color(0xFFFF6B8B), Color(0xFF8B7CFF), Color(0xFFFFB86B))), CircleShape)
+                .padding(9.dp).clip(CircleShape).background(p.onSurface).clickable(onClickLabel = "開啟相機") { cameraOpen = true },
+                contentAlignment = Alignment.Center) { Icon(Icons.Rounded.PhotoCamera, null, Modifier.size(34.dp), tint = p.surface) }
+            Spacer(Modifier.height(6.dp)); Text("開啟相機", color = p.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp)).background(p.onSurface.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
+                Text("${facts.temperature ?: "--"}°", color = p.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(6.dp)); Text(facts.condition ?: "現在", color = p.onSurfaceVariant, fontSize = 14.sp, maxLines = 1)
+        }
+    }
+    if (status.isNotEmpty()) Note(status)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(Icons.Rounded.FilterVintage to "${SnapRender.Filter.entries.size - 1} 種濾鏡", Icons.Rounded.Tune to "5 種調整",
+            Icons.Rounded.Crop to "${SnapRender.Aspect.entries.size} 種比例", Icons.Rounded.IosShare to "存相簿分享").forEach { (icon, label) ->
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(p.onSurface.copy(alpha = .05f)).padding(vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(icon, null, Modifier.size(20.dp), tint = p.onSurface.copy(alpha = .8f))
+                Spacer(Modifier.height(4.dp))
+                Text(label, color = p.onSurfaceVariant, fontSize = 14.sp, maxLines = 1)
+            }
+        }
+    }
+    Note("左右滑動挑浮水印樣式；拍照時就看得到成品。相機只在這一頁開啟時使用，照片只存在你的手機相簿。")
     if (cameraOpen) CameraScreen(facts, template, onClose = { cameraOpen = false }, onPhoto = { b, edit -> cameraOpen = false; editing = b to edit })
     editing?.let { (b, e) -> EditorScreen(b, e, facts, onClose = { editing = null }) }
 }
@@ -232,7 +283,16 @@ private fun CameraScreen(facts: LifeCards.SnapFacts, startTemplate: SnapRender.T
             })
         }
     }
+    var root by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    // The watermark itself, drawn on a clear picture the size of the frame, live over the viewfinder.
+    val overlay by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, root, aspect, template, facts) {
+        if (root.width == 0 || template == SnapRender.Template.NONE) { value = null; return@produceState }
+        val r = aspect.ratio; val W = root.width.toFloat(); val H = root.height.toFloat()
+        val (fw, fh) = if (r == null) W to H else if (W / H > r) H * r to H else W to W / r
+        value = withContext(Dispatchers.Default) { SnapRender.overlay(ctx, (fw / 2).roundToInt(), (fh / 2).roundToInt(), SnapRender.Edit(aspect = aspect, template = template), facts).asImageBitmap() }
+    }
     FullScreen(onClose) {
+        Box(Modifier.fillMaxSize().onSizeChanged { root = it })
         if (granted) {
             AndroidView({ c -> PreviewView(c).apply { this.controller = controller; scaleType = PreviewView.ScaleType.FILL_CENTER; implementationMode = PreviewView.ImplementationMode.COMPATIBLE } },
                 Modifier.fillMaxSize())
@@ -250,10 +310,11 @@ private fun CameraScreen(facts: LifeCards.SnapFacts, startTemplate: SnapRender.T
                     drawLine(Color.White.copy(alpha = .45f), Offset(l, t + fh * i / 3), Offset(l + fw, t + fh * i / 3), 1.dp.toPx())
                 }
             }
-            if (template != SnapRender.Template.NONE) Column(Modifier.align(Alignment.Center).padding(top = 220.dp).clip(RoundedCornerShape(14.dp))
-                .background(Color.Black.copy(alpha = .35f)).padding(horizontal = 12.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${facts.temperature?.let { "$it°" } ?: "--°"}  ${facts.place.take(12)}", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text("浮水印：${template.label}（拍完可再調整）", color = Color.White.copy(alpha = .8f), fontSize = 14.sp)
+            overlay?.let { img ->
+                val d = androidx.compose.ui.platform.LocalDensity.current
+                val r = aspect.ratio; val W = root.width.toFloat(); val H = root.height.toFloat()
+                val (fw, fh) = if (r == null) W to H else if (W / H > r) H * r to H else W to W / r
+                Image(img, "浮水印預覽：${template.label}", Modifier.align(Alignment.Center).size(with(d) { fw.toDp() }, with(d) { fh.toDp() }), contentScale = ContentScale.FillBounds)
             }
         } else Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Rounded.NoPhotography, null, Modifier.size(56.dp), tint = Color.White)
@@ -288,7 +349,8 @@ private fun CameraScreen(facts: LifeCards.SnapFacts, startTemplate: SnapRender.T
         if (countdown > 0) Text("$countdown", color = Color.White, fontSize = 120.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Center))
         if (error.isNotEmpty()) Text(error, color = Color.White, fontSize = 15.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 110.dp)
             .clip(RoundedCornerShape(99.dp)).background(Color(0xCCD5523F)).padding(horizontal = 14.dp, vertical = 8.dp))
-        // Bottom: zoom, template strip, gallery · shutter · flip.
+        // Bottom: a dark fade so the controls read over any sky, then zoom, styles, gallery · shutter · flip.
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(300.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .72f)))))
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(bottom = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             if (granted) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val maxZ = runCatching { controller.zoomState.value?.maxZoomRatio }.getOrNull() ?: 1f
@@ -306,10 +368,20 @@ private fun CameraScreen(facts: LifeCards.SnapFacts, startTemplate: SnapRender.T
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            // Styles as bubbles, like a camera app's effects tray; the chosen one is ringed and named.
+            Text(template.label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .45f)).padding(horizontal = 12.dp, vertical = 4.dp))
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
                 SnapRender.Template.entries.forEach { t ->
-                    Text(t.label, color = if (t == template) Color(0xFFFFD60A) else Color.White.copy(alpha = .8f), fontSize = 15.sp,
-                        fontWeight = if (t == template) FontWeight.Bold else FontWeight.Medium, modifier = Modifier.clickable { template = t }.padding(vertical = 6.dp))
+                    val on = t == template
+                    Box(Modifier.size(if (on) 58.dp else 50.dp).clip(CircleShape)
+                        .background(if (on) Color.White.copy(alpha = .28f) else Color.Black.copy(alpha = .42f))
+                        .border(if (on) 3.dp else 1.dp, if (on) Color.White else Color.White.copy(alpha = .3f), CircleShape)
+                        .clickable(onClickLabel = t.label) { template = t }, contentAlignment = Alignment.Center) {
+                        Text(t.glyph, color = Color.White, fontSize = if (on) 20.sp else 17.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -318,8 +390,8 @@ private fun CameraScreen(facts: LifeCards.SnapFacts, startTemplate: SnapRender.T
                     pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }, contentAlignment = Alignment.Center) { Icon(Icons.Rounded.PhotoLibrary, "相簿", tint = Color.White) }
                 Spacer(Modifier.weight(1f))
-                Box(Modifier.size(82.dp).clip(CircleShape).border(5.dp, Color.White, CircleShape).padding(8.dp).clip(CircleShape)
-                    .background(if (busy) Color.White.copy(alpha = .5f) else Color.White).clickable(enabled = granted && !busy, role = Role.Button) { shoot() })
+                Box(Modifier.size(84.dp).clip(CircleShape).border(4.dp, Color.White, CircleShape).padding(7.dp).clip(CircleShape)
+                    .background(if (busy) Color.White.copy(alpha = .45f) else Color.White).clickable(enabled = granted && !busy, role = Role.Button, onClickLabel = "拍照") { shoot() })
                 Spacer(Modifier.weight(1f))
                 RoundTool(Icons.Rounded.Cameraswitch, "切換鏡頭") { front = !front }
             }
@@ -419,8 +491,14 @@ private fun EditorScreen(src: Bitmap, start: SnapRender.Edit, facts: LifeCards.S
             }
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Tab.entries.forEach { t ->
-                    Text(t.label, color = if (t == tab) Color.White else Color.White.copy(alpha = .55f), fontSize = 16.sp, fontWeight = if (t == tab) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.clickable { tab = t }.padding(horizontal = 12.dp, vertical = 8.dp))
+                    val on = t == tab
+                    Column(Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClickLabel = t.label) { tab = t }.padding(horizontal = 14.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(when (t) { Tab.FILTER -> Icons.Rounded.AutoAwesome; Tab.ADJUST -> Icons.Rounded.Tune; Tab.MARK -> Icons.Rounded.TextFields; Tab.CROP -> Icons.Rounded.Crop },
+                            null, Modifier.size(24.dp), tint = if (on) Color(0xFFFFD60A) else Color.White.copy(alpha = .6f))
+                        Spacer(Modifier.height(3.dp))
+                        Text(t.label, color = if (on) Color.White else Color.White.copy(alpha = .6f), fontSize = 14.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium)
+                    }
                 }
             }
         }

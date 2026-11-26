@@ -185,20 +185,42 @@ object SpeedCameras {
         val fresh = File(ctx.filesDir, "roads/speed_cameras.csv")
         val moi = (if (fresh.isFile) runCatching { parseMoi(fresh.readText()) }.getOrNull()?.takeIf { it.size > 1000 } else null)
             ?: runCatching { parseMoi(ctx.assets.open("roads/speed_cameras.csv").bufferedReader().use { it.readText() }) }.getOrDefault(emptyList())
-        val extra = runCatching { parseUnified(ctx.assets.open("roads/enforcement.csv").bufferedReader().use { it.readText() }) }.getOrDefault(emptyList())
+        val freshAll = File(ctx.filesDir, "roads/enforcement.csv")
+        val extra = (if (freshAll.isFile) runCatching { parseUnified(freshAll.readText()) }.getOrNull()?.takeIf { it.size > 100 } else null)
+            ?: runCatching { parseUnified(ctx.assets.open("roads/enforcement.csv").bufferedReader().use { it.readText() }) }.getOrDefault(emptyList())
         return Index(moi + extra + marks(ctx), Freeways.load(ctx)).also { cached = it }
     }
 
-    /** The newest official list, at most weekly; kept only when it looks complete. */
-    suspend fun refresh(ctx: Context): Boolean = withContext(Dispatchers.IO) {
-        val file = File(ctx.filesDir, "roads/speed_cameras.csv")
-        if (file.isFile && System.currentTimeMillis() - file.lastModified() < 7L * 86_400_000L) return@withContext false
-        runCatching {
-            val c = (URL(MOI_URL).openConnection() as HttpURLConnection).apply { connectTimeout = 10_000; readTimeout = 20_000 }
-            val text = try { if (c.responseCode == 200) c.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8) else null } finally { c.disconnect() }
-            if (text == null || !text.removePrefix("\uFEFF").startsWith("CityName,") || parseMoi(text).size < 1000) return@runCatching false
-            file.parentFile?.mkdirs(); file.writeText(text); cached = null; true
-        }.getOrDefault(false)
+    /** Built every day by the repository's road-data workflow from every county's list. */
+    private const val NATIONWIDE_URL = "https://github.com/luc700428-hash/thinn-kh-./releases/download/road-data/enforcement.csv"
+    private const val CHECK_EVERY_MS = 12L * 3_600_000L
+
+    private fun get(url: String): String? = runCatching {
+        val c = (URL(url).openConnection() as HttpURLConnection).apply { connectTimeout = 10_000; readTimeout = 25_000; instanceFollowRedirects = true }
+        try { if (c.responseCode == 200) c.inputStream.use { it.readBytes() }.takeIf { it.size < 8_000_000 }?.toString(Charsets.UTF_8) else null } finally { c.disconnect() }
+    }.getOrNull()
+
+    /**
+     * Called in the background each time the app opens (at most every 12 hours): the police's
+     * own fixed-camera list, and the nationwide file with every county's 科技執法 and 區間測速.
+     * Each is kept only when it parses and is at least as big as most of what we have.
+     */
+    suspend fun refresh(ctx: Context, force: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+        val dir = File(ctx.filesDir, "roads").apply { mkdirs() }
+        val stamp = File(dir, ".checked")
+        if (!force && stamp.isFile && System.currentTimeMillis() - stamp.lastModified() < CHECK_EVERY_MS) return@withContext false
+        stamp.writeText(System.currentTimeMillis().toString()); stamp.setLastModified(System.currentTimeMillis())
+        var changed = false
+        get(MOI_URL)?.let { text ->
+            if (text.removePrefix("\uFEFF").startsWith("CityName,") && parseMoi(text).size >= 1000) { File(dir, "speed_cameras.csv").writeText(text); changed = true }
+        }
+        get(NATIONWIDE_URL)?.let { text ->
+            val now = parseUnified(text).size
+            val before = runCatching { parseUnified(ctx.assets.open("roads/enforcement.csv").bufferedReader().use { it.readText() }).size }.getOrDefault(0)
+            if (text.startsWith("kind,lat,lon,") && now >= before * .7) { File(dir, "enforcement.csv").writeText(text); changed = true }
+        }
+        if (changed) cached = null
+        changed
     }
 
     // ---------------------------------------------------------------- what lies ahead

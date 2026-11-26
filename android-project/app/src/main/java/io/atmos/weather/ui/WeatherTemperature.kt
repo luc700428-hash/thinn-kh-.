@@ -29,9 +29,9 @@ private data class TemperatureGeometry(val parts:List<TemperatureGlyph>,val degr
 @Composable internal fun WeatherTemperature(value:Int,ink:Color) {
  val density=LocalDensity.current;val appearance=LocalAppearance.current
  var pixels by remember{mutableStateOf(IntSize.Zero)}
- val face=remember(appearance.fontChoice,appearance.fontWeight){
-  val name=when(appearance.fontChoice){1->"serif";2->"monospace";3->"cursive";else->"sans-serif"}
-  Typeface.create(Typeface.create(name,Typeface.NORMAL),(appearance.fontWeight.toInt()-100).coerceIn(100,800),false)
+ val fontVersion=FontLibrary.version.intValue
+ val face=remember(appearance.fontChoice,appearance.fontWeight,fontVersion){
+  Typeface.create(FontLibrary.typeface(appearance.fontChoice),(appearance.fontWeight.toInt()-100).coerceIn(100,800),false)
  }
  val geometry=remember(value,pixels,density.density,density.fontScale,face) {
   temperatureGeometry(value.toString(),pixels.width.toFloat(),pixels.height.toFloat(),density.density,with(density){94.sp.toPx()},face)

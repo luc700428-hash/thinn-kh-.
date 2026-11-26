@@ -84,7 +84,7 @@ internal fun ColumnScope.LifeFeatureContent(id: String, snapshot: WeatherSnapsho
             "family" -> FamilyPageV2()
             "snap" -> SnapPageV2(snapshot)
             "closure" -> ClosurePageV2()
-            "water" -> WaterPageV2()
+            "water" -> WaterPageV3()
             "kit" -> KitPageV2()
             "shelter" -> ShelterPageV2()
             "disaster" -> DisasterSettingsV2(onClose)

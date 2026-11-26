@@ -111,7 +111,9 @@ internal object NlscTiles {
     /** [minZ]: overlays only appear (and are fetched) once you are close enough to read them. */
     enum class Layer(val id: String, val label: String, val maxZ: Int, val minZ: Int = 0) {
         MAP("EMAP98", "標準", 19), PHOTO("PHOTO2", "衛星", 19), LABELS("EMAP2", "路名", 19), TERRAIN("EMAP5_OPENDATA", "地形", 15),
-        AED("AED", "AED", 19, 15), STORE("ConvenienceStore", "超商", 19, 15), HYDRANT("fireplug", "消防栓", 19, 16)
+        AED("AED", "AED", 19, 15), STORE("ConvenienceStore", "超商", 19, 15), HYDRANT("fireplug", "消防栓", 19, 16);
+        /** Overlays of symbols, drawn larger than the map under them. */
+        val symbols get() = minZ > 0
     }
     /** The base looks you choose between; 衛星 carries the road names over the photo. */
     enum class Style(val label: String, val layers: List<Layer>) {
@@ -255,7 +257,7 @@ internal fun TaiwanDetailMap(
         snapshotFlow { Triple(cx, cy, zoom) to (w to h) }.collect {
             if (w == 0 || h == 0) return@collect
             val want = drawn.flatMap { l ->
-                if (zoom + log2(density.toDouble()) < l.minZ) emptyList() else visibleTiles(cx, cy, zoom, w, h, density, l.maxZ).map { l to it }
+                if (zoom + log2(density.toDouble()) < l.minZ) emptyList() else visibleTiles(cx, cy, zoom, w, h, density, l.maxZ, l.symbols).map { l to it }
             }
             NlscTiles.wanted = want.map { (l, t) -> NlscTiles.key(l, t.first, t.second, t.third) }.toSet()
             want.forEach { (l, t) -> NlscTiles.request(ctx, l, t.first, t.second, t.third) }
@@ -299,13 +301,13 @@ internal fun TaiwanDetailMap(
             if (zoom + log2(density.toDouble()) < layer.minZ) return@forEach
             // Night: the street maps are inverted with their hues kept; photos and symbols stay as they are.
             val filter = if (dark && (layer == NlscTiles.Layer.MAP || layer == NlscTiles.Layer.TERRAIN)) NlscTiles.night else null
-            visibleTiles(cx, cy, zoom, size.width.toInt(), size.height.toInt(), density, layer.maxZ).forEach { (z, x, y) ->
+            visibleTiles(cx, cy, zoom, size.width.toInt(), size.height.toInt(), density, layer.maxZ, layer.symbols).forEach { (z, x, y) ->
                 val span = wp / (1 shl z)
                 val left = (x * span - cx * wp + size.width / 2.0); val top = (y * span - cy * wp + size.height / 2.0)
                 val dst = IntOffset(floor(left).toInt(), floor(top).toInt())
                 val dsz = IntSize((floor(left + span) - floor(left)).toInt() + 1, (floor(top + span) - floor(top)).toInt() + 1)
                 val img = NlscTiles.get(layer, z, x, y)
-                if (img != null) { drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), dst, dsz, colorFilter = filter, filterQuality = FilterQuality.Medium); return@forEach }
+                if (img != null) { drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), dst, dsz, colorFilter = filter, filterQuality = if (layer.symbols) FilterQuality.High else FilterQuality.Medium); return@forEach }
                 // Not here yet: stretch a coarser tile already in memory, so the map never goes blank.
                 for (up in 1..4) {
                     val pz = z - up; if (pz < 0) break
@@ -342,7 +344,10 @@ internal fun TaiwanDetailMap(
                 drawCircle(Color.White, r * .38f, Offset(tip.x, tip.y - r * 2.05f))
                 val text = measurer.measure(p.title.take(14), TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White))
                 val bw = text.size.width + 20f * density; val bh = text.size.height + 10f * density
-                val bx = (tip.x - bw / 2).coerceIn(6f * density, size.width - bw - 6f * density); val by = (tip.y - r * 3.1f - bh).coerceAtLeast(4f * density)
+                val by = (tip.y - r * 3.1f - bh).coerceAtLeast(4f * density)
+                // Keep the label clear of the control capsule in the top-right corner.
+                val right = if (by < 112f * density) 66f * density else 6f * density
+                val bx = (tip.x - bw / 2).coerceIn(6f * density, (size.width - bw - right).coerceAtLeast(6f * density))
                 drawRoundRect(Color(0xE6202226), Offset(bx, by), Size(bw, bh), CornerRadius(bh / 2))
                 drawText(text, topLeft = Offset(bx + 10f * density, by + 5f * density))
             }
@@ -434,9 +439,11 @@ private fun MapButton(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
 }
 
 /** Tiles covering the view at the zoom that gives one tile pixel per screen pixel (nearest first). */
-internal fun visibleTiles(cx: Double, cy: Double, zoom: Double, w: Int, h: Int, density: Float, maxZ: Int): List<Triple<Int, Int, Int>> {
+internal fun visibleTiles(cx: Double, cy: Double, zoom: Double, w: Int, h: Int, density: Float, maxZ: Int, symbols: Boolean = false): List<Triple<Int, Int, Int>> {
     if (w <= 0 || h <= 0) return emptyList()
-    var z = (zoom + log2(density.toDouble().coerceAtLeast(1.0))).roundToInt().coerceIn(0, maxZ)
+    // Maps: one tile pixel per screen pixel (sharp). Symbol layers (AED, stores, hydrants): one tile
+    // pixel per dp and a bit more, so their icons and names come out at a readable ~24 dp.
+    var z = (if (symbols) zoom - .35 else zoom + log2(density.toDouble().coerceAtLeast(1.0))).roundToInt().coerceIn(0, maxZ)
     while (true) {
         val wp = 256.0 * density * 2.0.pow(zoom); val n = 1 shl z; val span = wp / n
         val x0 = floor((cx * wp - w / 2.0) / span).toInt().coerceAtLeast(0); val x1 = floor((cx * wp + w / 2.0) / span).toInt().coerceAtMost(n - 1)

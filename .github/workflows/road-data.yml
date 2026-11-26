@@ -1,0 +1,40 @@
+name: Refresh road enforcement data
+
+# Once a day (and on demand) gather every county's speed-camera, 科技執法 and 區間測速 list into one
+# file and publish it on the pre-release "road-data", which the app downloads in the background.
+# It is a pre-release on purpose: releases/latest must stay the OTA release.
+on:
+  schedule:
+    - cron: '17 19 * * *'   # 03:17 in Taiwan
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: road-data
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gather every official list
+        run: |
+          set -euo pipefail
+          roads=android-project/app/src/main/assets/roads
+          python3 android-project/tools/build_enforcement_asset.py fetch "$roads"
+          python3 android-project/tools/build_enforcement_asset.py check "$roads"
+      - name: Publish on the road-data pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          roads=android-project/app/src/main/assets/roads
+          if ! gh release view road-data >/dev/null 2>&1; then
+            gh release create road-data --prerelease --title "Road enforcement data" \
+              --notes "Daily nationwide speed-camera and enforcement data for 駕車模式. Not an app release."
+          fi
+          gh release upload road-data "$roads/enforcement.csv" "$roads/speed_cameras.csv" --clobber

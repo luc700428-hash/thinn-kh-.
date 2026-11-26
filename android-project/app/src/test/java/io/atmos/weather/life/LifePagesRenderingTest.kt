@@ -143,6 +143,14 @@ class LifePagesRenderingTest {
                     io.atmos.weather.transit.TransitMotion(null, null, 116, ch, cp.first, cp.second, 2L))
             }
             assertTrue(camera, camera.contains("固定測速") && camera.contains(cam.label) && camera.contains("超速 6") && camera.contains("請減速") && camera.contains("公尺"))
+            val levels = listOf(Triple("石門水庫", "臺灣北區", 72.0), Triple("翡翠水庫", "臺灣北區", 91.0), Triple("寶山第二水庫", "臺灣北區", 48.0),
+                Triple("德基水庫", "臺灣中區", 64.0), Triple("鯉魚潭水庫", "臺灣中區", 55.0), Triple("曾文水庫", "臺灣南區", 31.0), Triple("南化水庫", "臺灣南區", 22.0),
+                Triple("鳥嘴潭人工湖", "臺灣中區", 80.0)).mapIndexed { i, (n, r, pct) ->
+                Reservoirs.Level(Reservoirs.Info("$i", n, r, 10000.0 + i * 3000), (10000.0 + i * 3000) * pct / 100, pct, null) }
+            val water = render("water", dark) { Column { WaterBody(levels, emptyList()) } }
+            assertTrue(water, water.contains("全台水庫") && water.contains("南化水庫") && water.contains("各水庫蓄水") && water.contains("低的在前"))
+            val fonts = render("fonts", dark) { io.atmos.weather.ui.FontPicker(0) {} }
+            assertTrue(fonts, fonts.contains("霞鶩文楷") && fonts.contains("粉圓") && fonts.contains("思源宋體") && fonts.contains("MB"))
             val snap = render("snap", dark) { Column { LifeFeatureContent("snap", snapshot()) {} } }
             assertTrue(snap, snap.contains("開啟相機") && snap.contains("雜誌") && snap.contains("種濾鏡"))
             val transit = render("transit", dark) { Column { LifeFeatureContent("transit", null) {} } }
@@ -157,6 +165,27 @@ class LifePagesRenderingTest {
             assertTrue(disasterSettings, disasterSettings.contains("開啟災難省電模式"))
             val disaster = render("disaster", dark) { DisasterModeScreen(snapshot(), listOf("大雨特報"), {}, {}) }
             assertTrue(disaster, disaster.contains("災難省電模式") && disaster.contains("最近的避難處所") && disaster.contains("離開災難省電模式"))
+        }
+    }
+
+    @Test fun everyWatermarkDesignDrawsOnAPhoto() {
+        val photo = Bitmap.createBitmap(1080, 1350, Bitmap.Config.ARGB_8888).apply {
+            Canvas(this).drawRect(0f, 0f, 1080f, 1350f, android.graphics.Paint().apply {
+                shader = android.graphics.LinearGradient(0f, 0f, 0f, 1350f, intArrayOf(0xFF2B4C8C.toInt(), 0xFFE58A5B.toInt(), 0xFF3A2E3F.toInt()), null, android.graphics.Shader.TileMode.CLAMP) })
+        }
+        val facts = LifeCards.SnapFacts("臺北市大安區", Instant.parse("2026-11-26T09:30:00Z"), 21, "多雲時晴", 1011, 12, 70)
+        SnapRender.Template.entries.forEach { t ->
+            val out = SnapRender.render(RuntimeEnvironment.getApplication(), photo, SnapRender.Edit(template = t), facts, 1350)
+            File("build/life-pages").apply { mkdirs() }.let { File(it, "mark-${t.name}.png").outputStream().use { s -> out.compress(Bitmap.CompressFormat.PNG, 90, s) } }
+            if (t == SnapRender.Template.POLAROID) assertTrue("the print is larger than the photo", out.height > 1350 && out.width > 1080)
+            else assertTrue(out.width == 1080 && out.height == 1350)
+            if (t != SnapRender.Template.NONE) {
+                var changed = 0
+                for (x in 0 until out.width step 9) for (y in 0 until out.height step 9) if (x < 1080 && y < 1350 && out.getPixel(x, y) != photo.getPixel(x, y)) changed++
+                assertTrue("$t drew nothing", changed > 40)
+            }
+            val over = SnapRender.overlay(null, 540, 675, SnapRender.Edit(template = t), facts)
+            assertTrue(over.width == 540 && over.height == 675)
         }
     }
 

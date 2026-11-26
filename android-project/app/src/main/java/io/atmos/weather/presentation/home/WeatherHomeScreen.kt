@@ -1141,14 +1141,14 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         }
                         "外觀" -> {
                 Text("字體與閱讀",fontSize=19.sp,color=White,fontWeight=FontWeight.SemiBold)
-                Text("調整文字大小、粗細與字體。文字大小支援 100–150%，變更會立即套用。",color=TextSoft,fontSize=14.sp)
+                Text("調整文字大小、粗細與字體。文字大小支援 100–150%，變更會立即套用；中文字體第一次選用時會下載。",color=TextSoft,fontSize=14.sp)
                 Spacer(Modifier.height(10.dp))
                 AppearanceSlider("字體大小",appearance.fontScale,1f..1.5f,
                     "${(appearance.fontScale*100).roundToInt()}%",commitOnRelease=true) {appearance=appearance.copy(fontScale=it)}
                 AppearanceSlider("字體粗細",appearance.fontWeight,100f..900f,
                     "${appearance.fontWeight.roundToInt()}",commitOnRelease=true) {appearance=appearance.copy(fontWeight=it)}
-                io.atmos.weather.ui.GlassChoiceGroup(listOf("系統","襯線","等寬","手寫"),
-                    appearance.fontChoice,{appearance=appearance.copy(fontChoice=it)})
+                Spacer(Modifier.height(12.dp))
+                io.atmos.weather.ui.FontPicker(appearance.fontChoice) { appearance=appearance.copy(fontChoice=it) }
                 Spacer(Modifier.height(10.dp))
                         }
                         "通知" -> {
@@ -1912,32 +1912,21 @@ internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,countyWarni
                     }
                 }
             }
-            // Everything else folds away like an iOS disclosure row, springing open on tap.
-            var more by rememberSaveable { mutableStateOf(false) }
-            val chevron by animateFloatAsState(if(more)180f else 0f,spring(.62f,420f),label="更多建議箭頭")
-            Spacer(Modifier.height(8.dp))
+            // The full outfit lives on its own page (今日穿搭); here, one quiet row leads there.
+            Spacer(Modifier.height(10.dp))
             Box(Modifier.fillMaxWidth().height(.5.dp).background(HomeInk.hairline))
             Row(Modifier.fillMaxWidth().padding(top=4.dp).iosJellyPress().clip(RoundedCornerShape(14.dp))
-                .clickable{more=!more}.padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically) {
-                Text(if(more)"收合" else "穿搭細節、出門時機與方式",color=ink,fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.weight(1f))
-                Icon(Icons.Rounded.ExpandMore,null,tint=soft,modifier=Modifier.graphicsLayer{rotationZ=chevron})
-            }
-            androidx.compose.animation.AnimatedVisibility(more,
-                enter=androidx.compose.animation.expandVertically(spring(.78f,380f))+androidx.compose.animation.fadeIn(),
-                exit=androidx.compose.animation.shrinkVertically(spring(.9f,500f))+androidx.compose.animation.fadeOut()) {
-                Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
-                    Spacer(Modifier.height(2.dp))
-                    HomeAdviceRow("上衣下著",if(stale) "待更新" else "${plan.top}；${plan.bottoms}")
-                    HomeAdviceRow("外套",if(stale) "待更新" else plan.coatDecision)
-                    HomeAdviceRow("雨具",if(stale) "待更新" else plan.umbrella)
-                    if(!stale) HomeAdviceRow("出門時機",plan.timeAdvice)
-                    Text("出門方式",color=soft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-                    io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
-                        {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
-                    TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
-                        Text("今日穿搭完整建議",color=ink,fontSize=15.sp,fontWeight=FontWeight.Medium)
-                    }
+                .clickable(role=androidx.compose.ui.semantics.Role.Button,onClickLabel="今日穿搭",onClick=onOpen).padding(vertical=10.dp),
+                verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(Color(0xFFE58A5B).copy(alpha=.18f)),contentAlignment=Alignment.Center) {
+                    Icon(Icons.Rounded.Checkroom,null,Modifier.size(18.dp),tint=Color(0xFFE58A5B))
                 }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("今日穿搭",color=ink,fontSize=15.sp,fontWeight=FontWeight.SemiBold)
+                    if(!stale) Text(plan.top,color=soft,fontSize=14.sp,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+                Icon(Icons.Rounded.ChevronRight,null,tint=soft)
             }
         }
     }

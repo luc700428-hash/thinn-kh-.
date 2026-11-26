@@ -123,8 +123,8 @@ fun TodayPressureTile(outlook: PressurePain.Outlook?, ink: Color, soft: Color, t
             Text(when {
                 outlook == null -> "正在取得氣壓預報…"
                 outlook.drop24h < .5 -> "未來 24 小時氣壓平穩"
-                else -> "24 小時內降 ${WeatherRules.fmt(outlook.drop24h)} hPa" + (outlook.worstAt?.let { " · ${it.atZone(java.time.ZoneId.systemDefault()).hour} 點降最快" } ?: "")
-            }, color = ink, fontSize = 15.sp, maxLines = 1)
+                else -> "24 小時內降 ${WeatherRules.fmt(outlook.drop24h)} hPa" + (outlook.worstAt?.let { "\n${it.atZone(java.time.ZoneId.systemDefault()).hour} 點前後降最快" } ?: "")
+            }, color = ink, fontSize = 15.sp, lineHeight = 20.sp, maxLines = 2)
         }
         if (outlook != null) {
             Spacer(Modifier.width(8.dp))

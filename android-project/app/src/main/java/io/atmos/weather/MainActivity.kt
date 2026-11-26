@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
             runCatching { io.atmos.weather.earthquake.ExpTechSeismicService.start(this) }
         }
         WidgetSync.schedule(this)
+        // Speed-camera and enforcement lists: refreshed quietly in the background on launch (≤ every 12 h).
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { io.atmos.weather.transit.SpeedCameras.refresh(applicationContext) } }
         CwaAlertWorker.schedule(this)
         UpdateCheckWorker.schedule(this)
         EarthquakeReportWorker.schedule(this)
