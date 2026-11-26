@@ -58,15 +58,27 @@ data class StationWeather(val temperature: Int, val code: Int)
  */
 @SuppressLint("MissingPermission")
 @Composable
-fun rememberRailTrip(active: Boolean): RailMode.Trip? {
+fun rememberRailTrip(active: Boolean): RailMode.Trip? = rememberTransitMotion(active, false).trip
+
+/** What the phone's movement says: a train trip, a car drive, or neither. */
+data class TransitMotion(val trip: RailMode.Trip?, val drive: DrivingMode.Drive?)
+
+/**
+ * One GPS listener for both judgements while the weather page is open (never in the background).
+ * Speed falls back to the distance between fixes when the GPS does not report one.
+ */
+@SuppressLint("MissingPermission")
+@Composable
+fun rememberTransitMotion(active: Boolean, saidCar: Boolean): TransitMotion {
     val context = LocalContext.current.applicationContext
-    var trip by remember { mutableStateOf<RailMode.Trip?>(null) }
+    var motion by remember { mutableStateOf(TransitMotion(null, null)) }
     val samples = remember { ArrayList<RailMode.Sample>() }
+    val car by rememberUpdatedState(saidCar)
     DisposableEffect(active, context) {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         if (!active || !granted || manager == null || !manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            trip = null
+            motion = TransitMotion(null, null)
             onDispose { }
         } else {
             val listener = LocationListener { l: Location ->
@@ -77,13 +89,33 @@ fun rememberRailTrip(active: Boolean): RailMode.Trip? {
                 } ?: 0f
                 samples += RailMode.Sample(l.latitude, l.longitude, speed, l.time)
                 samples.removeAll { l.time - it.timeMs > 150_000L }
-                trip = RailMode.judge(samples)
+                val trip = if (car) null else RailMode.judge(samples)
+                motion = TransitMotion(trip, if (trip?.confident == true) null else DrivingMode.judge(samples, car))
             }
             runCatching { manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5_000L, 20f, listener, Looper.getMainLooper()) }
             onDispose { runCatching { manager.removeUpdates(listener) }; samples.clear() }
         }
     }
-    return trip
+    return motion
+}
+
+/**
+ * The transit card on the weather page: 高鐵模式 / 火車模式 on a railway, 駕車模式 on the road.
+ * When we guess a train but the person is driving beside the track, "我在開車" switches over.
+ */
+@Composable
+fun TransitModeCard(active: Boolean, ink: Color) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("thinn_settings", Context.MODE_PRIVATE) }
+    var carUntil by remember { mutableLongStateOf(prefs.getLong("transit_car_until", 0L)) }
+    val saidCar = System.currentTimeMillis() < carUntil
+    val motion = rememberTransitMotion(active, saidCar)
+    val driving = remember { io.atmos.weather.life.LifeStore.drivingCard(context) }
+    if (motion.trip != null) RailModeCard(motion.trip, ink, onCar = {
+        carUntil = System.currentTimeMillis() + 60 * 60_000L
+        prefs.edit().putLong("transit_car_until", carUntil).apply()
+    })
+    else if (driving) DrivingModeCard(motion.drive, ink)
 }
 
 /** Current temperature and weather code at stations (Open-Meteo, one request). */
@@ -106,7 +138,7 @@ suspend fun stationWeather(stations: List<RailMode.Station>): List<StationWeathe
 
 /** 高鐵模式 / 火車模式 card: the next stop, when, and the weather there and at the end of the line. */
 @Composable
-fun RailModeCard(trip: RailMode.Trip?, ink: Color) {
+fun RailModeCard(trip: RailMode.Trip?, ink: Color, onCar: (() -> Unit)? = null) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("thinn_settings", Context.MODE_PRIVATE) }
     var dismissedUntil by remember { mutableLongStateOf(prefs.getLong("rail_dismissed_until", 0L)) }
@@ -140,6 +172,8 @@ fun RailModeCard(trip: RailMode.Trip?, ink: Color) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("是，我在搭火車", color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clickable { confirmed = true }.padding(vertical = 6.dp))
+                    if (onCar != null) Text("我在開車", color = ink.copy(alpha = .85f), fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clickable { onCar() }.padding(vertical = 6.dp))
                     Text("不是", color = ink.copy(alpha = .7f), fontSize = 15.sp,
                         modifier = Modifier.clickable {
                             dismissedUntil = System.currentTimeMillis() + 30 * 60_000L

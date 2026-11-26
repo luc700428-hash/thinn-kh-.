@@ -148,8 +148,11 @@ class ComfortWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 "morning", "evening" -> {
                     val city = ComfortStore.current(ctx) ?: return Result.success()
                     val w = load(ctx, city) ?: return Result.success()
-                    val text = if (kind == "morning") ComfortMessages.morning(w, now, zone, city.name)
+                    val plain = if (kind == "morning") ComfortMessages.morning(w, now, zone, city.name)
                         else ComfortMessages.evening(w, now, zone, city.name) ?: return Result.success()
+                    // The two-sentence digest leads, so the lock screen tells the whole day at a glance.
+                    val digest = runCatching { io.atmos.weather.life.LifeDigest.forNotification(ctx, w, city.name) }.getOrNull()
+                    val text = if (digest == null) plain else plain.copy(body = digest + "\n\n" + plain.body)
                     post(ctx, if (kind == "morning") 39001 else 39002, ThinnNotificationChannels.Type.BRIEFINGS, text, XiaomiFocusBridge.Kind.WEATHER_BRIEFING)
                 }
                 "smart" -> {

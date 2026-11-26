@@ -7,6 +7,8 @@ object LifestylePreferenceStore {
     private const val PREF = "thinn_lifestyle_preferences"
     private val revision=kotlinx.coroutines.flow.MutableStateFlow(0L)
     val changes:kotlinx.coroutines.flow.StateFlow<Long> = revision
+    /** Something outside these settings changed the advice (the learned comfort bias). */
+    fun touch() { revision.value++ }
     fun mode(context:Context):OutingMode {
         val saved=context.getSharedPreferences(PREF,0).getString("mode",null)
             ?: context.getSharedPreferences("thinn_lifestyle_ai",0).getString("mode","DAILY")
@@ -30,7 +32,7 @@ object LifestylePreferenceStore {
             it.name == prefs.getString("style", ClothingStyle.CASUAL.name)
         } ?: ClothingStyle.CASUAL
         val threshold = prefs.getInt("umbrella_pct", 31).coerceIn(20, 90)
-        return LifestylePreferences(comfort, style, threshold)
+        return LifestylePreferences(comfort, style, threshold, io.atmos.weather.life.LifeStore.comfortBias(context).coerceIn(-2.0, 2.0))
     }
     fun save(context: Context, preferences: LifestylePreferences) {
         context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit()

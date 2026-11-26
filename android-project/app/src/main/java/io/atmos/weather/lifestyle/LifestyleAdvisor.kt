@@ -39,7 +39,7 @@ object LifestyleAdvisor {
                   now: Instant = Instant.now(), preferences: LifestylePreferences = LifestylePreferences()): OutfitPlan {
         val observedFeels = weather.feelsLikeC?.takeIf{it.isFinite()&&it in -90.0..70.0} ?: weather.temperatureC
         val coldNow=minOf(weather.temperatureC,observedFeels)
-        val current=(if(coldNow<21) coldNow else observedFeels)+preferences.comfort.adjustmentC
+        val current=(if(coldNow<21) coldNow else observedFeels)+preferences.comfort.adjustmentC+preferences.calibrationC
         val future=weather.hourly.filter {it.at>=now&&it.at<=now.plusSeconds(6*3600)}.sortedBy{it.at}
         val laterMinimum=future.mapNotNull{it.temperatureC?.takeIf(Double::isFinite)}.minOrNull()
         val coldestActual=minOf(weather.temperatureC,laterMinimum?:weather.temperatureC)

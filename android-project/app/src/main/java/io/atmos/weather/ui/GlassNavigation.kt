@@ -148,7 +148,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
-    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={},onAlerts:()->Unit={},onInsights:()->Unit={},onUtilityOpen:()->Unit={}) {
+    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={},onAlerts:()->Unit={},onInsights:()->Unit={},onUtilityOpen:()->Unit={},onLife:(String)->Unit={}) {
     val palette=MaterialTheme.colorScheme
     var query by rememberSaveable {mutableStateOf("")}
     var utility by rememberSaveable {mutableStateOf<String?>(null)}
@@ -163,6 +163,18 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             Entry("颱風動向","官方警報、路徑與預報時間軸",SettingsSymbols.cyclone,onTyphoons),
             Entry("地震監測","測站、震後報告與演練",Icons.Rounded.Waves,onSeismic),
             Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,onRadar))),
+        EntryGroup("個人化與自動化",BrandPalette.selection,listOf(
+            Entry("氣壓與天氣痛","偏頭痛、關節痛的氣壓急降預警",Icons.Rounded.Compress,{onLife("pressure")}),
+            Entry("行事曆天氣","有地點的行程旁直接看天氣",Icons.Rounded.EventAvailable,{onLife("calendar")}),
+            Entry("自訂天氣規則","條件成立才通知，像天氣版 IFTTT",Icons.Rounded.Rule,{onLife("rules")}),
+            Entry("家人天氣關懷","家人那裡變天時提醒，一鍵傳關心小卡",Icons.Rounded.FamilyRestroom,{onLife("family")}),
+            Entry("天空浮水印相機","拍天空，自動壓上溫度、氣壓與地點",Icons.Rounded.PhotoCamera,{onLife("snap")}))),
+        EntryGroup("防災與水情",BrandPalette.selection,listOf(
+            Entry("停班停課速查","全台各縣市即時公告",Icons.Rounded.School,{onLife("closure")}),
+            Entry("水庫與水情警戒","水庫蓄水率、淹水與土石流警戒",Icons.Rounded.WaterDrop,{onLife("water")}),
+            Entry("避難收容處所","離線也能查最近的避難地點",Icons.Rounded.HolidayVillage,{onLife("shelter")}),
+            Entry("防災包清單","物資檢查與到期提醒",Icons.Rounded.Backpack,{onLife("kit")}),
+            Entry("災難省電模式","黑底大字、關閉動畫，停電時用",Icons.Rounded.BatterySaver,{onLife("disaster")}))),
         EntryGroup("海洋與天文",BrandPalette.selection,listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,onMarine),
             Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.Nightlight,onSky))),
         EntryGroup("時間與換算",BrandPalette.selection,listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,{onUtilityOpen();utility="碼錶"}),

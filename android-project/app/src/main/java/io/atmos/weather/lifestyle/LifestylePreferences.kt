@@ -13,7 +13,9 @@ data class LifestylePreferences(
     val comfort: TemperatureComfort = TemperatureComfort.BALANCED,
     val style: ClothingStyle = ClothingStyle.CASUAL,
     /** When any upcoming 6h rain probability meets this level, suggest taking rain protection. */
-    val umbrellaThresholdPct: Int = 31
+    val umbrellaThresholdPct: Int = 31,
+    /** Learned from 偏冷 / 剛好 / 偏熱 taps on the home page, at most ±2 °C (see ComfortCalibration). */
+    val calibrationC: Double = 0.0
 ) {
     init { require(umbrellaThresholdPct in 20..90) { "雨具提醒門檻須介於 20% 至 90%" } }
 }
