@@ -817,8 +817,6 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // 高鐵模式 / 火車模式: appears by itself while the phone moves along a railway.
                     // 高鐵模式 / 火車模式 on a railway, 駕車模式 on the road.
                     io.atmos.weather.transit.TransitModeCard(weatherSceneActive,weatherSky.ink)
-                    // 一句話簡報、天氣痛與體感校準. Hidden while the data is stale: a confident summary of old weather would mislead.
-                    if(!state.stale&&io.atmos.weather.lifestyle.LifestyleAdvisor.isFresh(snapshot)) io.atmos.weather.life.HomeLifeStrip(snapshot,state.officialHazards.map{it.title}.distinct(),weatherSky.ink,onOpen={openWorkspaceDetail("life:"+it)})
                     // Station name, distance and observation time are kept internal and not shown.
                 } else if(state.loading) {
                     Spacer(Modifier.height(60.dp)); CircularProgressIndicator(color=weatherSky.ink,modifier=Modifier.align(Alignment.CenterHorizontally))
@@ -919,10 +917,13 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                                     fontSize=17.sp,fontWeight=FontWeight.Bold,color=Color.White)
                                 Text("震後資料，並非提前地震預警",fontSize=14.sp,color=Color.White.copy(alpha=.9f))
                             }
-                            TextButton(onClick={
-                                RecentEarthquakeNoticeStore.dismiss(context,report.id)
-                                recentEarthquake=null
-                            }) { Text("關閉",fontSize=14.sp,color=Color.White) }
+                            // Opaque on purpose: over the red card a see-through glass button can vanish.
+                            Text("關閉",fontSize=15.sp,fontWeight=FontWeight.SemiBold,color=Color(0xFF8E1F27),
+                                modifier=Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp)).background(Color.White)
+                                    .clickable(role=androidx.compose.ui.semantics.Role.Button){
+                                        RecentEarthquakeNoticeStore.dismiss(context,report.id)
+                                        recentEarthquake=null
+                                    }.padding(horizontal=16.dp,vertical=9.dp))
                         }
                         Spacer(Modifier.height(8.dp))
                         Text("${report.location} · 規模 ${"%.1f".format(java.util.Locale.US,report.magnitude)}",
@@ -930,9 +931,11 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                         Text("收到後顯示 30 分鐘；有新的已驗證報告會自動更新。",
                             color=Color.White.copy(alpha=.85f),fontSize=14.sp)
                         if(report.sourceOfficial && report.officialUrl.startsWith("https://")) {
-                            TextButton(onClick={alertTitle="中央氣象署地震報告";alertUrl=report.officialUrl;alertsOpen=true}) {
-                                Text("查看官方報告",color=Color.White,fontSize=15.sp)
-                            }
+                            Spacer(Modifier.height(10.dp))
+                            Text("查看官方報告",color=Color(0xFF8E1F27),fontSize=15.sp,fontWeight=FontWeight.SemiBold,
+                                modifier=Modifier.iosJellyPress().clip(RoundedCornerShape(999.dp)).background(Color.White)
+                                    .clickable(role=androidx.compose.ui.semantics.Role.Button){alertTitle="中央氣象署地震報告";alertUrl=report.officialUrl;alertsOpen=true}
+                                    .padding(horizontal=18.dp,vertical=10.dp))
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -1003,7 +1006,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     "key" -> { HomeKeyWeatherCard(snapshot, state.stale); Spacer(Modifier.height(13.dp)) }
                     // Official alerts and the six-hour forecast are visible before outfit advice.
                     "outlook" -> { HomeOutlookCard(snapshot,io.atmos.weather.location.LocationLabels.display(state.city.name)){insightsOpen=true}; Spacer(Modifier.height(15.dp)) }
-                    "outing" -> { DailyGuidanceCard(snapshot,state.stale) { showLifestyleDetails=true }; Spacer(Modifier.height(15.dp)) }
+                    "outing" -> { DailyGuidanceCard(snapshot,state.stale,state.officialHazards.map{it.title}.distinct(),onLife={openWorkspaceDetail("life:$it")}) { showLifestyleDetails=true }; Spacer(Modifier.height(15.dp)) }
                     "commute" -> { HomeCommuteCard(snapshot.fetchedAt); if (io.atmos.weather.comfort.ComfortStore.place(context,"home")!=null && io.atmos.weather.comfort.ComfortStore.place(context,"work")!=null) Spacer(Modifier.height(15.dp)) }
                     "forecast" -> {
                     GlassCard {
@@ -1834,7 +1837,7 @@ private fun SkyParticles(condition: WeatherCondition, phase:Float, heavyRain:Boo
 }
 
 @Composable
-internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->Unit) {
+internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,countyWarnings:List<String> =emptyList(),onLife:(String)->Unit={},onOpen:()->Unit) {
     val ctx=LocalContext.current
     var localWarning by remember { mutableStateOf(io.atmos.weather.typhoon.TyphoonWarningStore.current(ctx)) }
     LaunchedEffect(ctx) {
@@ -1859,14 +1862,24 @@ internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->
     val glance=remember(weather,plan){TodayGlance.build(weather,plan)}
     val ink=HomeInk.primary;val soft=HomeInk.secondary
     val warningTone=landHere||localWarning!=null||critical!=null
-    io.atmos.weather.ui.ThinnAtmospherePanel(Modifier.testTag("home-today"),accent=Color(0xFFFFD69B)) {
+    // 今日重點 and 天氣痛 live here, in the card's own ink, once the data is fresh.
+    val fresh=!stale&&LifestyleAdvisor.isFresh(weather)
+    val gathered=io.atmos.weather.life.LifeToday.rememberGathered(weather,countyWarnings)
+    val accent=io.atmos.weather.life.todayAccent(weather,warningTone||countyWarnings.isNotEmpty())
+    io.atmos.weather.ui.ThinnAtmospherePanel(Modifier.testTag("home-today"),accent=accent) {
+        // The earthquake-report seam: one colour along the top edge says what kind of day it is.
+        Box(Modifier.fillMaxWidth().height(4.dp).background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(accent,accent.copy(alpha=.35f),Color.Transparent))))
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("今日概況",color=soft,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                 Text(if(stale)"待更新" else glance.mood,color=if(warningTone)Color(0xFFE5554F) else ink,fontSize=14.sp,fontWeight=FontWeight.SemiBold,
                     modifier=Modifier.clip(RoundedCornerShape(999.dp)).background(HomeInk.tile).padding(horizontal=10.dp,vertical=4.dp))
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
+            if(fresh) { io.atmos.weather.life.TodayHeroStrip(weather,ink,soft,HomeInk.tile); Spacer(Modifier.height(10.dp)) }
+            if(fresh&&localWarning==null) {
+                io.atmos.weather.life.TodayDigestBlock(weather,gathered,countyWarnings,ink,soft,HomeInk.tile,accent)
+            } else {
             Text(when {
                 landHere -> "${localWarning?.name ?: "颱風"}：所在地已列入陸上警戒"
                 localWarning?.level==io.atmos.weather.typhoon.TyphoonWarningLevel.LAND -> "中央氣象署已發布陸上颱風警報"
@@ -1886,11 +1899,18 @@ internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,onOpen:()->
                 Spacer(Modifier.height(4.dp))
                 Text("依中央氣象署公告產生的規則式提醒，非 AI 推測警戒範圍。",color=soft,fontSize=14.sp)
             }
+            }
             Spacer(Modifier.height(14.dp))
             HomeTileRow {
                 HomeTile("穿什麼",if(stale)"—" else glance.wear,glance.wearNote,Modifier.weight(1f).iosAppear(0),icon=Icons.Rounded.Checkroom,tint=Color(0xFFE58A5B))
                 HomeTile("外套",if(stale)"—" else glance.coat,glance.coatNote,Modifier.weight(1f).iosAppear(1),icon=Icons.Rounded.Layers,tint=Color(0xFF7C8FD0))
                 HomeTile("雨具",if(stale)"—" else glance.rain,glance.rainNote,Modifier.weight(1f).iosAppear(2),icon=Icons.Rounded.Umbrella,tint=Color(0xFF4F95E0))
+            }
+            if(fresh) {
+                Spacer(Modifier.height(10.dp))
+                io.atmos.weather.life.TodayPressureTile(gathered?.pressure,ink,soft,HomeInk.tile){onLife("pressure")}
+                Spacer(Modifier.height(10.dp))
+                io.atmos.weather.life.TodayFeelRow(ink,soft,HomeInk.tile)
             }
             if(!stale&&plan.bring.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))

@@ -76,7 +76,7 @@ object LifeCards {
     }.getOrDefault(false)
 
     enum class SnapStyle(val label: String) { MAGAZINE("雜誌風"), FILM("底片風"), MINIMAL("極簡") }
-    data class SnapFacts(val place: String, val time: Instant, val temperature: Int?, val condition: String?, val pressure: Int?, val altitude: Int?, val humidity: Int?)
+    data class SnapFacts(val place: String, val time: Instant, val temperature: Int?, val condition: String?, val pressure: Int?, val altitude: Int?, val humidity: Int?, val buddy: Int? = null)
 
     /** 天空浮水印: the photo with a quiet weather caption laid over it. */
     fun watermark(photo: Bitmap, facts: SnapFacts, style: SnapStyle, zone: ZoneId = ZoneId.of("Asia/Taipei")): Bitmap {

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -81,10 +82,7 @@ fun IOSV25SettingsCell(
             .defaultMinSize(minHeight=48.dp)
             .padding(start=15.dp,end=16.dp,top=8.dp,bottom=8.dp),
             verticalAlignment=Alignment.CenterVertically) {
-            Box(Modifier.size(29.dp).clip(RoundedCornerShape(7.dp)).background(iconColor),
-                contentAlignment=Alignment.Center) {
-                Icon(icon,null,Modifier.size(22.dp),tint=Color.White)
-            }
+            IOSIconTile(icon,iconColor)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(0.dp)) {
                 Text(title,modifier=Modifier.fillMaxWidth(),color=palette.onSurface,fontSize=17.sp,
@@ -107,6 +105,30 @@ fun IOSV25SettingsCell(
         if(!last) Box(Modifier.padding(start=56.dp).fillMaxWidth().height(.5.dp)
             .background(if(palette.background.red > .5f) ThinnDesignTokens.separatorLight else ThinnDesignTokens.separatorDark))
     }
+}
+
+/**
+ * The iOS Settings icon: a continuous-corner square in one system colour, lit from the top (a
+ * soft vertical gradient and a hairline highlight), with a white filled glyph about 62% of the tile.
+ */
+@Composable
+fun IOSIconTile(icon:ImageVector,color:Color,size:androidx.compose.ui.unit.Dp=29.dp) {
+    val top=Color(color.red+(1-color.red)*.16f,color.green+(1-color.green)*.16f,color.blue+(1-color.blue)*.16f)
+    val bottom=Color(color.red*.9f,color.green*.9f,color.blue*.9f)
+    val shape=RoundedCornerShape(size*.235f)
+    Box(Modifier.size(size).clip(shape).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(top,bottom)))
+        .border(.5.dp,androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha=.38f),Color.White.copy(alpha=.04f))),shape),
+        contentAlignment=Alignment.Center) {
+        Icon(icon,null,Modifier.size(size*.62f),tint=Color.White)
+    }
+}
+
+/** The iOS system colours used by the Settings icons, so every list reads the same way. */
+object IOSColors {
+    val blue=Color(0xFF0A84FF);val green=Color(0xFF34C759);val orange=Color(0xFFFF9500);val red=Color(0xFFFF3B30)
+    val pink=Color(0xFFFF2D55);val purple=Color(0xFFAF52DE);val indigo=Color(0xFF5856D6);val teal=Color(0xFF30B0C7)
+    val cyan=Color(0xFF32ADE6);val mint=Color(0xFF00C7BE);val yellow=Color(0xFFFFCC00);val brown=Color(0xFFA2845E)
+    val gray=Color(0xFF8E8E93);val graphite=Color(0xFF3A3A3C)
 }
 
 /** A slim chevron with the reference's consistent stroke. */

@@ -91,20 +91,26 @@ class LifePagesRenderingTest {
             .putString("city_name", "臺北市大安區").commit()
         assertTrue(LifeSources.shelters(ctx).size > 5000)
         for (dark in listOf(true, false)) {
-            val home = render("home", dark) { HomeLifeStrip(snapshot(), listOf("大雨特報"), Color.White) {} }
-            assertTrue(home, home.contains("今日重點") && home.contains("大雨特報") && home.contains("偏冷"))
+            val home = render("home", dark) { io.atmos.weather.presentation.home.DailyGuidanceCard(snapshot(), false, listOf("大雨特報")) {} }
+            assertTrue(home, home.contains("今日概況") && home.contains("今日重點") && home.contains("大雨特報") && home.contains("偏冷") && home.contains("紫外線") && home.contains("天氣痛"))
             val kit = render("kit", dark) { Column { LifeFeatureContent("kit", null) {} } }
-            assertTrue(kit, kit.contains("已準備 0 / 16") && kit.contains("飲用水"))
+            assertTrue(kit, kit.contains("0/16") && kit.contains("飲用水") && kit.contains("即將到期"))
             val rules = render("rules", dark) { Column { LifeFeatureContent("rules", null) {} } }
-            assertTrue(rules, rules.contains("快速範本") && rules.contains("適合洗車／露營"))
+            assertTrue(rules, rules.contains("一鍵範本") && rules.contains("適合洗車／露營"))
             val shelter = render("shelter", dark) { Column { LifeFeatureContent("shelter", null) {} } }
-            assertTrue(shelter, shelter.contains("避難收容處所") && shelter.contains("公尺"))
+            assertTrue(shelter, shelter.contains("最近的避難處所") && shelter.contains("公尺") && shelter.contains("開始導航"))
             val snap = render("snap", dark) { Column { LifeFeatureContent("snap", snapshot()) {} } }
-            assertTrue(snap, snap.contains("拍照") && snap.contains("雜誌風"))
+            assertTrue(snap, snap.contains("開啟相機") && snap.contains("雜誌") && snap.contains("種濾鏡"))
             val transit = render("transit", dark) { Column { LifeFeatureContent("transit", null) {} } }
             assertTrue(transit, transit.contains("駕車模式") && transit.contains("南迴線"))
             val family = render("family", dark) { Column { LifeFeatureContent("family", null) {} } }
-            assertTrue(family, family.contains("新增家人"))
+            assertTrue(family, family.contains("新增家人") && family.contains("關心家人"))
+            val calendar = render("calendar", dark) { Column { LifeFeatureContent("calendar", null) {} } }
+            assertTrue(calendar, calendar.contains("允許讀取行事曆"))
+            val pressure = render("pressure", dark) { Column { LifeFeatureContent("pressure", null) {} } }
+            assertTrue(pressure, pressure.contains("怎麼判斷") && pressure.contains("提前通知"))
+            val disasterSettings = render("disaster-settings", dark) { Column { LifeFeatureContent("disaster", null) {} } }
+            assertTrue(disasterSettings, disasterSettings.contains("開啟災難省電模式"))
             val disaster = render("disaster", dark) { DisasterModeScreen(snapshot(), listOf("大雨特報"), {}, {}) }
             assertTrue(disaster, disaster.contains("災難省電模式") && disaster.contains("最近的避難處所") && disaster.contains("離開災難省電模式"))
         }

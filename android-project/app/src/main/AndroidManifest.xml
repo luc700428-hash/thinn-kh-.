@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- 行事曆天氣: read-only, asked only when the person opens that page. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- 天空浮水印相機: asked only when the camera page opens; the app works without it. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Android 16+ user-initiated monitoring only; older Android ignores this. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />

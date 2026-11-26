@@ -52,9 +52,7 @@ private fun hm(h: Int, m: Int) = "%02d:%02d".format(h, m)
                              trailing: @Composable () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().then(if (onClick != null) Modifier.iosJellyPress().clickable(onClick = onClick) else Modifier)
         .padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)).background(tint), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(19.dp))
-        }
+        io.atmos.weather.ui.IOSIconTile(icon, tint, 29.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp)

@@ -1,7 +1,6 @@
 package io.atmos.weather.presentation.home
 import io.atmos.weather.ui.appleBouncingScroll
 
-import io.atmos.weather.ui.GlassModalBottomSheet as ModalBottomSheet
 import io.atmos.weather.ui.GlassOutlinedButton as OutlinedButton
 import android.content.Context
 import android.content.Intent
@@ -59,7 +58,7 @@ fun SettingsDiagnosticsPage(onClose:()->Unit) {
             }
         }
     }
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=MaterialTheme.colorScheme.onSurface) {
+    io.atmos.weather.ui.WorkspacePageSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.fillMaxWidth().heightIn(max=720.dp).appleBouncingScroll().verticalScroll(rememberScrollState())
             .padding(horizontal=20.dp).padding(bottom=30.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text("動畫目標 166 Hz · 螢幕目前 ${displayHz?.let {"%.0f".format(it)} ?: "未取得"} Hz",color=MaterialTheme.colorScheme.onSurface,fontSize=14.sp)

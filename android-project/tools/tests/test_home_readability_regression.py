@@ -9,7 +9,7 @@ ASSETS=ROOT/'app/src/main/assets/landmarks'
 class HomeReadabilityTests(unittest.TestCase):
     def test_no_raw_diagnostic_wall_on_home(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
-        self.assertIn('DailyGuidanceCard(snapshot,state.stale)',home)
+        self.assertIn('DailyGuidanceCard(snapshot,state.stale,',home)
         self.assertIn('showLifestyleDetails',home)
         self.assertNotIn('Text("其他天氣提醒"',home)
         self.assertNotIn('Text("判斷依據：${plan.evidence}"',home)

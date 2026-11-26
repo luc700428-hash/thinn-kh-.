@@ -139,9 +139,7 @@ private fun InfoRow(icon: ImageVector, tint: Color, title: String, detail: Strin
     Column {
         Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.padding(horizontal = 15.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(29.dp).clip(RoundedCornerShape(7.dp)).background(tint), contentAlignment = Alignment.Center) {
-                Icon(icon, null, Modifier.size(19.dp), tint = Color.White)
-            }
+            io.atmos.weather.ui.IOSIconTile(icon, tint)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, color = palette.onSurface, fontSize = 17.sp, lineHeight = 22.sp)
@@ -220,9 +218,7 @@ private fun TierPicker(selected: String, onSelect: (Sponsor.Tier) -> Unit) {
                     }
                     .clickable(role = Role.RadioButton) { onSelect(t) }
                     .padding(horizontal = 15.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(tierTint(t.id)), contentAlignment = Alignment.Center) {
-                        Icon(tierIcon(t.id), null, Modifier.size(20.dp), tint = Color.White)
-                    }
+                    io.atmos.weather.ui.IOSIconTile(tierIcon(t.id), tierTint(t.id), 32.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
