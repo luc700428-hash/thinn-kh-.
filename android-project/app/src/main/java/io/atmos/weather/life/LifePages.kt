@@ -458,24 +458,5 @@ internal fun ReservoirRow(l: Reservoirs.Level) {
 
 // ---------------------------------------------------------------- 避難收容處所
 
-@Composable
-internal fun ShelterMap(near: List<Shelters.Near>, lat: Double, lon: Double, modifier: Modifier) {
-    val ink = MaterialTheme.colorScheme.onSurface
-    val accent = BrandPalette.selection
-    if (near.isEmpty()) return
-    val radius = (near.maxOf { it.km } * 1.15).coerceAtLeast(.5)
-    Canvas(modifier.frosted(18.dp)) {
-        val c = center; val r = minOf(size.width, size.height) / 2 * .9f
-        listOf(1f, .5f).forEach { drawCircle(ink.copy(alpha = .12f), r * it, c, style = Stroke(1.dp.toPx())) }
-        near.forEach { n ->
-            val ang = Math.toRadians(io.atmos.weather.transit.DrivingMode.bearing(lat, lon, n.shelter.lat, n.shelter.lon))
-            val d = (n.km / radius).toFloat() * r
-            drawCircle(accent, 6.dp.toPx(), Offset(c.x + (kotlin.math.sin(ang) * d).toFloat(), c.y - (kotlin.math.cos(ang) * d).toFloat()))
-        }
-        drawCircle(Color(0xFF2563EB), 7.dp.toPx(), c); drawCircle(Color.White, 3.dp.toPx(), c)
-    }
-    Note("藍點是你，綠點是最近的避難處所（外圈約 ${Shelters.distance(radius)}，上方為北）。")
-}
-
 // ---------------------------------------------------------------- 災難省電模式
 

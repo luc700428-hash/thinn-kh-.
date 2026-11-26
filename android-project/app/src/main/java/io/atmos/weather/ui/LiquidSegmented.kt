@@ -77,6 +77,7 @@ internal fun LiquidSegmented(labels: List<String>, selected: Int, onSelect: (Int
     val swell = remember { Animatable(0f) }
     val squash = remember { Animatable(0f) }
     var dragging by remember { mutableStateOf(false) }
+    val presses = remember { intArrayOf(0) }
     LaunchedEffect(selected) { if (!dragging) x.animateTo(selected.toFloat(), if (reduce) tween(0) else LiquidSprings.snap()) }
     // Travel stretches the droplet along its path, more the faster it goes, and it jiggles round.
     LaunchedEffect(Unit) {
@@ -99,6 +100,7 @@ internal fun LiquidSegmented(labels: List<String>, selected: Int, onSelect: (Int
                 val slot = ((size.width - 2 * pad) / labels.size).coerceAtLeast(1f)
                 fun slotAt(px: Float) = ((px - pad) / slot - .5f).coerceIn(0f, labels.size - 1f)
                 val startedAt = System.currentTimeMillis()
+                val press = ++presses[0]
                 var moved = false
                 if (!reduce) {
                     scope.launch { lift.animateTo(1f, LiquidSprings.lift()) }
@@ -121,9 +123,17 @@ internal fun LiquidSegmented(labels: List<String>, selected: Int, onSelect: (Int
                 } finally {
                     dragging = false
                     val pad2 = inset.toPx(); val slot2 = ((size.width - 2 * pad2) / labels.size).coerceAtLeast(1f)
-                    val target = if (released) kotlin.math.round(((last - pad2) / slot2 - .5f).coerceIn(0f, labels.size - 1f)).toInt() else current
+                    // A plain tap is chosen by the tab's own click; only a drag picks the slot under the finger.
+                    val target = if (released && moved) kotlin.math.round(((last - pad2) / slot2 - .5f).coerceIn(0f, labels.size - 1f)).toInt() else current
                     if (released && moved && target != current) { haptics?.play(HapticEngine.Event.TAP); select(target) }
                     scope.launch { x.animateTo(target.toFloat(), if (reduce) tween(0) else LiquidSprings.snap()) }
+                    // Whatever happened (scroll took over, the click never came), settle on the real selection.
+                    scope.launch {
+                        delay(420)
+                        if (press != presses[0]) return@launch
+                        if (!dragging && kotlin.math.abs(x.targetValue - current) > .01f) x.animateTo(current.toFloat(), if (reduce) tween(0) else LiquidSprings.snap())
+                        if (!dragging && lift.targetValue != 0f) lift.animateTo(0f, LiquidSprings.settle())
+                    }
                     scope.launch { swell.animateTo(0f, LiquidSprings.release()) }
                     val wait = if (moved) 120L else (260L - (System.currentTimeMillis() - startedAt)).coerceAtLeast(60L)
                     scope.launch { delay(wait); lift.animateTo(0f, LiquidSprings.settle()) }

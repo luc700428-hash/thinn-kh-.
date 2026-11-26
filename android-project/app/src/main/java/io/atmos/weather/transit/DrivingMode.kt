@@ -12,7 +12,8 @@ import kotlin.math.sin
  * about 15 and 45 minutes — in large text, with nothing to tap.
  */
 object DrivingMode {
-    data class Drive(val speedKmh: Int, val headingDeg: Double, val lat: Double, val lon: Double)
+    /** [recentHeading]: over the last few hundred metres only, which follows curves on a freeway. */
+    data class Drive(val speedKmh: Int, val headingDeg: Double, val lat: Double, val lon: Double, val recentHeading: Double = headingDeg)
     data class Ahead(val minutes: Int, val km: Int, val lat: Double, val lon: Double)
 
     /**
@@ -29,7 +30,9 @@ object DrivingMode {
         if (RailMode.km(first.lat, first.lon, last.lat, last.lon) < .3) return null
         val awayFromRail = RailMode.railOffKm(last.lat, last.lon) > 1.2 && RailMode.railOffKm(first.lat, first.lon) > 1.2
         if (!awayFromRail && !saidCar) return null
-        return Drive(kmh.roundToInt(), bearing(first.lat, first.lon, last.lat, last.lon), last.lat, last.lon)
+        val back = recent.lastOrNull { RailMode.km(it.lat, it.lon, last.lat, last.lon) >= .12 } ?: first
+        return Drive(kmh.roundToInt(), bearing(first.lat, first.lon, last.lat, last.lon), last.lat, last.lon,
+            bearing(back.lat, back.lon, last.lat, last.lon))
     }
 
     fun bearing(aLat: Double, aLon: Double, bLat: Double, bLon: Double): Double {

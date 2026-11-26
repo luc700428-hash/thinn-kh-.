@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.node.RootForTest
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsNode
@@ -98,7 +99,44 @@ class LifePagesRenderingTest {
             val rules = render("rules", dark) { Column { LifeFeatureContent("rules", null) {} } }
             assertTrue(rules, rules.contains("一鍵範本") && rules.contains("適合洗車／露營"))
             val shelter = render("shelter", dark) { Column { LifeFeatureContent("shelter", null) {} } }
-            assertTrue(shelter, shelter.contains("最近的避難處所") && shelter.contains("公尺") && shelter.contains("開始導航"))
+            assertTrue(shelter, shelter.contains("最近的避難處所") && shelter.contains("公尺") && shelter.contains("開始導航") &&
+                shelter.contains("© 國土測繪中心") && shelter.contains("導航") && shelter.contains("地圖，15 個地點"))
+            // Local preview only (never in CI): fetch the tiles the map asked for and draw it again.
+            if (System.getenv("THINN_MAP_PREVIEW") == "1") {
+                NlscTiles.wanted.forEach { k ->
+                    runCatching {
+                        val t: List<String> = k.split('/')
+                        val bytes = java.net.URL("https://wmts.nlsc.gov.tw/wmts/${t[0]}/default/GoogleMapsCompatible/${t[1]}/${t[3]}/${t[2]}").readBytes()
+                        NlscTiles.prime(k, android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size).asImageBitmap())
+                    }
+                }
+                render("shelter-map", dark) { Column { LifeFeatureContent("shelter", null) {} } }
+            }
+            val net = io.atmos.weather.transit.Freeways.load(ctx)!!
+            val chain = net.chains.first { c -> c.places.any { it.name == "大雅交流道" } && c.places.any { it.name == "台中交流道" } &&
+                c.places.first { it.name == "大雅交流道" }.at < c.places.first { it.name == "台中交流道" }.at }
+            val at = (chain.places.first { it.name == "大雅交流道" }.at + chain.places.first { it.name == "台中交流道" }.at) / 2
+            val p = io.atmos.weather.transit.Freeways.pointAlong(net, io.atmos.weather.transit.Freeways.Spot(chain, 0.0, 0.0), at)!!
+            val q = io.atmos.weather.transit.Freeways.pointAlong(net, io.atmos.weather.transit.Freeways.Spot(chain, 0.0, 0.0), at + 300)!!
+            val hd = io.atmos.weather.transit.DrivingMode.bearing(p.first, p.second, q.first, q.second)
+            io.atmos.weather.transit.SpeedCameras.load(ctx)
+            val drive = render("drive", dark) {
+                io.atmos.weather.transit.DrivingModeCard(io.atmos.weather.transit.DrivingMode.Drive(98, hd, p.first, p.second, hd), MaterialTheme.colorScheme.onSurface,
+                    io.atmos.weather.transit.TransitMotion(null, null, 104, hd, p.first, p.second, 1L))
+            }
+            assertTrue(drive, drive.contains("下個出口") && drive.contains("台中交流道") && drive.contains("南下") && drive.contains("西螺服務區") && drive.contains("國1") &&
+                drive.contains("104") && drive.contains("km/h") && drive.contains("流動測速") && drive.contains("語音提醒"))
+            // 600 m before a southbound 國道1號 camera at 116 km/h: the red alert with "請減速".
+            val camIdx = io.atmos.weather.transit.SpeedCameras.load(ctx)
+            val (cam, cs) = camIdx.onChain.entries.first { it.key.label == "國道一號南向306.1公里" }.let { it.key to it.value }
+            val before = io.atmos.weather.transit.Freeways.Spot(cs.chain, cs.at - 600, 0.0)
+            val cp = io.atmos.weather.transit.Freeways.pointAlong(net, before, 0.0)!!; val cq = io.atmos.weather.transit.Freeways.pointAlong(net, before, 200.0)!!
+            val ch = io.atmos.weather.transit.DrivingMode.bearing(cp.first, cp.second, cq.first, cq.second)
+            val camera = render("drive-camera", dark) {
+                io.atmos.weather.transit.DrivingModeCard(io.atmos.weather.transit.DrivingMode.Drive(116, ch, cp.first, cp.second, ch), MaterialTheme.colorScheme.onSurface,
+                    io.atmos.weather.transit.TransitMotion(null, null, 116, ch, cp.first, cp.second, 2L))
+            }
+            assertTrue(camera, camera.contains("固定測速") && camera.contains(cam.label) && camera.contains("超速 6") && camera.contains("公尺"))
             val snap = render("snap", dark) { Column { LifeFeatureContent("snap", snapshot()) {} } }
             assertTrue(snap, snap.contains("開啟相機") && snap.contains("雜誌") && snap.contains("種濾鏡"))
             val transit = render("transit", dark) { Column { LifeFeatureContent("transit", null) {} } }

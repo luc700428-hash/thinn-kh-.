@@ -47,6 +47,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
+import kotlin.math.roundToInt
 
 /** The station weather shown in the card. */
 data class StationWeather(val temperature: Int, val code: Int)
@@ -60,11 +61,17 @@ data class StationWeather(val temperature: Int, val code: Int)
 @Composable
 fun rememberRailTrip(active: Boolean): RailMode.Trip? = rememberTransitMotion(active, false).trip
 
-/** What the phone's movement says: a train trip, a car drive, or neither. */
-data class TransitMotion(val trip: RailMode.Trip?, val drive: DrivingMode.Drive?)
+/**
+ * What the phone's movement says: a train trip, a car drive, or neither. [speedKmh] is the latest
+ * fix's own GPS speed (Doppler, about ±1 km/h) for the live speedometer; [heading] that fix's
+ * course over ground when the GPS gives one.
+ */
+data class TransitMotion(val trip: RailMode.Trip?, val drive: DrivingMode.Drive?, val speedKmh: Int? = null, val heading: Double? = null,
+                         val lat: Double? = null, val lon: Double? = null, val atMs: Long = 0L)
 
 /**
  * One GPS listener for both judgements while the weather page is open (never in the background).
+ * Every 5 s normally; once driving, every second so the speedometer and camera alerts keep up.
  * Speed falls back to the distance between fixes when the GPS does not report one.
  */
 @SuppressLint("MissingPermission")
@@ -74,7 +81,11 @@ fun rememberTransitMotion(active: Boolean, saidCar: Boolean): TransitMotion {
     var motion by remember { mutableStateOf(TransitMotion(null, null)) }
     val samples = remember { ArrayList<RailMode.Sample>() }
     val car by rememberUpdatedState(saidCar)
-    DisposableEffect(active, context) {
+    var lastDrive by remember { mutableStateOf<DrivingMode.Drive?>(null) }
+    var lastDriveAt by remember { mutableLongStateOf(0L) }
+    val fast = motion.drive != null
+    LaunchedEffect(active) { if (!active) { samples.clear(); lastDrive = null; motion = TransitMotion(null, null) } }
+    DisposableEffect(active, fast, context) {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         if (!active || !granted || manager == null || !manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
@@ -83,6 +94,7 @@ fun rememberTransitMotion(active: Boolean, saidCar: Boolean): TransitMotion {
         } else {
             val listener = LocationListener { l: Location ->
                 val prev = samples.lastOrNull()
+                if (prev != null && l.time <= prev.timeMs) return@LocationListener
                 val speed = if (l.hasSpeed()) l.speed else prev?.let {
                     val dt = (l.time - it.timeMs) / 1000f
                     if (dt > 0) (RailMode.km(it.lat, it.lon, l.latitude, l.longitude) * 1000 / dt).toFloat() else 0f
@@ -90,10 +102,16 @@ fun rememberTransitMotion(active: Boolean, saidCar: Boolean): TransitMotion {
                 samples += RailMode.Sample(l.latitude, l.longitude, speed, l.time)
                 samples.removeAll { l.time - it.timeMs > 150_000L }
                 val trip = if (car) null else RailMode.judge(samples)
-                motion = TransitMotion(trip, if (trip?.confident == true) null else DrivingMode.judge(samples, car))
+                val judged = if (trip?.confident == true) null else DrivingMode.judge(samples, car)
+                // Stopping at a red light or in a jam keeps 駕車模式 (speed 0) for three minutes.
+                if (judged != null) { lastDrive = judged; lastDriveAt = l.time }
+                val drive = judged ?: lastDrive?.takeIf { trip?.confident != true && l.time - lastDriveAt < 180_000L }
+                    ?.copy(speedKmh = (speed * 3.6f).roundToInt(), lat = l.latitude, lon = l.longitude)
+                motion = TransitMotion(trip, drive, (speed * 3.6f).roundToInt().coerceAtLeast(0),
+                    if (l.hasBearing() && speed > 2f) l.bearing.toDouble() else null, l.latitude, l.longitude, l.time)
             }
-            runCatching { manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5_000L, 20f, listener, Looper.getMainLooper()) }
-            onDispose { runCatching { manager.removeUpdates(listener) }; samples.clear() }
+            runCatching { manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, if (fast) 1_000L else 5_000L, if (fast) 0f else 20f, listener, Looper.getMainLooper()) }
+            onDispose { runCatching { manager.removeUpdates(listener) } }
         }
     }
     return motion
@@ -115,7 +133,7 @@ fun TransitModeCard(active: Boolean, ink: Color) {
         carUntil = System.currentTimeMillis() + 60 * 60_000L
         prefs.edit().putLong("transit_car_until", carUntil).apply()
     })
-    else if (driving) DrivingModeCard(motion.drive, ink)
+    else if (driving) DrivingModeCard(motion.drive, ink, motion)
 }
 
 /** Current temperature and weather code at stations (Open-Meteo, one request). */

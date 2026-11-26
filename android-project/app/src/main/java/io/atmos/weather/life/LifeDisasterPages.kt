@@ -387,7 +387,23 @@ internal fun ShelterPageV2() {
     val labels = listOf("全部", "水災", "震災", "土石流", "海嘯")
     IOSSegmentedControl(labels, labels.indexOf(hazard ?: "全部"), { hazard = if (it == 0) null else labels[it] })
     if (here != null && near.isNotEmpty()) {
-        ShelterMap(near, here.coordinate.latitude, here.coordinate.longitude, Modifier.fillMaxWidth().height(230.dp))
+        var picked by remember(near) { mutableStateOf(near.first().shelter.name + near.first().shelter.lat) }
+        val pins = remember(near) { near.map { MapPin(it.shelter.name + it.shelter.lat, it.shelter.lat, it.shelter.lon, Color(0xFF30B455), it.shelter.name) } }
+        TaiwanDetailMap(pins, here.coordinate.latitude to here.coordinate.longitude, picked, { id -> if (id != null) picked = id },
+            Modifier.fillMaxWidth().height(360.dp))
+        near.firstOrNull { it.shelter.name + it.shelter.lat == picked }?.let { n ->
+            // The pin you tapped, with its own way there.
+            Row(Modifier.fillMaxWidth().frosted(18.dp, Color(0xFF30B455)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(n.shelter.name, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text("${n.bearing}方 ${Shelters.distance(n.km)}" + (n.shelter.capacity?.let { " · 可收容 $it 人" } ?: "") + if (n.shelter.indoor) " · 室內" else " · 室外",
+                        color = dim, fontSize = 14.sp, lineHeight = 19.sp)
+                }
+                Spacer(Modifier.width(8.dp))
+                GlassButton(onClick = { navigate(n.shelter) }) { Icon(Icons.Rounded.Directions, null); Spacer(Modifier.width(4.dp)); Text("導航") }
+            }
+        }
+        Note("藍點是你，綠點是避難處所；點一下地圖上的點可查看。拖曳移動、雙指或點兩下放大，右上角可切換衛星影像。")
         SectionTitle("附近 ${near.size} 處", Icons.Rounded.MapsHomeWork, IOSColors.green)
         near.drop(1).forEach { n ->
             Row(Modifier.fillMaxWidth().frosted(18.dp).iosJellyPress().clickable { navigate(n.shelter) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
