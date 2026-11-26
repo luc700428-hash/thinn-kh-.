@@ -101,6 +101,8 @@ class LifePagesRenderingTest {
             assertTrue(shelter, shelter.contains("避難收容處所") && shelter.contains("公尺"))
             val snap = render("snap", dark) { Column { LifeFeatureContent("snap", snapshot()) {} } }
             assertTrue(snap, snap.contains("拍照") && snap.contains("雜誌風"))
+            val transit = render("transit", dark) { Column { LifeFeatureContent("transit", null) {} } }
+            assertTrue(transit, transit.contains("駕車模式") && transit.contains("南迴線"))
             val family = render("family", dark) { Column { LifeFeatureContent("family", null) {} } }
             assertTrue(family, family.contains("新增家人"))
             val disaster = render("disaster", dark) { DisasterModeScreen(snapshot(), listOf("大雨特報"), {}, {}) }

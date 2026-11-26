@@ -27,13 +27,14 @@ fun Modifier.iosJellyPress():Modifier=if(LiquidGlassKit.softwareRenderedDevice)c
 /**
  * The earlier, lighter press, kept for emulators that draw through SwiftShader: a list swiped
  * across dozens of swelling, stretching rows repeatedly took the CI emulator's host renderer
- * down. Real phones always get [liquidPress].
+ * down. Real phones always get [liquidPress]. No alpha dip here: a translucent layer allocates an
+ * offscreen buffer on every press, which the emulator host renderer loses track of.
  */
 private fun Modifier.classicJellyPress():Modifier=composed{
  val reduce=rememberAppleReduceMotion();val response=iosMotionResponse();var down by remember{mutableStateOf(false)}
  val x by animateFloatAsState(if(down&&!reduce).975f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍橫向回彈")
  val y by animateFloatAsState(if(down&&!reduce).95f else 1f,if(reduce)snap() else if(down)AppleMotion.interactive() else spring(response.damping,response.stiffness),label="果凍縱向回彈")
- this.graphicsLayer{scaleX=x;scaleY=y;alpha=if(down&&!reduce).92f else 1f}.pointerInput(Unit){awaitEachGesture{awaitFirstDown(requireUnconsumed=false);down=true;try{var held=true;while(held){val event=awaitPointerEvent(PointerEventPass.Final);held=event.changes.any{it.pressed}}}finally{down=false}}}
+ this.graphicsLayer{scaleX=x;scaleY=y}.pointerInput(Unit){awaitEachGesture{awaitFirstDown(requireUnconsumed=false);down=true;try{var held=true;while(held){val event=awaitPointerEvent(PointerEventPass.Final);held=event.changes.any{it.pressed}}}finally{down=false}}}
 }
 
 /**

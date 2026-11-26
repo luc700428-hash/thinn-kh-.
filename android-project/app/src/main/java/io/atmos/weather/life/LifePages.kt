@@ -58,7 +58,7 @@ object LifeFeatures {
     val titles = linkedMapOf(
         "pressure" to "氣壓與天氣痛", "calendar" to "行事曆天氣", "rules" to "自訂天氣規則", "family" to "家人天氣關懷",
         "snap" to "天空浮水印相機", "closure" to "停班停課速查", "water" to "水庫與水情警戒", "kit" to "防災包清單",
-        "shelter" to "避難收容處所", "disaster" to "災難省電模式",
+        "shelter" to "避難收容處所", "disaster" to "災難省電模式", "transit" to "火車、高鐵與駕車模式",
     )
     fun title(id: String) = titles[id] ?: "生活工具"
 }
@@ -82,6 +82,7 @@ internal fun ColumnScope.LifeFeatureContent(id: String, snapshot: WeatherSnapsho
             "kit" -> KitPage()
             "shelter" -> ShelterPage()
             "disaster" -> DisasterSettingsPage(onClose)
+            "transit" -> TransitSettingsPage()
         }
 }
 
@@ -99,6 +100,31 @@ private fun LifePage(title: String, onClose: () -> Unit, content: @Composable Co
             }
             content()
         }
+    }
+}
+
+/** When notifications are off, a page that promises to notify says so and offers the switch. */
+@Composable
+private fun NotifyBanner() {
+    val ctx = LocalContext.current
+    var allowed by remember { mutableStateOf(io.atmos.weather.permission.PermissionGuide.canNotify(ctx)) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        val o = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) allowed = io.atmos.weather.permission.PermissionGuide.canNotify(ctx) }
+        lifecycle.lifecycle.addObserver(o); onDispose { lifecycle.lifecycle.removeObserver(o) }
+    }
+    if (allowed) return
+    Row(Modifier.fillMaxWidth().frosted(16.dp, ThinnDesignTokens.caution).iosJellyPress().clickable {
+        runCatching { ctx.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, ctx.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Rounded.NotificationsOff, null, tint = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text("通知已關閉", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("這個功能需要通知才能提醒你，點這裡開啟。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+        }
+        Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -203,6 +229,7 @@ private fun PressurePage() {
         }
     }
     Heading("提前通知")
+    if (on) NotifyBanner()
     GlassSurface(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -267,6 +294,10 @@ private fun CalendarPage() {
             GlassButton(onClick = { ask.launch(Manifest.permission.READ_CALENDAR) }, modifier = Modifier.fillMaxWidth()) {
                 Text("允許讀取行事曆")
             }
+            Spacer(Modifier.height(8.dp))
+            Text("沒有跳出詢問？到系統設定開啟", color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, modifier = Modifier.clickable {
+                runCatching { ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }.padding(vertical = 6.dp))
         }
         return
     }
@@ -311,6 +342,7 @@ private fun RulesPage() {
     var testResult by remember { mutableStateOf<Pair<String, String>?>(null) }
     val scope = rememberCoroutineScope()
     fun save(next: List<WeatherRules.Rule>) { rules = next; LifeStore.setRules(ctx, next) }
+    if (rules.any { it.enabled }) NotifyBanner()
     Note("自己組合條件：到了設定的時間，若條件全部成立就通知你。例如「每週五 20:00，週末降雨 < 20% 且風力 < 3 級 → 適合洗車或露營」。")
     rules.forEach { r ->
         GlassSurface(Modifier.fillMaxWidth()) {
@@ -341,9 +373,14 @@ private fun RulesPage() {
         Text("新增規則")
     }
     Heading("快速範本")
+    var added by remember { mutableStateOf("") }
     WeatherRules.templates().forEach { t ->
-        GlassAction(t.name, describe(t)) { save(rules + t.copy(id = UUID.randomUUID().toString())) }
+        val has = rules.any { it.name == t.name }
+        GlassAction(if (has) "✓ ${t.name}" else t.name, if (has) "已加入，可在上方開關或刪除" else describe(t)) {
+            if (!has) { save(rules + t.copy(id = UUID.randomUUID().toString())); added = "已加入「${t.name}」，到時間會自動檢查。" }
+        }
     }
+    if (added.isNotEmpty()) Note(added)
     editing?.let { r -> RuleEditor(r, onDismiss = { editing = null }) { saved ->
         save(if (rules.any { it.id == saved.id }) rules.map { if (it.id == saved.id) saved else it } else rules + saved); editing = null
     } }
@@ -421,6 +458,7 @@ private fun FamilyPage() {
     val ctx = LocalContext.current
     var people by remember { mutableStateOf(LifeStore.family(ctx)) }
     var adding by remember { mutableStateOf(false) }
+    if (people.isNotEmpty()) NotifyBanner()
     Note("替家人的所在地加上關係標籤。對方那裡有豪雨或強風等特報、隔天驟降 8° 以上、寒冷或高溫時，會主動提醒你，還能一鍵把天氣關心小卡傳到 LINE。")
     people.forEach { p -> FamilyCard(p) { people = people.filter { it.id != p.id }; LifeStore.setFamily(ctx, people) } }
     GlassButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) {
@@ -491,7 +529,7 @@ private fun AddFamilySheet(onDismiss: () -> Unit, onAdd: (FamilyCare.Person) -> 
         Note("稱呼（可不填）")
         Field(nick, { nick = it.take(10) }, "例如：媽媽、阿公")
         Note("所在地")
-        chosen?.let { Body("✓ ${it.first}", MaterialTheme.colorScheme.primary) }
+        chosen?.let { Body("✓ ${it.first}", MaterialTheme.colorScheme.primary) } ?: Note("搜尋後點一下地名就選好了；選好才能按「完成」。")
         Field(query, { query = it }, "搜尋城市或鄉鎮")
         (results.ifEmpty { if (query.isBlank()) saved else emptyList() }).take(8).forEach { r ->
             Text(r.first, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, modifier = Modifier.fillMaxWidth()
@@ -606,6 +644,7 @@ private fun ClosurePage() {
             Text("人事行政總處公告")
         }
     }
+    if (notify) NotifyBanner()
     GlassSurface(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Body("所在縣市公告時通知我"); Note("也包含土石流、淹水、河川高水位與水庫放流警戒。") }
@@ -808,4 +847,30 @@ private fun DisasterSettingsPage(onClose: () -> Unit) {
         }
     }
     Note("建議同時開啟手機的省電模式並調低螢幕亮度。")
+}
+
+// ---------------------------------------------------------------- 火車、高鐵與駕車模式
+
+@Composable
+private fun TransitSettingsPage() {
+    val ctx = LocalContext.current
+    var driving by remember { mutableStateOf(LifeStore.drivingCard(ctx)) }
+    Note("不用設定、不用按：打開天氣頁時，App 依手機定位與速度自動判斷你在搭車還是開車，卡片會自己出現在溫度下方。")
+    GlassSurface(Modifier.fillMaxWidth()) {
+        Body("高鐵模式")
+        Note("時速 140 公里以上、沿著高鐵線：顯示下一站、約幾分鐘到，以及下一站和終點的天氣。")
+        Spacer(Modifier.height(10.dp))
+        Body("火車模式")
+        Note("時速 30–140 公里、沿著台鐵（含山線、海線、宜蘭線、花東線與南迴線）：同樣顯示下一站與終點天氣。因為公路常貼著鐵軌，會先問你「是不是在搭火車」，在開車就點「我在開車」。")
+    }
+    GlassSurface(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Body("駕車模式")
+                Note("以開車速度移動、離鐵路 1.2 公里以上時，用大字顯示前方約 15 與 45 分鐘路段會不會下雨，全程不需要點按。")
+            }
+            GlassSwitch(driving, { driving = it; LifeStore.setDrivingCard(ctx, it) })
+        }
+    }
+    Note("需要「精確位置」權限，而且只在你開著天氣頁時判斷，不會在背景追蹤位置。上下班帶傘提醒在「天氣提醒與通知」裡設定家與公司。")
 }

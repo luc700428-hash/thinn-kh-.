@@ -168,7 +168,8 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             Entry("行事曆天氣","有地點的行程旁直接看天氣",Icons.Rounded.EventAvailable,{onLife("calendar")}),
             Entry("自訂天氣規則","條件成立才通知，像天氣版 IFTTT",Icons.Rounded.Rule,{onLife("rules")}),
             Entry("家人天氣關懷","家人那裡變天時提醒，一鍵傳關心小卡",Icons.Rounded.FamilyRestroom,{onLife("family")}),
-            Entry("天空浮水印相機","拍天空，自動壓上溫度、氣壓與地點",Icons.Rounded.PhotoCamera,{onLife("snap")}))),
+            Entry("天空浮水印相機","拍天空，自動壓上溫度、氣壓與地點",Icons.Rounded.PhotoCamera,{onLife("snap")}),
+            Entry("火車、高鐵與駕車模式","搭車看下一站天氣，開車看前方會不會下雨",Icons.Rounded.DirectionsCar,{onLife("transit")}))),
         EntryGroup("防災與水情",BrandPalette.selection,listOf(
             Entry("停班停課速查","全台各縣市即時公告",Icons.Rounded.School,{onLife("closure")}),
             Entry("水庫與水情警戒","水庫蓄水率、淹水與土石流警戒",Icons.Rounded.WaterDrop,{onLife("water")}),

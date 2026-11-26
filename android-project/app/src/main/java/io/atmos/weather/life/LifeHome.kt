@@ -73,6 +73,9 @@ fun HomeLifeStrip(snapshot: WeatherSnapshot, countyWarnings: List<String>, ink: 
             }
         }
         val asked = remember(revision) { LifeStore.askedFeelingToday(ctx) }
+        var thanks by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(thanks) { if (thanks != null) { kotlinx.coroutines.delay(4000); thanks = null } }
+        thanks?.let { Text(it, color = ink.copy(alpha = .85f), fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)) }
         if (!asked) {
             var answered by remember { mutableStateOf(false) }
             AnimatedVisibility(!answered) {
@@ -80,7 +83,7 @@ fun HomeLifeStrip(snapshot: WeatherSnapshot, countyWarnings: List<String>, ink: 
                     Text("今天體感", color = ink.copy(alpha = .8f), fontSize = 14.sp)
                     Spacer(Modifier.width(10.dp))
                     ComfortCalibration.Feeling.entries.forEach { f ->
-                        Box(Modifier.padding(end = 8.dp)) { GlassChip(f.label, false, ink) { LifeStore.feel(ctx, f); answered = true } }
+                        Box(Modifier.padding(end = 8.dp)) { GlassChip(f.label, false, ink) { LifeStore.feel(ctx, f); answered = true; thanks = "記住了，${ComfortCalibration.describe(LifeStore.comfortBias(ctx))}。" } }
                     }
                 }
             }

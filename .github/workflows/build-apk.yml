@@ -190,7 +190,10 @@ jobs:
           ram-size: 2048M
           disk-size: 4096M
           disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
+          # The last try draws through ANGLE on SwiftShader instead: some runner images leave the
+          # plain SwiftShader host renderer losing its colour buffers mid-test ("Failed to find
+          # ColorBuffer"), which kills the emulator on the same test every time.
+          emulator-options: -no-window -gpu swangle_indirect -no-audio -no-snapshot -no-boot-anim -camera-back none -camera-front none
           script: THINN_UI_ATTEMPT=3 bash android-project/tools/run_rendering_regression.sh
       # The gate: every Android UI test passed and was verified in one of the attempts.
       - name: Require verified Android UI results
