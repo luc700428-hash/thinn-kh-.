@@ -44,7 +44,7 @@ import kotlin.math.roundToInt
     val zone=runCatching{ZoneId.of(weather?.timeZoneId?:"Asia/Taipei")}.getOrDefault(ZoneId.of("Asia/Taipei"))
     val hm=DateTimeFormatter.ofPattern("HH:mm").withZone(zone)
     Column(Modifier.fillMaxSize().background(p.background).statusBarsPadding().navigationBarsPadding()) {
-        IOSSettingsHeader("氣象詳解與外出時段",onClose)
+        IOSSettingsHeader("出門時段與生活指數",onClose)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=16.dp)
             .padding(top=8.dp,bottom=132.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
             if(weather==null){Text("尚無天氣資料，請先回首頁更新。",color=p.onSurface);return@Column}
@@ -119,6 +119,7 @@ import kotlin.math.roundToInt
             val life=remember(weather,now){LifeIndex.build(weather,now)}
             if(life.isNotEmpty()) {
                 Text("生活指數",color=p.onSurface,fontSize=21.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=6.dp))
+                Text("綠色放心、橘色留意、紅色最好避免；著涼風險與防曬看的是今天要不要多準備。",color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=19.sp)
                 Column(Modifier.testTag("insights-life"),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     life.chunked(2).forEachIndexed{rowIndex,row->
                         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -129,7 +130,7 @@ import kotlin.math.roundToInt
                                         Text(item.title,color=p.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.weight(1f))
                                         Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(tint))
                                     }
-                                    Text(item.level.word,color=p.onSurface,fontSize=21.sp,fontWeight=FontWeight.Bold)
+                                    Text(item.word,color=tint,fontSize=21.sp,fontWeight=FontWeight.Bold)
                                     Text(item.reason,color=p.onSurfaceVariant,fontSize=14.sp,lineHeight=19.sp)
                                 }
                             }

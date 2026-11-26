@@ -587,7 +587,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         showMainTab(target,if(leaving&&!reducedMotion)160L else 0L)
     }
     val workspaceDetailTitle=when {
-        marineOpen->"海象與浪況";skyOpen->"日月與月相";alertsOpen->"中央氣象署警特報";insightsOpen->"氣象詳解與外出時段"
+        marineOpen->"海象與浪況";skyOpen->"日月與月相";alertsOpen->"中央氣象署警特報";insightsOpen->"出門時段與生活指數"
         typhoonPageOpen->"颱風動向";tasksOpen->"我的事項";briefingOpen->"天氣提醒與通知";weatherAlarmOpen->"天氣鬧鐘"
         diagnosticsOpen->"權限與系統健康";pushSettingsOpen->"地震警報與通知";lifestyleSettingsOpen->"穿搭與生活偏好"
         updatePageOpen->"軟體更新";lifeOpen->io.atmos.weather.life.LifeFeatures.title(lifeShown);settingsOpen->when(advancedCategory){"外觀"->"字體與閱讀";"聲音"->"聲音與觸覺";"資料"->"資料更新頻率";else->"通知音效與背景提醒"}
@@ -1005,8 +1005,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     // and daily clothing/rain advice WITHOUT a tap or a hidden details sheet.
                     "key" -> { HomeKeyWeatherCard(snapshot, state.stale); Spacer(Modifier.height(13.dp)) }
                     // Official alerts and the six-hour forecast are visible before outfit advice.
-                    "outlook" -> { HomeOutlookCard(snapshot,io.atmos.weather.location.LocationLabels.display(state.city.name)){insightsOpen=true}; Spacer(Modifier.height(15.dp)) }
-                    "outing" -> { DailyGuidanceCard(snapshot,state.stale,state.officialHazards.map{it.title}.distinct(),onLife={openWorkspaceDetail("life:$it")}) { showLifestyleDetails=true }; Spacer(Modifier.height(15.dp)) }
+                    "outing" -> { DailyGuidanceCard(snapshot,state.stale,state.officialHazards.map{it.title}.distinct(),onLife={openWorkspaceDetail("life:$it")},
+                        place=io.atmos.weather.location.LocationLabels.display(state.city.name),onInsights={insightsOpen=true}) { showLifestyleDetails=true }; Spacer(Modifier.height(15.dp)) }
                     "commute" -> { HomeCommuteCard(snapshot.fetchedAt); if (io.atmos.weather.comfort.ComfortStore.place(context,"home")!=null && io.atmos.weather.comfort.ComfortStore.place(context,"work")!=null) Spacer(Modifier.height(15.dp)) }
                     "forecast" -> {
                     GlassCard {
@@ -1350,27 +1350,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
         io.atmos.weather.ui.MainDetailLayer(pushSettingsOpen,{pushSettingsOpen=false}) {io.atmos.weather.push.SeismicPushSettingsPage(onClose={pushSettingsOpen=false})}
         io.atmos.weather.ui.MainDetailLayer(lifestyleSettingsOpen,{lifestyleSettingsOpen=false}) {LifestyleSettingsPage(onClose={lifestyleSettingsOpen=false})}
-        if (showLifestyleDetails && snapshot != null) {
-            ModalBottomSheet(onDismissRequest={showLifestyleDetails=false}) {
-                val White=MaterialTheme.colorScheme.onSurface
-                val TextSoft=MaterialTheme.colorScheme.onSurfaceVariant
-                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                    .padding(horizontal=22.dp).padding(bottom=42.dp)) {
-                    Text("今日穿搭與天氣依據",color=White,fontSize=25.sp,lineHeight=34.sp,fontWeight=FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    LifestyleAdviceCard(snapshot,state.stale,onOpenSettings={showLifestyleDetails=false;lifestyleSettingsOpen=true})
-                    Spacer(Modifier.height(22.dp))
-                    Text("更多天氣提醒",color=White,fontSize=20.sp,fontWeight=FontWeight.Bold)
-                    io.atmos.weather.domain.model.WeatherAdviceEngine.suggest(snapshot).take(6).forEach { tip ->
-                        Spacer(Modifier.height(14.dp))
-                        Text(tip.heading,color=White,fontSize=18.sp,fontWeight=FontWeight.SemiBold)
-                        Text(tip.detail,color=TextSoft,fontSize=16.sp,lineHeight=25.sp)
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Text("這些是氣象模型推估的生活建議；官方災害警報以中央氣象署發布為準。",
-                        color=TextSoft,fontSize=15.sp,lineHeight=23.sp)
-                }
-            }
+        // 今日穿搭: its own page now (outfit tiles, the reasons, when to go out, the day's reminders).
+        io.atmos.weather.ui.MainDetailLayer(showLifestyleDetails&&snapshot!=null,{showLifestyleDetails=false}) {
+            snapshot?.let { io.atmos.weather.lifestyle.OutfitPage(it,state.stale,onOpenSettings={showLifestyleDetails=false;lifestyleSettingsOpen=true},onClose={showLifestyleDetails=false}) }
         }
         io.atmos.weather.ui.MainDetailLayer(diagnosticsOpen,{diagnosticsOpen=false}) {SettingsDiagnosticsPage(onClose={diagnosticsOpen=false})}
         io.atmos.weather.ui.MainDetailLayer(briefingOpen,{briefingOpen=false}) {WeatherBriefingSettingsPage(onClose={briefingOpen=false})}
@@ -1837,7 +1819,8 @@ private fun SkyParticles(condition: WeatherCondition, phase:Float, heavyRain:Boo
 }
 
 @Composable
-internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,countyWarnings:List<String> =emptyList(),onLife:(String)->Unit={},onOpen:()->Unit) {
+internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,countyWarnings:List<String> =emptyList(),onLife:(String)->Unit={},
+    place:String="",onInsights:()->Unit={},onOpen:()->Unit) {
     val ctx=LocalContext.current
     var localWarning by remember { mutableStateOf(io.atmos.weather.typhoon.TyphoonWarningStore.current(ctx)) }
     LaunchedEffect(ctx) {
@@ -1862,7 +1845,7 @@ internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,countyWarni
     val glance=remember(weather,plan){TodayGlance.build(weather,plan)}
     val ink=HomeInk.primary;val soft=HomeInk.secondary
     val warningTone=landHere||localWarning!=null||critical!=null
-    // 今日重點 and 天氣痛 live here, in the card's own ink, once the data is fresh.
+    // 今日重點 and 氣壓不適 live here, in the card's own ink, once the data is fresh.
     val fresh=!stale&&LifestyleAdvisor.isFresh(weather)
     val gathered=io.atmos.weather.life.LifeToday.rememberGathered(weather,countyWarnings)
     val accent=io.atmos.weather.life.todayAccent(weather,warningTone||countyWarnings.isNotEmpty())
@@ -1874,9 +1857,14 @@ internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,countyWarni
                 Text("今日概況",color=soft,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                 Text(if(stale)"待更新" else glance.mood,color=if(warningTone)Color(0xFFE5554F) else ink,fontSize=14.sp,fontWeight=FontWeight.SemiBold,
                     modifier=Modifier.clip(RoundedCornerShape(999.dp)).background(HomeInk.tile).padding(horizontal=10.dp,vertical=4.dp))
+                Spacer(Modifier.width(8.dp))
+                ShareTodayButton(weather,place)
             }
             Spacer(Modifier.height(10.dp))
             if(fresh) { io.atmos.weather.life.TodayHeroStrip(weather,ink,soft,HomeInk.tile); Spacer(Modifier.height(10.dp)) }
+            // 接下來 (the old separate card): when rain comes or goes, tomorrow against today,
+            // the best hour to go out and the next sunrise or sunset.
+            if(!stale) { TodayNext(weather,ink,soft,onInsights); Spacer(Modifier.height(12.dp)) }
             if(fresh&&localWarning==null) {
                 io.atmos.weather.life.TodayDigestBlock(weather,gathered,countyWarnings,ink,soft,HomeInk.tile,accent)
             } else {
@@ -1947,11 +1935,85 @@ internal fun DailyGuidanceCard(weather:WeatherSnapshot,stale:Boolean,countyWarni
                     io.atmos.weather.ui.GlassChoiceGroup(OutingMode.entries.map{it.title},mode.ordinal,
                         {LifestylePreferenceStore.mode(ctx,OutingMode.entries[it])})
                     TextButton(onClick=onOpen, modifier=Modifier.align(Alignment.End)) {
-                        Text("完整穿搭清單與個人偏好",color=ink,fontSize=15.sp,fontWeight=FontWeight.Medium)
+                        Text("今日穿搭完整建議",color=ink,fontSize=15.sp,fontWeight=FontWeight.Medium)
                     }
                 }
             }
         }
+    }
+}
+
+/** What happens next, folded into 今日概況: two plain lines and two tiles, then the way to the details. */
+@Composable
+private fun TodayNext(weather:WeatherSnapshot,ink:Color,soft:Color,onInsights:()->Unit) {
+    val now=remember(weather.fetchedAt){java.time.Instant.now()}
+    val outlook=remember(weather,now){HomeOutlook.build(weather,now)}
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(HomeInk.tile).padding(horizontal=14.dp,vertical=12.dp)) {
+        Text("接下來",color=soft,fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment=Alignment.Top) {
+            Icon(Icons.Rounded.Umbrella,null,Modifier.padding(top=2.dp).size(18.dp),tint=Color(0xFF4F95E0))
+            Spacer(Modifier.width(8.dp))
+            Text(outlook.rain,color=ink,fontSize=17.sp,lineHeight=24.sp,fontWeight=FontWeight.SemiBold)
+        }
+        outlook.tomorrow?.let {
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment=Alignment.Top) {
+                Icon(Icons.Rounded.CalendarMonth,null,Modifier.padding(top=2.dp).size(18.dp),tint=Color(0xFF9B7FE6))
+                Spacer(Modifier.width(8.dp))
+                Text(it,color=ink,fontSize=15.sp,lineHeight=22.sp)
+            }
+        }
+        val tiles=outlook.tiles.filter{it.label=="最佳出門"||it.label=="日出"||it.label=="日落"}
+        if(tiles.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                tiles.forEach{t->
+                    val icon=when(t.label){"最佳出門"->Icons.Rounded.DirectionsWalk;"日出"->Icons.Rounded.WbTwilight;else->Icons.Rounded.WbTwilight}
+                    val tint=if(t.label=="最佳出門")Color(0xFF34B27B) else Color(0xFFE8A23B)
+                    Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(HomeInk.tile).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Icon(icon,null,Modifier.size(22.dp),tint=tint)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(t.label,color=soft,fontSize=14.sp)
+                            Text(t.value,color=ink,fontSize=18.sp,fontWeight=FontWeight.Bold,style=androidx.compose.ui.text.TextStyle(fontFeatureSettings="tnum"))
+                            Text(t.caption,color=soft,fontSize=14.sp,maxLines=1)
+                        }
+                    }
+                }
+                if(tiles.size==1)Spacer(Modifier.weight(1f))
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top=6.dp).iosJellyPress().clip(RoundedCornerShape(12.dp))
+            .clickable(role=androidx.compose.ui.semantics.Role.Button,onClick=onInsights).padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically) {
+            Text("出門時段與生活指數",color=ink,fontSize=15.sp,fontWeight=FontWeight.Medium,modifier=Modifier.weight(1f))
+            Icon(Icons.Rounded.ChevronRight,null,tint=soft)
+        }
+    }
+}
+
+/** The share button that used to sit on 接下來: the picture card, or plain text when drawing fails. */
+@Composable
+private fun ShareTodayButton(weather:WeatherSnapshot,place:String) {
+    val ctx=LocalContext.current
+    val scope=rememberCoroutineScope()
+    var sharing by remember{mutableStateOf(false)}
+    Box(Modifier.size(32.dp).iosJellyPress().clip(RoundedCornerShape(999.dp)).background(HomeInk.tile)
+        .clickable(role=androidx.compose.ui.semantics.Role.Button,onClickLabel="分享今日天氣卡片") {
+            if(sharing)return@clickable
+            sharing=true
+            scope.launch {
+                val caption=HomeOutlook.shareText(weather,place,java.time.Instant.now())
+                val card=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default){runCatching{WeatherShareCard.render(ctx,weather,place)}.getOrNull()}
+                val shared=card!=null&&WeatherShareCard.share(ctx,card,caption)
+                if(!shared) runCatching {
+                    ctx.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                        .putExtra(android.content.Intent.EXTRA_TEXT,caption),"分享天氣").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+                sharing=false
+            }
+        },contentAlignment=Alignment.Center) {
+        Icon(Icons.Rounded.IosShare,"分享天氣",tint=HomeInk.primary,modifier=Modifier.size(17.dp))
     }
 }
 

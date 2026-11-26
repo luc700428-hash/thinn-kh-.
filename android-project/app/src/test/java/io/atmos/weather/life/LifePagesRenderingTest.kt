@@ -70,7 +70,7 @@ class LifePagesRenderingTest {
         IOS27AppearanceMode.update(ctx, if (dark) "dark" else "light")
         val c = Robolectric.buildActivity(ComponentActivity::class.java).setup(); val a = c.get(); val view = ComposeView(a)
         try {
-            view.setContent { ThinnAppTheme { if (name == "disaster") content() else Column(Modifier.fillMaxSize().background(if (name == "home") Color(0xFF2E5C8A) else MaterialTheme.colorScheme.background)
+            view.setContent { ThinnAppTheme { if (name == "disaster" || name == "outfit") content() else Column(Modifier.fillMaxSize().background(if (name == "home") Color(0xFF2E5C8A) else MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() } } }
             val parent = FrameLayout(a).apply { addView(view, ViewGroup.LayoutParams(w, h)) }; a.setContentView(parent)
             repeat(4) {
@@ -88,12 +88,17 @@ class LifePagesRenderingTest {
 
     @Test fun pagesRenderTheirContentInBothAppearances() {
         val ctx = RuntimeEnvironment.getApplication()
+        // Pulses and halos run forever; Robolectric draws every 1 ms frame of them, so render still.
+        ctx.getSharedPreferences("thinn_settings", Context.MODE_PRIVATE).edit().putBoolean("reduce_motion", true).commit()
         ctx.getSharedPreferences("atmos_settings", Context.MODE_PRIVATE).edit().putLong("lat", 25.0330.toRawBits()).putLong("lon", 121.5654.toRawBits())
             .putString("city_name", "臺北市大安區").commit()
         assertTrue(LifeSources.shelters(ctx).size > 5000)
         for (dark in listOf(true, false)) {
             val home = render("home", dark) { io.atmos.weather.presentation.home.DailyGuidanceCard(snapshot(), false, listOf("大雨特報")) {} }
-            assertTrue(home, home.contains("今日概況") && home.contains("今日重點") && home.contains("大雨特報") && home.contains("偏冷") && home.contains("紫外線") && home.contains("天氣痛"))
+            assertTrue(home, home.contains("今日概況") && home.contains("今日重點") && home.contains("大雨特報") && home.contains("偏冷") && home.contains("紫外線") && home.contains("氣壓不適") &&
+                home.contains("接下來") && home.contains("出門時段與生活指數") && home.contains("分享天氣"))
+            val outfit = render("outfit", dark) { io.atmos.weather.lifestyle.OutfitPage(snapshot(), false, {}, {}) }
+            assertTrue(outfit, outfit.contains("今日穿搭") && outfit.contains("怎麼穿") && outfit.contains("為什麼這樣穿") && outfit.contains("個人偏好"))
             val kit = render("kit", dark) { Column { LifeFeatureContent("kit", null) {} } }
             assertTrue(kit, kit.contains("0/16") && kit.contains("飲用水") && kit.contains("即將到期"))
             val rules = render("rules", dark) { Column { LifeFeatureContent("rules", null) {} } }
@@ -128,7 +133,8 @@ class LifePagesRenderingTest {
                 drive.contains("104") && drive.contains("km/h") && drive.contains("流動測速") && drive.contains("語音提醒"))
             // 600 m before a southbound 國道1號 camera at 116 km/h: the red alert with "請減速".
             val camIdx = io.atmos.weather.transit.SpeedCameras.load(ctx)
-            val (cam, cs) = camIdx.onChain.entries.first { it.key.label == "國道一號南向306.1公里" }.let { it.key to it.value }
+            val (cam, cs) = camIdx.onChain.entries.filter { it.key.label.startsWith("國道一號南向") && it.value.at > 1500 && it.key.limit == 110 }
+                .maxBy { it.value.at }.let { it.key to it.value }
             val before = io.atmos.weather.transit.Freeways.Spot(cs.chain, cs.at - 600, 0.0)
             val cp = io.atmos.weather.transit.Freeways.pointAlong(net, before, 0.0)!!; val cq = io.atmos.weather.transit.Freeways.pointAlong(net, before, 200.0)!!
             val ch = io.atmos.weather.transit.DrivingMode.bearing(cp.first, cp.second, cq.first, cq.second)
@@ -136,7 +142,7 @@ class LifePagesRenderingTest {
                 io.atmos.weather.transit.DrivingModeCard(io.atmos.weather.transit.DrivingMode.Drive(116, ch, cp.first, cp.second, ch), MaterialTheme.colorScheme.onSurface,
                     io.atmos.weather.transit.TransitMotion(null, null, 116, ch, cp.first, cp.second, 2L))
             }
-            assertTrue(camera, camera.contains("固定測速") && camera.contains(cam.label) && camera.contains("超速 6") && camera.contains("公尺"))
+            assertTrue(camera, camera.contains("固定測速") && camera.contains(cam.label) && camera.contains("超速 6") && camera.contains("請減速") && camera.contains("公尺"))
             val snap = render("snap", dark) { Column { LifeFeatureContent("snap", snapshot()) {} } }
             assertTrue(snap, snap.contains("開啟相機") && snap.contains("雜誌") && snap.contains("種濾鏡"))
             val transit = render("transit", dark) { Column { LifeFeatureContent("transit", null) {} } }

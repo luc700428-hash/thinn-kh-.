@@ -62,7 +62,7 @@ import kotlin.math.roundToInt
 /** Every page of the personal and disaster features, by id. */
 object LifeFeatures {
     val titles = linkedMapOf(
-        "pressure" to "氣壓與天氣痛", "calendar" to "行事曆天氣", "rules" to "自訂天氣規則", "family" to "家人天氣關懷",
+        "pressure" to "氣壓不適預警", "calendar" to "行事曆天氣", "rules" to "自訂天氣規則", "family" to "家人天氣關懷",
         "snap" to "天空浮水印相機", "closure" to "停班停課速查", "water" to "水庫與水情警戒", "kit" to "防災包清單",
         "shelter" to "避難收容處所", "disaster" to "災難省電模式", "transit" to "火車、高鐵與駕車模式",
     )
@@ -196,7 +196,7 @@ internal fun Field(value: String, onValue: (String) -> Unit, hint: String) {
     }
 }
 
-// ---------------------------------------------------------------- 氣壓與天氣痛
+// ---------------------------------------------------------------- 氣壓不適預警
 
 @Composable
 private fun PressurePage() {
@@ -215,7 +215,7 @@ private fun PressurePage() {
     val color = o?.let { pressureColor(it.level) } ?: MaterialTheme.colorScheme.onSurfaceVariant
     LifeHero(color) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LevelTile(o?.level?.label ?: "—", color, 84.dp, small = "天氣痛")
+            LevelTile(o?.level?.label ?: "—", color, 84.dp, small = "氣壓不適")
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(city?.name ?: "目前位置", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, maxLines = 1)

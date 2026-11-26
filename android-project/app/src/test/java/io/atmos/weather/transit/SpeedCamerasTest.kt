@@ -7,7 +7,7 @@ import java.io.File
 class SpeedCamerasTest {
     private val net = Freeways.parse(File("src/main/assets/roads/freeways.txt").readText())
     private val moi = SpeedCameras.parseMoi(File("src/main/assets/roads/speed_cameras.csv").readText())
-    private val extra = SpeedCameras.parseExtra(File("src/main/assets/roads/enforcement_extra.txt").readText())
+    private val extra = SpeedCameras.parseUnified(File("src/main/assets/roads/enforcement.csv").readText())
     private val index = SpeedCameras.Index(moi + extra, net)
 
     @Test fun directionsReadTheWayThePoliceWriteThem() {
@@ -22,15 +22,22 @@ class SpeedCamerasTest {
     @Test fun theOfficialListIsCompleteAndOnTheMap() {
         assertTrue(moi.size > 1800)
         assertTrue(moi.all { it.lat in 21.5..26.5 && it.lon in 118.0..122.5 })
-        val fwy = moi.first { it.label == "國道一號南向306.1公里" }
-        assertEquals(listOf(180), fwy.dirs!!.toList()); assertEquals(110, fwy.limit)
+        // The source is refreshed at every release, so pick by kind, not by one name.
+        val fwy = moi.filter { it.label.startsWith("國道一號南向") }
+        assertTrue(fwy.size > 10)
+        assertTrue(fwy.count { it.dirs?.toList() == listOf(180) } >= fwy.size * .9); assertTrue(fwy.count { (it.limit ?: 0) >= 90 } >= fwy.size * .8)
         assertTrue("freeway cameras sit on their carriageway", index.onChain.size > 120)
         assertTrue(extra.count { it.kind == SpeedCameras.Kind.ZONE } >= 10)
+        // County lists: Taipei's intersection cameras, Taoyuan's and Taichung's, level crossings.
+        assertTrue(extra.count { it.kind == SpeedCameras.Kind.TECH } > 300)
+        assertTrue(extra.count { it.kind == SpeedCameras.Kind.TECH && it.catches.contains("闖紅燈") } > 100)
+        assertTrue(extra.any { it.kind == SpeedCameras.Kind.RAIL })
+        assertTrue(extra.all { it.lat in 21.5..26.5 && it.lon in 118.0..122.5 })
         assertFalse(moi.any { it.label.contains("中國") })
     }
 
     @Test fun onTheFreewayTheCameraAheadIsMeasuredAlongTheRoadAndOnlyForItsDirection() {
-        val (cam, at) = index.onChain.entries.first { it.key.label == "國道一號南向306.1公里" }.let { it.key to it.value }
+        val (cam, at) = index.onChain.entries.filter { it.key.label.startsWith("國道一號南向") && it.value.at > 1500 }.maxBy { it.value.at }.let { it.key to it.value }
         val spot = Freeways.Spot(at.chain, (at.at - 800).coerceAtLeast(0.0), 0.0)
         val p = Freeways.pointAlong(net, spot, 0.0)!!; val q = Freeways.pointAlong(net, spot, 200.0)!!
         val heading = DrivingMode.bearing(p.first, p.second, q.first, q.second)

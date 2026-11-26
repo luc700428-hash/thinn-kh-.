@@ -133,7 +133,8 @@ private fun Modifier.thinnBackdropSource(source:ThinnBackdrop):Modifier {
  * sun or moon. [refract] = false keeps the lens shallower for large, scrolling surfaces.
  */
 @Composable
-fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f,frostScale:Float=1f,refract:Boolean=true,materialDark:Boolean?=null):Modifier {
+fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,focusX:Float=.5f,frostScale:Float=1f,refract:Boolean=true,materialDark:Boolean?=null,
+    liquid:Boolean=true):Modifier {
     val source=LocalThinnBackdrop.current
     // Emulators render in software (SwiftShader): re-recording a sampled layer for every glass
     // piece on every frame exhausts its GPU buffers and takes the virtual device down. They get
@@ -150,18 +151,19 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
     val shape=remember(cornerRadius) {RoundedCornerShape(cornerRadius)}
     val shapeOf=remember(shape) {{shape}}
     val dark=materialDark?:liquidDark()
-    val effects=remember(frost,scale,refract,materialDark,quality,dark) {
+    val effects=remember(frost,scale,refract,materialDark,quality,dark,liquid) {
         // Liquid Glass material (github.com/zakisheriff/Liquid-Glass): saturate 1.9 / 1.6,
         // brightness 1.04 / .96 and a light blur (6 / 8 px at the default frost), then the
         // Snell's-law squircle bevel bends the scene inward at the rim.
-        val blurDp=LiquidMaterial.blurDp(dark)*(.5f+frost)*scale
+        // Frosted only (liquid = false): a deeper blur, gentle colour, no bending and no rim.
+        val blurDp=LiquidMaterial.blurDp(dark)*(.5f+frost)*scale*(if(liquid)1f else 2.6f)
         val block:com.kyant.backdrop.BackdropEffectScope.()->Unit={
-            colorControls(brightness=LiquidMaterial.brightness(dark),saturation=LiquidMaterial.saturation(dark))
+            colorControls(brightness=LiquidMaterial.brightness(dark),saturation=if(liquid)LiquidMaterial.saturation(dark) else 1.15f)
             blur(blurDp.dp.toPx())
             val minor=size.minDimension
             // BALANCED: only small controls bend light; large cards keep blur and colour.
             val bends=quality==GlassQuality.Level.FULL||minor<120.dp.toPx()
-            if(minor>4f&&bends) {
+            if(liquid&&minor>4f&&bends) {
                 val shape=LiquidShape.surface(size.width/density,size.height/density)
                 liquidRefraction(lens=false,bezel=shape.bezel.dp.toPx(),thickness=shape.thickness.dp.toPx(),
                     strength=if(refract)1f else .6f)
@@ -188,13 +190,13 @@ fun Modifier.thinnBackdrop(reduceTransparency:Boolean,cornerRadius:Dp=999.dp,foc
         }
         f
     }
-    return drawBackdrop(backdrop=source,shape=shapeOf,effects=effects,highlight=highlight,shadow=null,onDrawBackdrop=onDrawBackdrop)
-        .liquidRim(cornerRadius,light,dark,strength=.55f+.9f*edge)
+    val glass=drawBackdrop(backdrop=source,shape=shapeOf,effects=effects,highlight=highlight,shadow=null,onDrawBackdrop=onDrawBackdrop)
+    return if(liquid) glass.liquidRim(cornerRadius,light,dark,strength=.55f+.9f*edge) else glass
 }
 
 /** A glass card or control: the glass, then a tint that stays light enough to see through. */
 @Composable
 fun Modifier.thinnGlass(reduceTransparency:Boolean,cornerRadius:Dp,tint:Color,clear:Float=.42f,
-    refract:Boolean=true,frostScale:Float=1f):Modifier =
-    thinnBackdrop(reduceTransparency,cornerRadius,frostScale=frostScale,refract=refract)
+    refract:Boolean=true,frostScale:Float=1f,liquid:Boolean=true):Modifier =
+    thinnBackdrop(reduceTransparency,cornerRadius,frostScale=frostScale,refract=refract,liquid=liquid)
         .background(glassTint(tint,reduceTransparency,clear),RoundedCornerShape(cornerRadius))

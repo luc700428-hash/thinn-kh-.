@@ -59,7 +59,6 @@ class HomeCardsThemeRenderingTest {
                         contrast = (maxOf(p.ink.luminance(), p.fill.copy(alpha = 1f).luminance()) + .05f) /
                             (minOf(p.ink.luminance(), p.fill.copy(alpha = 1f).luminance()) + .05f)
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            HomeOutlookCard(weather(), "嘉義") {}
                             DailyGuidanceCard(weather(), false) {}
                             WeatherIndicatorGrid(weather())
                             DailyForecastCard(weather())

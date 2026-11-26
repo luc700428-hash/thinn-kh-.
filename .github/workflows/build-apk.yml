@@ -348,6 +348,19 @@ jobs:
           done
       - name: Node backend policy regression tests
         run: node --test android-project/backend/tests/*.test.cjs
+      - name: Refresh official speed-camera and enforcement lists
+        # Every county publishes its own list; a source that is down keeps its previous rows, and a
+        # failed or invalid refresh falls back to the committed files, so this never blocks a release.
+        continue-on-error: true
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          set -uo pipefail
+          roads=android-project/app/src/main/assets/roads
+          if ! python3 android-project/tools/build_enforcement_asset.py fetch "$roads" || ! python3 android-project/tools/build_enforcement_asset.py check "$roads"; then
+            git checkout -- "$roads"
+            echo '::warning::Kept the committed enforcement lists.'
+          fi
       - name: Prepare signing mode
         env:
           APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}

@@ -87,7 +87,7 @@ fun TodayDigestBlock(weather: WeatherSnapshot, gathered: LifeDigest.Context2?, c
 }
 
 /**
- * 天氣痛: a semicircle gauge in the level colour, the next-24-hour pressure line beside it, and
+ * 氣壓不適: a semicircle gauge in the level colour, the next-24-hour pressure line beside it, and
  * the one number that matters (how far it falls). Taps open the full pressure page.
  */
 @Composable
@@ -97,7 +97,7 @@ fun TodayPressureTile(outlook: PressurePain.Outlook?, ink: Color, soft: Color, t
     Row(Modifier.fillMaxWidth().iosJellyPress().clip(RoundedCornerShape(18.dp)).background(tile)
         .clickable(role = Role.Button, onClick = onOpen).padding(horizontal = 14.dp, vertical = 12.dp)
         .semantics(mergeDescendants = true) {
-            contentDescription = if (outlook == null) "天氣痛指數，正在取得氣壓預報" else "天氣痛指數${outlook.level.label}，24 小時內氣壓下降 ${WeatherRules.fmt(outlook.drop24h)} 百帕"
+            contentDescription = if (outlook == null) "氣壓不適指數，正在取得氣壓預報" else "氣壓不適指數${outlook.level.label}，24 小時內氣壓下降 ${WeatherRules.fmt(outlook.drop24h)} 百帕"
         }, verticalAlignment = Alignment.CenterVertically) {
         // Gauge: four segments, the needle on the level.
         Canvas(Modifier.size(width = 54.dp, height = 32.dp)) {
@@ -116,7 +116,7 @@ fun TodayPressureTile(outlook: PressurePain.Outlook?, ink: Color, soft: Color, t
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("天氣痛", color = soft, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("氣壓不適", color = soft, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(6.dp))
                 Text(level?.label ?: "計算中", color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }

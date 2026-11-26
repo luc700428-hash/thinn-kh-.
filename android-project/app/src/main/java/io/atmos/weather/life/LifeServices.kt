@@ -42,7 +42,7 @@ object LifeStore {
     val changes: StateFlow<Long> = revision
     private fun bump() { revision.value++ }
 
-    // 氣壓天氣痛
+    // 氣壓不適
     fun pressureAlerts(ctx: Context) = p(ctx).getBoolean("pressure_on", false)
     fun setPressureAlerts(ctx: Context, on: Boolean) { p(ctx).edit().putBoolean("pressure_on", on).apply(); bump(); LifeScheduler.reschedule(ctx) }
     fun sensitivities(ctx: Context): Set<String> = p(ctx).getStringSet("pressure_kinds", setOf("偏頭痛")) ?: setOf("偏頭痛")
@@ -299,7 +299,7 @@ class LifeWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         if (!LifeStore.claim(ctx, "pressure:$day:${o.level}")) return
         val at = o.worstAt?.atZone(zone)?.let { "${it.hour} 點前後" } ?: "接下來"
         val kinds = LifeStore.sensitivities(ctx).joinToString("、")
-        post(ctx, 39401, ThinnNotificationChannels.Type.SMART, "天氣痛${o.level.label}：氣壓$at 急降",
+        post(ctx, 39401, ThinnNotificationChannels.Type.SMART, "氣壓不適${o.level.label}：氣壓$at 急降",
             "3 小時最多降 ${WeatherRules.fmt(o.drop3h)} hPa，24 小時降 ${WeatherRules.fmt(o.drop24h)} hPa",
             "${o.level.advice}\n你設定的症狀：$kinds。")
     }

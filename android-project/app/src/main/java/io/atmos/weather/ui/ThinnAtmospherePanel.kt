@@ -39,21 +39,15 @@ fun ThinnAtmospherePanel(
     val shape = RoundedCornerShape(ThinnDesignTokens.radiusCard)
     val cards=LocalWeatherCardPalette.current
     val glow=cards?.accent?:accent
-    val light=GlassLight.current(follow=!reduceTransparency)
+    val dark=MaterialTheme.colorScheme.background.red<.5f
+    // The weather page's cards are frosted glass only: blur, a calm tint and a hairline edge.
+    // No lens, no moving rim light and no rings, so the scene behind reads as soft and still.
     Box(modifier.fillMaxWidth().weatherCollisionSurface(ThinnDesignTokens.radiusCard).clip(shape).thinnGlass(reduceTransparency,ThinnDesignTokens.radiusCard,
-            cards?.fill ?: if(reduceTransparency) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,refract=false,frostScale=1.5f)
-        .border(1.dp, ThinnOpticalMaterial.rim, shape)) {
+            cards?.fill ?: if(reduceTransparency) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,refract=false,frostScale=1.5f,liquid=false)
+        .border(.75.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha=if(dark).20f else .55f),Color.White.copy(alpha=if(dark).06f else .18f))), shape)) {
         if(!reduceTransparency) Canvas(Modifier.matchParentSize()) {
-            // The soft glow sits on the side the sun (or moon) is shining from.
-            val center=Offset(size.width*(.5f+.36f*light.x), size.height*(.04f+.1f*(1f+light.y)))
-            val radius=size.width * .76f
-            drawCircle(Brush.radialGradient(listOf(glow.copy(alpha=.11f),glow.copy(alpha=.035f),Color.Transparent),
-                center=center,radius=radius),radius=radius,center=center)
-            for(i in 0..2) {
-                drawCircle(Color.White.copy(alpha=.065f-i*.014f),
-                    radius=size.width*(.27f+i*.12f),center=Offset(center.x,size.height*.15f),
-                    style=Stroke(.8.dp.toPx()))
-            }
+            // A still wash of the card's colour from the top, like light through frosted glass.
+            drawRect(Brush.verticalGradient(listOf(glow.copy(alpha=.08f),Color.Transparent),endY=size.height*.45f))
         }
         Column(Modifier.fillMaxWidth(),content=content)
     }

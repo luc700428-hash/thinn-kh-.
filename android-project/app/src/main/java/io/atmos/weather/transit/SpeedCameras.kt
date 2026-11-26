@@ -15,8 +15,9 @@ import kotlin.math.sin
  * 測速與科技執法 for 駕車模式.
  *
  * Fixed speed cameras: 內政部警政署「測速執法設置點」(1,900 points with the direction they watch and
- * the limit), built in and re-downloaded weekly. Red-light cameras and 區間測速 zones: 國道公路警察局
- * and OpenStreetMap. Mobile cameras and patrol spots have no public data in Taiwan, so those are
+ * the limit), built in and re-downloaded weekly. 路口科技執法, 區間測速, red-light and level-crossing
+ * cameras: every county's own list plus 國道公路警察局, normalised into enforcement.csv (refreshed
+ * at each release) and OpenStreetMap zones. Mobile cameras and patrol spots have no public data in Taiwan, so those are
  * the places the driver marks (kept on the phone only).
  *
  * Precision comes from three checks: the camera must watch the car's direction of travel, it must
@@ -25,12 +26,15 @@ import kotlin.math.sin
  */
 object SpeedCameras {
     enum class Kind(val label: String) {
-        SPEED("固定測速"), ZONE("區間測速"), RED_LIGHT("闖紅燈照相"), MOBILE("流動測速"), POLICE("警車常出沒")
+        SPEED("固定測速"), ZONE("區間測速"), TECH("路口科技執法"), RED_LIGHT("闖紅燈照相"), RAIL("平交道照相"), MOBILE("流動測速"), POLICE("警車常出沒")
     }
 
     /** [dirs]: travel bearings the camera watches, null for both ways. */
     data class Camera(val kind: Kind, val lat: Double, val lon: Double, val dirs: IntArray?, val limit: Int?, val label: String,
-                      val zone: Zone? = null, val alsoRedLight: Boolean = false, val markedAt: Long = 0L) {
+                      val zone: Zone? = null, val alsoRedLight: Boolean = false, val markedAt: Long = 0L, val items: String = "") {
+        /** What it catches, short: "闖紅燈、不停讓行人" (at most three). */
+        val catches: String get() = items.split('、', ';', '；', ',', '，').map { it.trim() }
+            .filter { it.isNotEmpty() && !it.contains("執法") && !it.contains("照相") && it != "超速" }.take(3).joinToString("、")
         override fun equals(other: Any?) = other is Camera && other.kind == kind && other.lat == lat && other.lon == lon && other.label == label
         override fun hashCode() = (lat * 1e6).toInt() * 31 + (lon * 1e6).toInt() + kind.ordinal
     }
@@ -84,21 +88,29 @@ object SpeedCameras {
         return out
     }
 
-    fun parseExtra(text: String): List<Camera> {
+    /** assets/roads/enforcement.csv: every other official list, normalised by tools/build_enforcement_asset.py. */
+    fun parseUnified(text: String): List<Camera> {
         val out = ArrayList<Camera>()
-        text.lineSequence().forEach { line ->
-            if (line.isBlank() || line.startsWith("#")) return@forEach
-            val p = line.split('|')
-            runCatching {
-                when (p[0]) {
-                    "R" -> out += Camera(Kind.RED_LIGHT, p[1].toDouble(), p[2].toDouble(), p[3].toIntOrNull()?.let { intArrayOf(it) }, null, p[4])
-                    "Z" -> {
-                        val z = Zone(p[1].toInt(), p[2].toInt(), p[3], p[4].toDouble(), p[5].toDouble(), p[6].toDouble(), p[7].toDouble())
-                        // Announced at its start, for traffic heading into the zone.
-                        val dir = DrivingMode.bearing(z.fromLat, z.fromLon, z.toLat, z.toLon).roundToInt()
-                        out += Camera(Kind.ZONE, z.fromLat, z.fromLon, intArrayOf(dir), z.limit, z.name, zone = z)
-                    }
+        var zoneId = 0
+        text.lineSequence().drop(1).forEach { line ->
+            val f = csv(line)
+            if (f.size < 10) return@forEach
+            val lat = f[1].toDoubleOrNull() ?: return@forEach; val lon = f[2].toDoubleOrNull() ?: return@forEach
+            val limit = f[4].toIntOrNull()
+            val label = f[5].ifBlank { f[6] }
+            val endLat = f[8].toDoubleOrNull(); val endLon = f[9].toDoubleOrNull()
+            val dirs = direction(f[3])
+            out += when (f[0]) {
+                "ZONE" -> {
+                    val zone = if (endLat != null && endLon != null && limit != null) Zone(++zoneId, limit, label, lat, lon, endLat, endLon) else null
+                    // Entered from its start: watch the way toward the end when that is known.
+                    val toward = zone?.let { intArrayOf(DrivingMode.bearing(lat, lon, endLat!!, endLon!!).roundToInt()) }
+                    Camera(Kind.ZONE, lat, lon, if (f[3].contains("雙向") || zone == null) dirs else toward, limit, label, zone = zone, items = f[6])
                 }
+                "SPEED" -> Camera(Kind.SPEED, lat, lon, dirs, limit, label, items = f[6])
+                "RED" -> Camera(Kind.RED_LIGHT, lat, lon, dirs, null, label, items = f[6])
+                "RAIL" -> Camera(Kind.RAIL, lat, lon, null, null, label, items = "闖越平交道")
+                else -> Camera(Kind.TECH, lat, lon, dirs, limit, label, alsoRedLight = f[6].contains("闖紅燈"), items = f[6])
             }
         }
         return out
@@ -173,7 +185,7 @@ object SpeedCameras {
         val fresh = File(ctx.filesDir, "roads/speed_cameras.csv")
         val moi = (if (fresh.isFile) runCatching { parseMoi(fresh.readText()) }.getOrNull()?.takeIf { it.size > 1000 } else null)
             ?: runCatching { parseMoi(ctx.assets.open("roads/speed_cameras.csv").bufferedReader().use { it.readText() }) }.getOrDefault(emptyList())
-        val extra = runCatching { parseExtra(ctx.assets.open("roads/enforcement_extra.txt").bufferedReader().use { it.readText() }) }.getOrDefault(emptyList())
+        val extra = runCatching { parseUnified(ctx.assets.open("roads/enforcement.csv").bufferedReader().use { it.readText() }) }.getOrDefault(emptyList())
         return Index(moi + extra + marks(ctx), Freeways.load(ctx)).also { cached = it }
     }
 
@@ -258,6 +270,8 @@ object SpeedCameras {
     /** "前方 400 公尺，固定測速，速限 60" for the voice. */
     fun speech(a: Alert): String {
         val m = ((a.metres / 100).roundToInt() * 100).coerceAtLeast(100)
-        return "前方 $m 公尺，${a.camera.kind.label}" + (a.camera.limit?.let { "，速限 $it" } ?: "") + if (a.camera.alsoRedLight) "，兼闖紅燈照相" else ""
+        val c = a.camera
+        return "前方 $m 公尺，${c.kind.label}" + (c.limit?.let { "，速限 $it" } ?: "") +
+            when { c.kind == Kind.TECH && c.catches.isNotEmpty() -> "，${c.catches}"; c.alsoRedLight -> "，兼闖紅燈照相"; else -> "" }
     }
 }

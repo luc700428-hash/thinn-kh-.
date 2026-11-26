@@ -13,8 +13,8 @@ class HomeReadabilityTests(unittest.TestCase):
         self.assertIn('showLifestyleDetails',home)
         self.assertNotIn('Text("其他天氣提醒"',home)
         self.assertNotIn('Text("判斷依據：${plan.evidence}"',home)
-        # Detailed weather model/audit text is retained, but only inside a sheet.
-        self.assertIn('ModalBottomSheet(onDismissRequest={showLifestyleDetails=false})',home)
+        # Detailed weather model/audit text is retained, but only on the 今日穿搭 page.
+        self.assertIn('io.atmos.weather.lifestyle.OutfitPage(',home)
     def test_key_weather_and_outfit_are_not_hidden_behind_a_detail_link(self):
         home=(JAVA/'presentation/home/WeatherHomeScreen.kt').read_text()
         model=(JAVA/'presentation/home/HomeWeatherBriefing.kt').read_text()

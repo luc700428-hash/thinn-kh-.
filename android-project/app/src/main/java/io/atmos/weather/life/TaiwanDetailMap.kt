@@ -24,12 +24,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.NearMe
-import androidx.compose.material.icons.rounded.Satellite
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.FireHydrantAlt
+import androidx.compose.material.icons.rounded.LocalConvenienceStore
+import androidx.compose.material.icons.rounded.MonitorHeart
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -49,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -99,7 +108,15 @@ import kotlin.math.roundToInt
  * kept in memory and on disk (cache), so a map opened once still draws without a signal.
  */
 internal object NlscTiles {
-    enum class Layer(val id: String, val label: String, val maxZ: Int) { MAP("EMAP98", "地圖", 19), PHOTO("PHOTO2", "衛星", 19) }
+    /** [minZ]: overlays only appear (and are fetched) once you are close enough to read them. */
+    enum class Layer(val id: String, val label: String, val maxZ: Int, val minZ: Int = 0) {
+        MAP("EMAP98", "標準", 19), PHOTO("PHOTO2", "衛星", 19), LABELS("EMAP2", "路名", 19), TERRAIN("EMAP5_OPENDATA", "地形", 15),
+        AED("AED", "AED", 19, 15), STORE("ConvenienceStore", "超商", 19, 15), HYDRANT("fireplug", "消防栓", 19, 16)
+    }
+    /** The base looks you choose between; 衛星 carries the road names over the photo. */
+    enum class Style(val label: String, val layers: List<Layer>) {
+        STANDARD("標準", listOf(Layer.MAP)), HYBRID("衛星", listOf(Layer.PHOTO, Layer.LABELS)), TERRAIN("地形", listOf(Layer.TERRAIN))
+    }
 
     private val memory = object : LruCache<String, ImageBitmap>(40 * 1024 * 1024) {
         override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
@@ -191,7 +208,10 @@ internal fun TaiwanDetailMap(
     val scope = rememberCoroutineScope()
     val measurer = rememberTextMeasurer()
     val pick by rememberUpdatedState(onSelect)
-    var layer by remember { mutableStateOf(NlscTiles.Layer.MAP) }
+    var style by remember { mutableStateOf(NlscTiles.Style.STANDARD) }
+    var overlays by remember { mutableStateOf(setOf<NlscTiles.Layer>()) }
+    var panel by remember { mutableStateOf(false) }
+    val drawn = style.layers + overlays.sortedBy { it.ordinal }
     var w by remember { mutableIntStateOf(0) }
     var h by remember { mutableIntStateOf(0) }
     val start = me ?: pins.firstOrNull()?.let { it.lat to it.lon } ?: (23.7 to 120.96)
@@ -231,16 +251,19 @@ internal fun TaiwanDetailMap(
         if (s.x < w * .12f || s.x > w * .88f || s.y < h * .15f || s.y > h * .85f) flyTo(p.lat, p.lon)
     }
     // Ask for the tiles in view (sharp: one tile pixel per screen pixel), nearest the centre first.
-    LaunchedEffect(layer) {
+    LaunchedEffect(drawn) {
         snapshotFlow { Triple(cx, cy, zoom) to (w to h) }.collect {
             if (w == 0 || h == 0) return@collect
-            val tiles = visibleTiles(cx, cy, zoom, w, h, density, layer.maxZ)
-            NlscTiles.wanted = tiles.map { NlscTiles.key(layer, it.first, it.second, it.third) }.toSet()
-            tiles.forEach { (z, x, y) -> NlscTiles.request(ctx, layer, z, x, y) }
+            val want = drawn.flatMap { l ->
+                if (zoom + log2(density.toDouble()) < l.minZ) emptyList() else visibleTiles(cx, cy, zoom, w, h, density, l.maxZ).map { l to it }
+            }
+            NlscTiles.wanted = want.map { (l, t) -> NlscTiles.key(l, t.first, t.second, t.third) }.toSet()
+            want.forEach { (l, t) -> NlscTiles.request(ctx, l, t.first, t.second, t.third) }
         }
     }
-    val pulse = rememberInfiniteTransition(label = "me").animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart), label = "pulse")
-    val bg = if (layer == NlscTiles.Layer.PHOTO) Color(0xFF1F2A22) else if (dark) Color(0xFF1C2026) else Color(0xFFF2EFE9)
+    val reduceMotion = io.atmos.weather.ui.rememberAppleReduceMotion()
+    val photo = style == NlscTiles.Style.HYBRID
+    val bg = if (photo) Color(0xFF1F2A22) else if (dark) Color(0xFF1C2026) else Color(0xFFF2EFE9)
     val chosen = pins.firstOrNull { it.id == selected }
     Box(modifier.clip(RoundedCornerShape(22.dp)).border(.5.dp, Color.White.copy(alpha = if (dark) .14f else .5f), RoundedCornerShape(22.dp))
         .semantics { contentDescription = "地圖，${pins.size} 個地點" + (chosen?.let { "，已選 ${it.title}" } ?: "") }) {
@@ -263,6 +286,7 @@ internal fun TaiwanDetailMap(
                         scope.launch { flyTo(lat, lon, (zoom + 1).coerceAtMost(maxZoom)) }
                     },
                     onTap = { o ->
+                        if (panel) { panel = false; return@detectTapGestures }
                         val hit = pins.map { it to (screen(it.lat, it.lon) - o).getDistance() }.filter { it.second < 26 * density }.minByOrNull { it.second }
                         pick(hit?.first?.id)
                     },
@@ -270,8 +294,11 @@ internal fun TaiwanDetailMap(
             }) {
             NlscTiles.version.intValue
             drawRect(bg)
-            val filter = if (dark && layer == NlscTiles.Layer.MAP) NlscTiles.night else null
             val wp = world()
+            drawn.forEach { layer ->
+            if (zoom + log2(density.toDouble()) < layer.minZ) return@forEach
+            // Night: the street maps are inverted with their hues kept; photos and symbols stay as they are.
+            val filter = if (dark && (layer == NlscTiles.Layer.MAP || layer == NlscTiles.Layer.TERRAIN)) NlscTiles.night else null
             visibleTiles(cx, cy, zoom, size.width.toInt(), size.height.toInt(), density, layer.maxZ).forEach { (z, x, y) ->
                 val span = wp / (1 shl z)
                 val left = (x * span - cx * wp + size.width / 2.0); val top = (y * span - cy * wp + size.height / 2.0)
@@ -288,6 +315,7 @@ internal fun TaiwanDetailMap(
                     drawImage(parent, IntOffset(sx, sy), IntSize(part.coerceAtLeast(1), part.coerceAtLeast(1)), dst, dsz, colorFilter = filter, filterQuality = FilterQuality.Low)
                     break
                 }
+            }
             }
             // Places: a white-ringed dot each; the chosen one grows a label.
             pins.forEach { p ->
@@ -322,23 +350,34 @@ internal fun TaiwanDetailMap(
             val metresPerPx = cos(Math.toRadians(RadarProjection.latitude(cy))) * 2 * PI * 6_378_137.0 / wp
             val nice = listOf(20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000).lastOrNull { it / metresPerPx <= 90 * density } ?: 20
             val len = (nice / metresPerPx).toFloat()
-            val label = measurer.measure(if (nice >= 1000) "${nice / 1000} 公里" else "$nice 公尺", TextStyle(fontSize = 14.sp, color = if (dark || layer == NlscTiles.Layer.PHOTO) Color.White else Color(0xFF1C1C1E)))
-            val ink = if (dark || layer == NlscTiles.Layer.PHOTO) Color.White else Color(0xFF1C1C1E)
+            val label = measurer.measure(if (nice >= 1000) "${nice / 1000} 公里" else "$nice 公尺", TextStyle(fontSize = 14.sp, color = if (dark || photo) Color.White else Color(0xFF1C1C1E)))
+            val ink = if (dark || photo) Color.White else Color(0xFF1C1C1E)
             val bx = size.width - len - 14 * density; val by = size.height - 12 * density
             drawLine(ink, Offset(bx, by), Offset(bx + len, by), 2.5f * density)
             drawLine(ink, Offset(bx, by - 6 * density), Offset(bx, by), 2f * density); drawLine(ink, Offset(bx + len, by - 6 * density), Offset(bx + len, by), 2f * density)
             drawText(label, topLeft = Offset(bx + len - label.size.width, by - 8 * density - label.size.height))
         }
         // Your dot's halo pulses on its own layer, so the map itself is not redrawn every frame.
-        if (me != null) Canvas(Modifier.fillMaxSize()) {
-            val s = screen(me.first, me.second)
-            drawCircle(Color(0xFF0A84FF).copy(alpha = .28f * (1f - pulse.value)), (10f + 22f * pulse.value) * density, s)
-        }
-        Column(Modifier.align(Alignment.TopEnd).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            MapButton(if (layer == NlscTiles.Layer.MAP) Icons.Rounded.Satellite else Icons.Rounded.Layers, if (layer == NlscTiles.Layer.MAP) "切換衛星影像" else "切換地圖") {
-                layer = if (layer == NlscTiles.Layer.MAP) NlscTiles.Layer.PHOTO else NlscTiles.Layer.MAP
+        if (me != null && !reduceMotion) {
+            val pulse = rememberInfiniteTransition(label = "me").animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart), label = "pulse")
+            Canvas(Modifier.fillMaxSize()) {
+                val s = screen(me.first, me.second)
+                drawCircle(Color(0xFF0A84FF).copy(alpha = .28f * (1f - pulse.value)), (10f + 22f * pulse.value) * density, s)
             }
-            if (me != null) MapButton(Icons.Rounded.NearMe, "回到我的位置") { scope.launch { flyTo(me.first, me.second, zoom.coerceAtLeast(15.5)) } }
+        }
+        // Apple-Maps style controls: one glass capsule (styles · your position), the style card under it.
+        Column(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalAlignment = Alignment.End) {
+            Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xE61F2125)).border(.5.dp, Color.White.copy(alpha = .22f), RoundedCornerShape(14.dp))) {
+                MapButton(Icons.Rounded.Layers, "地圖樣式與圖層", panel) { panel = !panel }
+                if (me != null) {
+                    Box(Modifier.width(44.dp).height(.5.dp).background(Color.White.copy(alpha = .22f)))
+                    MapButton(Icons.Rounded.NearMe, "回到我的位置") { panel = false; scope.launch { flyTo(me.first, me.second, zoom.coerceAtLeast(15.5)) } }
+                }
+            }
+            androidx.compose.animation.AnimatedVisibility(panel, enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = .9f, transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f)),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = .9f, transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f))) {
+                StylePanel(style, overlays, { style = it }, { l -> overlays = if (l in overlays) overlays - l else overlays + l })
+            }
         }
         Row(Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = .42f)).padding(horizontal = 7.dp, vertical = 2.dp)) {
             Text("© 國土測繪中心", color = Color.White, fontSize = 14.sp)
@@ -346,11 +385,51 @@ internal fun TaiwanDetailMap(
     }
 }
 
+/** The style card: three looks to pick from, then the layers to lay over them. */
 @Composable
-private fun MapButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xCC1F2125)).border(.5.dp, Color.White.copy(alpha = .25f), CircleShape)
-        .clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, label, Modifier.size(21.dp), tint = Color.White)
+private fun StylePanel(style: NlscTiles.Style, overlays: Set<NlscTiles.Layer>, onStyle: (NlscTiles.Style) -> Unit, onToggle: (NlscTiles.Layer) -> Unit) {
+    Column(Modifier.padding(top = 8.dp).width(228.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xF0202226))
+        .border(.5.dp, Color.White.copy(alpha = .2f), RoundedCornerShape(18.dp)).padding(12.dp)) {
+        Text("地圖樣式", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NlscTiles.Style.entries.forEach { s ->
+                val on = s == style
+                val swatch = when (s) {
+                    NlscTiles.Style.STANDARD -> listOf(Color(0xFFF4EFE6), Color(0xFFFFD98A), Color(0xFFBFD9F2))
+                    NlscTiles.Style.HYBRID -> listOf(Color(0xFF3F5B3A), Color(0xFF6E7F5B), Color(0xFF9AA58A))
+                    NlscTiles.Style.TERRAIN -> listOf(Color(0xFFE9E4D2), Color(0xFFC9D8B0), Color(0xFFA7C08C))
+                }
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClickLabel = s.label) { onStyle(s) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(12.dp)).background(Brush.linearGradient(swatch))
+                        .border(if (on) 2.5.dp else .5.dp, if (on) Color(0xFF0A84FF) else Color.White.copy(alpha = .25f), RoundedCornerShape(12.dp)))
+                    Spacer(Modifier.height(4.dp))
+                    Text(s.label, color = if (on) Color(0xFF64B5FF) else Color.White.copy(alpha = .85f), fontSize = 14.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal)
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text("圖層", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(6.dp))
+        listOf(Triple(NlscTiles.Layer.AED, Icons.Rounded.MonitorHeart, Color(0xFFFF375F)), Triple(NlscTiles.Layer.STORE, Icons.Rounded.LocalConvenienceStore, Color(0xFF30D158)),
+            Triple(NlscTiles.Layer.HYDRANT, Icons.Rounded.FireHydrantAlt, Color(0xFFFF9F0A))).forEach { (l, icon, tint) ->
+            val on = l in overlays
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClickLabel = l.label) { onToggle(l) }.padding(vertical = 6.dp, horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                io.atmos.weather.ui.IOSIconTile(icon, tint, 26.dp)
+                Spacer(Modifier.width(10.dp))
+                Text(l.label, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                Icon(if (on) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null, Modifier.size(22.dp), tint = if (on) Color(0xFF0A84FF) else Color.White.copy(alpha = .4f))
+            }
+        }
+        Text("靠近一點才會顯示", color = Color.White.copy(alpha = .6f), fontSize = 14.sp)
+    }
+}
+
+@Composable
+private fun MapButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, active: Boolean = false, onClick: () -> Unit) {
+    Box(Modifier.size(44.dp).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, label, Modifier.size(22.dp), tint = if (active) Color(0xFF64B5FF) else Color.White)
     }
 }
 

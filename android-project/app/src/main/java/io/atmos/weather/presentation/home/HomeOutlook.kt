@@ -41,8 +41,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * The home page's "what happens next", in the plain-words style of 氣象詳解: one sentence about
- * rain, one about tomorrow, and three tiles (best time to go out, sunrise / sunset, air).
+ * "What happens next", shown inside 今日概況: one sentence about rain, one about tomorrow, and
+ * tiles (best time to go out, sunrise / sunset, air).
  * Pure text building lives in [build] so it can be unit tested; missing data is left out.
  */
 internal object HomeOutlook {
@@ -106,56 +106,6 @@ internal object HomeOutlook {
         return listOfNotNull("$place 現在 ${w.temperatureC.roundToInt()}°，${ComfortMessages.conditionWord(w.condition)}",
             if (w.minTempC != null && w.maxTempC != null) "今天 ${w.minTempC.roundToInt()}–${w.maxTempC.roundToInt()}°" else null,
             o.rain, o.tomorrow, "— thinn-khì").joinToString("\n")
-    }
-}
-
-@Composable internal fun HomeOutlookCard(weather: WeatherSnapshot, place: String, onDetails: () -> Unit) {
-    val ctx = LocalContext.current
-    val now = remember(weather.fetchedAt) { Instant.now() }
-    val outlook = remember(weather, now) { HomeOutlook.build(weather, now) }
-    val ink = HomeInk.primary; val soft = HomeInk.secondary
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var sharing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    io.atmos.weather.ui.ThinnAtmospherePanel(Modifier.testTag("home-outlook"), accent = Color(0xFFBFE3FF)) {
-        Column(Modifier.fillMaxWidth().padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("接下來", color = soft, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Box(Modifier.size(36.dp).iosJellyPress().clip(RoundedCornerShape(999.dp)).background(HomeInk.tile)
-                    .clickable(role = Role.Button, onClickLabel = "分享今日天氣卡片") {
-                        if (sharing) return@clickable
-                        sharing = true
-                        scope.launch {
-                            val caption = HomeOutlook.shareText(weather, place, Instant.now())
-                            // The picture is drawn off the main thread; plain text if that fails.
-                            val card = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                                runCatching { WeatherShareCard.render(ctx, weather, place) }.getOrNull()
-                            }
-                            val shared = card != null && WeatherShareCard.share(ctx, card, caption)
-                            if (!shared) runCatching {
-                                ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                                    .putExtra(Intent.EXTRA_TEXT, caption), "分享天氣").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                            }
-                            sharing = false
-                        }
-                    }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.IosShare, "分享天氣", tint = ink, modifier = Modifier.size(18.dp))
-                }
-            }
-            Text(outlook.rain, color = ink, fontSize = 20.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold)
-            outlook.tomorrow?.let { Text(it, color = soft, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 2.dp)) }
-            if (outlook.tiles.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                HomeTileRow {
-                    outlook.tiles.forEachIndexed { i, t -> HomeTile(t.label, t.value, t.caption, Modifier.weight(1f).iosAppear(i)) }
-                    repeat(3 - outlook.tiles.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp).iosJellyPress().clip(RoundedCornerShape(14.dp))
-                .clickable(role = Role.Button, onClick = onDetails).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("最佳出門時段與天氣細節", color = ink, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                Icon(Icons.Rounded.ChevronRight, null, tint = soft)
-            }
-        }
     }
 }
 

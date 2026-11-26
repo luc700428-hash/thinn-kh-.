@@ -16,7 +16,7 @@ class LifeIndexTest {
 
     @Test fun aCalmDryDayIsGoodForEverything() {
         val items = LifeIndex.build(weather(), now)
-        assertEquals(listOf("洗車", "晾衣", "戶外運動", "感冒風險", "防曬", "開窗通風"), items.map { it.title })
+        assertEquals(listOf("洗車", "晾衣", "戶外運動", "著涼風險", "防曬", "開窗通風"), items.map { it.title })
         assertTrue(items.all { it.level == LifeIndex.Level.GOOD })
         assertTrue(items.first().reason.contains("兩天"))
     }
@@ -24,8 +24,11 @@ class LifeIndexTest {
         val wet = LifeIndex.build(weather(pop = 70), now)
         assertEquals(LifeIndex.Level.POOR, level(wet, "洗車")); assertEquals(LifeIndex.Level.POOR, level(wet, "晾衣")); assertEquals(LifeIndex.Level.POOR, level(wet, "戶外運動"))
         assertEquals(LifeIndex.Level.POOR, level(LifeIndex.build(weather(humidity = 90), now), "晾衣"))
-        assertEquals(LifeIndex.Level.POOR, level(LifeIndex.build(weather(temp = { if (it < 6) 26.0 else 14.0 }), now), "感冒風險"))
+        assertEquals(LifeIndex.Level.POOR, level(LifeIndex.build(weather(temp = { if (it < 6) 26.0 else 14.0 }), now), "著涼風險"))
         assertEquals(LifeIndex.Level.POOR, level(LifeIndex.build(weather(uv = 9.0), now), "防曬"))
+        // A risk says how big it is, never "不建議".
+        assertEquals("高", LifeIndex.build(weather(temp = { if (it < 6) 26.0 else 14.0 }), now).first { it.title == "著涼風險" }.word)
+        assertEquals("必要", LifeIndex.build(weather(uv = 9.0), now).first { it.title == "防曬" }.word)
         val smog = LifeIndex.build(weather(aqi = 160), now)
         assertEquals(LifeIndex.Level.POOR, level(smog, "開窗通風")); assertEquals(LifeIndex.Level.POOR, level(smog, "戶外運動"))
     }

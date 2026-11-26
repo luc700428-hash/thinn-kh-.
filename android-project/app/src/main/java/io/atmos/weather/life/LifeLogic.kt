@@ -11,7 +11,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * 氣壓變化與天氣痛. Weather-sensitive headaches, joint pain and asthma follow how fast the air
+ * 氣壓變化與身體不適. Weather-sensitive headaches, joint pain and asthma follow how fast the air
  * pressure falls rather than how low it is. From an hourly pressure series (past day and the next
  * two) this finds the steepest fall in any 3-hour and any 24-hour window ahead and grades it.
  * The grades follow the thresholds commonly used by weather-pain apps: a fall of about 1 hPa an
@@ -20,10 +20,10 @@ import kotlin.math.roundToInt
 object PressurePain {
     data class Point(val at: Instant, val hpa: Double)
     enum class Level(val label: String, val advice: String) {
-        CALM("氣壓平穩", "氣壓變化小，天氣痛的機率低。"),
+        CALM("氣壓平穩", "氣壓變化小，頭痛、關節不適的機率低。"),
         WATCH("稍有變化", "氣壓開始下降，容易頭痛的人可以先多休息、補充水分。"),
         ALERT("注意", "氣壓明顯下降，偏頭痛、關節或舊傷可能不舒服，常用的藥物可以先準備好。"),
-        WARNING("警戒", "氣壓急降，天氣痛風險高；氣喘或舊傷容易發作的人請預先準備，避免勞累。")
+        WARNING("警戒", "氣壓急降，頭痛、關節痛的風險高；氣喘或舊傷容易發作的人請預先準備，避免勞累。")
     }
     data class Outlook(
         val level: Level,

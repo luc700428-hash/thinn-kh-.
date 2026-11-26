@@ -9,7 +9,12 @@ import java.time.Instant
  */
 internal object LifeIndex {
     enum class Level(val word: String) { GOOD("適合"), FAIR("普通"), POOR("不建議") }
-    data class Item(val title: String, val level: Level, val reason: String)
+    /**
+     * [word] is what the tile says in big type. Activities read 適合 / 普通 / 不建議; a risk reads
+     * 低 / 中 / 高 and sun protection 可免 / 建議 / 必要, so a red tile never says "不建議" about a risk.
+     */
+    data class Item(val title: String, val level: Level, val reason: String, val word: String = level.word)
+    private fun risk(title: String, level: Level, reason: String) = Item(title, level, reason, when (level) { Level.GOOD -> "低"; Level.FAIR -> "中"; Level.POOR -> "高" })
 
     fun build(w: WeatherSnapshot, now: Instant): List<Item> {
         fun window(hours: Int) = w.hourly.filter { !it.at.isBefore(now.minusSeconds(1800)) && it.at.isBefore(now.plusSeconds(hours * 3600L)) }
@@ -50,21 +55,21 @@ internal object LifeIndex {
                 else -> Item("戶外運動", Level.GOOD, "天氣舒適")
             }
         }
-        // 感冒: big swings and cold, damp air.
+        // 著涼: big swings between morning and afternoon, or a cold day, make it easy to catch a chill.
         if (temps.size >= 6) {
             val swing = temps.max() - temps.min()
             out += when {
-                swing >= 10 || temps.min() < 10 -> Item("感冒風險", Level.POOR, if (swing >= 10) "溫差 ${swing.toInt()}°，注意保暖" else "低溫，注意保暖")
-                swing >= 7 || temps.min() < 15 -> Item("感冒風險", Level.FAIR, if (swing >= 7) "溫差 ${swing.toInt()}°，帶件外套" else "偏涼，加件衣服")
-                else -> Item("感冒風險", Level.GOOD, "溫差不大")
+                swing >= 10 || temps.min() < 10 -> risk("著涼風險", Level.POOR, if (swing >= 10) "早晚溫差 ${swing.toInt()}°，容易著涼，多帶件外套" else "體感低於 10°，出門穿暖")
+                swing >= 7 || temps.min() < 15 -> risk("著涼風險", Level.FAIR, if (swing >= 7) "早晚溫差 ${swing.toInt()}°，帶件薄外套" else "偏涼，加件衣服就好")
+                else -> risk("著涼風險", Level.GOOD, "溫差不大，照平常穿")
             }
         }
         // 防曬
         uv?.let { u ->
             out += when {
-                u >= 8 -> Item("防曬", Level.POOR, "紫外線 ${u.toInt()}，務必防曬")
-                u >= 5 -> Item("防曬", Level.FAIR, "紫外線 ${u.toInt()}，建議防曬")
-                else -> Item("防曬", Level.GOOD, "紫外線弱")
+                u >= 8 -> Item("防曬", Level.POOR, "紫外線 ${u.toInt()}，擦防曬、戴帽子", "必要")
+                u >= 5 -> Item("防曬", Level.FAIR, "紫外線 ${u.toInt()}，外出擦防曬", "建議")
+                else -> Item("防曬", Level.GOOD, "紫外線弱", "可免")
             }
         }
         // 開窗通風

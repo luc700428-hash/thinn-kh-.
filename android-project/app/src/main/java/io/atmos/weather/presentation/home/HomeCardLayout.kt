@@ -46,7 +46,7 @@ import kotlin.math.roundToInt
 /** Which home cards show, and in what order. Edited like the iOS widget stack. */
 object HomeCardLayout {
     val titles = linkedMapOf(
-        "outlook" to "接下來", "outing" to "今日概況", "forecast" to "24 小時預報", "daily" to "7 天預報", "radar" to "降雨雷達",
+        "outing" to "今日概況", "forecast" to "24 小時預報", "daily" to "7 天預報", "radar" to "降雨雷達",
         "details" to "天氣細節與空氣品質", "commute" to "通勤天氣", "key" to "未來 6 小時重點")
     val defaultOrder = titles.keys.toList()
     /** r19 keeps the home calm: the six-hour facts overlap 今日概況, so they start hidden. */

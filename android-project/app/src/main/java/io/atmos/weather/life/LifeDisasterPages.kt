@@ -3,6 +3,7 @@ package io.atmos.weather.life
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -393,17 +394,27 @@ internal fun ShelterPageV2() {
             Modifier.fillMaxWidth().height(360.dp))
         near.firstOrNull { it.shelter.name + it.shelter.lat == picked }?.let { n ->
             // The pin you tapped, with its own way there.
-            Row(Modifier.fillMaxWidth().frosted(18.dp, Color(0xFF30B455)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF2FB35A), Color(0xFF13803D))))
+                .border(.75.dp, Color.White.copy(alpha = .35f), RoundedCornerShape(20.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .2f)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.MapsHomeWork, null, Modifier.size(24.dp), tint = Color.White)
+                }
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(n.shelter.name, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text(n.shelter.name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Text("${n.bearing}方 ${Shelters.distance(n.km)}" + (n.shelter.capacity?.let { " · 可收容 $it 人" } ?: "") + if (n.shelter.indoor) " · 室內" else " · 室外",
-                        color = dim, fontSize = 14.sp, lineHeight = 19.sp)
+                        color = Color.White.copy(alpha = .85f), fontSize = 14.sp, lineHeight = 19.sp)
                 }
                 Spacer(Modifier.width(8.dp))
-                GlassButton(onClick = { navigate(n.shelter) }) { Icon(Icons.Rounded.Directions, null); Spacer(Modifier.width(4.dp)); Text("導航") }
+                Row(Modifier.clip(RoundedCornerShape(99.dp)).background(Color.White).clickable(onClickLabel = "導航到${n.shelter.name}") { navigate(n.shelter) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Directions, null, Modifier.size(19.dp), tint = Color(0xFF13803D)); Spacer(Modifier.width(4.dp))
+                    Text("導航", color = Color(0xFF13803D), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
-        Note("藍點是你，綠點是避難處所；點一下地圖上的點可查看。拖曳移動、雙指或點兩下放大，右上角可切換衛星影像。")
+        Note("藍點是你，綠點是避難處所；點一下可查看。拖曳移動、雙指或點兩下放大；右上角可換標準、衛星、地形，並疊上 AED、超商與消防栓。")
         SectionTitle("附近 ${near.size} 處", Icons.Rounded.MapsHomeWork, IOSColors.green)
         near.drop(1).forEach { n ->
             Row(Modifier.fillMaxWidth().frosted(18.dp).iosJellyPress().clickable { navigate(n.shelter) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {

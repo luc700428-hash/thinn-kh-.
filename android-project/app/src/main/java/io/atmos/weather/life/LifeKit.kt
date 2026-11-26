@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -47,14 +48,21 @@ private val isDark @Composable get() = MaterialTheme.colorScheme.background.red 
 @Composable
 internal fun LifeHero(accent: Color, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val dark = isDark
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(ThinnOpticalMaterial.surface)
+    val shape = RoundedCornerShape(28.dp)
+    Column(modifier.fillMaxWidth().shadow(if (dark) 0.dp else 10.dp, shape, ambientColor = accent.copy(alpha = .25f), spotColor = accent.copy(alpha = .25f))
+        .clip(shape).background(ThinnOpticalMaterial.surface)
         .drawBehind {
-            drawRect(Brush.horizontalGradient(listOf(accent, accent.copy(alpha = .35f), Color.Transparent)), size = Size(size.width, 4.dp.toPx()))
-            drawRect(Brush.verticalGradient(listOf(accent.copy(alpha = if (dark) .12f else .08f), Color.Transparent), endY = 150.dp.toPx()),
-                size = Size(size.width, 150.dp.toPx()))
+            // A soft pool of the accent from the top-right corner, a wash down from the top edge,
+            // and a short bright seam: the same light the earthquake report cards use.
+            drawRect(Brush.radialGradient(listOf(accent.copy(alpha = if (dark) .30f else .20f), Color.Transparent),
+                center = Offset(size.width * .92f, -size.height * .05f), radius = size.width * .75f))
+            drawRect(Brush.verticalGradient(listOf(accent.copy(alpha = if (dark) .10f else .06f), Color.Transparent), endY = 170.dp.toPx()),
+                size = Size(size.width, 170.dp.toPx()))
+            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, accent, accent.copy(alpha = .4f), Color.Transparent)),
+                topLeft = Offset(size.width * .06f, 0f), size = Size(size.width * .88f, 3.dp.toPx()))
         }
-        .border(.75.dp, ink.copy(alpha = if (dark) .10f else .08f), RoundedCornerShape(26.dp))
-        .padding(18.dp), content = content)
+        .border(.75.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) .20f else .75f), ink.copy(alpha = if (dark) .06f else .07f))), shape)
+        .padding(horizontal = 18.dp, vertical = 18.dp), content = content)
 }
 
 /** A big coloured tile with a short word in it (like the intensity tile). */
@@ -77,13 +85,16 @@ internal fun Color.lighten(t: Float) = Color(red + (1 - red) * t, green + (1 - g
 @Composable
 internal fun InsightTiles(vararg tiles: Triple<String, String, String?>) {
     val dark = isDark
-    val tile = Modifier.clip(RoundedCornerShape(16.dp)).background(ink.copy(alpha = if (dark) .06f else .045f))
-        .border(.5.dp, ink.copy(alpha = .08f), RoundedCornerShape(16.dp)).padding(horizontal = 11.dp, vertical = 10.dp)
+    val tile = Modifier.clip(RoundedCornerShape(16.dp))
+        .background(Brush.verticalGradient(listOf(ink.copy(alpha = if (dark) .085f else .055f), ink.copy(alpha = if (dark) .04f else .025f))))
+        .border(.5.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) .14f else .7f), ink.copy(alpha = .06f))), RoundedCornerShape(16.dp))
+        .padding(horizontal = 12.dp, vertical = 10.dp)
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         tiles.forEach { (label, value, caption) ->
             Column(tile.weight(1f).fillMaxHeight()) {
                 Text(label, color = dim, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(value, color = ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(value, color = ink, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
                 caption?.let { Text(it, color = dim, fontSize = 14.sp, maxLines = 2, lineHeight = 18.sp, overflow = TextOverflow.Ellipsis) }
             }
         }
@@ -118,6 +129,7 @@ internal fun RingGauge(fraction: Float, color: Color, center: String, caption: S
             val w = 11.dp.toPx()
             val tl = Offset(w / 2, w / 2); val sz = Size(this.size.width - w, this.size.height - w)
             drawArc(track, 135f, 270f, false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
+            drawArc(color.copy(alpha = .18f), 135f, 270f * fraction.coerceIn(0f, 1f), false, tl, sz, style = Stroke(w * 2f, cap = StrokeCap.Round))
             drawArc(Brush.sweepGradient(listOf(color.lighten(.3f), color, color.lighten(.3f))), 135f, 270f * fraction.coerceIn(0f, 1f), false, tl, sz,
                 style = Stroke(w, cap = StrokeCap.Round))
         }
