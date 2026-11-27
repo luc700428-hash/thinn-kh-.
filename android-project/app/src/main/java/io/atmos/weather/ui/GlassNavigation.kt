@@ -148,7 +148,7 @@ fun AppGlassNavigation(selected:Int,onSelect:(Int)->Unit,modifier:Modifier=Modif
 
 @Composable
 fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->Unit,
-    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={},onAlerts:()->Unit={},onInsights:()->Unit={},onUtilityOpen:()->Unit={},onLife:(String)->Unit={}) {
+    onSeismic:()->Unit,onTasks:()->Unit={},onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onRadar:()->Unit={},onMarine:()->Unit={},onSky:()->Unit={},onStars:()->Unit={},onAlerts:()->Unit={},onInsights:()->Unit={},onUtilityOpen:()->Unit={},onLife:(String)->Unit={}) {
     val palette=MaterialTheme.colorScheme
     var query by rememberSaveable {mutableStateOf("")}
     var utility by rememberSaveable {mutableStateOf<String?>(null)}
@@ -178,7 +178,8 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
             Entry("防災包清單","物資檢查與到期提醒",Icons.Rounded.Backpack,C.brown,{onLife("kit")}),
             Entry("災難省電模式","黑底大字、關閉動畫，停電時用",Icons.Rounded.BatterySaver,C.graphite,{onLife("disaster")}))),
         EntryGroup("海洋與天文",listOf(Entry("海象與浪況","浪高、浪向、湧浪、海流與海溫",Icons.Rounded.Waves,C.blue,onMarine),
-            Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.DarkMode,C.indigo,onSky))),
+            Entry("日月與月相","月相、日月方位、日出日落與月出月沒",Icons.Rounded.DarkMode,C.indigo,onSky),
+            Entry("星空與銀河","舉起手機對準天空，即時找星座、行星與銀河",Icons.Rounded.AutoAwesome,C.purple,onStars))),
         EntryGroup("時間與換算",listOf(Entry("碼錶","開始、暫停、分圈與重置",Icons.Rounded.Timer,C.orange,{onUtilityOpen();utility="碼錶"}),
             Entry("世界時鐘","五個城市，依時區自動處理夏令時間",Icons.Rounded.Public,C.graphite,{onUtilityOpen();utility="世界時鐘"}),
             Entry("氣象單位換算","溫度、風速、雨量、距離與氣壓",Icons.Rounded.SwapHoriz,C.mint,{onUtilityOpen();utility="氣象單位換算"})))

@@ -1,0 +1,5 @@
+# thinn-khì baseline profile: the app's own code is compiled ahead of time when it is installed or
+# updated (Android's profile installer applies it), instead of running interpreted for the first
+# minutes. Compose and the other libraries ship their own profiles; these rules cover the app.
+HSPLio/atmos/weather/**->**(**)**
+Lio/atmos/weather/**;

@@ -46,20 +46,17 @@ fun TaskCenterPage(onClose:()->Unit) {
     }
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         AppSystemBars(MaterialTheme.colorScheme.background.red<.5f)
-        Column(Modifier.fillMaxSize()
-            .background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
-            .appleBouncingScroll().verticalScroll(rememberScrollState())
-            .padding(horizontal=20.dp,vertical=32.dp)) {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                GlassIconButton(onClick=onClose) {Icon(Icons.Rounded.ArrowBack,"返回",tint=MaterialTheme.colorScheme.onSurface)}
-                Spacer(Modifier.width(10.dp))
-                Text("我的事項",color=MaterialTheme.colorScheme.onSurface,fontSize=28.sp,fontWeight=FontWeight.Bold,
-                    modifier=Modifier.weight(1f))
-                GlassIconButton(onClick={editing=null;editingOpen=true}) {
+        // The same page frame as 地震報告: a fixed centred title with the round back control, then the content.
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
+            Box(Modifier.fillMaxWidth()) {
+                io.atmos.weather.ui.IOSSettingsHeader("我的事項",onClose)
+                GlassIconButton(onClick={editing=null;editingOpen=true},modifier=Modifier.align(Alignment.CenterEnd).padding(end=16.dp)) {
                     Icon(Icons.Rounded.Add,"新增事項",tint=ThinnDesignTokens.accent)
                 }
             }
-            Spacer(Modifier.height(14.dp))
+        Column(Modifier.weight(1f)
+            .appleBouncingScroll().verticalScroll(rememberScrollState())
+            .padding(horizontal=16.dp).padding(top=6.dp,bottom=32.dp)) {
             Text("本機私人清單 · 可安排日期、時間與提醒",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=15.sp)
             Spacer(Modifier.height(17.dp))
             if(error.isNotBlank())Text(error,color=ThinnDesignTokens.critical)
@@ -102,6 +99,7 @@ fun TaskCenterPage(onClose:()->Unit) {
             Spacer(Modifier.height(20.dp))
             Text("事項會儲存在這台手機。若開啟提醒，Android 可能因省電設定延遲通知；系統通知權限必須已開啟。",
                 color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=18.sp)
+        }
         }
     }
     if(editingOpen) TaskEditor(existing=editing,persistenceError=error,onDismiss={editingOpen=false},

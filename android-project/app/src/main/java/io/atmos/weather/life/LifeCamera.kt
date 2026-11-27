@@ -119,6 +119,7 @@ internal fun SnapPageV2(snapshot: WeatherSnapshot?) {
     val p = MaterialTheme.colorScheme
     val facts = rememberSnapFacts(snapshot)
     var cameraOpen by remember { mutableStateOf(false) }
+    var cameraMode by remember { mutableStateOf(CamMode.PHOTO) }
     var editing by remember { mutableStateOf<Pair<Bitmap, SnapRender.Edit>?>(null) }
     var status by remember { mutableStateOf("") }
     val pageScope = rememberCoroutineScope()
@@ -179,7 +180,7 @@ internal fun SnapPageV2(snapshot: WeatherSnapshot?) {
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.size(92.dp).clip(CircleShape).border(5.dp, Brush.sweepGradient(listOf(Color(0xFFFFB86B), Color(0xFFFF6B8B), Color(0xFF8B7CFF), Color(0xFFFFB86B))), CircleShape)
-                .padding(9.dp).clip(CircleShape).background(p.onSurface).clickable(onClickLabel = "開啟相機") { cameraOpen = true },
+                .padding(9.dp).clip(CircleShape).background(p.onSurface).clickable(onClickLabel = "開啟相機") { cameraMode = CamMode.PHOTO; cameraOpen = true },
                 contentAlignment = Alignment.Center) { Icon(Icons.Rounded.PhotoCamera, null, Modifier.size(34.dp), tint = p.surface) }
             Spacer(Modifier.height(6.dp)); Text("開啟相機", color = p.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
@@ -191,25 +192,24 @@ internal fun SnapPageV2(snapshot: WeatherSnapshot?) {
         }
     }
     if (status.isNotEmpty()) Note(status)
+    // Straight into a mode: the camera's other modes, one tap away.
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(Icons.Rounded.FilterVintage to "${SnapRender.Filter.entries.size - 1} 種濾鏡", Icons.Rounded.Tune to "5 種調整",
-            Icons.Rounded.Crop to "${SnapRender.Aspect.entries.size} 種比例", Icons.Rounded.IosShare to "存相簿分享").forEach { (icon, label) ->
-            Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(p.onSurface.copy(alpha = .05f)).padding(vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(icon, null, Modifier.size(20.dp), tint = p.onSurface.copy(alpha = .8f))
-                Spacer(Modifier.height(4.dp))
-                Text(label, color = p.onSurfaceVariant, fontSize = 14.sp, maxLines = 1)
+        listOf(Triple(Icons.Rounded.NightsStay, "超級夜景", CamMode.NIGHT), Triple(Icons.Rounded.Videocam, "錄影 4K", CamMode.VIDEO),
+            Triple(Icons.Rounded.Tune, "專業", CamMode.PRO), Triple(Icons.Rounded.Mic, "錄音", CamMode.AUDIO)).forEach { (icon, label, m) ->
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(p.onSurface.copy(alpha = .06f)).clickable(onClickLabel = label) { cameraMode = m; cameraOpen = true }
+                .padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(icon, null, Modifier.size(22.dp), tint = p.onSurface.copy(alpha = .85f))
+                Spacer(Modifier.height(5.dp))
+                Text(label, color = p.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
     }
-    Note("左右滑動挑浮水印樣式；拍照時就看得到成品。相機只在這一頁開啟時使用，照片只存在你的手機相簿。")
-    if (cameraOpen) CameraScreen(facts, template, onClose = { cameraOpen = false }, onPhoto = { b, edit -> cameraOpen = false; editing = b to edit })
+    Note("相機有超級夜景、錄影（最高 4K 60 fps，支援的手機可 8K）、專業手動與錄音；編輯有 ${SnapRender.Filter.entries.size - 1} 種濾鏡、13 種調整。照片、影片與錄音只存在你的手機。")
+    if (cameraOpen) CameraScreen(facts, template, cameraMode, onClose = { cameraOpen = false; cameraMode = CamMode.PHOTO }, onPhoto = { b, edit -> cameraOpen = false; editing = b to edit })
     editing?.let { (b, e) -> EditorScreen(b, e, facts, onClose = { editing = null }) }
 }
 
 // ---------------------------------------------------------------- live camera
-
-private enum class Flash(val mode: Int) { OFF(ImageCapture.FLASH_MODE_OFF), AUTO(ImageCapture.FLASH_MODE_AUTO), ON(ImageCapture.FLASH_MODE_ON) }
 
 @Composable
 private fun FullScreen(onClose: () -> Unit, content: @Composable BoxScope.() -> Unit) =
@@ -217,193 +217,24 @@ private fun FullScreen(onClose: () -> Unit, content: @Composable BoxScope.() -> 
         Box(Modifier.fillMaxSize().background(Color.Black)) { content() }
     }
 
-@Composable
-private fun RoundTool(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, active: Boolean = false, onClick: () -> Unit) {
-    Box(Modifier.size(44.dp).clip(CircleShape).background(if (active) Color(0xFFFFD60A) else Color.Black.copy(alpha = .38f))
-        .clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, label, Modifier.size(24.dp), tint = if (active) Color.Black else Color.White)
-    }
-}
-
-@Composable
-private fun CameraScreen(facts: LifeCards.SnapFacts, startTemplate: SnapRender.Template, onClose: () -> Unit, onPhoto: (Bitmap, SnapRender.Edit) -> Unit) {
-    val ctx = LocalContext.current
-    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val scope = rememberCoroutineScope()
-    var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
-    var asked by remember { mutableStateOf(false) }
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it; asked = true }
-    LaunchedEffect(Unit) { if (!granted) ask.launch(Manifest.permission.CAMERA) }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let { scope.launch { withContext(Dispatchers.IO) { SnapRender.decode(ctx, it) }?.let { b -> onPhoto(b, SnapRender.Edit(template = startTemplate)) } } }
-    }
-    var flash by remember { mutableStateOf(Flash.OFF) }
-    var timer by remember { mutableIntStateOf(0) }
-    var grid by remember { mutableStateOf(true) }
-    var aspect by remember { mutableStateOf(SnapRender.Aspect.CLASSIC) }
-    var template by remember { mutableStateOf(startTemplate) }
-    var front by remember { mutableStateOf(false) }
-    var zoom by remember { mutableFloatStateOf(1f) }
-    var countdown by remember { mutableIntStateOf(0) }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf("") }
-    val blink = remember { Animatable(0f) }
-    val controller = remember { LifecycleCameraController(ctx).apply { setEnabledUseCases(CameraController.IMAGE_CAPTURE) } }
-    DisposableEffect(granted, owner) {
-        if (granted) runCatching { controller.bindToLifecycle(owner) }.onFailure { error = "相機無法啟動" }
-        onDispose { runCatching { controller.unbind() } }
-    }
-    LaunchedEffect(flash) { controller.imageCaptureFlashMode = flash.mode }
-    DisposableEffect(controller) {
-        val watch = androidx.lifecycle.Observer<androidx.camera.core.ZoomState> { z -> if (z != null) zoom = z.zoomRatio }
-        controller.zoomState.observeForever(watch)
-        onDispose { controller.zoomState.removeObserver(watch) }
-    }
-    LaunchedEffect(front) {
-        val sel = if (front) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
-        if (runCatching { controller.hasCamera(sel) }.getOrDefault(false)) controller.cameraSelector = sel
-    }
-    fun shoot() {
-        if (busy) return
-        busy = true
-        scope.launch {
-            for (s in timer downTo 1) { countdown = s; delay(1000) }
-            countdown = 0
-            val file = File(File(ctx.cacheDir, "snap").apply { mkdirs() }, "shot-${System.currentTimeMillis()}.jpg")
-            controller.takePicture(ImageCapture.OutputFileOptions.Builder(file).build(), ContextCompat.getMainExecutor(ctx), object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(r: ImageCapture.OutputFileResults) {
-                    scope.launch {
-                        blink.snapTo(1f); launch { blink.animateTo(0f, tween(260)) }
-                        val bmp = withContext(Dispatchers.IO) { SnapRender.decode(ctx, Uri.fromFile(file), mirror = front) }
-                        file.delete(); busy = false
-                        if (bmp != null) onPhoto(bmp, SnapRender.Edit(aspect = aspect, template = template)) else error = "照片讀取失敗，請再拍一次"
-                    }
-                }
-                override fun onError(e: ImageCaptureException) { busy = false; error = "拍照失敗，請再試一次" }
-            })
-        }
-    }
-    var root by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
-    // The watermark itself, drawn on a clear picture the size of the frame, live over the viewfinder.
-    val overlay by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, root, aspect, template, facts) {
-        if (root.width == 0 || template == SnapRender.Template.NONE) { value = null; return@produceState }
-        val r = aspect.ratio; val W = root.width.toFloat(); val H = root.height.toFloat()
-        val (fw, fh) = if (r == null) W to H else if (W / H > r) H * r to H else W to W / r
-        value = withContext(Dispatchers.Default) { SnapRender.overlay(ctx, (fw / 2).roundToInt(), (fh / 2).roundToInt(), SnapRender.Edit(aspect = aspect, template = template), facts).asImageBitmap() }
-    }
-    FullScreen(onClose) {
-        Box(Modifier.fillMaxSize().onSizeChanged { root = it })
-        if (granted) {
-            AndroidView({ c -> PreviewView(c).apply { this.controller = controller; scaleType = PreviewView.ScaleType.FILL_CENTER; implementationMode = PreviewView.ImplementationMode.COMPATIBLE } },
-                Modifier.fillMaxSize())
-            // The frame of the chosen ratio, grid lines and a live look at the caption.
-            Canvas(Modifier.fillMaxSize()) {
-                val r = aspect.ratio
-                val fw: Float; val fh: Float
-                if (r == null) { fw = size.width; fh = size.height } else if (size.width / size.height > r) { fh = size.height; fw = fh * r } else { fw = size.width; fh = fw / r }
-                val l = (size.width - fw) / 2; val t = (size.height - fh) / 2
-                val shade = Color.Black.copy(alpha = .55f)
-                if (t > 0) { drawRect(shade, Offset.Zero, androidx.compose.ui.geometry.Size(size.width, t)); drawRect(shade, Offset(0f, t + fh), androidx.compose.ui.geometry.Size(size.width, size.height - t - fh)) }
-                if (l > 0) { drawRect(shade, Offset.Zero, androidx.compose.ui.geometry.Size(l, size.height)); drawRect(shade, Offset(l + fw, 0f), androidx.compose.ui.geometry.Size(size.width - l - fw, size.height)) }
-                if (grid) for (i in 1..2) {
-                    drawLine(Color.White.copy(alpha = .45f), Offset(l + fw * i / 3, t), Offset(l + fw * i / 3, t + fh), 1.dp.toPx())
-                    drawLine(Color.White.copy(alpha = .45f), Offset(l, t + fh * i / 3), Offset(l + fw, t + fh * i / 3), 1.dp.toPx())
-                }
-            }
-            overlay?.let { img ->
-                val d = androidx.compose.ui.platform.LocalDensity.current
-                val r = aspect.ratio; val W = root.width.toFloat(); val H = root.height.toFloat()
-                val (fw, fh) = if (r == null) W to H else if (W / H > r) H * r to H else W to W / r
-                Image(img, "浮水印預覽：${template.label}", Modifier.align(Alignment.Center).size(with(d) { fw.toDp() }, with(d) { fh.toDp() }), contentScale = ContentScale.FillBounds)
-            }
-        } else Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Rounded.NoPhotography, null, Modifier.size(56.dp), tint = Color.White)
-            Spacer(Modifier.height(12.dp))
-            Text(if (asked) "沒有相機權限" else "需要相機權限", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("可以改從相簿選照片，或到系統設定允許相機。", color = Color.White.copy(alpha = .8f), fontSize = 15.sp, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassButton(onClick = { ask.launch(Manifest.permission.CAMERA) }) { Text("允許相機") }
-                GlassOutlinedButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Text("從相簿選") }
-            }
-        }
-        // Top tools.
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            RoundTool(Icons.Rounded.Close, "關閉", onClick = onClose)
-            Spacer(Modifier.weight(1f))
-            RoundTool(when (flash) { Flash.OFF -> Icons.Rounded.FlashOff; Flash.AUTO -> Icons.Rounded.FlashAuto; Flash.ON -> Icons.Rounded.FlashOn }, "閃光燈", flash == Flash.ON) {
-                flash = Flash.entries[(flash.ordinal + 1) % Flash.entries.size]
-            }
-            Spacer(Modifier.width(8.dp))
-            RoundTool(when (timer) { 3 -> Icons.Rounded.Timer3; 10 -> Icons.Rounded.Timer10; else -> Icons.Rounded.TimerOff }, "倒數", timer > 0) {
-                timer = when (timer) { 0 -> 3; 3 -> 10; else -> 0 }
-            }
-            Spacer(Modifier.width(8.dp))
-            RoundTool(if (grid) Icons.Rounded.Grid3x3 else Icons.Rounded.GridOff, "格線", grid) { grid = !grid }
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.height(44.dp).clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .38f)).clickable {
-                val list = listOf(SnapRender.Aspect.CLASSIC, SnapRender.Aspect.SQUARE, SnapRender.Aspect.PORTRAIT, SnapRender.Aspect.STORY, SnapRender.Aspect.WIDE)
-                aspect = list[(list.indexOf(aspect) + 1) % list.size]
-            }.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) { Text(aspect.label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
-        }
-        if (countdown > 0) Text("$countdown", color = Color.White, fontSize = 120.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Center))
-        if (error.isNotEmpty()) Text(error, color = Color.White, fontSize = 15.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 110.dp)
-            .clip(RoundedCornerShape(99.dp)).background(Color(0xCCD5523F)).padding(horizontal = 14.dp, vertical = 8.dp))
-        // Bottom: a dark fade so the controls read over any sky, then zoom, styles, gallery · shutter · flip.
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(300.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .72f)))))
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(bottom = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            if (granted) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val maxZ = runCatching { controller.zoomState.value?.maxZoomRatio }.getOrNull() ?: 1f
-                val stops = listOf(1f, 2f, 5f).filter { it <= maxZ + .01f }
-                // Like the iOS camera: the stop you are on shows the live ratio after a pinch (1.6×).
-                val active = stops.lastOrNull { zoom >= it - .05f } ?: 1f
-                stops.forEach { z ->
-                    val on = z == active
-                    Box(Modifier.size(if (on) 44.dp else 38.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)).clickable {
-                        zoom = z; runCatching { controller.setZoomRatio(z) }
-                    }, contentAlignment = Alignment.Center) {
-                        val label = if (on) (if (kotlin.math.abs(zoom - z) < .05f) "${z.roundToInt()}×" else String.format(java.util.Locale.US, "%.1f×", zoom)) else "${z.roundToInt()}"
-                        Text(label, color = if (on) Color(0xFFFFD60A) else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            // Styles as bubbles, like a camera app's effects tray; the chosen one is ringed and named.
-            Text(template.label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .45f)).padding(horizontal = 12.dp, vertical = 4.dp))
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                SnapRender.Template.entries.forEach { t ->
-                    val on = t == template
-                    Box(Modifier.size(if (on) 58.dp else 50.dp).clip(CircleShape)
-                        .background(if (on) Color.White.copy(alpha = .28f) else Color.Black.copy(alpha = .42f))
-                        .border(if (on) 3.dp else 1.dp, if (on) Color.White else Color.White.copy(alpha = .3f), CircleShape)
-                        .clickable(onClickLabel = t.label) { template = t }, contentAlignment = Alignment.Center) {
-                        Text(t.glyph, color = Color.White, fontSize = if (on) 20.sp else 17.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth().padding(horizontal = 34.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(50.dp).clip(RoundedCornerShape(12.dp)).border(2.dp, Color.White, RoundedCornerShape(12.dp)).clickable {
-                    pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }, contentAlignment = Alignment.Center) { Icon(Icons.Rounded.PhotoLibrary, "相簿", tint = Color.White) }
-                Spacer(Modifier.weight(1f))
-                Box(Modifier.size(84.dp).clip(CircleShape).border(4.dp, Color.White, CircleShape).padding(7.dp).clip(CircleShape)
-                    .background(if (busy) Color.White.copy(alpha = .45f) else Color.White).clickable(enabled = granted && !busy, role = Role.Button, onClickLabel = "拍照") { shoot() })
-                Spacer(Modifier.weight(1f))
-                RoundTool(Icons.Rounded.Cameraswitch, "切換鏡頭") { front = !front }
-            }
-        }
-        if (blink.value > 0f) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = blink.value)))
-    }
-}
-
 // ---------------------------------------------------------------- editor
 
 private enum class Tab(val label: String) { FILTER("濾鏡"), ADJUST("調整"), MARK("浮水印"), CROP("裁切") }
-private enum class Tool(val label: String) { BRIGHT("亮度"), CONTRAST("對比"), SATURATION("飽和度"), WARMTH("色溫"), VIGNETTE("暈影") }
+private enum class Tool(val label: String) {
+    BRIGHT("亮度"), EXPOSURE("曝光"), CONTRAST("對比"), HIGHLIGHTS("高光"), SHADOWS("陰影"), SATURATION("飽和度"), VIBRANCE("自然飽和"),
+    WARMTH("色溫"), TINT("色調"), SHARPEN("銳利度"), FADE("褪色"), GRAIN("顆粒"), VIGNETTE("暈影");
+    val positiveOnly get() = this == VIGNETTE || this == FADE || this == GRAIN
+    fun read(e: SnapRender.Edit) = when (this) {
+        BRIGHT -> e.brightness; EXPOSURE -> e.exposure; CONTRAST -> e.contrast; HIGHLIGHTS -> e.highlights; SHADOWS -> e.shadows
+        SATURATION -> e.saturation; VIBRANCE -> e.vibrance; WARMTH -> e.warmth; TINT -> e.tint; SHARPEN -> e.sharpen; FADE -> e.fade
+        GRAIN -> e.grain; VIGNETTE -> e.vignette
+    }
+    fun write(e: SnapRender.Edit, x: Float) = when (this) {
+        BRIGHT -> e.copy(brightness = x); EXPOSURE -> e.copy(exposure = x); CONTRAST -> e.copy(contrast = x); HIGHLIGHTS -> e.copy(highlights = x)
+        SHADOWS -> e.copy(shadows = x); SATURATION -> e.copy(saturation = x); VIBRANCE -> e.copy(vibrance = x); WARMTH -> e.copy(warmth = x)
+        TINT -> e.copy(tint = x); SHARPEN -> e.copy(sharpen = x); FADE -> e.copy(fade = x); GRAIN -> e.copy(grain = x); VIGNETTE -> e.copy(vignette = x)
+    }
+}
 
 @Composable
 private fun EditorScreen(src: Bitmap, start: SnapRender.Edit, facts: LifeCards.SnapFacts, onClose: () -> Unit) {
@@ -447,45 +278,69 @@ private fun EditorScreen(src: Bitmap, start: SnapRender.Edit, facts: LifeCards.S
                     .clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .6f)).padding(horizontal = 14.dp, vertical = 8.dp))
             }
             // Tool area.
-            Column(Modifier.fillMaxWidth().height(150.dp), verticalArrangement = Arrangement.Center) {
+            Column(Modifier.fillMaxWidth().height(176.dp), verticalArrangement = Arrangement.Center) {
                 when (tab) {
-                    Tab.FILTER -> Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        SnapRender.Filter.entries.forEach { f ->
-                            val on = edit.filter == f
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { edit = edit.copy(filter = f) }) {
-                                Text(f.label, color = if (on) Color.White else Color.White.copy(alpha = .7f), fontSize = 14.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
-                                Spacer(Modifier.height(6.dp))
-                                Image(filterThumbs.getValue(f), f.label, Modifier.size(76.dp).clip(RoundedCornerShape(10.dp))
-                                    .border(if (on) 2.dp else 0.dp, Color.White, RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                    Tab.FILTER -> {
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            SnapRender.Filter.entries.forEach { f ->
+                                val on = edit.filter == f
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { edit = edit.copy(filter = f, strength = if (on) edit.strength else 1f) }) {
+                                    Text(f.label, color = if (on) Color.White else Color.White.copy(alpha = .7f), fontSize = 14.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
+                                    Spacer(Modifier.height(6.dp))
+                                    Image(filterThumbs.getValue(f), f.label, Modifier.size(if (edit.filter == SnapRender.Filter.ORIGINAL) 76.dp else 62.dp).clip(RoundedCornerShape(10.dp))
+                                        .border(if (on) 2.dp else 0.dp, Color.White, RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                                }
                             }
+                        }
+                        if (edit.filter != SnapRender.Filter.ORIGINAL) Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("強度 ${(edit.strength * 100).roundToInt()}", color = Color.White, fontSize = 14.sp, modifier = Modifier.width(72.dp))
+                            GlassSlider(edit.strength, { edit = edit.copy(strength = it) }, Modifier.weight(1f), valueRange = 0f..1f)
                         }
                     }
                     Tab.ADJUST -> {
-                        val v = when (tool) { Tool.BRIGHT -> edit.brightness; Tool.CONTRAST -> edit.contrast; Tool.SATURATION -> edit.saturation; Tool.WARMTH -> edit.warmth; Tool.VIGNETTE -> edit.vignette }
-                        Text("${tool.label}  ${(v * 100).roundToInt()}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.CenterHorizontally))
-                        GlassSlider(v, { x ->
-                            edit = when (tool) { Tool.BRIGHT -> edit.copy(brightness = x); Tool.CONTRAST -> edit.copy(contrast = x); Tool.SATURATION -> edit.copy(saturation = x)
-                                Tool.WARMTH -> edit.copy(warmth = x); Tool.VIGNETTE -> edit.copy(vignette = x) }
-                        }, Modifier.fillMaxWidth().padding(horizontal = 18.dp), valueRange = if (tool == Tool.VIGNETTE) 0f..1f else -1f..1f)
+                        val v = tool.read(edit)
+                        Text("${tool.label}  ${(v * 100).roundToInt()}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.CenterHorizontally)
+                            .clickable(onClickLabel = "歸零") { edit = tool.write(edit, 0f) })
+                        GlassSlider(v, { x -> edit = tool.write(edit, x) }, Modifier.fillMaxWidth().padding(horizontal = 18.dp), valueRange = if (tool.positiveOnly) 0f..1f else -1f..1f)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Tool.entries.forEach { t -> SnapPill(t.label, t == tool) { tool = t } }
+                            Tool.entries.forEach { t -> SnapPill(t.label + if (t.read(edit) != 0f) " •" else "", t == tool) { tool = t } }
                         }
                     }
                     Tab.MARK -> {
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SnapRender.Template.entries.forEach { t -> SnapPill(t.label, edit.template == t) { edit = edit.copy(template = t) } }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SnapRender.Position.entries.forEach { p -> SnapPill(p.label, edit.position == p) { edit = edit.copy(position = p) } }
                             Box(Modifier.width(1.dp).height(30.dp).background(Color.White.copy(alpha = .3f)))
+                            SnapRender.Position.entries.forEach { p -> SnapPill(p.label, edit.position == p) { edit = edit.copy(position = p) } }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SnapRender.Field.entries.forEach { f -> SnapPill(f.label, f in edit.fields) {
                                 edit = edit.copy(fields = if (f in edit.fields) edit.fields - f else edit.fields + f)
                             } }
                         }
+                        Spacer(Modifier.height(6.dp))
+                        if (SnapRender.Field.NOTE in edit.fields) Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = .12f)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                            androidx.compose.foundation.text.BasicTextField(edit.note, { edit = edit.copy(note = it.take(24)) }, singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                                modifier = Modifier.fillMaxWidth(), decorationBox = { inner -> if (edit.note.isEmpty()) Text("寫一句話，例如：和家人的週末", color = Color.White.copy(alpha = .45f), fontSize = 16.sp); inner() })
+                        } else Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("大小", color = Color.White, fontSize = 14.sp, modifier = Modifier.width(40.dp))
+                            GlassSlider(edit.markScale, { edit = edit.copy(markScale = it) }, Modifier.weight(1f), valueRange = .6f..1.6f)
+                            Spacer(Modifier.width(10.dp))
+                            Text("透明", color = Color.White, fontSize = 14.sp, modifier = Modifier.width(40.dp))
+                            GlassSlider(edit.markOpacity, { edit = edit.copy(markOpacity = it) }, Modifier.weight(1f), valueRange = .3f..1f)
+                        }
                     }
-                    Tab.CROP -> Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SnapRender.Aspect.entries.forEach { a -> SnapPill(a.label, edit.aspect == a) { edit = edit.copy(aspect = a) } }
+                    Tab.CROP -> {
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SnapRender.Aspect.entries.forEach { a -> SnapPill(a.label, edit.aspect == a) { edit = edit.copy(aspect = a) } }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SnapPill("向右轉 90°", false) { edit = edit.copy(turns = (edit.turns + 1) % 4) }
+                            SnapPill("左右翻轉", edit.mirror) { edit = edit.copy(mirror = !edit.mirror) }
+                        }
                     }
                 }
             }

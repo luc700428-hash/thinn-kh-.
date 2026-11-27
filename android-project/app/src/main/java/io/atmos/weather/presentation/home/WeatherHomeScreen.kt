@@ -357,6 +357,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     var weatherAlarmOpen by remember { mutableStateOf(fromClockWidget) }
     var marineOpen by remember {mutableStateOf(false)}
     var skyOpen by remember {mutableStateOf(false)}
+    var starsOpen by remember {mutableStateOf(false)}
     var insightsOpen by remember {mutableStateOf(false)}
     var alertsOpen by remember {mutableStateOf(false)}
     var alertTitle by remember {mutableStateOf<String?>(null)}
@@ -369,7 +370,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     // not to Activity.finish() while tools, seismic, settings or sheets are open.
     BackHandler(enabled=locationOpen || settingsOpen || lifestyleSettingsOpen ||
         pushSettingsOpen || diagnosticsOpen || briefingOpen || tasksOpen || lifeOpen ||
-        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || marineOpen || skyOpen || alertsOpen || insightsOpen ||
+        updatePageOpen || earthquakePageOpen || typhoonPageOpen || weatherAlarmOpen || marineOpen || skyOpen || starsOpen || alertsOpen || insightsOpen ||
         mainPager.currentPage != 0) {
         when {
             lifeOpen -> lifeFeature=null
@@ -377,6 +378,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
             insightsOpen -> insightsOpen=false
             marineOpen -> marineOpen=false
             skyOpen -> skyOpen=false
+            starsOpen -> starsOpen=false
             weatherAlarmOpen -> weatherAlarmOpen=false
             typhoonPageOpen -> typhoonPageOpen=false
             earthquakePageOpen -> earthquakePageOpen=false
@@ -525,7 +527,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val reducedMotion = io.atmos.weather.ui.rememberAppleReduceMotion()
     val weatherSceneActive=mainPager.currentPage==0&&!settingsOpen&&!settingsDetailOpen&&!lifestyleSettingsOpen&&
         !pushSettingsOpen&&!diagnosticsOpen&&!briefingOpen&&!tasksOpen&&!updatePageOpen&&
-        !earthquakePageOpen&&!typhoonPageOpen&&!weatherAlarmOpen&&!marineOpen&&!skyOpen&&!alertsOpen&&!insightsOpen&&!nativeRadarOpen&&!lifeOpen
+        !earthquakePageOpen&&!typhoonPageOpen&&!weatherAlarmOpen&&!marineOpen&&!skyOpen&&!starsOpen&&!alertsOpen&&!insightsOpen&&!nativeRadarOpen&&!lifeOpen
     // Keep the animation value as State. Reading it in this parent would recompose the
     // complete forecast screen every frame (including scrolling and lists).
     val motionState: State<Float> = if(reducedMotion||!weatherSceneActive) rememberUpdatedState(0f)
@@ -560,7 +562,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val rootWindow=currentAppWindowLayout()
     val tabletWindow=LocalDevicePosture.current?.kind!=DeviceKind.PHONE&&rootWindow.width>=600f
     fun clearWorkspaceDetails() {
-        marineOpen=false;skyOpen=false;alertsOpen=false;insightsOpen=false
+        marineOpen=false;skyOpen=false;starsOpen=false;alertsOpen=false;insightsOpen=false
         typhoonPageOpen=false;earthquakePageOpen=false;tasksOpen=false;briefingOpen=false
         diagnosticsOpen=false;pushSettingsOpen=false;lifestyleSettingsOpen=false;settingsOpen=false
         locationOpen=false;weatherAlarmOpen=false;updatePageOpen=false;nativeRadarOpen=false
@@ -569,7 +571,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     fun openWorkspaceDetail(name:String,category:String?=null) {
         clearWorkspaceDetails()
         when(name) {
-            "marine"->marineOpen=true;"sky"->skyOpen=true;"alerts"->{alertTitle=null;alertUrl=null;alertsOpen=true}
+            "marine"->marineOpen=true;"sky"->skyOpen=true;"stars"->starsOpen=true;"alerts"->{alertTitle=null;alertUrl=null;alertsOpen=true}
             "insights"->insightsOpen=true;"typhoon"->typhoonPageOpen=true;"tasks"->tasksOpen=true
             "briefing"->briefingOpen=true;"diagnostics"->diagnosticsOpen=true;"push"->pushSettingsOpen=true
             "lifestyle"->lifestyleSettingsOpen=true;"alarm"->weatherAlarmOpen=true;"update"->updatePageOpen=true
@@ -578,7 +580,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
     }
     fun navigateWorkspace(requested:Int) {
-        val leaving=marineOpen||skyOpen||alertsOpen||insightsOpen||typhoonPageOpen||earthquakePageOpen||
+        val leaving=marineOpen||skyOpen||starsOpen||alertsOpen||insightsOpen||typhoonPageOpen||earthquakePageOpen||
             tasksOpen||briefingOpen||diagnosticsOpen||pushSettingsOpen||lifestyleSettingsOpen||settingsOpen||
             settingsDetailOpen||weatherAlarmOpen||updatePageOpen||locationOpen||nativeRadarOpen||lifeOpen
         clearWorkspaceDetails()
@@ -587,7 +589,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         showMainTab(target,if(leaving&&!reducedMotion)160L else 0L)
     }
     val workspaceDetailTitle=when {
-        marineOpen->"海象與浪況";skyOpen->"日月與月相";alertsOpen->"中央氣象署警特報";insightsOpen->"出門時段與生活指數"
+        marineOpen->"海象與浪況";skyOpen->"日月與月相";starsOpen->"星空與銀河";alertsOpen->"中央氣象署警特報";insightsOpen->"出門時段與生活指數"
         typhoonPageOpen->"颱風動向";tasksOpen->"我的事項";briefingOpen->"天氣提醒與通知";weatherAlarmOpen->"天氣鬧鐘"
         diagnosticsOpen->"權限與系統健康";pushSettingsOpen->"地震設定";lifestyleSettingsOpen->"穿搭與生活偏好"
         updatePageOpen->"軟體更新";lifeOpen->io.atmos.weather.life.LifeFeatures.title(lifeShown);settingsOpen->when(advancedCategory){"外觀"->"字體與閱讀";"聲音"->"聲音與觸覺";"資料"->"資料更新頻率";else->"通知音效與背景提醒"}
@@ -604,7 +606,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     io.atmos.weather.ui.GlassAppTheme {
         val themedPage=mainPager.currentPage!=0||settingsOpen||settingsDetailOpen||lifestyleSettingsOpen||
             pushSettingsOpen||diagnosticsOpen||briefingOpen||tasksOpen||updatePageOpen||
-            earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||alertsOpen||insightsOpen||nativeRadarOpen||lifeOpen
+            earthquakePageOpen||typhoonPageOpen||weatherAlarmOpen||marineOpen||skyOpen||starsOpen||alertsOpen||insightsOpen||nativeRadarOpen||lifeOpen
         io.atmos.weather.ui.AppSystemBars(if(themedPage)darkAppearance else weatherSky.dark,transparentNavigation=!themedPage)
         val backdrop=io.atmos.weather.ui.rememberThinnBackdrop()
         val sceneBackdrop=io.atmos.weather.ui.rememberThinnBackdrop()
@@ -676,7 +678,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                     .nestedScroll(dockMinimizer)
                     .then(if(workspace.tablet)Modifier else Modifier.background(workspaceBrush)),
                 beyondViewportPageCount = 0,
-                userScrollEnabled = !workspace.tablet && !locationOpen && !settingsOpen && !settingsDetailOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen && !typhoonPageOpen && !earthquakePageOpen && !weatherAlarmOpen && !pushSettingsOpen && !lifestyleSettingsOpen && !nativeRadarOpen && !marineOpen && !skyOpen && !lifeOpen
+                userScrollEnabled = !workspace.tablet && !locationOpen && !settingsOpen && !settingsDetailOpen && !briefingOpen && !tasksOpen && !updatePageOpen && !diagnosticsOpen && !typhoonPageOpen && !earthquakePageOpen && !weatherAlarmOpen && !pushSettingsOpen && !lifestyleSettingsOpen && !nativeRadarOpen && !marineOpen && !skyOpen && !starsOpen && !lifeOpen
             ) { page ->
             key(page,tabResetEpochs[page]) {
             when (page) {
@@ -1085,7 +1087,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onWeatherAlarms = { openWorkspaceDetail("alarm") },
                 onTyphoons = { openWorkspaceDetail("typhoon") },
                 onRadar = {openWorkspaceDetail("radar")},
-                onMarine={openWorkspaceDetail("marine")},onSky={openWorkspaceDetail("sky")},
+                onMarine={openWorkspaceDetail("marine")},onSky={openWorkspaceDetail("sky")},onStars={openWorkspaceDetail("stars")},
                 onAlerts={openWorkspaceDetail("alerts")},onInsights={openWorkspaceDetail("insights")},onUtilityOpen={clearWorkspaceDetails()},
                 onLife={openWorkspaceDetail("life:$it")})
             3 -> AppGlassSettingsPage(
@@ -1382,6 +1384,9 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         }
         io.atmos.weather.ui.MainDetailLayer(skyOpen,{skyOpen=false}) {
             io.atmos.weather.sky.SkyPlannerPage(state.city,snapshot?.timeZoneId){skyOpen=false}
+        }
+        io.atmos.weather.ui.MainDetailLayer(starsOpen,{starsOpen=false}) {
+            io.atmos.weather.sky.StarMapPage(state.city){starsOpen=false}
         }
         if(!workspace.tablet) CompositionLocalProvider(
             io.atmos.weather.ui.LocalThinnBackdrop provides backdrop) { AppGlassNavigation(

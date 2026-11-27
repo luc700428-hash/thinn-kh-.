@@ -29,21 +29,33 @@ import kotlin.math.roundToInt
  * graphics, so it runs the same for the live preview thumbnails and the full-size save.
  */
 object SnapRender {
-    enum class Filter(val label: String) { ORIGINAL("原圖"), CLEAR("晴空"), WARM("暖陽"), SUNSET("黃昏"), COOL("藍調"), FILM("底片"), VIVID("鮮豔"), CLOUD("雲海"), MONO("黑白") }
+    enum class Filter(val label: String) {
+        ORIGINAL("原圖"), CLEAR("晴空"), WARM("暖陽"), SUNSET("黃昏"), COOL("藍調"), FILM("底片"), VIVID("鮮豔"), CLOUD("雲海"), MONO("黑白"),
+        JAPAN("日系"), CREAM("奶油"), HK("港風"), RETRO("復古"), NIGHT("夜色"), CYBER("霓虹"), FOREST("森林"), SEPIA("懷舊"),
+    }
     enum class Aspect(val label: String, val ratio: Float?) { ORIGINAL("原始", null), SQUARE("1:1", 1f), PORTRAIT("4:5", .8f), STORY("9:16", 9f / 16f), WIDE("16:9", 16f / 9f), CLASSIC("3:4", .75f) }
     enum class Template(val label: String, val glyph: String) {
         MAGAZINE("雜誌", "雜"), GLASS("玻璃卡", "玻"), BIG("大溫度", "°"), POLAROID("拍立得", "拍"), FILM("底片", "底"), MINIMAL("極簡", "簡"), NONE("不加", "無")
     }
     enum class Position(val label: String) { BOTTOM("下方"), TOP("上方") }
-    enum class Field(val label: String) { TEMP("溫度"), CONDITION("天氣"), PLACE("地點"), TIME("時間"), PRESSURE("氣壓"), ALTITUDE("海拔"), HUMIDITY("濕度") }
+    enum class Field(val label: String) { TEMP("溫度"), CONDITION("天氣"), PLACE("地點"), TIME("時間"), PRESSURE("氣壓"), ALTITUDE("海拔"), HUMIDITY("濕度"), NOTE("自訂文字") }
 
     data class Edit(
         val filter: Filter = Filter.ORIGINAL,
         val brightness: Float = 0f, val contrast: Float = 0f, val saturation: Float = 0f, val warmth: Float = 0f, val vignette: Float = 0f,
+        /** Finer tools (each −1…1 unless noted): exposure, highlights, shadows, tint (green ↔ magenta), vibrance, sharpness, fade and grain (0…1). */
+        val exposure: Float = 0f, val highlights: Float = 0f, val shadows: Float = 0f, val tint: Float = 0f, val vibrance: Float = 0f,
+        val sharpen: Float = 0f, val fade: Float = 0f, val grain: Float = 0f,
+        /** How strongly the filter applies (0…1). */
+        val strength: Float = 1f,
+        /** Quarter turns clockwise and a mirror, applied before the crop. */
+        val turns: Int = 0, val mirror: Boolean = false,
         val aspect: Aspect = Aspect.ORIGINAL,
         val template: Template = Template.MAGAZINE,
         val position: Position = Position.BOTTOM,
         val fields: Set<Field> = setOf(Field.TEMP, Field.CONDITION, Field.PLACE, Field.TIME, Field.PRESSURE),
+        /** The caption's size (0.6…1.6) and opacity (0.3…1), and a line of your own words. */
+        val markScale: Float = 1f, val markOpacity: Float = 1f, val note: String = "",
     )
 
     /** The filter's own colour matrix (before the adjustments). */
@@ -62,6 +74,14 @@ object SnapRender {
             Filter.VIVID -> { m.postConcat(sat(1.45f)); m.postConcat(contrast(.12f)) }
             Filter.CLOUD -> { m.postConcat(sat(.9f)); m.postConcat(contrast(-.18f)); m.postConcat(lift(14f)); m.postConcat(scale(.98f, 1f, 1.04f)) }
             Filter.MONO -> { m.postConcat(sat(0f)); m.postConcat(contrast(.15f)) }
+            Filter.JAPAN -> { m.postConcat(sat(.85f)); m.postConcat(contrast(-.12f)); m.postConcat(lift(18f)); m.postConcat(scale(.97f, 1.02f, 1.06f)) }
+            Filter.CREAM -> { m.postConcat(sat(.9f)); m.postConcat(lift(16f)); m.postConcat(scale(1.05f, 1.02f, .95f)) }
+            Filter.HK -> { m.postConcat(sat(1.15f)); m.postConcat(contrast(.1f)); m.postConcat(scale(1.08f, .97f, .9f)); m.postConcat(ColorMatrix(floatArrayOf(1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 6f, 0f, 0f, 1f, 0f, 10f, 0f, 0f, 0f, 1f, 0f))) }
+            Filter.RETRO -> { m.postConcat(sat(.7f)); m.postConcat(scale(1.08f, 1.0f, .85f)); m.postConcat(lift(26f)); m.postConcat(contrast(-.08f)) }
+            Filter.NIGHT -> { m.postConcat(sat(1.1f)); m.postConcat(scale(.9f, .98f, 1.15f)); m.postConcat(contrast(.12f)) }
+            Filter.CYBER -> { m.postConcat(sat(1.35f)); m.postConcat(scale(1.05f, .88f, 1.18f)); m.postConcat(contrast(.15f)) }
+            Filter.FOREST -> { m.postConcat(sat(1.1f)); m.postConcat(scale(.95f, 1.06f, .94f)); m.postConcat(contrast(.05f)) }
+            Filter.SEPIA -> { m.postConcat(sat(0f)); m.postConcat(scale(1.07f, .95f, .78f)); m.postConcat(lift(12f)) }
         }
         return m
     }
@@ -74,6 +94,12 @@ object SnapRender {
     /** Filter, then the person's brightness, contrast, saturation and warmth (each −1…1). */
     fun matrix(e: Edit): ColorMatrix {
         val m = filterMatrix(e.filter)
+        if (e.strength < 1f) { // blend the filter towards no change
+            val a = m.array; val id = ColorMatrix().array; val k = e.strength.coerceIn(0f, 1f)
+            m.set(FloatArray(20) { id[it] + (a[it] - id[it]) * k })
+        }
+        if (e.vibrance != 0f) m.postConcat(ColorMatrix().apply { setSaturation(1f + e.vibrance * .45f) })
+        if (e.tint != 0f) m.postConcat(ColorMatrix().apply { setScale(1f + .06f * e.tint, 1f - .1f * e.tint, 1f + .06f * e.tint, 1f) })
         if (e.saturation != 0f) m.postConcat(ColorMatrix().apply { setSaturation(1f + e.saturation) })
         if (e.contrast != 0f) m.postConcat(contrast(e.contrast * .5f))
         if (e.warmth != 0f) m.postConcat(ColorMatrix().apply { setScale(1f + .12f * e.warmth, 1f + .02f * e.warmth, 1f - .12f * e.warmth, 1f) })
@@ -97,7 +123,8 @@ object SnapRender {
         }
     }
 
-    fun render(ctx: Context?, src: Bitmap, e: Edit, facts: LifeCards.SnapFacts, maxSide: Int, zone: ZoneId = ZoneId.of("Asia/Taipei")): Bitmap {
+    fun render(ctx: Context?, original: Bitmap, e: Edit, facts: LifeCards.SnapFacts, maxSide: Int, zone: ZoneId = ZoneId.of("Asia/Taipei")): Bitmap {
+        val src = SnapPixels.orient(original, e.turns * 90, e.mirror)
         val crop = cropRect(src.width, src.height, e.aspect.ratio)
         val scale = min(1f, maxSide.toFloat() / max(crop.width(), crop.height()))
         val w = max(1, (crop.width() * scale).roundToInt()); val h = max(1, (crop.height() * scale).roundToInt())
@@ -105,6 +132,8 @@ object SnapRender {
         val c = Canvas(photo)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply { colorFilter = ColorMatrixColorFilter(matrix(e)) }
         c.drawBitmap(src, crop, RectF(0f, 0f, w.toFloat(), h.toFloat()), paint)
+        if (src !== original) src.recycle()
+        if (SnapPixels.needsPixels(e)) SnapPixels.apply(photo, e)
         if (e.vignette > 0f) {
             val r = max(w, h) * .75f
             c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), Paint().apply {
@@ -113,7 +142,7 @@ object SnapRender {
             })
         }
         if (e.template == Template.POLAROID) return polaroid(ctx, photo, e, facts, zone)
-        caption(ctx, c, photo, w, h, e, facts, zone)
+        withOpacity(c, w, h, e) { caption(ctx, c, photo, w, h, e, facts, zone) }
         return photo
     }
 
@@ -130,8 +159,14 @@ object SnapRender {
             c.drawRect(0f, 0f, w.toFloat(), b, frame); c.drawRect(0f, 0f, b, h.toFloat(), frame); c.drawRect(w - b, 0f, w.toFloat(), h.toFloat(), frame)
             c.drawRect(0f, h - bottom, w.toFloat(), h.toFloat(), frame)
             polaroidText(c, b, h - bottom, w - b, h.toFloat(), min(w, h) / 1080f, e, facts, zone)
-        } else caption(ctx, c, null, w, h, e, facts, zone)
+        } else withOpacity(c, w, h, e) { caption(ctx, c, null, w, h, e, facts, zone) }
         return out
+    }
+
+    private inline fun withOpacity(c: Canvas, w: Int, h: Int, e: Edit, draw: () -> Unit) {
+        if (e.markOpacity >= .99f) { draw(); return }
+        val save = c.saveLayerAlpha(0f, 0f, w.toFloat(), h.toFloat(), (e.markOpacity.coerceIn(.2f, 1f) * 255).roundToInt())
+        draw(); c.restoreToCount(save)
     }
 
     private val bold: Typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -150,7 +185,8 @@ object SnapRender {
             if (Field.TEMP in has) f.temperature?.let { "$it°" } else null,
             f.condition.takeIf { Field.CONDITION in has },
             f.place.takeIf { Field.PLACE in has },
-            listOfNotNull(f.pressure?.takeIf { Field.PRESSURE in has }?.let { "$it hPa" }, f.humidity?.takeIf { Field.HUMIDITY in has }?.let { "濕度 $it%" },
+            listOfNotNull(e.note.trim().takeIf { it.isNotEmpty() && Field.NOTE in has }?.take(24),
+                f.pressure?.takeIf { Field.PRESSURE in has }?.let { "$it hPa" }, f.humidity?.takeIf { Field.HUMIDITY in has }?.let { "濕度 $it%" },
                 f.altitude?.takeIf { Field.ALTITUDE in has }?.let { "海拔 $it m" }),
             if (Field.TIME in has) DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.TAIWAN).format(t) else null,
             if (Field.TIME in has) DateTimeFormatter.ofPattern("HH:mm", Locale.TAIWAN).format(t) else null)
@@ -159,7 +195,7 @@ object SnapRender {
     /** The weather caption in the chosen design. [photo] (when given) lets 玻璃卡 frost what is behind it. */
     private fun caption(ctx: Context?, c: Canvas, photo: Bitmap?, w: Int, h: Int, e: Edit, f: LifeCards.SnapFacts, zone: ZoneId) {
         if (e.template == Template.NONE || e.template == Template.POLAROID) return
-        val u = min(w, h) / 1080f
+        val u = min(w, h) / 1080f * e.markScale.coerceIn(.5f, 1.8f)
         val x = facts(e, f, zone)
         val top = e.position == Position.TOP
         val pad = 70f * u

@@ -96,15 +96,13 @@ internal fun ColumnScope.LifeFeatureContent(id: String, snapshot: WeatherSnapsho
 private fun LifePage(title: String, onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     WorkspacePageDialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         AppSystemBars(MaterialTheme.colorScheme.background.red < .5f)
-        Column(Modifier.fillMaxSize().background(ThinnOpticalMaterial.page).appleBouncingScroll().verticalScroll(rememberScrollState())
-            .statusBarsPadding().navigationBarsPadding().padding(horizontal = 18.dp).padding(top = 18.dp, bottom = 48.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GlassIconButton(onClick = onClose) { Icon(Icons.Rounded.ArrowBack, "返回", tint = MaterialTheme.colorScheme.onSurface) }
-                Spacer(Modifier.width(10.dp))
-                Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        // The same page frame as 地震報告: a fixed centred title with the round back control, then the content.
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
+            io.atmos.weather.ui.IOSSettingsHeader(title, onClose)
+            Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp).padding(top = 6.dp, bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                content()
             }
-            content()
         }
     }
 }

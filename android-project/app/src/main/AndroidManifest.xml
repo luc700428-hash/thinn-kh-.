@@ -15,6 +15,9 @@
     <!-- 天空浮水印相機: asked only when the camera page opens; the app works without it. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- 錄影的聲音與錄音: asked only when 錄影 or 錄音 is used. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Android 16+ user-initiated monitoring only; older Android ignores this. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />

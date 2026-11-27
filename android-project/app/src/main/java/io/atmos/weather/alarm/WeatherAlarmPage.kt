@@ -64,14 +64,14 @@ fun WeatherAlarmPage(onClose:()->Unit) {
             else WeatherAlarmScheduler.cancel(ctx,it.id) }
     }
     BackHandler(enabled=showEditor) { showEditor=false }
-    Column(Modifier.fillMaxSize().background(io.atmos.weather.ui.ThinnOpticalMaterial.page)
-        .statusBarsPadding().navigationBarsPadding().appleBouncingScroll().verticalScroll(rememberScrollState())
-        .padding(horizontal=20.dp,vertical=20.dp)) {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            IconButton(onClick=onClose) { Icon(Icons.Rounded.ArrowBack,"返回工具",tint=ink) }
-            Text("天氣鬧鐘",fontSize=28.sp,fontWeight=FontWeight.Bold,color=ink,modifier=Modifier.weight(1f))
-            IconButton(onClick={editing=null;showEditor=true}) {Icon(Icons.Rounded.Add,"新增鬧鐘",tint=accent)}
+    // The same page frame as 地震報告: a fixed centred title with the round back control, then the content.
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
+        Box(Modifier.fillMaxWidth()) {
+            io.atmos.weather.ui.IOSSettingsHeader("天氣鬧鐘",onClose)
+            IconButton(onClick={editing=null;showEditor=true},modifier=Modifier.align(Alignment.CenterEnd).padding(end=8.dp)) {Icon(Icons.Rounded.Add,"新增鬧鐘",tint=accent)}
         }
+    Column(Modifier.weight(1f).appleBouncingScroll().verticalScroll(rememberScrollState())
+        .padding(horizontal=16.dp).padding(top=6.dp,bottom=24.dp)) {
         Text("鬧鐘時間與重複週期會保存在手機中",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=16.sp)
         if (!WeatherAlarmScheduler.canBeExact(ctx)) {
             Spacer(Modifier.height(14.dp))
@@ -141,6 +141,7 @@ fun WeatherAlarmPage(onClose:()->Unit) {
             }
         }
         Text("實際提醒由 Android 鬧鐘與通知權限控制；Android 14+ 全螢幕顯示須個別授權。",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp)
+    }
     }
     if(showEditor) R10AlarmEditor(initial=editing,onClose={showEditor=false},onDelete={a->
         update(alarms.filterNot { it.id==a.id });showEditor=false
