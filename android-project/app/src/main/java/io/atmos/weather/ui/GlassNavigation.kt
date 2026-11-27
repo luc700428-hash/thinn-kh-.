@@ -157,21 +157,20 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
     // iOS Settings style: every row has its own system colour and a white filled glyph.
     val C=IOSColors
     val groups=listOf(
+        // Tools are things you use; settings live in 設定 and earthquakes in their own tab, so neither
+        // is linked from here any more.
         EntryGroup("日常生活",listOf(Entry("天氣鬧鐘","重複星期、鈴聲與稍後提醒",Icons.Rounded.Alarm,C.orange,onWeatherAlarms),
             Entry("我的事項","待辦清單與個人提醒",Icons.Rounded.Checklist,C.blue,onTasks),
-            Entry("天氣提醒與通知","早晚報、智慧提醒、通勤與通知中心",Icons.Rounded.NotificationsActive,C.red,onBriefings))),
-        EntryGroup("天氣與防災",listOf(Entry("中央氣象署警特報","App 內閱讀完整公告與警戒地區",Icons.Rounded.Warning,C.red,onAlerts),
-            Entry("出門時段與生活指數","什麼時候出門最好、洗車晾衣、著涼與防曬",Icons.Rounded.Air,C.teal,onInsights),
-            Entry("颱風動向","官方警報、路徑與預報時間軸",Icons.Rounded.Cyclone,C.indigo,onTyphoons),
-            Entry("地震監測","測站、震後報告與演練",Icons.Rounded.Sensors,C.orange,onSeismic),
-            Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,C.green,onRadar))),
-        EntryGroup("個人化與自動化",listOf(
-            Entry("氣壓不適預警","偏頭痛、關節痛的氣壓急降預警",Icons.Rounded.Speed,C.purple,{onLife("pressure")}),
             Entry("行事曆天氣","有地點的行程旁直接看天氣",Icons.Rounded.CalendarMonth,C.red,{onLife("calendar")}),
             Entry("自訂天氣規則","條件成立才通知，像天氣版 IFTTT",Icons.Rounded.AutoAwesome,C.indigo,{onLife("rules")}),
             Entry("家人天氣關懷","家人那裡變天時提醒，一鍵傳關心小卡",Icons.Rounded.Favorite,C.pink,{onLife("family")}),
             Entry("天空浮水印相機","拍天空，自動壓上溫度、氣壓與地點",Icons.Rounded.PhotoCamera,C.gray,{onLife("snap")}),
-            Entry("火車、高鐵與駕車模式","搭車看下一站天氣，開車看前方會不會下雨",Icons.Rounded.DirectionsCar,C.blue,{onLife("transit")}))),
+            Entry("火車、高鐵與駕車模式","搭車看下一站天氣，開車看測速與前方天氣",Icons.Rounded.DirectionsCar,C.blue,{onLife("transit")}))),
+        EntryGroup("天氣與防災",listOf(Entry("中央氣象署警特報","App 內閱讀完整公告與警戒地區",Icons.Rounded.Warning,C.red,onAlerts),
+            Entry("颱風動向","官方警報、路徑與預報時間軸",Icons.Rounded.Cyclone,C.indigo,onTyphoons),
+            Entry("降雨雷達","App 內操作近兩小時降雨回波",Icons.Rounded.Radar,C.green,onRadar),
+            Entry("出門時段與生活指數","什麼時候出門最好、洗車晾衣、著涼與防曬",Icons.Rounded.Air,C.teal,onInsights),
+            Entry("氣壓不適預警","偏頭痛、關節痛的氣壓急降預警",Icons.Rounded.Speed,C.purple,{onLife("pressure")}))),
         EntryGroup("防災與水情",listOf(
             Entry("停班停課速查","全台各縣市即時公告",Icons.Rounded.School,C.orange,{onLife("closure")}),
             Entry("水庫與水情警戒","水庫蓄水率、淹水與土石流警戒",Icons.Rounded.WaterDrop,C.cyan,{onLife("water")}),
@@ -225,7 +224,8 @@ fun AppGlassToolsPage(onBriefings:()->Unit,onUpdates:()->Unit,onDiagnostics:()->
 fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppearance)->Unit,
     automaticUpdates:Boolean,onUpdates:(Boolean)->Unit,onAdvanced:()->Unit,onDiagnostics:()->Unit,
     onLifestyle:()->Unit,onPushSettings:()->Unit,onUpdateCenter:()->Unit={},
-    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onDetailVisibility:(Boolean)->Unit={},onAdvancedCategory:(String)->Unit={onAdvanced()}) {
+    onWeatherAlarms:()->Unit={},onTyphoons:()->Unit={},onDetailVisibility:(Boolean)->Unit={},onAdvancedCategory:(String)->Unit={onAdvanced()},
+    onBriefings:()->Unit={}) {
     val context=LocalContext.current
     val prefs=remember(context) { context.getSharedPreferences("thinn_settings",android.content.Context.MODE_PRIVATE) }
     var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion",false)) }
@@ -347,11 +347,13 @@ fun AppGlassSettingsPage(appearance:WeatherAppearance,onAppearance:(WeatherAppea
                     SettingsEntry("字體與閱讀",Icons.Rounded.TextFields,IOSColors.indigo,{onAdvancedCategory("外觀")}),
                     SettingsEntry("聲音與觸覺",Icons.Rounded.VolumeUp,IOSColors.pink,{onAdvancedCategory("聲音")}),
                     SettingsEntry("輔助使用",Icons.Rounded.AccessibilityNew,IOSColors.blue,{lastDetail="accessibility";accessibilityOpen=true})),
-                "桌面與即時資訊" to listOf(
-                    SettingsEntry("小工具與動態島",Icons.Rounded.Widgets,IOSColors.indigo,{lastDetail="surfaces";surfacesOpen=true})),
-                "提醒與生活" to listOf(
-                    SettingsEntry("地震警報與通知",Icons.Rounded.NotificationsActive,IOSColors.red,onPushSettings),
-                    SettingsEntry("通知音效與背景提醒",Icons.Rounded.MusicNote,IOSColors.orange,{onAdvancedCategory("通知")}),
+                // Every notification setting in one group; 地震設定 is the same page the 地震 tab's gear opens.
+                "通知與提醒" to listOf(
+                    SettingsEntry("天氣提醒與通知",Icons.Rounded.NotificationsActive,IOSColors.orange,onBriefings),
+                    SettingsEntry("地震設定",Icons.Rounded.Sensors,IOSColors.red,onPushSettings),
+                    SettingsEntry("通知音效與背景提醒",Icons.Rounded.MusicNote,IOSColors.pink,{onAdvancedCategory("通知")})),
+                "首頁與生活" to listOf(
+                    SettingsEntry("小工具與動態島",Icons.Rounded.Widgets,IOSColors.indigo,{lastDetail="surfaces";surfacesOpen=true}),
                     SettingsEntry("穿搭與生活偏好",Icons.Rounded.Checkroom,IOSColors.green,onLifestyle)),
                 "系統與資料" to listOf(
                     SettingsEntry("資料更新頻率",Icons.Rounded.Sync,IOSColors.cyan,{onAdvancedCategory("資料")}),

@@ -128,7 +128,7 @@ class TabletSettingsRenderingTest:TabletRenderingFixture() {
                 for((w,h) in listOf(1280 to 800,800 to 1280,480 to 800,1280 to 400)) {
                     resize(view,w,h)
                     val first=nodes(view).single{text(it,"外觀與操作")}
-                    val second=nodes(view).single{text(it,"桌面與即時資訊")}
+                    val second=nodes(view).single{text(it,"通知與提醒")}
                     // A new Dock preference makes the first group taller. The next
                     // heading can be below a short viewport: compare its actual
                     // placement, rather than the empty clipped semantics bounds.
@@ -137,7 +137,7 @@ class TabletSettingsRenderingTest:TabletRenderingFixture() {
                     else assertEquals(first.positionInRoot.x,second.positionInRoot.x,1f)
                     // Verify every group remains reachable by scrolling, including
                     // 150% text in the short landscape window.
-                    for(label in listOf("桌面與即時資訊","提醒與生活","系統與資料","字體與閱讀")) {
+                    for(label in listOf("通知與提醒","首頁與生活","系統與資料","字體與閱讀")) {
                         repeat(4) {
                             val target=nodes(view).single{text(it,label)}
                             val b=target.boundsInRoot

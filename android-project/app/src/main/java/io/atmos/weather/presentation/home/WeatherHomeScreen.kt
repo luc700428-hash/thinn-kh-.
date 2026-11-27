@@ -589,7 +589,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
     val workspaceDetailTitle=when {
         marineOpen->"海象與浪況";skyOpen->"日月與月相";alertsOpen->"中央氣象署警特報";insightsOpen->"出門時段與生活指數"
         typhoonPageOpen->"颱風動向";tasksOpen->"我的事項";briefingOpen->"天氣提醒與通知";weatherAlarmOpen->"天氣鬧鐘"
-        diagnosticsOpen->"權限與系統健康";pushSettingsOpen->"地震警報與通知";lifestyleSettingsOpen->"穿搭與生活偏好"
+        diagnosticsOpen->"權限與系統健康";pushSettingsOpen->"地震設定";lifestyleSettingsOpen->"穿搭與生活偏好"
         updatePageOpen->"軟體更新";lifeOpen->io.atmos.weather.life.LifeFeatures.title(lifeShown);settingsOpen->when(advancedCategory){"外觀"->"字體與閱讀";"聲音"->"聲音與觸覺";"資料"->"資料更新頻率";else->"通知音效與背景提醒"}
         else->null
     }
@@ -1102,6 +1102,7 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
                 onDiagnostics = { openWorkspaceDetail("diagnostics") },
                 onLifestyle = { openWorkspaceDetail("lifestyle") },
                 onPushSettings = { openWorkspaceDetail("push") },
+                onBriefings = { openWorkspaceDetail("briefing") },
                 onUpdateCenter = { openWorkspaceDetail("update") },
                 onWeatherAlarms = { openWorkspaceDetail("alarm") },
                 onTyphoons = { openWorkspaceDetail("typhoon") },
@@ -1348,7 +1349,8 @@ fun WeatherHomeScreen(viewModel: WeatherViewModel, onLocate: () -> Unit) {
         io.atmos.weather.ui.MainDetailLayer(lifeOpen,{lifeFeature=null}) {
             io.atmos.weather.life.LifeFeaturePage(lifeShown,snapshot){lifeFeature=null}
         }
-        io.atmos.weather.ui.MainDetailLayer(pushSettingsOpen,{pushSettingsOpen=false}) {io.atmos.weather.push.SeismicPushSettingsPage(onClose={pushSettingsOpen=false})}
+        // 設定 → 地震設定 opens the one earthquake settings page (also behind the 地震 tab's gear).
+        io.atmos.weather.ui.MainDetailLayer(pushSettingsOpen,{pushSettingsOpen=false}) {io.atmos.weather.earthquake.EarthquakeSettingsPage(onClose={pushSettingsOpen=false})}
         io.atmos.weather.ui.MainDetailLayer(lifestyleSettingsOpen,{lifestyleSettingsOpen=false}) {LifestyleSettingsPage(onClose={lifestyleSettingsOpen=false})}
         // 今日穿搭: its own page now (outfit tiles, the reasons, when to go out, the day's reminders).
         io.atmos.weather.ui.MainDetailLayer(showLifestyleDetails&&snapshot!=null,{showLifestyleDetails=false}) {

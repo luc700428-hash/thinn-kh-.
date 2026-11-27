@@ -329,6 +329,7 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
                                 if(i<eew.lastIndex) HorizontalDivider(color=divider, modifier=Modifier.padding(vertical=10.dp))
                             }
                         }
+                        SettingsPanel("雲端推播（備援）") { io.atmos.weather.push.SeismicPushPanel() }
                     }
                     1 -> {
                         SettingsPanel("震後報告") {
@@ -443,8 +444,23 @@ fun EarthquakeSettingsPage(onClose: () -> Unit) {
     }
 }
 
+/** Each panel's heading carries its own coloured symbol, as in the iOS Settings app. */
 @Composable private fun SectionName(title:String) {
-    Text(title,color=ice,fontSize=15.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=16.dp,bottom=12.dp,start=4.dp))
+    val C=io.atmos.weather.ui.IOSColors
+    val (icon,color)=when(title) {
+        "速報能不能跳出來"->Icons.Rounded.VerifiedUser to C.green; "快速設定"->Icons.Rounded.AutoAwesome to C.indigo
+        "我的位置"->Icons.Rounded.MyLocation to C.blue; "提醒門檻"->Icons.Rounded.Tune to C.orange
+        "提醒方式"->Icons.Rounded.NotificationsActive to C.red; "速報種類與提示音"->Icons.Rounded.MusicNote to C.pink
+        "雲端推播（備援）"->Icons.Rounded.Cloud to C.cyan; "震後報告"->Icons.Rounded.Description to C.blue
+        "報告提示音"->Icons.Rounded.VolumeUp to C.pink; "地震頁面"->Icons.Rounded.Map to C.teal
+        "即時監測"->Icons.Rounded.Sensors to C.green; "速報紀錄"->Icons.Rounded.History to C.gray
+        "測站檢知 · 進階"->Icons.Rounded.Science to C.purple; else->Icons.Rounded.Info to C.gray
+    }
+    Row(Modifier.padding(top=18.dp,bottom=10.dp,start=4.dp),verticalAlignment=Alignment.CenterVertically) {
+        io.atmos.weather.ui.IOSIconTile(icon,color,26.dp)
+        Spacer(Modifier.width(9.dp))
+        Text(title,color=MaterialTheme.colorScheme.onSurface,fontSize=16.sp,fontWeight=FontWeight.SemiBold)
+    }
 }
 @Composable private fun SettingsGlass(content:@Composable ColumnScope.()->Unit) {
     io.atmos.weather.ui.IOSV25SettingsGroup {

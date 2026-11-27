@@ -20,6 +20,41 @@ import io.atmos.weather.ui.GlassSurface
 import io.atmos.weather.ui.GlassToggle
 import io.atmos.weather.ui.GlassButton
 
+/**
+ * The optional cloud push (FCM topic) switch, shown inside 地震設定 → 速報 as one panel so that
+ * every earthquake setting lives on one page.
+ */
+@Composable
+fun SeismicPushPanel() {
+    val ctx = LocalContext.current
+    var enabled by remember { mutableStateOf(SeismicPushRegistration.optedIn(ctx)) }
+    var status by remember {
+        mutableStateOf("FCM 主題是輔助通知，並非官方災防警報，送達可能受省電與網路影響。")
+    }
+    GlassToggle(
+        "接收台灣與離島地震推播",
+        "App 沒開著時的備援；免費 FCM 主題傳輸，可能因省電、離線或網路而延遲",
+        enabled
+    ) { target ->
+        if (!SeismicPushRegistration.configured()) {
+            status = "FCM 公開專案設定不足，無法訂閱主題"
+            return@GlassToggle
+        }
+        status = if (target) "正在訂閱主題…" else "正在取消訂閱…"
+        SeismicPushRegistration.setEnabled(ctx, target) { result ->
+            status = result
+            enabled = SeismicPushRegistration.optedIn(ctx)
+        }
+    }
+    if (!SeismicPushRegistration.configured()) {
+        Text("目前不可接收：尚未配置 Firebase Cloud Messaging", color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
+    }
+    Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, lineHeight = 20.sp)
+    Spacer(Modifier.height(6.dp))
+    Text("訂閱成功不等於後端已部署，也不代表取得合法即時預警來源。本服務不能保證地震到達前通知；緊急防災資訊以中央氣象署和手機官方災防告警為準。",
+        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, lineHeight = 20.sp)
+}
+
 @Composable
 fun SeismicPushSettingsPage(onClose: () -> Unit) {
     val ctx = LocalContext.current
